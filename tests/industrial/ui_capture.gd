@@ -28,8 +28,10 @@ func _initialize() -> void:
 		var created = load("res://globals/GameState.gd").new()
 		created.name = "GameState"
 		get_root().add_child(created)
+		# --script 环境也可能装载 autoload：无条件关闭钱包落盘，避免污染玩家存档
+		created.persist_wallet = false
+		# --script 环境也可能装载 autoload，所以无条件关闭落盘
 	var wallet := get_root().get_node("GameState")
-	wallet.persist_wallet = false
 	wallet.add_ore(6)
 	scene._apply_state(scene._state)
 

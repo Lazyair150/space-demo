@@ -22,9 +22,10 @@ func _run() -> void:
 	var gs := get_root().get_node_or_null("GameState")
 	if gs == null:
 		gs = load("res://globals/GameState.gd").new()
-		gs.persist_wallet = false
 		gs.name = "GameState"
 		get_root().add_child(gs)
+		# --script 环境也可能装载 autoload：无条件关闭钱包落盘，避免污染玩家存档
+		gs.persist_wallet = false
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://player.cfg"))
 	gs.ore = 0

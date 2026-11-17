@@ -25,11 +25,12 @@ func _initialize() -> void:
 func _boot_wallet() -> void:
 	if get_root().has_node("GameState"):
 		_wallet = get_root().get_node("GameState")
-		_wallet.persist_wallet = false
 	else:
 		_wallet = load("res://globals/GameState.gd").new()
 		_wallet.name = "GameState"
 		get_root().add_child(_wallet)
+		# --script 环境也可能装载 autoload：无条件关闭钱包落盘，避免污染玩家存档
+		_wallet.persist_wallet = false
 
 func _make_runtime(node_name: String) -> Node:
 	var runtime: Node = load("res://scripts/industrial/runtime/IndustrialRuntime.gd").new()

@@ -61,7 +61,6 @@ func _run() -> void:
 
 	# 战斗侧资源：打碎一块残骸应该真的往 GameState 里加矿石（阶段 9 的入口那一半）
 	var gs := get_root().get_node("GameState")
-	gs.persist_wallet = false
 	var ore_before := int(gs.ore)
 	var asteroid: Node = load("res://scenes/actors/Asteroid.tscn").instantiate()
 	get_root().add_child(asteroid)
@@ -79,9 +78,10 @@ func _ensure_autoloads() -> void:
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	if not get_root().has_node("GameState"):
 		var gs = load("res://globals/GameState.gd").new()
-		gs.persist_wallet = false
 		gs.name = "GameState"
 		get_root().add_child(gs)
+		# --script 环境也可能装载 autoload：无条件关闭钱包落盘，避免污染玩家存档
+		gs.persist_wallet = false
 	if not get_root().has_node("IndustrialRuntime"):
 		var rt = load("res://scripts/industrial/runtime/IndustrialRuntime.gd").new()
 		rt.name = "IndustrialRuntime"

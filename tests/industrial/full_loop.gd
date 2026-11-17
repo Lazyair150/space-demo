@@ -24,11 +24,13 @@ func _initialize() -> void:
 
 func _ensure_autoloads() -> void:
 	_wallet = get_root().get_node_or_null("GameState")
-	_wallet.persist_wallet = false
 	if _wallet == null:
 		_wallet = load("res://globals/GameState.gd").new()
 		_wallet.name = "GameState"
 		get_root().add_child(_wallet)
+		# --script 环境也可能装载 autoload：无条件关闭钱包落盘，避免污染玩家存档
+		_wallet.persist_wallet = false
+		# --script 环境也可能装载 autoload，所以无条件关闭落盘
 	if get_root().get_node_or_null("IndustrialRuntime") == null:
 		var rt = load("res://scripts/industrial/runtime/IndustrialRuntime.gd").new()
 		rt.name = "IndustrialRuntime"

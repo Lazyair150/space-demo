@@ -26,8 +26,8 @@ var _pick_template: Button
 var _check_all: Button
 var _random_order: Button
 
-## 每单位推进需要的刻数（实测 2 刻）。这是**估算**用的常数，不是 Core 契约。
-const TICKS_PER_UNIT := 2
+## 每单位推进需要的刻数：唯一来源在 IndustrialPacing.gd（经验值，非 Core 契约）。
+const Pacing := preload("res://scripts/industrial/IndustrialPacing.gd")
 
 var _built := false
 var _empty_hint: Label
@@ -181,8 +181,10 @@ func _order_card(order: Dictionary, process: Dictionary, phase: String) -> Panel
 	if checked and feasible:
 		var timed := _timed_steps(feasibility)
 		var untimed := _untimed_steps(feasibility)
-		box.add_child(UiKit.label("报价：计时 %d 步 · 不计时 %d 步 · 估算约 %d 刻" % [
-			timed, untimed, timed * TICKS_PER_UNIT], UiKit.FONT_SMALL, UiKit.TEXT))
+		var quote := UiKit.label("报价：计时 %d 步 · 不计时 %d 步 · 估算约 %d 刻" % [
+			timed, untimed, timed * Pacing.TICKS_PER_UNIT], UiKit.FONT_SMALL, UiKit.TEXT)
+		quote.tooltip_text = Pacing.PACING_NOTE
+		box.add_child(quote)
 
 		var cost := _cost_summary(feasibility)
 		if cost != "":

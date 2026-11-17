@@ -109,6 +109,9 @@ func upgrade_attack()->bool:
 func save_wallet()->void:
 	if not persist_wallet:
 		return
+	# 无头运行只可能是自动化测试/CI：不写玩家存档，避免把测试数值带进真实进度。
+	if DisplayServer.get_name() == "headless":
+		return
 	var cfg:=ConfigFile.new()
 	cfg.set_value("wallet","ore",ore)
 	cfg.set_value("wallet","materials",materials)

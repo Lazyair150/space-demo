@@ -15,6 +15,7 @@ GODOT="/d/godot/Godot_v4.7.1-stable_mono_win64/godot.exe"
 | `scene_switch.gd` | 真实场景切换：菜单 ↔ 工业舱、世界存活、残骸掉矿 | 12 |
 | `reward_smoke.gd` | 奖励：发奖幂等、材料换攻击力、上限、重开后仍可发奖 | 17 |
 | `save_smoke.gd` | 存档：世界（回合/工单/仓库/主从台）与钱包读回、读档不补算、坏档退回新局 | 19 |
+| `tests/industrial/tradeoff_smoke.gd` | 策略验证单：三张单的资源/配置/时间冲突、真实链路执行锁定、报价常量单一来源 | 23 |
 | `full_loop.gd` | 全链路：菜单→工业派单结算→强化→保存→战斗伤害/掉矿→读档 | 15 |
 | `tests/hud_feedback.gd` | 战斗 HUD：获得提示（只报增量）、目标提示随材料档位切换、满级文案、结束复原钱包（`persist_wallet=false`） | 15 |
 | `segment_smoke.gd` | 段落化波次：五波段落名顺序、各段刷怪数、精英数值放大、喘息不刷怪 | 17 |

@@ -38,9 +38,10 @@ func _initialize() -> void:
 	# `--script` 环境不装载 autoload：工业界面通过 /root/GameState 取矿石，这里补一个
 	if not get_root().has_node("GameState"):
 		var gs = load("res://globals/GameState.gd").new()
-		gs.persist_wallet = false
 		gs.name = "GameState"
 		get_root().add_child(gs)
+		# --script 环境也可能装载 autoload：无条件关闭钱包落盘，避免污染玩家存档
+		gs.persist_wallet = false
 
 	scene = packed.instantiate()
 	get_root().add_child(scene)

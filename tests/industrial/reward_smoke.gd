@@ -24,11 +24,12 @@ func _boot() -> void:
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	if get_root().has_node("GameState"):
 		_wallet = get_root().get_node("GameState")
-		_wallet.persist_wallet = false
 	else:
 		_wallet = load("res://globals/GameState.gd").new()
 		_wallet.name = "GameState"
 		get_root().add_child(_wallet)
+		# --script 环境也可能装载 autoload：无条件关闭钱包落盘，避免污染玩家存档
+		_wallet.persist_wallet = false
 
 	_runtime = get_root().get_node_or_null("IndustrialRuntime")
 	if _runtime == null:
