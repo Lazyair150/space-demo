@@ -1,0 +1,96 @@
+{
+  "shapes": ["圆形舱段", "方形舱段", "三棱舱段", "长条舱段"],
+  "liquids": ["酒", "蜜"],
+  "defaultMaxJars": 8,
+  "defaultMaxLiquids": 6,
+  "flow": {
+    "jarCount": 3,
+    "liquidAmount": 2,
+    "liquidRate": {
+      "酒": 1,
+      "蜜": 1
+    }
+  },
+  "initialStock": {
+    "酒": 6,
+    "蜜": 4
+  },
+  "producers": [
+    {
+      "name": "一号锻造线",
+      "rates": {
+        "圆形舱段": 0.4,
+        "方形舱段": 0.3
+      }
+    },
+    {
+      "name": "二号锻造线",
+      "rates": {
+        "三棱舱段": 0.5,
+        "长条舱段": 0.0
+      }
+    }
+  ],
+  "producerSlots": 3,
+  "turnLimit": 12,
+  "goalOrders": 1,
+  "workshops": [
+    {
+      "name": "启明装配台",
+      "baseMarks": ["圆形舱段", "方形舱段"],
+      "additionalMarks": ["三棱舱段"],
+      "ban": ["酒"]
+    },
+    {
+      "name": "长庚装配台",
+      "baseMarks": ["三棱舱段"],
+      "additionalMarks": ["圆形舱段"],
+      "ban": ["蜜"]
+    }
+  ],
+  "orderTemplates": [
+    {
+      "name": "双圆工单",
+      "type": "A",
+      "requirements": [
+        { "shape": "圆形舱段", "liquid": null },
+        { "shape": "圆形舱段", "liquid": null }
+      ]
+    },
+    {
+      "name": "改形工单",
+      "type": "A",
+      "requirements": [
+        { "shape": "方形舱段", "liquid": null },
+        { "shape": "三棱舱段", "liquid": null }
+      ]
+    },
+    {
+      "name": "装液工单",
+      "type": "A",
+      "requirements": [
+        { "shape": "方形舱段", "liquid": "蜜" }
+      ]
+    },
+    {
+      "name": "三舱工单",
+      "type": "A",
+      "requirements": [
+        { "shape": "圆形舱段", "liquid": null },
+        { "shape": "方形舱段", "liquid": null },
+        { "shape": "三棱舱段", "liquid": null }
+      ]
+    },
+    {
+      "name": "副舱工单",
+      "type": "B",
+      "requirements": [
+        { "shape": "三棱舱段", "liquid": null }
+      ]
+    }
+  ],
+  "namePools": {
+    "prefix": ["金", "木", "水", "火", "土", "天", "地", "玄", "黄"],
+    "suffix": ["装配台", "工坊", "舱"]
+  }
+}

@@ -89,6 +89,11 @@ func _shoot()->void:
 	if bullet_scene ==null:
 		return
 	var b:Node2D=bullet_scene.instantiate()
+	# 子弹伤害读玩家钱包里的攻击力等级（工业舱产出的产品换来的强化材料提升它）。
+	# 取不到 GameState 就用子弹自身的默认伤害，不让战斗因为工业侧缺席而崩。
+	var wallet:=get_node_or_null("/root/GameState")
+	if wallet!=null and wallet.has_method("attack_damage"):
+		b.set("damage",wallet.attack_damage())
 	b.global_position=muzzle.global_position
 	b.rotation=rotation
 	get_parent().add_child(b)

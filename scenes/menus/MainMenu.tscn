@@ -52,6 +52,11 @@ theme_override_font_sizes/font_size = 28
 text = "Start
 "
 
+[node name="IndustrialButton" type="Button" parent="ColorRect/VBoxContainer" unique_id=1902314477]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "进入工业舱"
+
 [node name="QuitButton" type="Button" parent="ColorRect/VBoxContainer" unique_id=51918999]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28

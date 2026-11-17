@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="temp3"
+config/name="space-demo"
 run/main_scene="uid://6lyojye1mcsn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"
@@ -19,6 +19,7 @@ config/tags=PackedStringArray("copy_stellar")
 [autoload]
 
 GameState="*uid://1mrntfgt1sqh"
+IndustrialRuntime="*res://scripts/industrial/runtime/IndustrialRuntime.gd"
 
 [display]
 
@@ -29,7 +30,7 @@ window/stretch/aspect="expand"
 
 [dotnet]
 
-project/assembly_name="temp3"
+project/assembly_name="space-demo"
 
 [editor]
 
