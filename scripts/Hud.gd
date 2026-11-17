@@ -24,6 +24,7 @@ func _ready() -> void:
 	_last_materials = GameState.materials
 	GameState.score_changed.connect(_on_score_changed)
 	GameState.wave_changed.connect(_on_wave_changed)
+	GameState.segment_changed.connect(_on_segment_changed)
 	GameState.player_hp_changed.connect(_on_hp_changed)
 	GameState.ore_changed.connect(_on_ore_changed)
 	GameState.materials_changed.connect(_on_materials_changed)
@@ -113,7 +114,26 @@ func _update_score_text(s:int, amount:int)->void:
 	score_label.text ="Score:%d   矿石:%d   攻击:%d" % [s, amount, GameState.attack_damage()]
 
 func _on_wave_changed(w:int)->void:
-	wave_label.text ="Wave:%d" %w
+	_refresh_wave_text()
+
+## 段落变化时刷新波次行；精英段与喘息段各给一句话，让玩家知道"现在该干什么"。
+func _on_segment_changed(label:String, wave:int)->void:
+	_refresh_wave_text()
+	if label == "精英":
+		_show_gain("精英波：一只强化敌机")
+	elif label == "喘息":
+		_show_gain("喘息：整理一下，或去工业舱")
+
+func _refresh_wave_text()->void:
+	if wave_label == null:
+		return
+	var segment :=GameState.segment
+	if segment.is_empty():
+		wave_label.text ="Wave:%d" % GameState.wave
+		return
+	wave_label.text ="Wave:%d   %s" % [GameState.wave, segment]
+	var elite :=segment == "精英"
+	wave_label.add_theme_color_override("font_color", Color(0.92, 0.42, 0.42) if elite else Color(1, 1, 1))
 
 func _on_hp_changed(hp:int)->void:
 	for c in hearts.get_children():

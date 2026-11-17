@@ -7,6 +7,7 @@ signal ore_changed(amount:int)
 signal game_over_requested
 signal materials_changed(amount:int)
 signal attack_changed(level:int, damage:int)
+signal segment_changed(label:String, wave:int)
 
 const SAVE_PATH:="user://highscore.cfg"
 ## 玩家钱包（矿石/材料/攻击力）的落盘位置。与最高分分开存：钱包是玩法进度，最高分是成绩。
@@ -14,6 +15,8 @@ const WALLET_PATH:="user://player.cfg"
 
 var score:int=0
 var wave:int=0
+## 当前段落名（参考 tiny-wizard 的"房间节奏"：每个段落回答一个问题）。
+var segment:String=""
 var high_score:int =0
 
 ## 工业舱工单结算得来的强化材料：用来提升舰船攻击力。
@@ -50,8 +53,16 @@ func _load_high_score()->void:
 func reset_run()->void:
 	score =0
 	wave =0
+	segment =""
 	score_changed.emit(score)
 	wave_changed.emit(wave)
+	segment_changed.emit(segment, wave)
+
+## 当前战斗段落名（热身/压力/精英/喘息）。由 Spawner 每波开始时设置，
+## HUD 只负责显示——段落属于战斗节奏数据，不放在界面里。
+func set_segment(label:String)->void:
+	segment =label
+	segment_changed.emit(segment, wave)
 
 func add_ore(amount:int)->void:
 	if amount <= 0:
