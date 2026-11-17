@@ -12,6 +12,9 @@ signal segment_changed(label:String, wave:int)
 const SAVE_PATH:="user://highscore.cfg"
 ## 玩家钱包（矿石/材料/攻击力）的落盘位置。与最高分分开存：钱包是玩法进度，最高分是成绩。
 const WALLET_PATH:="user://player.cfg"
+## 测试开关：自动化测试会把钱包改来改去，若照常落盘就会污染玩家真实存档。
+## 测试脚本拿到 GameState 后把它设为 false。
+var persist_wallet :=true
 
 var score:int=0
 var wave:int=0
@@ -104,6 +107,8 @@ func upgrade_attack()->bool:
 
 ## 把钱包落到 user://player.cfg（矿石、强化材料、攻击力等级）。
 func save_wallet()->void:
+	if not persist_wallet:
+		return
 	var cfg:=ConfigFile.new()
 	cfg.set_value("wallet","ore",ore)
 	cfg.set_value("wallet","materials",materials)

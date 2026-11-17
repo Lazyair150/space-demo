@@ -21,6 +21,7 @@ func _run() -> void:
 	var gs := get_root().get_node_or_null("GameState")
 	if gs == null:
 		gs = load("res://globals/GameState.gd").new()
+		gs.persist_wallet = false
 		gs.name = "GameState"
 		get_root().add_child(gs)
 	await process_frame

@@ -38,6 +38,7 @@ func _initialize() -> void:
 	# `--script` 环境不装载 autoload：工业界面通过 /root/GameState 取矿石，这里补一个
 	if not get_root().has_node("GameState"):
 		var gs = load("res://globals/GameState.gd").new()
+		gs.persist_wallet = false
 		gs.name = "GameState"
 		get_root().add_child(gs)
 
@@ -235,6 +236,48 @@ func _initialize() -> void:
 	# 结算发奖本身由 reward_smoke 覆盖（这里只验界面把数值画出来、按钮可用性对）
 	# 界面确实画出了「投矿」按钮（不是只有 handler 存在）
 	_check(_has_button_text(scene, "投矿"), "产线面板上出现了「投矿」提档按钮")
+
+	# ---- 12. A 路线 S1：报价卡、执行中锁定、不可行第二层（08 号文档 §2–§4）----
+	runtime.reset_world()
+	runtime.ensure_started()
+	scene._apply_state(scene._state)
+
+	# 主台还没选时派单 + 检查 → 应在第一层原因之外给出"该去检查哪里"。
+	# 固定用「三舱工单」：它需要 3 个不同舱段，开局不可能一次满足，
+	# 这样"开始后有执行中的过程"才是稳定可测的（随机单有时会一步跑完、没有过程可锁）。
+	runtime.create_order_from_template("三舱工单")
+	runtime.check_all_feasibility()
+	scene._apply_state(scene._state)
+	_check(_all_text(scene).contains("主装配台还没选"), "不可行时给出第二层检查清单（主装配台还没选）")
+	_check(_has_button_text(scene, "按此方案执行"), "开始按钮改成「按此方案执行」")
+
+	# 配好主副台、推几回合让仓库有舱段，再让报价出现
+	runtime.set_master(0)
+	runtime.set_slave(1)
+	for i in 4:
+		runtime.advance_manual()
+	runtime.check_all_feasibility()
+	scene._apply_state(scene._state)
+	_check(_all_text(scene).contains("报价：计时"), "可行工单上出现报价行（计时步数 · 估算刻数）")
+
+	# 执行中锁定：不去赌"开局是否刚好需要分步"，而是直接喂一份带在册过程的快照。
+	# 锁定的判据只有一条——processes 里有未结束的 order_execution。
+	var synthetic: Dictionary = runtime.get_state().duplicate(true)
+	synthetic["processes"] = [{
+		"id": 99, "kind": "order_execution", "subjectId": 3,
+		"state": "running", "currentStep": 1, "totalSteps": 3,
+		"ticksUntilNextUnit": 1, "remainingTicks": 3,
+	}]
+	scene._apply_state(synthetic)
+	_check(scene._master_card._pick_button.disabled, "执行中「换主台」被禁用")
+	_check(scene._orders_panel._pick_template.disabled, "执行中「选模板」被禁用")
+	_check(bool(scene._lines_panel._locked), "执行中产线档位与投矿被锁定")
+	_check(_has_button_text(scene, "取消"), "执行中工单卡只给「取消」")
+
+	scene._apply_state(runtime.get_state())
+	_check(not scene._master_card._pick_button.disabled, "过程结束后「换主台」恢复可用")
+	_check(not bool(scene._lines_panel._locked), "过程结束后产线解锁")
+
 	_finish()
 
 
@@ -362,6 +405,21 @@ func _check(condition: bool, label: String) -> void:
 
 func _fail(label: String) -> void:
 	_check(false, label)
+
+
+## 整棵界面的可见文字拼起来（断言"某句话出现过"，不依赖具体节点路径）。
+func _all_text(node: Node) -> String:
+	var parts: Array[String] = []
+	var stack: Array[Node] = [node]
+	while not stack.is_empty():
+		var current: Node = stack.pop_back()
+		if current is Label:
+			parts.append((current as Label).text)
+		elif current is Button:
+			parts.append((current as Button).text)
+		for child in current.get_children():
+			stack.append(child)
+	return "\n".join(parts)
 
 
 ## 场景里是否存在文本以 prefix 开头的按钮（用来确认界面真的画出了入口，而不是只有 handler）

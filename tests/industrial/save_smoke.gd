@@ -25,6 +25,7 @@ func _initialize() -> void:
 func _boot_wallet() -> void:
 	if get_root().has_node("GameState"):
 		_wallet = get_root().get_node("GameState")
+		_wallet.persist_wallet = false
 	else:
 		_wallet = load("res://globals/GameState.gd").new()
 		_wallet.name = "GameState"

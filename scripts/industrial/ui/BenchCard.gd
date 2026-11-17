@@ -58,6 +58,12 @@ func _ready() -> void:
 
 
 ## `workshop` 为空字典表示这台还没选（空态）。
+## 执行中锁定：换台会让"这一步用的是哪台"失去定义，所以过程在跑时禁用换台按钮。
+func set_locked(locked: bool) -> void:
+	if _pick_button != null:
+		_pick_button.disabled = locked
+
+
 func bind(workshop: Dictionary) -> void:
 	if not _built:
 		_ready()

@@ -31,6 +31,7 @@ func _run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://player.cfg"))
 	var gs := get_root().get_node_or_null("GameState")
 	if gs != null:
+		gs.persist_wallet = false
 		gs.ore = 0
 		gs.materials = 0
 		gs.attack_level = 0

@@ -390,6 +390,15 @@ func _apply_state(state: Dictionary) -> void:
 		if str(process.get("kind", "")) == "order_execution" and str(process.get("state", "")) == "running":
 			running_processes += 1
 	_busy_label.text = "执行中 %d" % running_processes if running_processes > 0 else ""
+	if running_processes > 0:
+		_busy_label.tooltip_text = "工单执行中：换台、档位、投矿、派单都已锁定；要改就等它结算或先取消。"
+
+	# 执行中锁定：过程在跑时改配置会让"这一步用的是哪台"失去定义（见 08 号文档 §3）
+	var locked := _has_active_process(state)
+	_master_card.set_locked(locked)
+	_slave_card.set_locked(locked)
+	_lines_panel.set_locked(locked)
+	_orders_panel.set_locked(locked)
 
 	# 装配台
 	var workshops: Array = state.get("workshops", [])
@@ -404,7 +413,7 @@ func _apply_state(state: Dictionary) -> void:
 	_warehouse_panel.bind(state.get("warehouse", {}))
 
 	var processes: Array = state.get("processes", [])
-	_orders_panel.bind(state.get("orders", []), processes, phase)
+	_orders_panel.bind(state.get("orders", []), processes, phase, state)
 
 	# 底栏
 	var ended := exhausted or outcome != "inProgress"
@@ -443,6 +452,20 @@ func _phase_text(phase: String) -> String:
 
 ## `int()` 遇到 null 会报 "Nonexistent 'int' constructor"；契约里 currentMaster/currentSlave
 ## 是可空整数（没设主台就是 null），所以统一走这个入口。
+## 是否有"在册"的工单过程。
+## 注意 created/ready 也算：`startOrder` 刚返回时过程还没跑到 running，
+## 若此时允许改配置，第一步就会用到与报价不符的工作台。
+func _has_active_process(state: Dictionary) -> bool:
+	for process in state.get("processes", []):
+		if str(process.get("kind", "")) != "order_execution":
+			continue
+		var process_state := str(process.get("state", ""))
+		if process_state == "succeeded" or process_state == "failed" or process_state == "aborted":
+			continue
+		return true
+	return false
+
+
 func _int_or(value: Variant, fallback: int) -> int:
 	return int(value) if value != null else fallback
 

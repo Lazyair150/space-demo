@@ -17,6 +17,8 @@ const UPGRADE_COST := 2
 const MAX_RATE := 0.6
 
 var _ore := 0
+var _locked := false
+var _lockable_buttons: Array[Button] = []
 
 const UiKit := preload("res://scripts/industrial/ui/UiKit.gd")
 
@@ -41,10 +43,23 @@ func _ready() -> void:
 	box.add_child(UiKit.scroll(_list, 120))
 
 
+## 执行中锁定：档位与投矿都会改世界，过程在跑时禁用。
+## 锁定只加不减：解除后不在这里强行置为可用（那会把"当前档位"的按钮也点亮），
+## 由下一次 bind 重建按钮时按真实状态恢复。
+func set_locked(locked: bool) -> void:
+	_locked = locked
+	if not locked:
+		return
+	for button in _lockable_buttons:
+		if is_instance_valid(button):
+			button.disabled = true
+
+
 func bind(status: Dictionary, ore: int = 0) -> void:
 	if not _built:
 		_ready()
 	_ore = ore
+	_lockable_buttons.clear()
 
 	var slots: Dictionary = status.get("slots", {})
 	var used := int(slots.get("used", 0))
@@ -86,6 +101,11 @@ func bind(status: Dictionary, ore: int = 0) -> void:
 		"生产 ≠ 流入：生产把舱段送进中央仓库、工质由世界自产补进仓库；每次推进才从仓库搬向主装配台（最多 %d 只舱段、每种工质最多 %d 份）。" % [
 			int(flow.get("jars", 0)), int(flow.get("liquidPerLiquid", 0))
 		], UiKit.FONT_SMALL, UiKit.MUTED))
+
+	if _locked:
+		for button in _lockable_buttons:
+			if is_instance_valid(button):
+				button.disabled = true
 
 
 func _sources_for(producers: Array, shape: String) -> Array:
@@ -134,6 +154,7 @@ func _shape_card(generator: Dictionary, sources: Array) -> PanelContainer:
 			button.disabled = absf(current - rate) < 0.001
 			button.pressed.connect(func() -> void:
 				rate_requested.emit(str(source["name"]), shape, rate))
+			_lockable_buttons.append(button)
 			row.add_child(button)
 		row.add_child(_upgrade_button(str(source["name"]), shape, current))
 		box.add_child(row)
@@ -155,6 +176,7 @@ func _upgrade_button(producer_name: String, shape: String, current: float) -> Bu
 	]
 	button.pressed.connect(func() -> void:
 		upgrade_requested.emit(producer_name, shape, target, UPGRADE_COST))
+	_lockable_buttons.append(button)
 	return button
 
 
@@ -176,6 +198,7 @@ func _liquid_card(liquid_rates: Dictionary, accumulated: Dictionary, stock: Dict
 			button.disabled = absf(rate - target) < 0.001
 			button.pressed.connect(func() -> void:
 				liquid_rate_requested.emit(str(liquid), target))
+			_lockable_buttons.append(button)
 			row.add_child(button)
 		box.add_child(row)
 		box.add_child(UiKit.label("累加 %s · 仓库库存 %d" % [

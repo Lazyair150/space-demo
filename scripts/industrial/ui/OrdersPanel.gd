@@ -19,6 +19,16 @@ const STATUS_COLORS := {
 	"失败": UiKit.BAD,
 }
 
+## 过程在跑时，界面进入"只读"：派单/检查按钮禁用，配置类按钮由 IndustrialMain 一并锁。
+var _locked := false
+var _state: Dictionary = {}
+var _pick_template: Button
+var _check_all: Button
+var _random_order: Button
+
+## 每单位推进需要的刻数（实测 2 刻）。这是**估算**用的常数，不是 Core 契约。
+const TICKS_PER_UNIT := 2
+
 var _built := false
 var _empty_hint: Label
 var _cards: VBoxContainer
@@ -34,15 +44,15 @@ func _ready() -> void:
 	var head := UiKit.hbox(8)
 	head.add_child(UiKit.title("工单"))
 	head.add_child(UiKit.spacer())
-	var pick_template := UiKit.small_button("选模板", 72)
-	pick_template.pressed.connect(func() -> void: action_requested.emit("templates", {}))
-	head.add_child(pick_template)
-	var check_all := UiKit.small_button("检查全部", 84)
-	check_all.pressed.connect(func() -> void: action_requested.emit("check_all", {}))
-	head.add_child(check_all)
-	var random_order := UiKit.small_button("随机派一单", 96)
-	random_order.pressed.connect(func() -> void: action_requested.emit("random", {}))
-	head.add_child(random_order)
+	_pick_template = UiKit.small_button("选模板", 72)
+	_pick_template.pressed.connect(func() -> void: action_requested.emit("templates", {}))
+	head.add_child(_pick_template)
+	_check_all = UiKit.small_button("检查全部", 84)
+	_check_all.pressed.connect(func() -> void: action_requested.emit("check_all", {}))
+	head.add_child(_check_all)
+	_random_order = UiKit.small_button("随机派一单", 96)
+	_random_order.pressed.connect(func() -> void: action_requested.emit("random", {}))
+	head.add_child(_random_order)
 	box.add_child(head)
 
 	_empty_hint = UiKit.wrap_label("", UiKit.FONT_SMALL, UiKit.MUTED)
@@ -52,9 +62,21 @@ func _ready() -> void:
 	box.add_child(UiKit.scroll(_cards, 220))
 
 
-func bind(orders: Array, processes: Array, phase: String) -> void:
+func set_locked(locked: bool) -> void:
+	_locked = locked
+	if _pick_template != null:
+		_pick_template.disabled = locked
+	if _check_all != null:
+		_check_all.disabled = locked
+	if _random_order != null:
+		_random_order.disabled = locked
+
+
+## `state` 只用于第二层"检查清单"（仓库/主从台/禁令），不参与可行性判断。
+func bind(orders: Array, processes: Array, phase: String, state: Dictionary = {}) -> void:
 	if not _built:
 		_ready()
+	_state = state
 
 	UiKit.clear_children(_cards)
 
@@ -144,7 +166,9 @@ func _order_card(order: Dictionary, process: Dictionary, phase: String) -> Panel
 	else:
 		box.add_child(UiKit.label("可行性：待检查（点「检查全部」）", UiKit.FONT_SMALL, UiKit.MUTED))
 
-	# 做法：先看见再决定做
+	# 报价：先看见再做决定。
+	# 事实（来自 Core）：做法原文、消耗、是否要先迁移、求解器是否给出确定结论。
+	# 估算（界面算的）：预计刻数 = 计时步数 × TICKS_PER_UNIT，明确标「估算」，不当契约。
 	var steps := _path_steps(feasibility)
 	if not steps.is_empty():
 		var lines: Array[String] = []
@@ -153,6 +177,23 @@ func _order_card(order: Dictionary, process: Dictionary, phase: String) -> Panel
 		if steps.size() > 6:
 			lines.append("　… 共 %d 步" % steps.size())
 		box.add_child(UiKit.wrap_label("做法：\n%s" % "\n".join(lines), UiKit.FONT_SMALL, UiKit.MUTED))
+
+	if checked and feasible:
+		var timed := _timed_steps(feasibility)
+		var untimed := _untimed_steps(feasibility)
+		box.add_child(UiKit.label("报价：计时 %d 步 · 不计时 %d 步 · 估算约 %d 刻" % [
+			timed, untimed, timed * TICKS_PER_UNIT], UiKit.FONT_SMALL, UiKit.TEXT))
+
+		var cost := _cost_summary(feasibility)
+		if cost != "":
+			box.add_child(UiKit.wrap_label("消耗：%s" % cost, UiKit.FONT_SMALL, UiKit.TEXT))
+
+		var risks := _risks(feasibility)
+		for risk in risks:
+			box.add_child(UiKit.wrap_label("注意：%s" % risk, UiKit.FONT_SMALL, UiKit.WARN))
+	elif checked and not feasible:
+		for tip in _checklist(feasibility, order):
+			box.add_child(UiKit.wrap_label("检查：%s" % tip, UiKit.FONT_SMALL, UiKit.MUTED))
 
 	# 过程进度：刻数来自 Core，不是界面自己算的时间
 	if not process.is_empty():
@@ -179,7 +220,7 @@ func _order_card(order: Dictionary, process: Dictionary, phase: String) -> Panel
 			action_requested.emit("cancel", {"process_id": int(process.get("id", 0))}))
 		actions.add_child(cancel)
 	else:
-		var start := UiKit.small_button("开始", 64)
+		var start := UiKit.small_button("按此方案执行", 116)
 		# 只有"待执行 + 准备阶段 + 已判定可行"才点亮；其余情况保持灰掉并说明原因在下方
 		start.disabled = not (status == "待执行" and phase == "setup" and feasible)
 		start.pressed.connect(func() -> void:
@@ -235,6 +276,103 @@ func _path_steps(feasibility: Dictionary) -> Array[String]:
 				operation = str(step.get("type", ""))
 			steps.append(operation)
 	return steps
+
+
+## 计时步 = 除 MATCH 以外的步骤；MATCH 是"已有现成舱段"，不计时。
+func _timed_steps(feasibility: Dictionary) -> int:
+	var count := 0
+	var solver_path = feasibility.get("solverPath", null)
+	if solver_path is Array:
+		for step in solver_path:
+			if str(step.get("type", "")) != "MATCH":
+				count += 1
+	return count
+
+
+func _untimed_steps(feasibility: Dictionary) -> int:
+	var count := 0
+	var solver_path = feasibility.get("solverPath", null)
+	if solver_path is Array:
+		for step in solver_path:
+			if str(step.get("type", "")) == "MATCH":
+				count += 1
+	return count
+
+
+## 消耗一律取 Core 给的 `consumed`（没有就退回 `costLiquid` 记 1 份）；
+## B 类订单还要加上 `transferLiquids`。界面不做"够不够"的判断。
+func _cost_summary(feasibility: Dictionary) -> String:
+	var totals: Dictionary = {}
+	var solver_path = feasibility.get("solverPath", null)
+	if solver_path is Array:
+		for step in solver_path:
+			var consumed = step.get("consumed", null)
+			if consumed is Dictionary:
+				for key in (consumed as Dictionary).keys():
+					var name := str(key)
+					totals[name] = int(totals.get(name, 0)) + int((consumed as Dictionary)[key])
+				continue
+			var cost := _text(step.get("costLiquid"))
+			if cost != "":
+				totals[cost] = int(totals.get(cost, 0)) + 1
+	var transferred = feasibility.get("transferLiquids", null)
+	if transferred is Dictionary:
+		for key in (transferred as Dictionary).keys():
+			var name := str(key)
+			totals[name] = int(totals.get(name, 0)) + int((transferred as Dictionary)[key])
+	var parts: Array[String] = []
+	for name in totals.keys():
+		parts.append("%s×%d" % [str(name), int(totals[name])])
+	return "、".join(parts)
+
+
+## 风险提示只用 Core 字段：要先迁移、求解器没给出确定结论。
+func _risks(feasibility: Dictionary) -> Array[String]:
+	var risks: Array[String] = []
+	var master_path = feasibility.get("masterPath", null)
+	if master_path is Array and not (master_path as Array).is_empty():
+		risks.append("这单要先把主台改成可迁移状态（%d 步）" % (master_path as Array).size())
+	if bool(feasibility.get("undetermined", false)):
+		risks.append("求解器没给出确定结论（undetermined），执行时可能卡住")
+	return risks
+
+
+## 第二层解释：只回答"该去检查哪里"，不承诺"改了就能做"。
+## 判据全部来自 state 字段，不解析 `reason` 文字。
+func _checklist(feasibility: Dictionary, order: Dictionary) -> Array[String]:
+	var tips: Array[String] = []
+	var global_state: Dictionary = _state.get("globalState", {}) if _state.get("globalState", null) is Dictionary else {}
+	if global_state.get("currentMaster", null) == null:
+		tips.append("主装配台还没选")
+	var master_path = feasibility.get("masterPath", null)
+	if master_path is Array and not (master_path as Array).is_empty() and global_state.get("currentSlave", null) == null:
+		tips.append("这单要先迁移，副装配台必须已选")
+
+	var warehouse: Dictionary = _state.get("warehouse", {}) if _state.get("warehouse", null) is Dictionary else {}
+	var requirements: Array = order.get("requirements", [])
+	var jar_count := int(warehouse.get("jars", 0))
+	if jar_count < requirements.size():
+		tips.append("仓库舱段 %d 只，需求 %d 件" % [jar_count, requirements.size()])
+
+	var liquids: Dictionary = warehouse.get("liquids", {}) if warehouse.get("liquids", null) is Dictionary else {}
+	for requirement in requirements:
+		var liquid = requirement.get("liquid", null)
+		if liquid == null:
+			continue
+		tips.append("需要工质 %s（仓库 %d）" % [str(liquid), int(liquids.get(str(liquid), 0))])
+
+	var workshops: Array = _state.get("workshops", []) if _state.get("workshops", null) is Array else []
+	for workshop in workshops:
+		var ban: Array = workshop.get("ban", []) if workshop.get("ban", null) is Array else []
+		for requirement in requirements:
+			var liquid = requirement.get("liquid", null)
+			if liquid != null and ban.has(liquid):
+				tips.append("%s 禁装 %s" % [str(workshop.get("name", "工作台")), str(liquid)])
+
+	var phase := str(_state.get("phase", ""))
+	if phase != "" and phase != "setup":
+		tips.append("当前是「%s」阶段，只有准备阶段才能开新单" % phase)
+	return tips
 
 
 ## DTO 里的可空整数（例如过程中的 `remainingTicks`）不能直接喂给 `int()`：

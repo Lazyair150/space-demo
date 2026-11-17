@@ -20,6 +20,7 @@ func _run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path("user://player.cfg"))
 	var wallet = get_root().get_node_or_null("GameState")
 	if wallet != null:
+		wallet.persist_wallet = false
 		wallet.ore = 0
 		wallet.materials = 0
 		wallet.attack_level = 0
@@ -47,6 +48,7 @@ func _run() -> void:
 	game.queue_free()
 	await process_frame
 	if gs != null:
+		gs.persist_wallet = false
 		gs.ore = 0
 		gs.materials = 0
 		gs.attack_level = 0

@@ -28,7 +28,9 @@ func _initialize() -> void:
 		var created = load("res://globals/GameState.gd").new()
 		created.name = "GameState"
 		get_root().add_child(created)
-	get_root().get_node("GameState").add_ore(6)
+	var wallet := get_root().get_node("GameState")
+	wallet.persist_wallet = false
+	wallet.add_ore(6)
 	scene._apply_state(scene._state)
 
 	# 1) 开局：空态

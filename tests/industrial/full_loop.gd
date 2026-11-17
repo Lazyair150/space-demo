@@ -24,6 +24,7 @@ func _initialize() -> void:
 
 func _ensure_autoloads() -> void:
 	_wallet = get_root().get_node_or_null("GameState")
+	_wallet.persist_wallet = false
 	if _wallet == null:
 		_wallet = load("res://globals/GameState.gd").new()
 		_wallet.name = "GameState"
