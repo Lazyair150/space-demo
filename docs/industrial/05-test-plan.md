@@ -16,6 +16,7 @@ GODOT="/d/godot/Godot_v4.7.1-stable_mono_win64/godot.exe"
 | `reward_smoke.gd` | 奖励：发奖幂等、材料换攻击力、上限、重开后仍可发奖 | 17 |
 | `save_smoke.gd` | 存档：世界（回合/工单/仓库/主从台）与钱包读回、读档不补算、坏档退回新局 | 19 |
 | `full_loop.gd` | 全链路：菜单→工业派单结算→强化→保存→战斗伤害/掉矿→读档 | 15 |
+| `tests/hud_feedback.gd` | 战斗 HUD：获得提示（只报增量）、目标提示随材料档位切换、满级文案、结束复原钱包 | 15 |
 | `ui_capture.gd` | 非测试：带窗口跑一遍并截图到 `tmp/ui_capture/`（headless 抓不到画面） | — |
 
 ## 人工验收清单（未经自动化覆盖）
