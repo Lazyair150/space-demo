@@ -1,0 +1,66 @@
+[gd_scene format=3 uid="uid://0pkv3cfo4k8l"]
+
+[ext_resource type="Script" uid="uid://b4q1bilsecymx" path="res://scripts/Game.gd" id="1_m44fu"]
+[ext_resource type="PackedScene" uid="uid://68ujyqxv1j63" path="res://scenes/actors/Asteroid.tscn" id="2_7qcb4"]
+[ext_resource type="Texture2D" uid="uid://1qn42mk3gp6f" path="res://assets/sprites/bg.svg" id="2_vrspl"]
+[ext_resource type="PackedScene" uid="uid://x8pdj8wbeybg" path="res://scenes/actors/Player.tscn" id="3_vrspl"]
+[ext_resource type="PackedScene" uid="uid://d33svcgjaffdv" path="res://scenes/actors/EnemyShooter.tscn" id="5_365ku"]
+[ext_resource type="PackedScene" uid="uid://b012awswm6uk7" path="res://scenes/actors/EnemyChaser.tscn" id="6_gg4pt"]
+[ext_resource type="PackedScene" uid="uid://bmar716cbuob6" path="res://scenes/ui/HUD.tscn" id="7_gg4pt"]
+[ext_resource type="Script" uid="uid://dnxrwdiunwvuh" path="res://scripts/Spawner.gd" id="8_wnrko"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wvhbo"]
+size = Vector2(1300, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ifow5"]
+size = Vector2(1300, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_abi3o"]
+size = Vector2(20, 740)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ibjym"]
+size = Vector2(20, 740)
+
+[node name="Game" type="Node2D" unique_id=2089589229]
+script = ExtResource("1_m44fu")
+asteroid_scene = ExtResource("2_7qcb4")
+
+[node name="Background" type="Sprite2D" parent="." unique_id=713591741]
+texture = ExtResource("2_vrspl")
+offset = Vector2(640, 360)
+
+[node name="Arena" type="Node2D" parent="." unique_id=180718242]
+
+[node name="StaticBody2D" type="StaticBody2D" parent="Arena" unique_id=1230524625]
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Arena/StaticBody2D" unique_id=1763865540]
+position = Vector2(640, -10)
+shape = SubResource("RectangleShape2D_wvhbo")
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="Arena/StaticBody2D" unique_id=1568373373]
+position = Vector2(640, 730)
+shape = SubResource("RectangleShape2D_ifow5")
+
+[node name="CollisionShape2D3" type="CollisionShape2D" parent="Arena/StaticBody2D" unique_id=460715980]
+position = Vector2(-10, 360)
+shape = SubResource("RectangleShape2D_abi3o")
+
+[node name="CollisionShape2D4" type="CollisionShape2D" parent="Arena/StaticBody2D" unique_id=225823240]
+position = Vector2(1290, 360)
+shape = SubResource("RectangleShape2D_ibjym")
+
+[node name="Player" parent="Arena" unique_id=747133737 instance=ExtResource("3_vrspl")]
+unique_name_in_owner = true
+position = Vector2(640, 360)
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=960025502]
+unique_name_in_owner = true
+offset = Vector2(640, 360)
+
+[node name="Hud" parent="." unique_id=400276950 instance=ExtResource("7_gg4pt")]
+
+[node name="Node" type="Node" parent="." unique_id=938422401]
+script = ExtResource("8_wnrko")
+shooter_scene = ExtResource("5_365ku")
+chaser_scene = ExtResource("6_gg4pt")

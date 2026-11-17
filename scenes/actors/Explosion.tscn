@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://bys2o0l308s6a"]
+
+[ext_resource type="Script" uid="uid://c55ogc3v65wow" path="res://scripts/Explosion.gd" id="1_xnw30"]
+[ext_resource type="AudioStream" uid="uid://mo6rlxv3deio" path="res://assets/audio/explosion.wav" id="2_vwun1"]
+
+[node name="Explosion" type="Node2D" unique_id=1544149329]
+script = ExtResource("1_xnw30")
+
+[node name="Particles" type="CPUParticles2D" parent="." unique_id=1370681320]
+emitting = false
+amount = 32
+lifetime = 0.6
+one_shot = true
+explosiveness = 0.9
+direction = Vector2(0, 0)
+spread = 180.0
+gravity = Vector2(0, 0)
+initial_velocity_min = 80.0
+initial_velocity_max = 240.0
+scale_amount_min = 2.0
+scale_amount_max = 4.0
+color = Color(1, 0.85430586, 0.58383155, 1)
+
+[node name="SFX" type="AudioStreamPlayer2D" parent="." unique_id=286533817]
+stream = ExtResource("2_vwun1")
+volume_db = -6.0

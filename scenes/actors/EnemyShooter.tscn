@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://d33svcgjaffdv"]
+
+[ext_resource type="Script" uid="uid://eqktf4whdh85" path="res://scripts/EnemyShooter.gd" id="1_ewi6r"]
+[ext_resource type="Texture2D" uid="uid://do6fyg2ooecmh" path="res://assets/sprites/enemy_shooter.svg" id="1_sqrnx"]
+[ext_resource type="PackedScene" uid="uid://1rnu4w2ys7x6" path="res://scenes/actors/EnemyBullet.tscn" id="2_2xba7"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_wvhbo"]
+radius = 28.0
+
+[node name="EnemyShooter" type="CharacterBody2D" unique_id=1741397099]
+collision_layer = 8
+collision_mask = 9
+script = ExtResource("1_ewi6r")
+bullet_scene = ExtResource("2_2xba7")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=528740579]
+texture = ExtResource("1_sqrnx")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=783441668]
+shape = SubResource("CircleShape2D_wvhbo")

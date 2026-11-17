@@ -1,0 +1,54 @@
+[gd_scene format=3 uid="uid://bmar716cbuob6"]
+
+[ext_resource type="Script" uid="uid://dn677vmb7i7s4" path="res://scripts/Hud.gd" id="1_kw0id"]
+[ext_resource type="Texture2D" uid="uid://camm6msp4q35i" path="res://assets/sprites/heart.svg" id="2_atyv1"]
+
+[node name="Hud" type="CanvasLayer" unique_id=400276950]
+script = ExtResource("1_kw0id")
+heart_texture = ExtResource("2_atyv1")
+
+[node name="Root" type="Control" parent="." unique_id=749235955]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Root" unique_id=1892944871]
+custom_minimum_size = Vector2(600, 46)
+layout_mode = 0
+offset_left = 20.0
+offset_top = 14.0
+offset_right = 60.0
+offset_bottom = 54.0
+theme_override_constants/separation = 32
+
+[node name="Score" type="Label" parent="Root/HBoxContainer" unique_id=641394655]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+
+[node name="Wave" type="Label" parent="Root/HBoxContainer" unique_id=337039599]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+
+[node name="TopRight" type="Control" parent="Root" unique_id=2000475786]
+custom_minimum_size = Vector2(240, 46)
+anchors_preset = 0
+offset_left = 1020.0
+offset_top = 14.0
+offset_right = 1260.0
+offset_bottom = 60.0
+
+[node name="Hearts" type="HBoxContainer" parent="Root/TopRight" unique_id=1042455736]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+alignment = 2
