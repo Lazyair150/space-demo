@@ -64,3 +64,5 @@ offset = Vector2(640, 360)
 script = ExtResource("8_wnrko")
 shooter_scene = ExtResource("5_365ku")
 chaser_scene = ExtResource("6_gg4pt")
+
+[editable path="Arena/Player"]
