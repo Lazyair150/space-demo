@@ -12,6 +12,9 @@ func _ready() -> void:
 	area_entered.connect(_on_area_entered)
 
 func _on_body_entered(body:Node)->void:
+	if not is_instance_valid(body):
+		queue_free()
+		return
 	if body.is_in_group("player"):
 		var info := DamageInfo.make(damage, &"bullet", attacker, self, global_position)
 		if body.has_method("receive_damage"):

@@ -227,6 +227,32 @@ func _run() -> void:
 		DamageInfo.make(1, &"bullet", null, null))
 	_check(plain_result.absorbed == 1, "任意节点都能用同一个护盾组件", str(plain_result.absorbed))
 
+	# ================= 阶段 4：已释放实例不再炸（回归 m02482 报的错） =================
+	# 射手被打死、它发出的子弹还在飞，命中时 attacker 已经是"已释放实例"。
+	var doomed := Node2D.new()
+	doomed.name = "DoomedShooter"
+	_root.add_child(doomed)
+	await process_frame
+	doomed.free()
+	var tolerant := DamageInfo.make(1, &"bullet", doomed, doomed, Vector2.ZERO)
+	_check(tolerant.attacker == null, "已释放的攻击者被降级成空", str(tolerant.attacker))
+	_check(tolerant.source == null, "已释放的载体被降级成空", str(tolerant.source))
+
+	player.health.current = player.max_hp
+	# 前面几段挨过打，无敌帧可能还在；这里先清掉，单独验证"敌弹能命中"
+	player.get_node("Invulnerability").clear()
+	var live_dummy := _make_dummy("LiveDummy", 5, [])
+	await process_frame
+	var enemy_bullet = load("res://scenes/actors/EnemyBullet.tscn").instantiate()
+	enemy_bullet.set("damage", 1)
+	enemy_bullet.set("attacker", doomed)
+	_root.add_child(enemy_bullet)
+	await process_frame
+	enemy_bullet._on_body_entered(player)
+	await process_frame
+	_check(player.hp == player.max_hp - 1, "攻击者已释放的敌弹照样能打中",
+		"hp=%d" % player.hp)
+
 	_finish()
 
 func _finish() -> void:

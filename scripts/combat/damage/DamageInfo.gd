@@ -16,22 +16,35 @@ var tags: Array[StringName] = []
 ## 暴击在攻击方判定，作为请求的一部分传入；进入管线后不会被改写
 var critical: bool = false
 
+## attacker_/source_ 故意不标类型：子弹在飞行途中，射手可能已经被打死释放，
+## 传进来的就是"已释放的实例"。标成 Node 会在调用处直接抛类型错误，所以这里
+## 收下任何值，再统一做有效性检查，失效就降级成"无来源"。
 static func make(
 		amount_: int,
 		type_: StringName = &"legacy",
-		attacker_: Node = null,
-		source_: Node = null,
+		attacker_ = null,
+		source_ = null,
 		hit_position_: Vector2 = Vector2.ZERO,
 		critical_: bool = false
 ) -> DamageInfo:
 	var info := DamageInfo.new()
 	info.amount = amount_
 	info.type = type_
-	info.attacker = attacker_
-	info.source = source_
+	info.attacker = _alive(attacker_)
+	info.source = _alive(source_)
 	info.hit_position = hit_position_
 	info.critical = critical_
 	return info
+
+# 把"已释放"或非 Node 的值统一折成 null
+static func _alive(value):
+	if value == null:
+		return null
+	if not (value is Node):
+		return null
+	if not is_instance_valid(value):
+		return null
+	return value
 
 func with_tag(tag: StringName) -> DamageInfo:
 	if not tags.has(tag):
