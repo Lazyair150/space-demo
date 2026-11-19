@@ -8,6 +8,9 @@ static func show_damage(parent: Node, result: DamageResult) -> void:
 		return
 	if result.hp_damage == 0 and result.absorbed == 0:
 		return
+	# 无敌帧挡下的不飘字：一秒能触发好几次，飘起来只会挡住视野
+	if result.hp_damage == 0 and result.blocked_by == &"invuln":
+		return
 	var label: Node = (load("res://scripts/combat/FloatingDamage.gd") as Script).new()
 	label.position = result.hit_position
 	parent.add_child(label)
