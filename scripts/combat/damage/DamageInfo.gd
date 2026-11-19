@@ -13,13 +13,16 @@ var amount: int = 0
 var type: StringName = &"legacy"
 var hit_position: Vector2 = Vector2.ZERO
 var tags: Array[StringName] = []
+## 暴击在攻击方判定，作为请求的一部分传入；进入管线后不会被改写
+var critical: bool = false
 
 static func make(
 		amount_: int,
 		type_: StringName = &"legacy",
 		attacker_: Node = null,
 		source_: Node = null,
-		hit_position_: Vector2 = Vector2.ZERO
+		hit_position_: Vector2 = Vector2.ZERO,
+		critical_: bool = false
 ) -> DamageInfo:
 	var info := DamageInfo.new()
 	info.amount = amount_
@@ -27,6 +30,7 @@ static func make(
 	info.attacker = attacker_
 	info.source = source_
 	info.hit_position = hit_position_
+	info.critical = critical_
 	return info
 
 func with_tag(tag: StringName) -> DamageInfo:

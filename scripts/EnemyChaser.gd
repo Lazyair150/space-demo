@@ -9,6 +9,8 @@ signal died(at:Vector2)
 @export var max_hp:int=2
 @export var contact_damage:int =1
 @export var score_value:int=10
+## 出生时挂几层通用次数护盾（0 = 不挂）。留给"精英/带盾变体"用，默认不变强。
+@export var starting_shield: int = 0
 
 @onready var health:Health=$Health
 @onready var receiver:DamageReceiver=$DamageReceiver
@@ -24,6 +26,8 @@ func _ready() -> void:
 	health.set_max(max_hp, true)
 	if not health.died.is_connected(_on_health_died):
 		health.died.connect(_on_health_died)
+	if starting_shield > 0:
+		_attach_shield(starting_shield)
 
 func _physics_process(delta: float) -> void:
 	var player:=_find_player()
@@ -53,6 +57,15 @@ func _spawn_explosion()->void:
 	var e:Node2D=EXPLOSION_SCENE.instantiate()
 	e.global_position=global_position
 	get_parent().add_child(e)
+
+# 复用通用防御组件：不复制玩家的 ShieldDefense，也不需要 PlayerFeatures
+func _attach_shield(charges: int) -> void:
+	var shield := ShieldCharges.new()
+	shield.name = "ShieldCharges"
+	shield.charges = charges
+	add_child(shield)
+	if receiver != null and not receiver.defenses.has(shield):
+		receiver.defenses.append(shield)
 
 ## 旧接口：迁移期适配器
 func take_damage(amount:int =1)->void:

@@ -11,6 +11,11 @@ const EXPLOSION_SCENE:=preload("res://scenes/actors/Explosion.tscn")
 @export var max_hp:int=3
 @export var invuln_time:float=0.6
 @export var fire_rate:float =0.18
+## 暴击率与倍率：数值本体在 Stats 里（方便 Buff 临时改），这两项是基础值
+@export var crit_chance_base:float = 0.0
+@export var crit_multiplier:float = 2.0
+## 吸血比例：按"实际造成的 HP 伤害"回血，护盾/无敌挡下的部分不算
+@export var lifesteal_base:float = 0.0
 @export var bullet_scene:PackedScene
 
 
@@ -140,6 +145,30 @@ func attack_final()->float:
 func attack_damage_int()->int:
 	return maxi(1, int(round(attack_final())))
 
+func crit_chance()->float:
+	return clampf(_stat_value(&"crit_chance", crit_chance_base), 0.0, 1.0)
+
+func lifesteal_ratio()->float:
+	return maxf(0.0, _stat_value(&"lifesteal", lifesteal_base))
+
+## 攻击方判定暴击：请求在生成子弹时就定下来，进管线后不再改
+func roll_damage()->Dictionary:
+	var base := attack_damage_int()
+	var is_crit := crit_chance() > 0.0 and randf() < crit_chance()
+	var amount := int(round(float(base) * crit_multiplier)) if is_crit else base
+	return {"amount": maxi(1, amount), "critical": is_crit}
+
+## 造成实际伤害后由载体回调（吸血挂在这里，读的是结算结果而不是请求值）
+func on_damage_dealt(result:DamageResult)->void:
+	if result == null or result.hp_damage <= 0:
+		return
+	var ratio := lifesteal_ratio()
+	if ratio <= 0.0:
+		return
+	var heal_amount := int(round(float(result.hp_damage) * ratio))
+	if heal_amount > 0:
+		health.heal(heal_amount)
+
 func is_invulnerable()->bool:
 	return invuln != null and invuln.is_active()
 
@@ -158,7 +187,9 @@ func spawn_bullet()->void:
 	var b:Node2D=bullet_scene.instantiate()
 	# 子弹伤害读玩家钱包里的攻击力等级（工业舱产出的产品换来的强化材料提升它）。
 	# 取不到 GameState 就用子弹自身的默认伤害，不让战斗因为工业侧缺席而崩。
-	b.set("damage",attack_damage_int())
+	var roll := roll_damage()
+	b.set("damage", int(roll["amount"]))
+	b.set("critical", bool(roll["critical"]))
 	b.set("attacker",self)
 	# 先进树再定全局坐标：未入树时 global_position 等价于 position，
 	# 一旦父节点不在原点，先设后加会落错位置。

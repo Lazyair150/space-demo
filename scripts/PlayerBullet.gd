@@ -8,6 +8,8 @@ extends Area2D
 @export var pierce_count:int = 0
 ## 谁打出的这一发（给伤害上下文用，可为空）
 @export var attacker: Node
+## 这一发是否暴击（由攻击方在生成子弹时判定）
+@export var critical: bool = false
 
 var _time_alive:float=0.0
 var _hits_used:int=0
@@ -36,11 +38,19 @@ func _consume_hit(node:Node)->void:
 		_hits_used+=1
 
 func _try_hit(node:Node)->void:
-	var info := DamageInfo.make(damage, &"bullet", attacker, self, global_position)
+	# 攻击者可能已经被释放（例如开枪后玩家阵亡），这里先降级成"无攻击者"
+	var who: Node = null
+	if attacker != null and is_instance_valid(attacker):
+		who = attacker
+	var info := DamageInfo.make(damage, &"bullet", who, self, global_position, critical)
+	var result: DamageResult = null
 	if node.has_method("receive_damage"):
-		node.receive_damage(info)
+		result = node.receive_damage(info)
 	elif node.has_method("take_damage"):
-		node.take_damage(damage)
+		result = node.take_damage(damage)
+	# 结算结果回传给攻击者：吸血、反伤、命中特效都挂在这里，而不是各自去翻目标血量
+	if result != null and who != null and who.has_method("on_damage_dealt"):
+		who.on_damage_dealt(result)
 	
 
 #主动逻辑

@@ -42,6 +42,7 @@ func receive(info: DamageInfo) -> DamageResult:
 
 	var result := DamageResult.new()
 	result.requested = info.amount
+	result.critical = info.critical
 	result.hit_position = info.hit_position
 	result.info = info
 

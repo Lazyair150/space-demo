@@ -34,7 +34,10 @@ func _run() -> void:
 	chaser.set_physics_process(false)
 	await create_timer(0.3).timeout
 
-	chaser.receive_damage(DamageInfo.make(1, &"bullet", player, null, chaser.global_position))
+	# 给追兵多加几格血，避免这一下暴击直接打死它（打死了飘字会跟着节点一起消失）
+	chaser.health.set_max(9, true)
+	# 用暴击命中，截图里能同时看到"暴击"标记
+	chaser.receive_damage(DamageInfo.make(2, &"bullet", player, null, chaser.global_position, true))
 	await create_timer(0.12).timeout
 
 	await _shot("combat_01_damage_number")

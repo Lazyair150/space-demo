@@ -4,6 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://dbntauj162kwr" path="res://assets/sprites/enemy_chaser.svg" id="1_3ce7q"]
 [ext_resource type="Script" path="res://scripts/combat/components/HealthComponent.gd" id="90_health"]
 [ext_resource type="Script" path="res://scripts/combat/damage/DamageReceiver.gd" id="91_receiver"]
+[ext_resource type="Script" path="res://scripts/combat/components/ShieldCharges.gd" id="92_shield"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_wvhbo"]
 radius = 26.0
