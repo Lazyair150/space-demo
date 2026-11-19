@@ -1,0 +1,34 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240">
+  <defs>
+    <linearGradient id="fill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#43c8ff" stop-opacity="0.05"/>
+      <stop offset="0.5" stop-color="#168bff" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#73e5ff" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a6f3ff"/>
+      <stop offset="0.5" stop-color="#26a9ff"/>
+      <stop offset="1" stop-color="#7c9cff"/>
+    </linearGradient>
+  </defs>
+
+  <ellipse cx="160" cy="120" rx="145" ry="100"
+    fill="url(#fill)" stroke="#168bff"
+    stroke-opacity="0.35" stroke-width="9"/>
+
+  <ellipse cx="160" cy="120" rx="140" ry="95"
+    fill="none" stroke="url(#edge)" stroke-width="3"/>
+
+  <ellipse cx="160" cy="120" rx="130" ry="85"
+    fill="none" stroke="#64d8ff" stroke-opacity="0.4"
+    stroke-width="1.5" stroke-dasharray="9 7"/>
+
+  <g fill="#53cfff" fill-opacity="0.12"
+     stroke="#75dbff" stroke-opacity="0.38">
+    <path d="M70 80 L84 72 L98 80 L98 96 L84 104 L70 96Z"/>
+    <path d="M220 68 L234 60 L248 68 L248 84 L234 92 L220 84Z"/>
+    <path d="M255 130 L269 122 L283 130 L283 146 L269 154 L255 146Z"/>
+    <path d="M100 158 L114 150 L128 158 L128 174 L114 182 L100 174Z"/>
+  </g>
+</svg>

@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://bvavmnq2u7yyd"]
+
+[ext_resource type="Script" uid="uid://dosogp4n67ydn" path="res://scripts/player/features/DoubleShot.gd" id="1_y8isu"]
+
+[node name="DoubleShot" type="Node" unique_id=1607945837]
+script = ExtResource("1_y8isu")
+
+[node name="SecondShotTimer" type="Timer" parent="." unique_id=679399746]
+wait_time = 0.15
+one_shot = true

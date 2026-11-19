@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://bxc1mvsc3b452"]
+
+[ext_resource type="Script" uid="uid://dstf2jaitrb5i" path="res://scripts/player/features/EnergyShield.gd" id="1_75vt8"]
+[ext_resource type="Texture2D" uid="uid://dr0ksn7dtfm1c" path="res://assets/effects/energy_shield.svg" id="2_d2qbu"]
+
+[node name="EnergyShield" type="Node2D" unique_id=370728538]
+script = ExtResource("1_75vt8")
+
+[node name="Visual" type="Sprite2D" parent="." unique_id=944959274]
+scale = Vector2(0.3, 0.3)
+texture = ExtResource("2_d2qbu")

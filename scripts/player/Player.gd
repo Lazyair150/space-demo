@@ -13,12 +13,14 @@ const EXPLOSION_SCENE:=preload("res://scenes/actors/Explosion.tscn")
 @export var fire_rate:float =0.18
 @export var bullet_scene:PackedScene
 
+
 @onready var muzzle_flash: Sprite2D = $Muzzle/Flash
 @onready var muzzle: Marker2D = $Muzzle
 @onready var laser_sfx:AudioStreamPlayer2D=$LaserSFX
 @onready var hit_sfx:AudioStreamPlayer2D=$HitSFX
 @onready var sprite: Sprite2D = $Sprite2D
 
+@onready var features:PlayerFeatures=$PlayerFeatures
 
 var hp:int=3
 var _invuln:float=0.0
@@ -43,6 +45,7 @@ func _load_sound(player_node:AudioStreamPlayer2D,candidates:Array)->void:
 			player_node.stream=load(p)
 			return
 
+
 func _physics_process(delta: float) -> void:
 	_invuln=max(0.0,_invuln-delta)
 	#冷却递减
@@ -62,8 +65,13 @@ func _physics_process(delta: float) -> void:
 		_shoot_cooldown=fire_rate
 		
 func take_damage(amount:int=1)->void:
+	#无敌时间
 	if _invuln>0.0:
 		return
+	# 先询问额外功能是否能够抵挡
+	if features.try_block_damage(self,amount):
+		return
+	
 	hp=max(0,hp-amount)
 	GameState.report_player_hp(hp)
 	_invuln=invuln_time
@@ -86,6 +94,10 @@ func is_ivulnerable()->bool:
 	return _invuln>0.0
 
 func _shoot()->void:
+	spawn_bullet()
+	features.notify_attack(self)
+
+func spawn_bullet()->void:
 	if bullet_scene ==null:
 		return
 	var b:Node2D=bullet_scene.instantiate()
@@ -101,7 +113,7 @@ func _shoot()->void:
 	if laser_sfx.stream:
 		laser_sfx.pitch_scale=randf_range(0.95,1.08)
 		laser_sfx.play()
-	
+		
 func _flash_muzzle()->void:
 	muzzle_flash.visible=true
 	muzzle_flash.modulate=Color(1,1,1,1)
