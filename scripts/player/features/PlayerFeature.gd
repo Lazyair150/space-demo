@@ -10,10 +10,10 @@ class_name PlayerFeature
 func on_feature_enabled()->void:
 	pass
 
-# 玩家发起攻击时调用
 func on_feature_disabled()->void:
 	pass
 
+# 玩家发起攻击时调用
 func on_attack(player:Node2D)->void:
 	pass
 	

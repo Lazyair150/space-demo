@@ -7,6 +7,9 @@
 [ext_resource type="AudioStream" uid="uid://bg1mutp8rl2g7" path="res://assets/audio/shoot.wav" id="5_5niig"]
 [ext_resource type="AudioStream" uid="uid://b6uddrkjr1s0w" path="res://assets/audio/hurt.wav" id="6_4aj10"]
 [ext_resource type="Script" uid="uid://ck8lg0mfifb0h" path="res://scripts/player/features/PlayerFeatures.gd" id="7_4aj10"]
+[ext_resource type="PackedScene" uid="uid://bxc1mvsc3b452" path="res://scenes/player/features/EnergyShield.tscn" id="8_shld"]
+[ext_resource type="PackedScene" uid="uid://bvavmnq2u7yyd" path="res://scenes/player/features/DoubleShot.tscn" id="9_dbl"]
+[ext_resource type="PackedScene" path="res://scenes/player/features/PiercingShot.tscn" id="10_prc"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_wvhbo"]
 radius = 28.0
@@ -37,5 +40,17 @@ stream = ExtResource("5_5niig")
 stream = ExtResource("6_4aj10")
 volume_db = 24.0
 
-[node name="PlayerFeatures" type="Node" parent="." unique_id=1561415]
+[node name="PlayerFeatures" type="Node2D" parent="." unique_id=1561415]
 script = ExtResource("7_4aj10")
+
+[node name="EnergyShield" parent="PlayerFeatures" instance=ExtResource("8_shld")]
+feature_id = &"shield"
+input_action = &"shield"
+
+[node name="DoubleShot" parent="PlayerFeatures" instance=ExtResource("9_dbl")]
+feature_id = &"double_shot"
+input_action = &"double_shot"
+
+[node name="PiercingShot" parent="PlayerFeatures" instance=ExtResource("10_prc")]
+feature_id = &"pierce"
+input_action = &"pierce"

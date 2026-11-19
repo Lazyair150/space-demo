@@ -7,7 +7,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	
 	for feature in get_children():
-		if not feature is PlayerFeature:\
+		if not feature is PlayerFeature:
 			continue
 		if feature.input_action ==&"":
 			continue

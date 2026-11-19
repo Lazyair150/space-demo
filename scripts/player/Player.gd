@@ -36,7 +36,7 @@ func _ready() -> void:
 	_load_sound(hit_sfx,["res://assets/audio/hurt.ogg",
 	"res://assets/audio/hurt/wav",
 	"res://assets/audio/impact.ogg",
-	"res://asset/audio/impact.wav"])
+	"res://assets/audio/impact.wav"])
 #主动处理以完成游戏交互
 
 func _load_sound(player_node:AudioStreamPlayer2D,candidates:Array)->void:
@@ -79,7 +79,6 @@ func take_damage(amount:int=1)->void:
 	_flash_hit()
 	if hit_sfx.stream:
 		hit_sfx.play()
-		print("hurted")
 	if hp<=0:
 		died.emit()
 		_spawn_explosion()
@@ -90,8 +89,12 @@ func _flash_hit()->void:
 	sprite.modulate=Color(2.5,0.5,0.5,1.0)
 	tween.tween_property(sprite,"modulate",Color.WHITE,invuln_time)
 	
-func is_ivulnerable()->bool:
+func is_invulnerable()->bool:
 	return _invuln>0.0
+
+# 给能力用的无敌窗口（能量盾抵挡成功后调用），只延长不缩短。
+func grant_invuln(seconds:float)->void:
+	_invuln=maxf(_invuln,seconds)
 
 func _shoot()->void:
 	spawn_bullet()
@@ -106,9 +109,11 @@ func spawn_bullet()->void:
 	var wallet:=get_node_or_null("/root/GameState")
 	if wallet!=null and wallet.has_method("attack_damage"):
 		b.set("damage",wallet.attack_damage())
+	# 先进树再定全局坐标：未入树时 global_position 等价于 position，
+	# 一旦父节点不在原点，先设后加会落错位置。
+	get_parent().add_child(b)
 	b.global_position=muzzle.global_position
 	b.rotation=rotation
-	get_parent().add_child(b)
 	_flash_muzzle()
 	if laser_sfx.stream:
 		laser_sfx.pitch_scale=randf_range(0.95,1.08)
