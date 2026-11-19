@@ -2,7 +2,10 @@ extends CharacterBody2D
 
 const EXPLOSION_SCENE:=preload("res://scenes/actors/Explosion.tscn")
 
-@export var max_hp :int =2
+# 死亡事件：位置给掉落系统用
+signal died(at:Vector2)
+
+@export var max_hp :int =3
 @export var fire_interval:float =1.5
 @export var speed:float=110
 @export var preferred_distance:float =320
@@ -56,6 +59,7 @@ func take_damage(amount:int =1)->void:
 	if hp<=0:
 		GameState.add_score(score_value)
 		_spawn_explosion()
+		died.emit(global_position)
 		queue_free()
 
 func _spawn_explosion()->void:

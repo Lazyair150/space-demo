@@ -2,8 +2,11 @@ extends CharacterBody2D
 
 const EXPLOSION_SCENE:=preload("res://scenes/actors/Explosion.tscn")
 
+# 死亡事件：位置给掉落系统用，敌人自己不知道会掉什么
+signal died(at:Vector2)
+
 @export var speed:float=130
-@export var max_hp:int=1
+@export var max_hp:int=2
 @export var contact_damage:int =1
 @export var score_value:int=10
 var hp:int
@@ -26,6 +29,7 @@ func _physics_process(delta: float) -> void:
 		if other and other.is_in_group("player") and other.has_method("take_damage"):
 			other.take_damage(contact_damage)
 			#_spawn_explosion()角色自己处理死亡和受击音效
+			died.emit(global_position)
 			queue_free()
 			
 func _find_player()->Node2D:
@@ -42,4 +46,5 @@ func take_damage(amount:int =1)->void:
 	if hp<=0:
 		GameState.add_score(score_value)
 		_spawn_explosion()
+		died.emit(global_position)
 		queue_free()

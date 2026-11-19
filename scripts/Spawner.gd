@@ -24,6 +24,11 @@ const ELITE_SCORE := 60
 @export var arena_rect:Rect2 =Rect2(80,80,1120,560)
 @export var spawn_stagger_seconds:float=0.35
 @export var wave_break_seconds:float=2.0
+@export var pickup_scene:PackedScene
+## 敌人死亡掉胶囊的概率（0 关掉）
+@export var pickup_chance:float=0.25
+## 可掉的 Buff 定义；留空则不掉
+@export var pickup_effects:Array[BuffDefinition]=[]
 
 var _current_wave:int=0
 var _spawning:bool=false
@@ -88,6 +93,7 @@ func _spawn_one(shooter_chance:float, elite:bool)->void:
 		e.scale =Vector2(ELITE_SCALE, ELITE_SCALE)
 	e.position =_random_edge_position()
 	e.tree_exited.connect(_on_enemy_freed)
+	e.died.connect(_on_enemy_died)
 	get_parent().get_node("Arena").add_child(e)
 	_alive_enemies+=1
 
@@ -98,6 +104,29 @@ func _random_edge_position()->Vector2:
 		1:return Vector2(arena_rect.position.x+randf()*arena_rect.size.x,arena_rect.position.y+20)
 		2:return Vector2(arena_rect.position.x-20,arena_rect.position.y+randf()*arena_rect.size.y)
 		_:return Vector2(arena_rect.position.x+20,arena_rect.position.y+randf()*arena_rect.size.y)
+
+func _on_enemy_died(at:Vector2)->void:
+	if pickup_scene == null or pickup_effects.is_empty():
+		return
+	if randf() > pickup_chance:
+		return
+	var arena := get_parent().get_node_or_null("Arena")
+	if arena == null:
+		return
+	var pickup := pickup_scene.instantiate()
+	pickup.set("buff_definition", pickup_effects[randi() % pickup_effects.size()])
+	pickup.set("tint", _pickup_tint(pickup.get("buff_definition")))
+	pickup.position = at
+	arena.add_child(pickup)
+
+## 胶囊染色：按定义 id 取色，避免每个 Buff 都要一份美术资源
+func _pickup_tint(definition)->Color:
+	var id := String(definition.id) if definition != null else ""
+	match id:
+		"haste": return Color(0.55, 0.9, 1.0)
+		"attack_boost": return Color(1.0, 0.72, 0.42)
+		"poison": return Color(0.62, 0.9, 0.55)
+		_: return Color(0.85, 0.85, 0.9)
 
 func _on_enemy_freed()->void:
 	_alive_enemies-=1

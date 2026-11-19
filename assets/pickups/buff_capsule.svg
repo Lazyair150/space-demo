@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" viewBox="0 0 56 56">
+  <!-- 通用状态胶囊：白色为主，靠 modulate 染成急速/强化/中毒 -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="55%" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="28" cy="28" r="27" fill="url(#glow)"/>
+  <g>
+    <rect x="16" y="11" width="24" height="34" rx="12" fill="#ffffff" fill-opacity="0.92"/>
+    <rect x="16" y="11" width="24" height="17" rx="12" fill="#cfd8e6" fill-opacity="0.95"/>
+    <rect x="16" y="23" width="24" height="5" fill="#8e9bb0" fill-opacity="0.9"/>
+    <rect x="20" y="15" width="5" height="8" rx="2.5" fill="#ffffff" fill-opacity="0.85"/>
+  </g>
+</svg>

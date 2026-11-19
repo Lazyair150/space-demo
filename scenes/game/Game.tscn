@@ -8,6 +8,10 @@
 [ext_resource type="PackedScene" uid="uid://b012awswm6uk7" path="res://scenes/actors/EnemyChaser.tscn" id="6_gg4pt"]
 [ext_resource type="PackedScene" uid="uid://bmar716cbuob6" path="res://scenes/ui/HUD.tscn" id="7_gg4pt"]
 [ext_resource type="Script" uid="uid://dnxrwdiunwvuh" path="res://scripts/Spawner.gd" id="8_wnrko"]
+[ext_resource type="PackedScene" path="res://scenes/pickups/BuffPickup.tscn" id="9_pickup"]
+[ext_resource type="Resource" path="res://data/effects/haste.tres" id="10_haste"]
+[ext_resource type="Resource" path="res://data/effects/attack_boost.tres" id="11_boost"]
+[ext_resource type="Resource" path="res://data/effects/poison.tres" id="12_poison"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wvhbo"]
 size = Vector2(1300, 20)
@@ -60,9 +64,12 @@ offset = Vector2(640, 360)
 
 [node name="Hud" parent="." unique_id=400276950 instance=ExtResource("7_gg4pt")]
 
-[node name="Node" type="Node" parent="." unique_id=938422401]
+[node name="Spawner" type="Node" parent="." unique_id=938422401]
 script = ExtResource("8_wnrko")
 shooter_scene = ExtResource("5_365ku")
 chaser_scene = ExtResource("6_gg4pt")
+pickup_scene = ExtResource("9_pickup")
+pickup_chance = 0.3
+pickup_effects = [ExtResource("10_haste"), ExtResource("11_boost"), ExtResource("12_poison")]
 
 [editable path="Arena/Player"]

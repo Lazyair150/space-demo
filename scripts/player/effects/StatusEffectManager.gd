@@ -32,6 +32,13 @@ func apply(definition: BuffDefinition, target: Node = null, duration_override: f
 	if definition == null or not definition.is_valid():
 		return null
 	var duration := definition.duration if duration_override < 0.0 else duration_override
+	if definition.stack_policy == BuffDefinition.StackPolicy.INDEPENDENT:
+		# owner_key 目前按定义 id 生成，两个同源实例会互相撤掉修正器，
+		# 所以 INDEPENDENT 还没真正实现，先拒绝而不是算错
+		push_warning("INDEPENDENT 叠加策略尚未实现（owner_key 按定义 id 生成），已按 REFRESH 处理：%s" % String(definition.id))
+	if definition.stack_policy == BuffDefinition.StackPolicy.KEEP_STRONGEST and find(definition.id) != null:
+		push_warning("KEEP_STRONGEST 尚未实现比较规则（只比层数，不比强度），已按 REFRESH 处理：%s" % String(definition.id))
+
 	var existing := find(definition.id)
 
 	if existing != null:
@@ -100,6 +107,20 @@ func stacks(id: StringName) -> int:
 
 func count() -> int:
 	return _instances.size()
+
+## HUD 用的只读快照：不改内部状态，也不暴露实例本身
+func active_entries() -> Array:
+	var out: Array = []
+	for instance in _instances:
+		if instance.definition == null:
+			continue
+		out.append({
+			"id": instance.definition.id,
+			"label": instance.definition.label,
+			"remaining": instance.remaining,
+			"stacks": instance.stacks,
+		})
+	return out
 
 func active_ids() -> Array:
 	var out: Array = []
