@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BuffDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/effects/BuffDefinition.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"lifesteal"
+label = "生命汲取"
+duration = 8.0
+stack_policy = 2
+max_stacks = 1
+modifiers = [{"stat": &"lifesteal", "stage": 0, "value": 0.5}]
+tick_interval = 0.0
+tick_damage = 0

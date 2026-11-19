@@ -126,6 +126,8 @@ func _pickup_tint(definition)->Color:
 		"haste": return Color(0.55, 0.9, 1.0)
 		"attack_boost": return Color(1.0, 0.72, 0.42)
 		"poison": return Color(0.62, 0.9, 0.55)
+		"aim_assist": return Color(0.98, 0.95, 0.62)
+		"lifesteal": return Color(0.92, 0.55, 0.72)
 		_: return Color(0.85, 0.85, 0.9)
 
 func _on_enemy_freed()->void:

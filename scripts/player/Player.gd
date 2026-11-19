@@ -108,6 +108,9 @@ func _on_health_changed(current:int, _max_value:int)->void:
 	GameState.report_player_hp(current)
 
 func _on_health_died(_info:DamageInfo)->void:
+	# 人死了身上不该留着临时状态：撤掉所有 Buff 的修正器，避免影响下一局
+	if effects != null:
+		effects.clear_all()
 	died.emit()
 	_spawn_explosion()
 	queue_free()
