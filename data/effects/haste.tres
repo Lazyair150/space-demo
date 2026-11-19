@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BuffDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/effects/BuffDefinition.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"haste"
+label = "急速"
+duration = 5.0
+stack_policy = 2
+max_stacks = 1
+modifiers = [{"stat": &"fire_rate", "stage": 1, "value": 0.6}]
+tick_interval = 0.0
+tick_damage = 0

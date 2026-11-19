@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="BuffDefinition" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/player/effects/BuffDefinition.gd" id="1_def"]
+[ext_resource type="Script" path="res://scripts/player/effects/PoisonBuffInstance.gd" id="2_inst"]
+
+[resource]
+script = ExtResource("1_def")
+id = &"poison"
+label = "中毒"
+duration = 5.0
+stack_policy = 2
+max_stacks = 1
+modifiers = []
+tick_interval = 1.0
+tick_damage = 1
+instance_script = ExtResource("2_inst")

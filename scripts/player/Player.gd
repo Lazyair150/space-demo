@@ -21,6 +21,8 @@ const EXPLOSION_SCENE:=preload("res://scenes/actors/Explosion.tscn")
 @onready var sprite: Sprite2D = $Sprite2D
 
 @onready var features:PlayerFeatures=$PlayerFeatures
+@onready var stats:StatCalculator=$Stats
+@onready var effects:StatusEffectManager=$Effects
 
 var hp:int=3
 var _invuln:float=0.0
@@ -53,7 +55,7 @@ func _physics_process(delta: float) -> void:
 	
 	var input_dir:=Input.get_vector("move_left","move_right","move_up","move_down")
 	if input_dir.length()>0.0:
-		velocity=velocity.move_toward(input_dir*speed,accel*delta)
+		velocity=velocity.move_toward(input_dir*_stat_value(&"speed",speed),accel*delta)
 	else:
 		velocity=velocity.move_toward(Vector2.ZERO,friction*delta)
 	move_and_slide()
@@ -62,7 +64,7 @@ func _physics_process(delta: float) -> void:
 	
 	if Input.is_action_pressed("shoot") and _shoot_cooldown<=0.0:
 		_shoot()
-		_shoot_cooldown=fire_rate
+		_shoot_cooldown=_stat_value(&"fire_rate",fire_rate)
 		
 func take_damage(amount:int=1)->void:
 	#无敌时间
@@ -89,6 +91,29 @@ func _flash_hit()->void:
 	sprite.modulate=Color(2.5,0.5,0.5,1.0)
 	tween.tween_property(sprite,"modulate",Color.WHITE,invuln_time)
 	
+# 属性读取：基础值仍由 @export（或 GameState 的永久成长）提供，
+# 临时修正由 Stats 汇总；这一层不做任何永久写入。
+func _stat_value(stat:StringName,base:float)->float:
+	if stats==null:
+		return base
+	return stats.value_of(stat,base)
+
+# 施加一个临时状态效果（Buff/Debuff），返回实例；没有主管理器时返回 null
+func grant_buff(definition:BuffDefinition,duration:float=-1.0)->BuffInstance:
+	if effects==null:
+		return null
+	return effects.apply(definition,self,duration)
+
+# 攻击力的两层：永久成长（GameState）→ 临时修正（Stats）
+func attack_base()->int:
+	var wallet:=get_node_or_null("/root/GameState")
+	if wallet!=null and wallet.has_method("attack_damage"):
+		return int(wallet.attack_damage())
+	return 1
+
+func attack_final()->float:
+	return _stat_value(&"attack",float(attack_base()))
+
 func is_invulnerable()->bool:
 	return _invuln>0.0
 

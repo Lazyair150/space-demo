@@ -10,6 +10,8 @@
 [ext_resource type="PackedScene" uid="uid://bxc1mvsc3b452" path="res://scenes/player/features/EnergyShield.tscn" id="8_shld"]
 [ext_resource type="PackedScene" uid="uid://bvavmnq2u7yyd" path="res://scenes/player/features/DoubleShot.tscn" id="9_dbl"]
 [ext_resource type="PackedScene" path="res://scenes/player/features/PiercingShot.tscn" id="10_prc"]
+[ext_resource type="Script" path="res://scripts/player/stats/StatCalculator.gd" id="11_stats"]
+[ext_resource type="Script" path="res://scripts/player/effects/StatusEffectManager.gd" id="12_effects"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_wvhbo"]
 radius = 28.0
@@ -54,3 +56,10 @@ input_action = &"double_shot"
 [node name="PiercingShot" parent="PlayerFeatures" instance=ExtResource("10_prc")]
 feature_id = &"pierce"
 input_action = &"pierce"
+
+[node name="Stats" type="Node" parent="."]
+script = ExtResource("11_stats")
+
+[node name="Effects" type="Node" parent="."]
+script = ExtResource("12_effects")
+stats_path = NodePath("../Stats")
