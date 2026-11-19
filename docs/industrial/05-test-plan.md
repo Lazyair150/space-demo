@@ -19,6 +19,7 @@ GODOT="/d/godot/Godot_v4.7.1-stable_mono_win64/godot.exe"
 | `full_loop.gd` | 全链路：菜单→工业派单结算→强化→保存→战斗伤害/掉矿→读档 | 15 |
 | `tests/hud_feedback.gd` | 战斗 HUD：获得提示（只报增量）、目标提示随材料档位切换、满级文案、结束复原钱包（`persist_wallet=false`） | 15 |
 | `tests/effects_smoke.gd` | 临时状态效果：施加/移除、两个并存、刷新不叠层、按 delta 计时、到期精确还原、中毒不绕过无敌/护盾、不写存档、计算阶段顺序 | 34 |
+| `tests/pickup_smoke.gd` | 拾取物闭环：胶囊→Buff→HUD→到期恢复；敌人死亡掉落；攻击强化真的改了子弹伤害；宿主无 Buff 系统时不吞胶囊 | 31 |
 | `tests/player_features.gd` | 玩家能力：场景挂载、按 K/L/P 切换、护盾抵挡+无敌窗口、无敌结束照常掉血、子弹落点、双发不丢、穿透弹穿两个目标 | 24 |
 | `segment_smoke.gd` | 段落化波次：五波段落名顺序、各段刷怪数、精英数值放大、喘息不刷怪 | 17 |
 | `ui_capture.gd` | 非测试：带窗口跑一遍并截图到 `tmp/ui_capture/`（headless 抓不到画面） | — |
