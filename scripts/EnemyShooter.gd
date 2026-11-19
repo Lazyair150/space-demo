@@ -62,7 +62,8 @@ func _fire(dir:Vector2)->void:
 	# 先入树再设全局坐标，父节点有非零变换时也不会偏
 	get_parent().add_child(b)
 	b.global_position=global_position+dir*32.0
-	b.rotation=dir.angle()
+	# dir 是世界方向，必须写 global_rotation；写 rotation 会被父节点旋转变换再偏一次
+	b.global_rotation=dir.angle()
 
 func take_damage(amount:int =1)->void:
 	receive_damage(DamageInfo.make(amount,&"legacy"))

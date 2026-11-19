@@ -141,6 +141,30 @@ func _run() -> void:
 	_check(extended._ticks_fired == ticks_at_half + 1, "EXTEND 后按原进度触发 tick",
 		str(extended._ticks_fired))
 
+	# ======== 5. duration_override：一次推进超过存活时长，只按存活时长结算 ========
+	var short_debuff: BuffDefinition = load(BUFF_DEF).new()
+	short_debuff.id = &"test_short_poison"
+	short_debuff.label = "短毒"
+	short_debuff.duration = 5.0
+	short_debuff.tick_interval = 1.0
+	short_debuff.tick_damage = 1
+	short_debuff.stack_policy = BuffDefinition.StackPolicy.REFRESH
+	short_debuff.modifiers = []
+	short_debuff.instance_script = load("res://scripts/player/effects/PoisonBuffInstance.gd")
+
+	var short_target: Node2D = load("res://scenes/actors/Player.tscn").instantiate()
+	short_target.position = Vector2(300, 300)
+	_root.add_child(short_target)
+	short_target.set_physics_process(false)
+	var short_instance: BuffInstance = manager.apply(short_debuff, short_target, 1.5)
+	_check(short_instance != null, "duration_override 施加成功", "1.5 秒")
+	var ticks := short_instance.advance(3.0)
+	_check(ticks == 1, "一次推进 3 秒但只活 1.5 秒 → 只触发 1 次", str(ticks))
+	_check(is_zero_approx(short_instance.remaining), "推进超过存活时长后剩余为 0",
+		str(short_instance.remaining))
+	var extra := short_instance.advance(2.0)
+	_check(extra == 0, "到期后继续推进不再触发", str(extra))
+
 	_finish()
 
 func _finish() -> void:

@@ -76,6 +76,8 @@ func _run() -> void:
 	var arena := Node2D.new()
 	arena.name = "OffsetArena"
 	arena.position = Vector2(100, 50)
+	# 父节点必须是"带旋转"的，否则测不出 rotation / global_rotation 的区别
+	arena.rotation = deg_to_rad(30.0)
 	_root.add_child(arena)
 	await process_frame
 	var shooter2: CharacterBody2D = load(SHOOTER_SCENE).instantiate()
@@ -95,6 +97,10 @@ func _run() -> void:
 		_check(spawned[0].global_position.distance_to(expected) < 0.01,
 			"子弹落在炮口的世界坐标上",
 			"%s vs %s" % [spawned[0].global_position, expected])
+		# 父节点转了 30°，子弹的世界朝向必须仍是 dir（向右，0 弧度）
+		_check(absf(angle_difference(spawned[0].global_rotation, 0.0)) < 0.001,
+			"父节点有旋转时子弹朝向仍等于发射方向",
+			"%.3f（父节点 %.3f）" % [spawned[0].global_rotation, arena.rotation])
 
 	# ======== 4. 玩家子弹撞到已释放对象不崩 ========
 	var victim := Node2D.new()
