@@ -20,14 +20,18 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
 	
-func _on_body_entered(body:Node)->void:
+func _on_body_entered(body)->void:
 	_consume_hit(body)
 
-func _on_area_entered(area:Area2D)->void:
+func _on_area_entered(area)->void:
 	_consume_hit(area)
 
 # 同一个目标只吃一次伤害；穿透次数用尽才消失
-func _consume_hit(node:Node)->void:
+func _consume_hit(node)->void:
+	# 碰撞信号到达时目标可能已经被释放（同帧被别的伤害打死）。
+	# 参数不标类型：标了 Node 的话，已释放实例在调用处就会抛类型错误，守卫根本进不来。
+	if not is_instance_valid(node):
+		return
 	if _hit_ids.has(node.get_instance_id()):
 		return
 	_hit_ids[node.get_instance_id()]=true
@@ -37,7 +41,9 @@ func _consume_hit(node:Node)->void:
 	else:
 		_hits_used+=1
 
-func _try_hit(node:Node)->void:
+func _try_hit(node)->void:
+	if not is_instance_valid(node):
+		return
 	# 攻击者可能已经被释放（例如开枪后玩家阵亡），这里先降级成"无攻击者"
 	var who: Node = null
 	if attacker != null and is_instance_valid(attacker):

@@ -43,7 +43,8 @@ func _physics_process(delta: float) -> void:
 	elif dist<preferred_distance-distance_tolerance:
 		velocity=-dir*speed
 	else:
-		velocity.move_toward(Vector2.ZERO,speed*2.0*delta)
+		# 注意：Vector2.move_toward 返回新值，不写回等于没减速
+		velocity=velocity.move_toward(Vector2.ZERO,speed*2.0*delta)
 		
 	move_and_slide()
 	
@@ -57,10 +58,11 @@ func _find_player()->Node2D:
 
 func _fire(dir:Vector2)->void:
 	var b:Node2D =bullet_scene.instantiate()
+	b.set("attacker", self)
+	# 先入树再设全局坐标，父节点有非零变换时也不会偏
+	get_parent().add_child(b)
 	b.global_position=global_position+dir*32.0
 	b.rotation=dir.angle()
-	b.set("attacker", self)
-	get_parent().add_child(b)
 
 func take_damage(amount:int =1)->void:
 	receive_damage(DamageInfo.make(amount,&"legacy"))

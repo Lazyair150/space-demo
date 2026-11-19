@@ -145,6 +145,9 @@ func attack_final()->float:
 func attack_damage_int()->int:
 	return maxi(1, int(round(attack_final())))
 
+func crit_multiplier_final()->float:
+	return maxf(1.0, _stat_value(&"crit_multiplier", crit_multiplier))
+
 func crit_chance()->float:
 	return clampf(_stat_value(&"crit_chance", crit_chance_base), 0.0, 1.0)
 
@@ -155,7 +158,7 @@ func lifesteal_ratio()->float:
 func roll_damage()->Dictionary:
 	var base := attack_damage_int()
 	var is_crit := crit_chance() > 0.0 and randf() < crit_chance()
-	var amount := int(round(float(base) * crit_multiplier)) if is_crit else base
+	var amount := int(round(float(base) * crit_multiplier_final())) if is_crit else base
 	return {"amount": maxi(1, amount), "critical": is_crit}
 
 ## 造成实际伤害后由载体回调（吸血挂在这里，读的是结算结果而不是请求值）

@@ -45,29 +45,26 @@ func apply(definition: BuffDefinition, target: Node = null, duration_override: f
 		match definition.stack_policy:
 			BuffDefinition.StackPolicy.REJECT:
 				return existing
-			BuffDefinition.StackPolicy.REFRESH:
+			BuffDefinition.StackPolicy.REFRESH, BuffDefinition.StackPolicy.INDEPENDENT, BuffDefinition.StackPolicy.KEEP_STRONGEST:
+				# INDEPENDENT / KEEP_STRONGEST 目前按 REFRESH 处理：
+				# owner_key 按定义 id 生成，同源多实例会互相撤掉修正器，所以绝不新建第二个实例。
 				existing.remaining = duration
+				existing.reset_tick_progress()
 				buff_refreshed.emit(definition, existing.remaining, existing.stacks)
 				return existing
 			BuffDefinition.StackPolicy.EXTEND:
-				existing.remaining += duration
+				existing.extend_duration(duration)
 				buff_refreshed.emit(definition, existing.remaining, existing.stacks)
 				return existing
-			BuffDefinition.StackPolicy.KEEP_STRONGEST:
-				if existing.stacks >= definition.max_stacks:
-					existing.remaining = duration
-					buff_refreshed.emit(definition, existing.remaining, existing.stacks)
-					return existing
 			BuffDefinition.StackPolicy.REPLACE:
 				_remove_instance(existing)
 			BuffDefinition.StackPolicy.ADD_STACK:
 				existing.stacks = mini(definition.max_stacks, existing.stacks + 1)
 				existing.remaining = duration
+				existing.reset_tick_progress()
 				_register_modifiers(existing)
 				buff_refreshed.emit(definition, existing.remaining, existing.stacks)
 				return existing
-			BuffDefinition.StackPolicy.INDEPENDENT:
-				pass
 
 	var instance := _new_instance(definition)
 	instance.setup(definition, target, duration)

@@ -11,7 +11,7 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	area_entered.connect(_on_area_entered)
 
-func _on_body_entered(body:Node)->void:
+func _on_body_entered(body)->void:
 	if not is_instance_valid(body):
 		queue_free()
 		return
@@ -23,7 +23,7 @@ func _on_body_entered(body:Node)->void:
 			body.take_damage(damage)
 	queue_free()
 
-func _on_area_entered(_area:Area2D)->void:
+func _on_area_entered(_area)->void:
 	queue_free()
 	
 func _physics_process(delta: float) -> void:
