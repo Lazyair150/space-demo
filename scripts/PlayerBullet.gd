@@ -6,6 +6,8 @@ extends Area2D
 
 # 穿透次数：0 = 击中即消失（默认），1 = 击中一个目标后继续飞
 @export var pierce_count:int = 0
+## 谁打出的这一发（给伤害上下文用，可为空）
+@export var attacker: Node
 
 var _time_alive:float=0.0
 var _hits_used:int=0
@@ -34,7 +36,10 @@ func _consume_hit(node:Node)->void:
 		_hits_used+=1
 
 func _try_hit(node:Node)->void:
-	if node.has_method("take_damage"):
+	var info := DamageInfo.make(damage, &"bullet", attacker, self, global_position)
+	if node.has_method("receive_damage"):
+		node.receive_damage(info)
+	elif node.has_method("take_damage"):
 		node.take_damage(damage)
 	
 

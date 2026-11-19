@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" uid="uid://u3mhad4tfmg7" path="res://scripts/EnemyChaser.gd" id="1_0t4ei"]
 [ext_resource type="Texture2D" uid="uid://dbntauj162kwr" path="res://assets/sprites/enemy_chaser.svg" id="1_3ce7q"]
+[ext_resource type="Script" path="res://scripts/combat/components/HealthComponent.gd" id="90_health"]
+[ext_resource type="Script" path="res://scripts/combat/damage/DamageReceiver.gd" id="91_receiver"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_wvhbo"]
 radius = 26.0
@@ -16,3 +18,11 @@ texture = ExtResource("1_3ce7q")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=2101746552]
 shape = SubResource("CircleShape2D_wvhbo")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("90_health")
+max_value = 2
+
+[node name="DamageReceiver" type="Node" parent="."]
+script = ExtResource("91_receiver")
+health_path = NodePath("../Health")

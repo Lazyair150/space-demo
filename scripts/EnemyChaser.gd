@@ -9,12 +9,21 @@ signal died(at:Vector2)
 @export var max_hp:int=2
 @export var contact_damage:int =1
 @export var score_value:int=10
-var hp:int
+
+@onready var health:Health=$Health
+@onready var receiver:DamageReceiver=$DamageReceiver
+
+# 兼容旧读取点：血量统一由 Health 持有
+var hp:int:
+	get:
+		return health.current if health != null else 0
 
 
 func _ready() -> void:
-	hp=max_hp
 	add_to_group("enemies")
+	health.set_max(max_hp, true)
+	if not health.died.is_connected(_on_health_died):
+		health.died.connect(_on_health_died)
 
 func _physics_process(delta: float) -> void:
 	var player:=_find_player()
@@ -26,8 +35,12 @@ func _physics_process(delta: float) -> void:
 	var col:=move_and_collide(velocity*delta)
 	if col:
 		var other:=col.get_collider()
-		if other and other.is_in_group("player") and other.has_method("take_damage"):
-			other.take_damage(contact_damage)
+		if other and other.is_in_group("player"):
+			var info := DamageInfo.make(contact_damage, &"contact", self, self, global_position)
+			if other.has_method("receive_damage"):
+				other.receive_damage(info)
+			elif other.has_method("take_damage"):
+				other.take_damage(contact_damage)
 			#_spawn_explosion()角色自己处理死亡和受击音效
 			died.emit(global_position)
 			queue_free()
@@ -41,10 +54,19 @@ func _spawn_explosion()->void:
 	e.global_position=global_position
 	get_parent().add_child(e)
 
+## 旧接口：迁移期适配器
 func take_damage(amount:int =1)->void:
-	hp-=amount
-	if hp<=0:
-		GameState.add_score(score_value)
-		_spawn_explosion()
-		died.emit(global_position)
-		queue_free()
+	receive_damage(DamageInfo.make(amount,&"legacy"))
+
+## 新接口：交给受击管线结算，并给出飘字表现
+func receive_damage(info:DamageInfo)->DamageResult:
+	var result := receiver.receive(info)
+	CombatFx.show_damage(get_parent(), result)
+	return result
+
+# 死亡只在这里发生：计分、爆炸、通知掉落、移除
+func _on_health_died(_info:DamageInfo)->void:
+	GameState.add_score(score_value)
+	_spawn_explosion()
+	died.emit(global_position)
+	queue_free()

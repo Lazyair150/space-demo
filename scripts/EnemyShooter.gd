@@ -13,12 +13,19 @@ signal died(at:Vector2)
 @export var bullet_scene:PackedScene
 @export var score_value:int=25
 
-var hp:int
+@onready var health:Health=$Health
+@onready var receiver:DamageReceiver=$DamageReceiver
+
+var hp:int:
+	get:
+		return health.current if health != null else 0
 var _fire_cooldown:float=0.0
 
 func _ready() -> void:
-	hp=max_hp
 	add_to_group("enemies")
+	health.set_max(max_hp, true)
+	if not health.died.is_connected(_on_health_died):
+		health.died.connect(_on_health_died)
 	_fire_cooldown =randf_range(0.4,fire_interval)
 
 func _physics_process(delta: float) -> void:
@@ -52,15 +59,22 @@ func _fire(dir:Vector2)->void:
 	var b:Node2D =bullet_scene.instantiate()
 	b.global_position=global_position+dir*32.0
 	b.rotation=dir.angle()
+	b.set("attacker", self)
 	get_parent().add_child(b)
 
 func take_damage(amount:int =1)->void:
-	hp-=amount
-	if hp<=0:
-		GameState.add_score(score_value)
-		_spawn_explosion()
-		died.emit(global_position)
-		queue_free()
+	receive_damage(DamageInfo.make(amount,&"legacy"))
+
+func receive_damage(info:DamageInfo)->DamageResult:
+	var result := receiver.receive(info)
+	CombatFx.show_damage(get_parent(), result)
+	return result
+
+func _on_health_died(_info:DamageInfo)->void:
+	GameState.add_score(score_value)
+	_spawn_explosion()
+	died.emit(global_position)
+	queue_free()
 
 func _spawn_explosion()->void:
 	var e:Node2D=EXPLOSION_SCENE.instantiate()

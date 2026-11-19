@@ -24,14 +24,31 @@ const EXPLOSION_SCENE:=preload("res://scenes/actors/Explosion.tscn")
 @onready var stats:StatCalculator=$Stats
 @onready var effects:StatusEffectManager=$Effects
 
-var hp:int=3
-var _invuln:float=0.0
+# 生命与受伤管线：血量归 Health，受伤入口归 DamageReceiver，无敌归 Invulnerability
+@onready var health:Health=$Health
+@onready var invuln:Invulnerability=$Invulnerability
+@onready var receiver:DamageReceiver=$DamageReceiver
+
+# 兼容旧读取点：hp / _invuln 改成指向组件的读写代理，测试与能力脚本不用改。
+var hp:int:
+	get:
+		return health.current if health != null else 0
+var _invuln:float:
+	get:
+		return invuln.remaining if invuln != null else 0.0
+	set(value):
+		if invuln != null:
+			invuln.remaining = maxf(0.0, value)
 var _shoot_cooldown:float=0.0
 
 func _ready() -> void:
-	hp=max_hp
+	health.set_max(max_hp, true)
+	if not health.health_changed.is_connected(_on_health_changed):
+		health.health_changed.connect(_on_health_changed)
+	if not health.died.is_connected(_on_health_died):
+		health.died.connect(_on_health_died)
 	add_to_group("player")
-	GameState.report_player_hp(hp)
+	GameState.report_player_hp(health.current)
 	muzzle_flash.visible=false
 	_load_sound(laser_sfx,["res://assets/audio/laser.ogg",
 	"res://assets/audio/laser/wav"])
@@ -49,7 +66,6 @@ func _load_sound(player_node:AudioStreamPlayer2D,candidates:Array)->void:
 
 
 func _physics_process(delta: float) -> void:
-	_invuln=max(0.0,_invuln-delta)
 	#冷却递减
 	_shoot_cooldown=maxf(0.0,_shoot_cooldown-delta)
 	
@@ -66,25 +82,30 @@ func _physics_process(delta: float) -> void:
 		_shoot()
 		_shoot_cooldown=_stat_value(&"fire_rate",fire_rate)
 		
+## 旧接口：迁移期的薄适配器，行为与新接口完全一致
 func take_damage(amount:int=1)->void:
-	#无敌时间
-	if _invuln>0.0:
-		return
-	# 先询问额外功能是否能够抵挡
-	if features.try_block_damage(self,amount):
-		return
-	
-	hp=max(0,hp-amount)
-	GameState.report_player_hp(hp)
-	_invuln=invuln_time
-	damaged.emit()
-	_flash_hit()
-	if hit_sfx.stream:
-		hit_sfx.play()
-	if hp<=0:
-		died.emit()
-		_spawn_explosion()
-		queue_free()
+	receive_damage(DamageInfo.make(amount,&"legacy"))
+
+## 新接口：攻击方描述一次攻击，这里交给管线结算并负责表现反馈
+func receive_damage(info:DamageInfo)->DamageResult:
+	var result := receiver.receive(info)
+	if result.hp_damage > 0:
+		# 只在实际掉血后才进入无敌，被盾挡下不吃无敌帧（与改造前一致）
+		invuln.start(invuln_time)
+		damaged.emit()
+		_flash_hit()
+		if hit_sfx.stream:
+			hit_sfx.play()
+	CombatFx.show_damage(get_parent(), result)
+	return result
+
+func _on_health_changed(current:int, _max_value:int)->void:
+	GameState.report_player_hp(current)
+
+func _on_health_died(_info:DamageInfo)->void:
+	died.emit()
+	_spawn_explosion()
+	queue_free()
 
 func _flash_hit()->void:
 	var tween:=create_tween()
@@ -120,11 +141,12 @@ func attack_damage_int()->int:
 	return maxi(1, int(round(attack_final())))
 
 func is_invulnerable()->bool:
-	return _invuln>0.0
+	return invuln != null and invuln.is_active()
 
 # 给能力用的无敌窗口（能量盾抵挡成功后调用），只延长不缩短。
 func grant_invuln(seconds:float)->void:
-	_invuln=maxf(_invuln,seconds)
+	if invuln != null:
+		invuln.start(seconds)
 
 func _shoot()->void:
 	spawn_bullet()
@@ -137,6 +159,7 @@ func spawn_bullet()->void:
 	# 子弹伤害读玩家钱包里的攻击力等级（工业舱产出的产品换来的强化材料提升它）。
 	# 取不到 GameState 就用子弹自身的默认伤害，不让战斗因为工业侧缺席而崩。
 	b.set("damage",attack_damage_int())
+	b.set("attacker",self)
 	# 先进树再定全局坐标：未入树时 global_position 等价于 position，
 	# 一旦父节点不在原点，先设后加会落错位置。
 	get_parent().add_child(b)

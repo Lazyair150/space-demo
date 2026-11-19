@@ -45,6 +45,8 @@ func _ensure_game_state() -> void:
 func _make_pickup(definition: Resource) -> Area2D:
 	var pickup: Area2D = load(PICKUP_SCENE).instantiate()
 	pickup.set("buff_definition", definition)
+	# 放远一点：否则入树瞬间就与玩家重叠、自动被吃掉，后面显式调用会打到已释放节点
+	pickup.position = Vector2(600, 400)
 	_root.add_child(pickup)
 	return pickup
 

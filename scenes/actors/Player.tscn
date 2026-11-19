@@ -12,6 +12,10 @@
 [ext_resource type="PackedScene" path="res://scenes/player/features/PiercingShot.tscn" id="10_prc"]
 [ext_resource type="Script" path="res://scripts/player/stats/StatCalculator.gd" id="11_stats"]
 [ext_resource type="Script" path="res://scripts/player/effects/StatusEffectManager.gd" id="12_effects"]
+[ext_resource type="Script" path="res://scripts/combat/components/HealthComponent.gd" id="13_health"]
+[ext_resource type="Script" path="res://scripts/combat/components/InvulnerabilityComponent.gd" id="14_invuln"]
+[ext_resource type="Script" path="res://scripts/combat/damage/DamageReceiver.gd" id="15_receiver"]
+[ext_resource type="Script" path="res://scripts/player/ShieldDefense.gd" id="16_shielddef"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_wvhbo"]
 radius = 28.0
@@ -63,3 +67,19 @@ script = ExtResource("11_stats")
 [node name="Effects" type="Node" parent="."]
 script = ExtResource("12_effects")
 stats_path = NodePath("../Stats")
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("13_health")
+max_value = 3
+
+[node name="Invulnerability" type="Node" parent="."]
+script = ExtResource("14_invuln")
+
+[node name="ShieldDefense" type="Node" parent="."]
+script = ExtResource("16_shielddef")
+player_path = NodePath("..")
+
+[node name="DamageReceiver" type="Node" parent="."]
+script = ExtResource("15_receiver")
+health_path = NodePath("../Health")
+defense_paths = [NodePath("../Invulnerability"), NodePath("../ShieldDefense")]
