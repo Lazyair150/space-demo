@@ -14,7 +14,7 @@ func _process(delta: float) -> void:
     _elapsed += delta
     if _elapsed >= 1.0:
         _elapsed = 0.0
-        if runtime.is_initialized():
+        if runtime.is_initialized:
             _print_snapshot()
 
 func _on_runtime_ready() -> void:
