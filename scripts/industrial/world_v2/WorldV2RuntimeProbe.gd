@@ -4,17 +4,19 @@ extends Node
 var _elapsed := 0.0
 
 func _ready() -> void:
-    runtime.runtime_ready.connect(_on_runtime_ready)
-    runtime.runtime_faulted.connect(_on_runtime_faulted)
+    runtime.RuntimeReady.connect(_on_runtime_ready)
+    runtime.RuntimeFaulted.connect(_on_runtime_faulted)
     print("[WorldV2Probe] scene ready")
-    if runtime.is_initialized:
+    # The child Runtime node enters _Ready before this parent probe.
+    # Its RuntimeReady signal may already have fired, so inspect its state too.
+    if runtime.IsInitialized:
         _print_snapshot()
 
 func _process(delta: float) -> void:
     _elapsed += delta
     if _elapsed >= 1.0:
         _elapsed = 0.0
-        if runtime.is_initialized:
+        if runtime.IsInitialized:
             _print_snapshot()
 
 func _on_runtime_ready() -> void:
@@ -25,7 +27,7 @@ func _on_runtime_faulted(message: String) -> void:
     push_error("[WorldV2Probe] runtime fault: " + message)
 
 func _print_snapshot() -> void:
-    var state: Dictionary = runtime.get_world_snapshot()
+    var state: Dictionary = runtime.GetWorldSnapshot()
     print(
         "[WorldV2Probe] world=", state.get("worldTimeMilli", -1),
         " logical=", state.get("logicalTimeMilli", -1),
