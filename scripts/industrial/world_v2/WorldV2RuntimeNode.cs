@@ -139,7 +139,7 @@ public partial class WorldV2RuntimeNode : Node
                 ["shape"] = jar.Shape,
                 ["liquid"] = jar.Liquid ?? "",
                 ["isMarked"] = jar.IsMarked
-            })),
+            }),
             ["resourceLiquids"] = ToGodotDictionary(snapshot.ResourceLiquids),
             ["master"] = ToWorkshopDictionary(snapshot.Master),
             ["slave"] = ToWorkshopDictionary(snapshot.Slave),
@@ -152,11 +152,11 @@ public partial class WorldV2RuntimeNode : Node
                 {
                     ["shape"] = item.Shape,
                     ["liquid"] = item.Liquid ?? ""
-                })),
+                }),
                 ["cooldownDurationLogicalMilli"] = demand.CooldownDurationLogicalMilli,
                 ["cooldownRemainingLogicalMilli"] = demand.CooldownRemainingLogicalMilli,
                 ["isCoolingDown"] = demand.IsCoolingDown
-            })),
+            }),
             ["activeSessions"] = ToGodotArray(snapshot.ActiveSessions, session => (Variant)new GDictionary
             {
                 ["demandId"] = session.DemandId,
@@ -168,7 +168,7 @@ public partial class WorldV2RuntimeNode : Node
                 ["isTerminal"] = session.IsTerminal,
                 ["succeeded"] = session.Succeeded,
                 ["reason"] = session.Reason ?? ""
-            })),
+            }),
             ["reservationCount"] = snapshot.ReservationCount,
             ["replacement"] = ToReplacementDictionary(snapshot.Replacement)
         };
@@ -218,7 +218,7 @@ public partial class WorldV2RuntimeNode : Node
                 ["shape"] = jar.Shape,
                 ["liquid"] = jar.Liquid ?? "",
                 ["isMarked"] = jar.IsMarked
-            })),
+            }),
             ["liquids"] = ToGodotDictionary(workshop.Liquids)
         };
     }
