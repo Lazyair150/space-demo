@@ -50,7 +50,7 @@ func _run_command_probe() -> void:
         "Passive",
         0
     )
-    assert(demand_id > 0, "AddSingleRequirementDemand must return a positive ID")
+    # The ID is opaque to the Godot layer; verify it by reading the snapshot instead.
 
     var after_add: Dictionary = runtime.GetWorldSnapshot()
     var found_added_demand := false
