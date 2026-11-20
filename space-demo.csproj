@@ -9,7 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\codex\jar-system-dotnet\src\JarSystem.Core\JarSystem.Core.csproj" />
+    <!-- World v2 Bridge is checked out as a sibling repository during this integration phase. -->
+    <ProjectReference Include="..\jar-system-dotnet\hosts\godot\WorldV2Bridge\JarSystem.WorldV2Bridge.csproj" />
   </ItemGroup>
 
 </Project>
