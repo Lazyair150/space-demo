@@ -133,7 +133,7 @@ public partial class WorldV2RuntimeNode : Node
             ["isPaused"] = snapshot.IsPaused,
             ["runtimeFaulted"] = snapshot.RuntimeFaulted,
             ["faultReason"] = snapshot.FaultReason ?? "",
-            ["resourceJars"] = new GArray(snapshot.ResourceJars.Select(jar => (Variant)new GDictionary
+            ["resourceJars"] = ToGodotArray(snapshot.ResourceJars, jar => (Variant)new GDictionary
             {
                 ["id"] = jar.Id.HasValue ? Variant.From(jar.Id.Value) : default,
                 ["shape"] = jar.Shape,
@@ -143,12 +143,12 @@ public partial class WorldV2RuntimeNode : Node
             ["resourceLiquids"] = ToGodotDictionary(snapshot.ResourceLiquids),
             ["master"] = ToWorkshopDictionary(snapshot.Master),
             ["slave"] = ToWorkshopDictionary(snapshot.Slave),
-            ["demands"] = new GArray(snapshot.Demands.Select(demand => (Variant)new GDictionary
+            ["demands"] = ToGodotArray(snapshot.Demands, demand => (Variant)new GDictionary
             {
                 ["id"] = demand.Id,
                 ["area"] = demand.Area.ToString(),
                 ["type"] = demand.SpecificationType,
-                ["requirements"] = new GArray(demand.Requirements.Select(item => (Variant)new GDictionary
+                ["requirements"] = ToGodotArray(demand.Requirements, item => (Variant)new GDictionary
                 {
                     ["shape"] = item.Shape,
                     ["liquid"] = item.Liquid ?? ""
@@ -157,7 +157,7 @@ public partial class WorldV2RuntimeNode : Node
                 ["cooldownRemainingLogicalMilli"] = demand.CooldownRemainingLogicalMilli,
                 ["isCoolingDown"] = demand.IsCoolingDown
             })),
-            ["activeSessions"] = new GArray(snapshot.ActiveSessions.Select(session => (Variant)new GDictionary
+            ["activeSessions"] = ToGodotArray(snapshot.ActiveSessions, session => (Variant)new GDictionary
             {
                 ["demandId"] = session.DemandId,
                 ["stage"] = session.Stage,
@@ -183,6 +183,14 @@ public partial class WorldV2RuntimeNode : Node
     private WorldV2BridgeSession RequireSession() =>
         _session ?? throw new InvalidOperationException("World v2 Runtime 尚未初始化");
 
+    private static GArray ToGodotArray<T>(System.Collections.Generic.IEnumerable<T> source, Func<T, Variant> convert)
+    {
+        var result = new GArray();
+        foreach (var item in source)
+            result.Add(convert(item));
+        return result;
+    }
+
     private static GDictionary ToGodotDictionary(System.Collections.Generic.IReadOnlyDictionary<string, int> source)
     {
         var result = new GDictionary();
@@ -201,10 +209,10 @@ public partial class WorldV2RuntimeNode : Node
             ["name"] = workshop.Name,
             ["maxJars"] = workshop.MaxJars,
             ["maxLiquids"] = workshop.MaxLiquids,
-            ["baseMarks"] = new GArray(workshop.BaseMarks.Select(x => (Variant)x)),
-            ["additionalMarks"] = new GArray(workshop.AdditionalMarks.Select(x => (Variant)x)),
-            ["ban"] = new GArray(workshop.Ban.Select(x => (Variant)x)),
-            ["jars"] = new GArray(workshop.Jars.Select(jar => (Variant)new GDictionary
+            ["baseMarks"] = ToGodotArray(workshop.BaseMarks, x => (Variant)x),
+            ["additionalMarks"] = ToGodotArray(workshop.AdditionalMarks, x => (Variant)x),
+            ["ban"] = ToGodotArray(workshop.Ban, x => (Variant)x),
+            ["jars"] = ToGodotArray(workshop.Jars, jar => (Variant)new GDictionary
             {
                 ["id"] = jar.Id.HasValue ? Variant.From(jar.Id.Value) : default,
                 ["shape"] = jar.Shape,
