@@ -36,7 +36,7 @@ public partial class WorldV2RuntimeNode : Node
 
         try
         {
-            var json = FileAccess.GetFileAsString(WorldConfigPath);
+            var json = Godot.FileAccess.GetFileAsString(WorldConfigPath);
             if (string.IsNullOrWhiteSpace(json))
                 throw new InvalidOperationException("无法读取 World v2 配置: " + WorldConfigPath);
 
