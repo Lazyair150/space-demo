@@ -7,7 +7,7 @@ func _ready() -> void:
     runtime.runtime_ready.connect(_on_runtime_ready)
     runtime.runtime_faulted.connect(_on_runtime_faulted)
     print("[WorldV2Probe] scene ready")
-    if runtime.is_initialized():
+    if runtime.is_initialized:
         _print_snapshot()
 
 func _process(delta: float) -> void:
