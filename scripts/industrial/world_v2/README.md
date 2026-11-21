@@ -47,11 +47,14 @@
 - D2：使用 `world_v2_invalid.json` 初始化，应触发 `RuntimeFaulted`，且不保留 World session。
 - D4：修正配置路径后，在同一个节点再次初始化，应成功并清除故障状态。
 - D3/D5：将节点从 SceneTree 移除，应执行 `_ExitTree()`、释放 Bridge session、清空会话所有权，并将 `IsDisposed` 置为 true。
+- D6：退出后的节点不可复活；再次初始化必须被拒绝。
 
 该探针使用独立 Runtime 节点和 `AutoAdvance=false`，不干扰时间/命令探针，也不替换项目主场景。测试通过时应输出：
 
 ```text
-[WorldV2LifecycleProbe] lifecycle probe passed initialization_faults=1 recovery=true duplicate_rejected=true disposed=true
+[WorldV2LifecycleProbe] lifecycle probe passed initialization_faults=1 recovery=true duplicate_rejected=true disposed=true post_exit_rejected=true
 ```
+
+D6：退出 SceneTree 后再次调用 `InitializeWorld()` 必须返回 false；`IsDisposed` 保持 true，且不得重新创建会话。
 
 注意：探针场景内移除节点用于验证退出树时的释放路径；仍建议在完成探针后关闭运行窗口，确认整个项目退出时没有额外 Dispose 异常。
