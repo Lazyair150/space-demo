@@ -50,12 +50,18 @@ func _ready() -> void:
     remove_child(runtime)
     assert(runtime.IsDisposed, "Runtime must report successful session disposal on exit")
     assert(not runtime.IsInitialized, "exited Runtime must no longer expose an initialized session")
+
+    # D6: exiting the SceneTree is terminal; the detached node cannot be revived.
+    var reinitialize_after_exit: bool = runtime.InitializeWorld()
+    assert(not reinitialize_after_exit, "disposed Runtime must reject reinitialization")
+    assert(runtime.IsDisposed, "rejected reinitialization must preserve disposed state")
+    assert(not runtime.IsInitialized, "disposed Runtime must remain without a session")
     runtime.queue_free()
 
     print(
         "[WorldV2LifecycleProbe] lifecycle probe passed",
         " initialization_faults=", _fault_messages.size(),
-        " recovery=true duplicate_rejected=true disposed=true"
+        " recovery=true duplicate_rejected=true disposed=true post_exit_rejected=true"
     )
 
 func _on_runtime_faulted(message: String) -> void:
