@@ -221,3 +221,56 @@ Runtime 将故障分为两类：
 ```
 
 注意：当前探针覆盖了资源字典、工作台数组和需求的深层嵌套结构；如未来快照新增可变容器字段，应将其加入隔离测试。
+
+
+## 4.12c 快照字段契约审查
+
+本阶段对照 space-demo 的 Godot Dictionary 适配器与 jar-system-dotnet 当前 `WorldV2SnapshotDto`，明确快照边界。当前不新增 `schemaVersion`，也不把 Core DTO 类型直接暴露给 GDScript；在尚无正式 UI 消费者时，先固定字段语义并记录兼容规则。
+
+### 根快照字段
+
+| Godot key | 类型/语义 | 契约分类 |
+|---|---|---|
+| `worldTimeMilli` | 整数；世界时间毫秒 | 稳定时钟字段 |
+| `logicalTimeMilli` | 整数；倍率/暂停换算后的逻辑时间毫秒 | 稳定时钟字段 |
+| `speedRatioMilli` | 整数；1000 表示 1x | 稳定时钟字段 |
+| `isPaused` | 布尔值 | 稳定时钟字段 |
+| `runtimeFaulted` | 布尔值；合并 Host/Core 故障状态 | 稳定运行状态 |
+| `faultReason` | 字符串；无故障时为空字符串 | 稳定诊断字段 |
+| `resourceJars` | Jar 字典数组 | 当前资源展示数据 |
+| `resourceLiquids` | 液体名称到数量的字典 | 当前资源展示数据 |
+| `master` / `slave` | 工作台字典 | 当前工作台展示数据 |
+| `demands` | 需求字典数组 | 当前需求展示数据 |
+| `activeSessions` | 执行会话字典数组 | 当前执行展示数据 |
+| `reservationCount` | 整数；预约数量 | 当前运行展示数据 |
+| `replacement` | 工作台替换状态字典 | 当前运行展示数据 |
+
+### 嵌套对象字段
+
+- Jar：`id`、`shape`、`liquid`、`isMarked`。
+- Workshop：`name`、`maxJars`、`maxLiquids`、`baseMarks`、`additionalMarks`、`ban`、`jars`、`liquids`。
+- Demand：`id`、`area`、`type`、`requirements`、`cooldownDurationLogicalMilli`、`cooldownRemainingLogicalMilli`、`isCoolingDown`。
+- Requirement：`shape`、`liquid`。
+- Active session：`demandId`、`stage`、`unitDurationLogicalMilli`、`unitElapsedLogicalMilli`、`completedMasterSteps`、`completedSlaveSteps`、`isTerminal`、`succeeded`、`reason`。
+- Replacement：`role`、`oldWorkshopName`、`targetWorkshopName`、`phaseDurationLogicalMilli`、`phaseElapsedLogicalMilli`、`isFinished`、`succeeded`、`interruptionCommitted`、`interruptionOutcomeUncertain`、`completedPhases`、`failureReason`、`commitWarning`。
+
+### 当前语义约束与注意事项
+
+1. Godot 字段名是 Runtime 适配器定义的外部键；Core DTO 的 C# 属性重命名不应自动改变 Godot 键。
+2. 时间字段均为整数毫秒；`speedRatioMilli=1000` 表示 1x。不要在 GDScript/UI 再乘倍率。
+3. `area`、`stage`、`role` 当前以枚举/阶段的字符串形式输出。其字符串值属于契约的一部分；未来重命名必须同步评估兼容性。
+4. 当前空工作台与空替换状态都映射为空 Dictionary，而不是 null。调用方应先检查关键字段或 Dictionary 是否为空，不能把空 Dictionary 当作有效对象。
+5. `liquid`、`reason`、`faultReason` 等可选文本当前统一映射为空字符串；调用方不要依赖 null 区分“无值”。
+6. 集合字段以 Godot Array 输出，字典字段以 Godot Dictionary 输出；每次快照都创建独立容器。4.12b 已通过对根及多层嵌套容器进行破坏性修改的隔离验证。
+7. 本快照是展示/观察模型，不是存档格式、网络协议或 Core 内部 Solver 的 `WorldSnapshot`。当前没有承诺跨版本持久化兼容。
+
+### 变更规则
+
+- 新增展示字段：优先新增可选键，不改变现有键含义。
+- 修改字段类型、单位、枚举字符串或空值表示：视为破坏性契约变更，必须同步更新 Godot 消费者与探针。
+- 删除字段或重命名键：先搜索所有场景/脚本消费者，再做迁移；不能只改 Core DTO。
+- 若未来出现多个独立消费者、存档/网络需求或需要并行兼容多个 Runtime 版本，再引入明确的快照 schema version 和迁移策略；当前不为版本号而版本化。
+
+### 审查结论
+
+当前快照契约可作为 space-demo 内部 Godot Runtime 的初始展示接口。字段语义已记录，但在没有正式 UI 消费者前，不承诺跨项目或跨版本稳定。4.12b 的深层容器隔离已由用户本地 Godot 4.7.1 .NET 探针通过。
