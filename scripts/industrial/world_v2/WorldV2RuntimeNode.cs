@@ -45,6 +45,10 @@ public partial class WorldV2RuntimeNode : Node
             return false;
         }
 
+        // A new initialization attempt may recover from a previous configuration fault.
+        _faulted = false;
+        _faultReason = null;
+
         try
         {
             var json = Godot.FileAccess.GetFileAsString(WorldConfigPath);
