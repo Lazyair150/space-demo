@@ -78,3 +78,25 @@ Runtime 将故障分为两类：
 当前探针新增一项区分验证：订单启动得到普通领域拒绝后，`IsFaulted` 和快照的 `runtimeFaulted` 仍必须为 false。
 
 本阶段尚未加入人为制造 Core 运行期粘滞故障的生产 API。Core fault 分支、故障后拒绝命令和故障快照读取仍需通过可复现的真实 Core fault fixture 验证；不得为测试向正式 Runtime 增加任意故障注入接口。
+
+### 4.11a 真实 Core 故障探针
+
+新增场景：`scenes/industrial/WorldV2FaultProbe.tscn`。
+
+运行方式：Godot 4.7.1 .NET 打开该场景，运行当前场景（F6）。
+
+该探针不使用 Runtime 故障注入 API，而是利用真实 Core 时间运算路径：
+
+1. 创建正常 World v2 session，先关闭 Godot 自动推进。
+2. 设置有限且可表示的极大流速倍率 `9.0e15`。
+3. 恢复自动推进，让普通 Godot 帧增量进入 Core `WorldClock.Advance()`。
+4. `deltaWorldTimeMilli * SpeedRatioMilli` 触发 checked Int64 溢出；Core 锁定故障并抛出异常。
+5. 验证 Godot 收到一次 `RuntimeFaulted`，Runtime 保留会话用于诊断、`CanAcceptCommands=false)，快照仍可读取并包含故障原因，且溢出的时钟推进没有部分提交世界时间。
+
+预期输出包含：
+
+```text
+[WorldV2FaultProbe] fault boundary passed core_fault=true signal_count=1 command_gate=false snapshot_readable=true
+```
+
+注意：该探针使用极端倍率，仅用于独立测试场景；不要将其放入正常游戏配置或正常玩法 UI。
