@@ -58,3 +58,23 @@
 D6：退出 SceneTree 后再次调用 `InitializeWorld()` 必须返回 false；`IsDisposed` 保持 true，且不得重新创建会话。
 
 注意：探针场景内移除节点用于验证退出树时的释放路径；仍建议在完成探针后关闭运行窗口，确认整个项目退出时没有额外 Dispose 异常。
+
+## 4.11a Runtime 故障边界
+
+Runtime 将故障分为两类：
+
+- 初始化故障：尚未持有 Bridge session。修正配置后允许在同一节点重新初始化；成功后清除初始化故障。
+- 运行期故障：来自 Core 的 `AdvanceWorld` 结果、Core 快照，或推进过程中的异常。该故障在当前 Runtime 节点生命周期内保持粘滞，不提供自动恢复入口。
+
+运行期故障处理：
+
+- 消费 `WorldV2AdvanceResultDto.RuntimeFaulted/FaultReason`，并将故障转为 Godot 的 `RuntimeFaulted` signal。
+- 推进异常时先检查 Core 快照；若 Core 尚未报告故障，则以 Host 推进异常作为宿主故障锁定。
+- 故障后停止自动推进。
+- 暂停、恢复、倍速、添加需求、移动需求、启动需求均要求 Runtime 处于正常运行状态；故障后拒绝这些操作。
+- `GetWorldSnapshot()` 仍可用于诊断。返回的 `runtimeFaulted` / `faultReason` 合并 Host 与 Core 故障信息。
+- 普通领域拒绝（例如当前求解结果不是该订单的有效可行计划）不是 Runtime 故障，命令仍返回正常的失败结果。
+
+当前探针新增一项区分验证：订单启动得到普通领域拒绝后，`IsFaulted` 和快照的 `runtimeFaulted` 仍必须为 false。
+
+本阶段尚未加入人为制造 Core 运行期粘滞故障的生产 API。Core fault 分支、故障后拒绝命令和故障快照读取仍需通过可复现的真实 Core fault fixture 验证；不得为测试向正式 Runtime 增加任意故障注入接口。
