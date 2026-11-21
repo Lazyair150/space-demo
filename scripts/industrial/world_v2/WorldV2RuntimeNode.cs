@@ -186,13 +186,15 @@ public partial class WorldV2RuntimeNode : Node
 
     public override void _ExitTree()
     {
+        // Leaving the SceneTree is terminal for this Runtime node, even if
+        // releasing the owned session reports an error.
+        _disposed = true;
         var session = _session;
         _session = null;
 
         try
         {
             session?.Dispose();
-            _disposed = true;
         }
         catch (Exception ex)
         {
