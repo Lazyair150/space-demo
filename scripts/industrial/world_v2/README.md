@@ -103,3 +103,31 @@ Runtime 将故障分为两类：
 故障快照读取完成后，探针会将 Runtime 节点移出 SceneTree，验证 sticky-fault 会话仍可正常释放，且节点进入终止状态。
 
 注意：该探针使用极端倍率，仅用于独立测试场景；不要将其放入正常游戏配置或正常玩法 UI。
+
+## 4.11b 故障后操作拒绝探针
+
+新增独立 C# 探针场景：`scenes/industrial/WorldV2FaultedCommandsProbe.tscn`。
+
+运行方式：Godot 4.7.1 .NET 打开该场景，运行当前场景（F6）。
+
+该探针使用真实 Core WorldClock 溢出制造 sticky fault，并在 C# 中直接调用 Runtime API、捕获并检查异常。选择 C# 捕获是为了避免把 GDScript 对托管异常的日志行为误当成断言结果。
+
+逐项验证六个当前公开的控制/命令入口：
+
+- `PauseWorld`
+- `ResumeWorld`
+- `SetWorldSpeedRatio`
+- `AddSingleRequirementDemand`
+- `MoveDemand`
+- `StartActiveDemand`
+
+每项必须抛出包含“已故障”的 `InvalidOperationException`。探针还检查故障 signal 仍只发出一次、故障快照可读且原因稳定、拒绝操作没有推进世界时间，最后确认故障会话随 Runtime 节点退出 SceneTree 而释放。
+
+预期关键输出：
+
+```text
+[WorldV2FaultedCommandsProbe] all six operations rejected fault_signal_count=1 snapshot_readable=true fault_reason_stable=true
+[WorldV2FaultedCommandsProbe] passed operations=6 disposed=true
+```
+
+此探针目前是新增待本地运行验证项；不能仅凭代码已加入就视为 4.11b 通过。
