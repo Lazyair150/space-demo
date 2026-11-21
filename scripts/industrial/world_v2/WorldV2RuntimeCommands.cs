@@ -24,6 +24,7 @@ public partial class WorldV2RuntimeNode
         string area,
         long cooldownDurationLogicalMilli)
     {
+        var session = RequireOperationalSession();
         if (string.IsNullOrWhiteSpace(shape))
             throw new ArgumentException("罐子形状不能为空", nameof(shape));
         if (string.IsNullOrWhiteSpace(specificationType))
@@ -45,7 +46,17 @@ public partial class WorldV2RuntimeNode
             areaKind,
             cooldownDurationLogicalMilli);
 
-        var demandId = RequireSession().AddJarDemand(request);
+        int demandId;
+        try
+        {
+            demandId = session.AddJarDemand(request);
+        }
+        catch
+        {
+            TrySynchronizeCoreFault();
+            throw;
+        }
+        TrySynchronizeCoreFault();
         EmitSignal(SignalName.SnapshotChanged);
         return demandId;
     }
@@ -53,13 +64,24 @@ public partial class WorldV2RuntimeNode
     /// <summary>Move an existing demand to Active or Passive. Returns false if it was not found.</summary>
     public bool MoveDemand(int demandId, string targetArea)
     {
+        var session = RequireOperationalSession();
         if (!Enum.TryParse(targetArea, ignoreCase: true, out DemandAreaKind areaKind) ||
             !Enum.IsDefined(typeof(DemandAreaKind), areaKind))
         {
             throw new ArgumentException("目标区域必须是 Active 或 Passive", nameof(targetArea));
         }
 
-        var moved = RequireSession().MoveDemand(demandId, areaKind);
+        bool moved;
+        try
+        {
+            moved = session.MoveDemand(demandId, areaKind);
+        }
+        catch
+        {
+            TrySynchronizeCoreFault();
+            throw;
+        }
+        TrySynchronizeCoreFault();
         if (moved)
             EmitSignal(SignalName.SnapshotChanged);
         return moved;
@@ -68,7 +90,18 @@ public partial class WorldV2RuntimeNode
     /// <summary>Explicitly start an Active-area demand and return a detached result dictionary.</summary>
     public GDictionary StartActiveDemand(int demandId)
     {
-        var result = RequireSession().StartActiveDemand(demandId);
+        var session = RequireOperationalSession();
+        WorldV2StartDemandResultDto result;
+        try
+        {
+            result = session.StartActiveDemand(demandId);
+        }
+        catch
+        {
+            TrySynchronizeCoreFault();
+            throw;
+        }
+        TrySynchronizeCoreFault();
         EmitSignal(SignalName.SnapshotChanged);
         return new GDictionary
         {
