@@ -34,3 +34,24 @@
 6. 关闭场景/项目，不应出现 Dispose 异常。
 
 这是 Runtime 冒烟测试场景，不替换项目主场景，也不修改旧 IndustrialMain。
+
+## 4.10d 生命周期探针
+
+新增独立场景：`scenes/industrial/WorldV2LifecycleProbe.tscn`。
+
+运行方式：在 Godot 4.7.1 .NET 中打开该场景并运行当前场景（F6）。
+
+探针覆盖：
+
+- D1：对已初始化 Runtime 重复调用 `InitializeWorld()`，应返回 false，保留原会话和时钟，不把健康 Runtime 标记为故障。
+- D2：使用 `world_v2_invalid.json` 初始化，应触发 `RuntimeFaulted`，且不保留 World session。
+- D4：修正配置路径后，在同一个节点再次初始化，应成功并清除故障状态。
+- D3/D5：将节点从 SceneTree 移除，应执行 `_ExitTree()`、释放 Bridge session、清空会话所有权，并将 `IsDisposed` 置为 true。
+
+该探针使用独立 Runtime 节点和 `AutoAdvance=false`，不干扰时间/命令探针，也不替换项目主场景。测试通过时应输出：
+
+```text
+[WorldV2LifecycleProbe] lifecycle probe passed initialization_faults=1 recovery=true duplicate_rejected=true disposed=true
+```
+
+注意：探针场景内移除节点用于验证退出树时的释放路径；仍建议在完成探针后关闭运行窗口，确认整个项目退出时没有额外 Dispose 异常。
