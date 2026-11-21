@@ -150,4 +150,49 @@ Runtime 将故障分为两类：
 - `GetWorldSnapshot`
 - `InitializeWorld` 必须返回 false，不能复活已终止节点。
 
-该场景还检查正常 Dispose 不应产生 RuntimeFaulted signal，也不应把“已释放”错误地标记为运行期故障。此探针为待本地验证项。
+该场景还检查正常 Dispose 不应产生 RuntimeFaulted signal，也不应把“已释放”错误地标记为运行期故障。本地验收已通过：7 个退出后入口均被拒绝，重新初始化被拒绝，`fault_signal_count=0`。
+
+
+## 4.12a Runtime 对外 API 边界审查
+
+本阶段先完成审查和分类，不因“接口看起来不够通用”而提前扩大 API，也不定义 Jar World 与太空战之间尚未确定的玩法关系。
+
+### Host 生命周期入口
+
+- `_Ready()`：Godot 节点进入场景树时自动初始化。
+- `_Process(delta)`：接收墙钟增量并驱动世界推进。
+- `_ExitTree()`：终止 Runtime 节点并释放其拥有的 Bridge session。
+
+这些是 Godot 生命周期实现，不是供 UI 或普通场景脚本主动调用的业务命令。会话创建、替换和 Dispose 的所有权继续留在 Runtime 内部。
+
+### 宿主控制接口
+
+- `PauseWorld()`
+- `ResumeWorld()`
+- `SetWorldSpeedRatio(ratio)`
+
+它们是合理的 World Runtime 控制入口。Godot 只表达暂停/恢复/倍率意图；秒到世界毫秒的转换仍由 Runtime 负责，倍率和逻辑时间换算仍由 Core 负责。
+
+### 观察与诊断接口
+
+- `GetWorldSnapshot()`：返回脱离 Core 对象的 Godot Dictionary 快照。
+- `IsInitialized`、`IsFaulted`、`IsDisposed`、`CanAcceptCommands`：只读状态。
+- `RuntimeReady`、`SnapshotChanged`、`RuntimeFaulted`：状态通知。
+
+故障态保留快照用于诊断；正常 Dispose 后 Session 已释放，快照查询会被拒绝。4.11b/4.11c 探针已分别验证这两个边界。
+
+### 当前需求命令适配器（暂定）
+
+- `AddSingleRequirementDemand(...)`
+- `MoveDemand(...)`
+- `StartActiveDemand(...)`
+
+这些接口目前服务于最小化探针和 Bridge 连通性验证。特别是 `AddSingleRequirementDemand` 明确只支持单个 requirement，是测试阶段的窄接口，不应视为最终需求编辑 API。当前没有真实游戏调用者，也没有已定义的 Jar World 玩法职责，因此暂不扩展为多需求命令体系，不引入猜测性的游戏业务 DTO。
+
+### 初始化入口的后续判断
+
+`InitializeWorld()` 由 `_Ready()` 自动调用；它目前保持 public，是因为初始化失败后需要允许调用方修正配置并重试。对已创建 Session 的重复初始化会被拒绝，节点退出 SceneTree 后则永久拒绝再次初始化。若未来出现正式的外部初始化调用者，再考虑把“首次初始化”和“初始化失败后的重试”拆成更明确的宿主 API；当前不做无实际调用需求的重构。
+
+### 本次审查结论
+
+当前边界足以支持独立 Runtime 的运行、控制、观察和故障诊断。下一阶段应由真实场景需求驱动命令契约，而不是先把探针适配器包装成完整游戏 API。旧 Jar 模块清理、伤害/奖励联动以及 Jar World 的玩法定位均不属于本次审查范围。
