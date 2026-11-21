@@ -77,7 +77,7 @@ Runtime 将故障分为两类：
 
 当前探针新增一项区分验证：订单启动得到普通领域拒绝后，`IsFaulted` 和快照的 `runtimeFaulted` 仍必须为 false。
 
-本阶段尚未加入人为制造 Core 运行期粘滞故障的生产 API。Core fault 分支、故障后拒绝命令和故障快照读取仍需通过可复现的真实 Core fault fixture 验证；不得为测试向正式 Runtime 增加任意故障注入接口。
+本阶段没有加入人为制造 Core 运行期粘滞故障的生产 API。真实 Core fault fixture 已通过本地 Godot 验证；不得为测试向正式 Runtime 增加任意故障注入接口。
 
 ### 4.11a 真实 Core 故障探针
 
@@ -97,6 +97,9 @@ Runtime 将故障分为两类：
 
 ```text
 [WorldV2FaultProbe] fault boundary passed core_fault=true signal_count=1 command_gate=false snapshot_readable=true
+[WorldV2FaultProbe] faulted session disposal passed disposed=true session_released=true
 ```
+
+故障快照读取完成后，探针会将 Runtime 节点移出 SceneTree，验证 sticky-fault 会话仍可正常释放，且节点进入终止状态。
 
 注意：该探针使用极端倍率，仅用于独立测试场景；不要将其放入正常游戏配置或正常玩法 UI。

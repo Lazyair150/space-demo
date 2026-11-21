@@ -47,6 +47,12 @@ func _ready() -> void:
         " fault_reason=", snapshot.get("faultReason", "")
     )
 
+    # A faulted session remains alive only for diagnosis. Leaving the SceneTree
+    # must still release it and permanently dispose this Runtime node.
+    remove_child(runtime)
+    assert(runtime.IsDisposed, "faulted Runtime must dispose its session on exit")
+    assert(not runtime.IsInitialized, "disposed faulted Runtime must release session ownership")
+    print("[WorldV2FaultProbe] faulted session disposal passed disposed=true session_released=true")
     runtime.queue_free()
 
 func _on_runtime_faulted(message: String) -> void:
