@@ -130,4 +130,24 @@ Runtime 将故障分为两类：
 [WorldV2FaultedCommandsProbe] passed operations=6 disposed=true
 ```
 
-此探针目前是新增待本地运行验证项；不能仅凭代码已加入就视为 4.11b 通过。
+本地验收已通过：六个入口均抛出预期的故障态 `InvalidOperationException`；单次故障信号、稳定诊断快照、世界时间不变和会话释放均得到验证。
+
+
+## 4.11c Runtime 终止生命周期操作边界
+
+新增独立 C# 探针场景：`scenes/industrial/WorldV2DisposedCommandsProbe.tscn`。
+
+该探针先创建并初始化健康 Runtime，再将节点移出 SceneTree。此时 Runtime 已释放 Bridge session，且 `IsDisposed=true`、`IsInitialized=false`。随后逐项调用所有现有控制/命令入口及快照查询，确认它们统一因“尚未初始化/会话不存在”而抛出 `InvalidOperationException`，不能在节点终止后继续操作已释放的世界。
+
+覆盖：
+
+- `PauseWorld`
+- `ResumeWorld`
+- `SetWorldSpeedRatio`
+- `AddSingleRequirementDemand`
+- `MoveDemand`
+- `StartActiveDemand`
+- `GetWorldSnapshot`
+- `InitializeWorld` 必须返回 false，不能复活已终止节点。
+
+该场景还检查正常 Dispose 不应产生 RuntimeFaulted signal，也不应把“已释放”错误地标记为运行期故障。此探针为待本地验证项。
