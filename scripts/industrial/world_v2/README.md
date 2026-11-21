@@ -196,3 +196,28 @@ Runtime 将故障分为两类：
 ### 本次审查结论
 
 当前边界足以支持独立 Runtime 的运行、控制、观察和故障诊断。下一阶段应由真实场景需求驱动命令契约，而不是先把探针适配器包装成完整游戏 API。旧 Jar 模块清理、伤害/奖励联动以及 Jar World 的玩法定位均不属于本次审查范围。
+
+
+## 4.12b Godot 快照隔离探针
+
+新增独立 C# 探针场景：`scenes/industrial/WorldV2SnapshotIsolationProbe.tscn`。
+
+运行方式：Godot 4.7.1 .NET 打开该场景，运行当前场景（F6）。
+
+探针在 Runtime 中创建一个最小需求，然后获取快照并主动修改返回给 Godot 的数据：
+
+- 根 Dictionary 的世界时间和故障标志；
+- `resourceLiquids` 嵌套 Dictionary；
+- `master` 嵌套 Dictionary 及其 `baseMarks` Array；
+- `demands` Array、需求 Dictionary、嵌套 `requirements` Array 和 requirement Dictionary。
+
+随后重新获取快照，验证所有值仍来自未被污染的 Core 状态。接着再次修改第二份快照，并获取第三份快照，验证不同调用之间的嵌套 Dictionary/Array 也互相独立。
+
+该探针只验证数据所有权和隔离，不引入新的游戏命令或玩法规则。预期关键输出：
+
+```text
+[WorldV2SnapshotIsolationProbe] detached snapshot mutation passed root=true dictionary=true array=true nested=true cross_snapshot=true
+[WorldV2SnapshotIsolationProbe] passed
+```
+
+注意：当前探针覆盖了资源字典、工作台数组和需求的深层嵌套结构；如未来快照新增可变容器字段，应将其加入隔离测试。
