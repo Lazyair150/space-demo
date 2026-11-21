@@ -274,3 +274,57 @@ Runtime 将故障分为两类：
 ### 审查结论
 
 当前快照契约可作为 space-demo 内部 Godot Runtime 的初始展示接口。字段语义已记录，但在没有正式 UI 消费者前，不承诺跨项目或跨版本稳定。4.12b 的深层容器隔离已由用户本地 Godot 4.7.1 .NET 探针通过。
+
+
+## 4.13a 快照消费者审计
+
+审计范围：PR #1 当前 head 的仓库文件树、World v2 Runtime/Probe 文件、`IndustrialMain.tscn` 与其脚本，以及项目 Autoload 配置。此审计只统计当前分支中可见的引用，不把未来 UI 计划当作现存消费者。
+
+### 结论先行
+
+**当前没有正式游戏 UI 消费 World v2 快照。** 当前快照消费者全部属于 World v2 验证探针。项目主工业场景 `scenes/industrial/IndustrialMain.tscn` 仍挂载旧 `scripts/industrial/ui/IndustrialMain.gd`；Autoload `IndustrialRuntime` 仍指向旧 `scripts/industrial/runtime/IndustrialRuntime.gd`。这两个旧入口不读取 `WorldV2RuntimeNode` 或其快照。
+
+因此，当前字段契约是“Runtime 与探针之间的内部集成契约”，尚不是已被正式 UI 使用的产品界面契约。
+
+### 已观察到的消费者
+
+| 消费者 | 实际读取字段/行为 | 用途 |
+|---|---|---|
+| `WorldV2RuntimeProbe.gd` | `worldTimeMilli`、`logicalTimeMilli`、`isPaused`、`master.name`、`slave.name`、`speedRatioMilli`、`demands[].id/area/type`、`runtimeFaulted` | 基本快照、命令结果和时钟行为验证 |
+| `WorldV2LifecycleProbe.gd` | `worldTimeMilli`、`logicalTimeMilli` | 重复初始化不得改变世界时间 |
+| `WorldV2FaultProbe.gd` | `runtimeFaulted`、`faultReason`、`worldTimeMilli` | 故障诊断与故障后快照可读性 |
+| `WorldV2SnapshotIsolationProbe.cs` | `worldTimeMilli`、`runtimeFaulted`、`resourceLiquids`、`master.name/baseMarks`、`demands[].area/requirements[].shape` | 根与深层容器隔离 |
+| `WorldV2FaultedCommandsProbe.cs`、`WorldV2DisposedCommandsProbe.cs` | 主要检查 Runtime 方法、属性和生命周期；不构成展示字段消费者 | 故障/释放后的操作边界 |
+
+### 当前尚无实际消费者的快照字段
+
+在当前正式场景/UI 与上述探针中，以下数据没有被读取用于业务或显示：
+
+- `resourceJars`；
+- 工作台容量、标记规则、禁用规则、罐子与液体库存等完整字段；
+- 需求冷却字段；
+- `activeSessions`；
+- `reservationCount`；
+- `replacement` 及其阶段细节。
+
+其中部分字段由 Runtime 正常输出，但“已输出”不代表“已被 UI 需要”。本阶段不删除这些字段：它们仍可用于后续观察和诊断；是否保留应等真实消费者与 World v2 玩法职责明确后再决定。
+
+### 时间与数据转换审计
+
+- Godot Runtime 的 `_Process(delta)` 将墙钟秒换算成世界毫秒；它不读取 `speedRatioMilli` 参与二次倍率计算。
+- Core WorldClock 负责把世界时间换算为逻辑时间。
+- 探针通过 2x 与 0x 断言验证倍率只转换一次。
+- GDScript 探针从快照读取整数时间字段，没有把逻辑时间再次乘以倍率。
+- `GetWorldSnapshot()` 在 C# 中逐层创建 Godot Dictionary/Array；4.12b 已验证修改返回容器不会污染 Core 或其他快照。
+
+### 发现与后续约束
+
+1. 不要把旧 `IndustrialMain.gd` / `IndustrialRuntime.gd` 当作 World v2 快照消费者；它们属于旧集成路径。
+2. 不应仅因快照字段当前没有消费者就立即删除；先等新的场景/UI 设计明确。
+3. 新 UI 接入时，应通过一个明确的 View/Presenter 适配层读取稳定字段，不应让多个控件各自猜测字典结构。
+4. 需要新增字段时，先指出具体消费者和展示/诊断目的；不要把 Core 的全部 DTO 字段无差别透传到 UI。
+5. 任何时间字段都必须保留单位后缀；UI 仅格式化显示，不自行换算世界倍率。
+
+### 审计限制
+
+GitHub 仓库文件树和本次逐文件检查覆盖了当前可见的 World v2 Runtime、探针、工业主场景、旧工业 UI/Runtime 与项目 Autoload 配置。该结果不代表未来本地未提交文件或分支外部消费者。当前仓库没有正式 World v2 UI 消费者这一结论，以本次审计的 PR head 为准。
