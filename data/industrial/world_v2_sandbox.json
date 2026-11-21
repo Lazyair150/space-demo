@@ -1,0 +1,16 @@
+{
+  "shapes": ["圆罐", "方罐"],
+  "liquids": ["酒", "蜜"],
+  "producers": [{"name": "陶工", "rates": {"圆罐": 1.0, "方罐": 0.0}}],
+  "liquidProductionRates": {"酒": 0.0, "蜜": 0.0},
+  "initialLiquidStock": {"酒": 10, "蜜": 0},
+  "jarFlowRatePerLogicalTime": 1.0,
+  "liquidFlowRatePerLogicalTime": 1.0,
+  "workshops": [
+    {"name": "主台", "baseMarks": ["圆罐", "方罐"], "additionalMarks": [], "ban": [], "maxJars": 10, "maxLiquids": 10},
+    {"name": "从台", "baseMarks": ["圆罐", "方罐"], "additionalMarks": [], "ban": [], "maxJars": 10, "maxLiquids": 10}
+  ],
+  "masterWorkshopName": "主台",
+  "slaveWorkshopName": "从台",
+  "executionLogicalTimePerUnit": 1000
+}
