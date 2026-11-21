@@ -23,6 +23,7 @@ public partial class WorldV2RuntimeNode : Node
     private WorldV2BridgeSession? _session;
     private double _worldTimeRemainderMilli;
     private bool _faulted;
+    private string? _faultReason;
     private bool _disposed;
 
     public bool IsInitialized => _session?.HasWorld == true;
@@ -76,6 +77,7 @@ public partial class WorldV2RuntimeNode : Node
 
             _worldTimeRemainderMilli = 0;
             _faulted = false;
+            _faultReason = null;
             EmitSignal(SignalName.RuntimeReady);
             EmitSignal(SignalName.SnapshotChanged);
             GD.Print("[WorldV2Runtime] initialized: ", WorldConfigPath);
@@ -83,9 +85,7 @@ public partial class WorldV2RuntimeNode : Node
         }
         catch (Exception ex)
         {
-            _faulted = true;
-            GD.PushError("[WorldV2Runtime] initialization failed: " + ex);
-            EmitSignal(SignalName.RuntimeFaulted, ex.Message);
+            LatchFault(ex.Message, "initialization");
             return false;
         }
     }
@@ -103,46 +103,55 @@ public partial class WorldV2RuntimeNode : Node
         _worldTimeRemainderMilli -= wholeWorldTimeMilli;
         try
         {
-            _session.AdvanceWorld(wholeWorldTimeMilli);
+            var advance = _session.AdvanceWorld(wholeWorldTimeMilli);
+            if (advance.RuntimeFaulted)
+            {
+                LatchFault(advance.FaultReason ?? "World v2 Core entered a runtime fault state", "core");
+                EmitSignal(SignalName.SnapshotChanged);
+                return;
+            }
             EmitSignal(SignalName.SnapshotChanged);
         }
         catch (Exception ex)
         {
-            _faulted = true;
-            GD.PushError("[WorldV2Runtime] advance failed: " + ex);
-            EmitSignal(SignalName.RuntimeFaulted, ex.Message);
+            TrySynchronizeCoreFault();
+            if (!_faulted)
+                LatchFault(ex.Message, "host advance");
+            EmitSignal(SignalName.SnapshotChanged);
         }
     }
 
     public void PauseWorld()
     {
-        RequireSession().PauseWorld();
+        RequireOperationalSession().PauseWorld();
         EmitSignal(SignalName.SnapshotChanged);
     }
 
     public void ResumeWorld()
     {
-        RequireSession().ResumeWorld();
+        RequireOperationalSession().ResumeWorld();
         EmitSignal(SignalName.SnapshotChanged);
     }
 
     public void SetWorldSpeedRatio(double ratio)
     {
-        RequireSession().SetWorldSpeedRatio(ratio);
+        RequireOperationalSession().SetWorldSpeedRatio(ratio);
         EmitSignal(SignalName.SnapshotChanged);
     }
 
     public GDictionary GetWorldSnapshot()
     {
         var snapshot = RequireSession().GetWorldSnapshot();
+        var effectiveFaulted = _faulted || snapshot.RuntimeFaulted;
+        var effectiveFaultReason = _faultReason ?? snapshot.FaultReason ?? "";
         return new GDictionary
         {
             ["worldTimeMilli"] = snapshot.WorldTimeMilli,
             ["logicalTimeMilli"] = snapshot.LogicalTimeMilli,
             ["speedRatioMilli"] = snapshot.SpeedRatioMilli,
             ["isPaused"] = snapshot.IsPaused,
-            ["runtimeFaulted"] = snapshot.RuntimeFaulted,
-            ["faultReason"] = snapshot.FaultReason ?? "",
+            ["runtimeFaulted"] = effectiveFaulted,
+            ["faultReason"] = effectiveFaultReason,
             ["resourceJars"] = ToGodotArray(snapshot.ResourceJars, jar => (Variant)new GDictionary
             {
                 ["id"] = jar.Id.HasValue ? Variant.From(jar.Id.Value) : default,
@@ -198,9 +207,7 @@ public partial class WorldV2RuntimeNode : Node
         }
         catch (Exception ex)
         {
-            _faulted = true;
-            GD.PushError("[WorldV2Runtime] session disposal failed: " + ex);
-            EmitSignal(SignalName.RuntimeFaulted, ex.Message);
+            LatchFault(ex.Message, "session disposal");
         }
         finally
         {
@@ -210,6 +217,44 @@ public partial class WorldV2RuntimeNode : Node
 
     private WorldV2BridgeSession RequireSession() =>
         _session ?? throw new InvalidOperationException("World v2 Runtime 尚未初始化");
+
+    /// <summary>Reject mutations after either host or Core runtime fault.</summary>
+    private WorldV2BridgeSession RequireOperationalSession()
+    {
+        var session = RequireSession();
+        TrySynchronizeCoreFault();
+        if (_faulted)
+            throw new InvalidOperationException("World v2 Runtime 已故障，禁止继续修改世界: " + (_faultReason ?? "未知原因"));
+        return session;
+    }
+
+    private void TrySynchronizeCoreFault()
+    {
+        if (_session == null || _faulted)
+            return;
+
+        try
+        {
+            var snapshot = _session.GetWorldSnapshot();
+            if (snapshot.RuntimeFaulted)
+                LatchFault(snapshot.FaultReason ?? "World v2 Core entered a runtime fault state", "core snapshot");
+        }
+        catch (Exception ex)
+        {
+            LatchFault(ex.Message, "core fault inspection");
+        }
+    }
+
+    private void LatchFault(string reason, string source)
+    {
+        if (_faulted)
+            return;
+
+        _faulted = true;
+        _faultReason = reason;
+        GD.PushError("[WorldV2Runtime] " + source + " fault: " + reason);
+        EmitSignal(SignalName.RuntimeFaulted, reason);
+    }
 
     private static GArray ToGodotArray<T>(System.Collections.Generic.IEnumerable<T> source, Func<T, Variant> convert)
     {
