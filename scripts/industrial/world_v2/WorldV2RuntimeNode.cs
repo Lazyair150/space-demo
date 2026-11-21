@@ -29,6 +29,7 @@ public partial class WorldV2RuntimeNode : Node
     public bool IsInitialized => _session?.HasWorld == true;
     public bool IsFaulted => _faulted;
     public bool IsDisposed => _disposed;
+    public bool CanAcceptCommands => _session != null && !_faulted && !_disposed;
 
     public override void _Ready() => InitializeWorld();
 
