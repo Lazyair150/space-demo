@@ -23,16 +23,26 @@ public partial class WorldV2RuntimeNode : Node
     private WorldV2BridgeSession? _session;
     private double _worldTimeRemainderMilli;
     private bool _faulted;
+    private bool _disposed;
 
     public bool IsInitialized => _session?.HasWorld == true;
     public bool IsFaulted => _faulted;
+    public bool IsDisposed => _disposed;
 
     public override void _Ready() => InitializeWorld();
 
     public bool InitializeWorld()
     {
+        // A node's session is single-owner and single-initialization.
+        // Reject duplicate requests without replacing or faulting the live world.
+        if (_disposed)
+            return false;
+
         if (_session != null)
-            throw new InvalidOperationException("World v2 Runtime 已经初始化");
+        {
+            GD.PushWarning("[WorldV2Runtime] initialization ignored: session already exists");
+            return false;
+        }
 
         try
         {
@@ -176,8 +186,24 @@ public partial class WorldV2RuntimeNode : Node
 
     public override void _ExitTree()
     {
-        _session?.Dispose();
+        var session = _session;
         _session = null;
+
+        try
+        {
+            session?.Dispose();
+            _disposed = true;
+        }
+        catch (Exception ex)
+        {
+            _faulted = true;
+            GD.PushError("[WorldV2Runtime] session disposal failed: " + ex);
+            EmitSignal(SignalName.RuntimeFaulted, ex.Message);
+        }
+        finally
+        {
+            _worldTimeRemainderMilli = 0;
+        }
     }
 
     private WorldV2BridgeSession RequireSession() =>
