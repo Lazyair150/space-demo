@@ -51,6 +51,7 @@ public partial class WorldV2FaultedCommandsProbe : Node
 
             Ensure(faultObserved, "Core WorldClock overflow did not reach Runtime");
             Ensure(_faultSignalCount == 1, $"expected one fault signal, got {_faultSignalCount}");
+            Ensure(!string.IsNullOrWhiteSpace(_faultMessage), "fault signal message must be non-empty");
             Ensure(!runtime.CanAcceptCommands, "faulted Runtime command gate must be closed");
 
             var before = runtime.GetWorldSnapshot();
