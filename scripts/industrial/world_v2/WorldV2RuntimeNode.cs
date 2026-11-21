@@ -142,6 +142,8 @@ public partial class WorldV2RuntimeNode : Node
     public GDictionary GetWorldSnapshot()
     {
         var snapshot = RequireSession().GetWorldSnapshot();
+        if (snapshot.RuntimeFaulted)
+            LatchFault(snapshot.FaultReason ?? "World v2 Core entered a runtime fault state", "core snapshot");
         var effectiveFaulted = _faulted || snapshot.RuntimeFaulted;
         var effectiveFaultReason = _faultReason ?? snapshot.FaultReason ?? "";
         return new GDictionary
