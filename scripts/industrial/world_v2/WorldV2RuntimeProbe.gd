@@ -93,6 +93,60 @@ func _run_command_probe() -> void:
         " snapshot_signals=", _snapshot_changed_count
     )
 
+    await _run_clock_control_probe()
+
+func _run_clock_control_probe() -> void:
+    # Pause must freeze both world and logical time, even though Godot keeps ticking.
+    runtime.PauseWorld()
+    var paused_before: Dictionary = runtime.GetWorldSnapshot()
+    await get_tree().create_timer(0.3).timeout
+    var paused_after: Dictionary = runtime.GetWorldSnapshot()
+    assert(
+        int(paused_after.get("worldTimeMilli", -1)) == int(paused_before.get("worldTimeMilli", -2)),
+        "world time must not advance while paused"
+    )
+    assert(
+        int(paused_after.get("logicalTimeMilli", -1)) == int(paused_before.get("logicalTimeMilli", -2)),
+        "logical time must not advance while paused"
+    )
+
+    # At 2x, Godot still submits wall-clock milliseconds unchanged.
+    # Core WorldClock alone converts them into twice as much logical time.
+    runtime.ResumeWorld()
+    runtime.SetWorldSpeedRatio(2.0)
+    var fast_before: Dictionary = runtime.GetWorldSnapshot()
+    assert(int(fast_before.get("speedRatioMilli", -1)) == 2000, "2x ratio must be visible in snapshot")
+    await get_tree().create_timer(0.5).timeout
+    var fast_after: Dictionary = runtime.GetWorldSnapshot()
+    var fast_world_delta := int(fast_after.get("worldTimeMilli", 0)) - int(fast_before.get("worldTimeMilli", 0))
+    var fast_logical_delta := int(fast_after.get("logicalTimeMilli", 0)) - int(fast_before.get("logicalTimeMilli", 0))
+    assert(fast_world_delta > 0, "world time must advance after resume")
+    assert(
+        fast_logical_delta == fast_world_delta * 2,
+        "2x logical time must be converted exactly once by Core WorldClock"
+    )
+
+    # At 0x, world time continues while logical time is held.
+    runtime.SetWorldSpeedRatio(0.0)
+    var stopped_before: Dictionary = runtime.GetWorldSnapshot()
+    assert(int(stopped_before.get("speedRatioMilli", -1)) == 0, "0x ratio must be visible in snapshot")
+    await get_tree().create_timer(0.3).timeout
+    var stopped_after: Dictionary = runtime.GetWorldSnapshot()
+    var stopped_world_delta := int(stopped_after.get("worldTimeMilli", 0)) - int(stopped_before.get("worldTimeMilli", 0))
+    var stopped_logical_delta := int(stopped_after.get("logicalTimeMilli", 0)) - int(stopped_before.get("logicalTimeMilli", 0))
+    assert(stopped_world_delta > 0, "world time must continue at 0x logical speed")
+    assert(stopped_logical_delta == 0, "logical time must remain fixed at 0x speed")
+
+    runtime.SetWorldSpeedRatio(1.0)
+    print(
+        "[WorldV2Probe] clock control probe passed",
+        " paused_world_delta=", int(paused_after.get("worldTimeMilli", 0)) - int(paused_before.get("worldTimeMilli", 0)),
+        " 2x_world_delta=", fast_world_delta,
+        " 2x_logical_delta=", fast_logical_delta,
+        " 0x_world_delta=", stopped_world_delta,
+        " 0x_logical_delta=", stopped_logical_delta
+    )
+
 func _print_snapshot() -> void:
     var state: Dictionary = runtime.GetWorldSnapshot()
     print(
