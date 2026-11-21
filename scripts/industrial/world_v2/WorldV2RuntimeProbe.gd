@@ -79,6 +79,9 @@ func _run_command_probe() -> void:
     var start_result: Dictionary = runtime.StartActiveDemand(demand_id)
     assert(start_result.has("success"), "start result must contain success")
     assert(start_result.has("reason"), "start result must contain reason")
+    assert(not runtime.IsFaulted, "a normal domain rejection must not fault the Runtime")
+    var after_domain_rejection: Dictionary = runtime.GetWorldSnapshot()
+    assert(not after_domain_rejection.get("runtimeFaulted", true), "domain rejection must remain distinct from runtime fault")
 
     # Missing IDs are a normal negative result for MoveDemand, not a runtime fault.
     var missing_move: bool = runtime.MoveDemand(-1, "Passive")
