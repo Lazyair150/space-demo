@@ -10,6 +10,7 @@ static func normalize(jar_order: Dictionary, forecast: Variant) -> Dictionary:
 		return _failure("Jar requirements must be a non-empty array")
 	var shape_cost := {}
 	var required_liquids := {}
+	var liquid_bearing_requirement_count := 0
 	for raw in requirements:
 		if not (raw is Dictionary):
 			return _failure("Jar requirement entry must be a dictionary")
@@ -20,6 +21,7 @@ static func normalize(jar_order: Dictionary, forecast: Variant) -> Dictionary:
 		shape_cost[shape] = int(shape_cost.get(shape, 0)) + 1
 		var liquid := String(requirement.get("liquid", "")).strip_edges()
 		if not liquid.is_empty():
+			liquid_bearing_requirement_count += 1
 			required_liquids[liquid] = true
 	if required_liquids.is_empty() and (forecast == null or (forecast is Dictionary and forecast.is_empty())):
 		return {
@@ -56,7 +58,7 @@ static func normalize(jar_order: Dictionary, forecast: Variant) -> Dictionary:
 		"valid": true,
 		"shapeJarsPerActivation": shape_cost,
 		"liquidUnitsPerActivation": liquid_cost,
-		"liquidBearingRequirementCount": required_liquids.size(),
+		"liquidBearingRequirementCount": liquid_bearing_requirement_count,
 		"forecastSource": source
 	}
 
