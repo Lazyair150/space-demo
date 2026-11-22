@@ -25,6 +25,9 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 @export var effect_definition_version: int = 1
 @export var effect_parameters: Dictionary = {}
 
+## Normalized Space-owned benefit dimensions consumed by the balance curve.
+@export var benefit_profile: Dictionary = {}
+
 func is_valid() -> bool:
 	if skill_id == &"" or definition_version <= 0 or display_name.strip_edges().is_empty():
 		return false
@@ -42,30 +45,56 @@ func is_valid() -> bool:
 	for requirement in jar_requirements:
 		if String(requirement.get("shape", "")).strip_edges().is_empty():
 			return false
-		if int(requirement.get("count", 0)) <= 0:
+		if int(requirement.get("count", 1)) <= 0:
+			return false
+	for dimension in benefit_profile:
+		if float(benefit_profile[dimension]) < 0.0:
 			return false
 	return true
 
-func create_order_binding(order_definition_key: String, selected_control_area: String) -> Dictionary:
+func create_order_binding(order_definition_key: String, selected_control_area: String, balance_profile: SpaceSkillBalanceProfile, balance_context: Dictionary = {}) -> Dictionary:
 	if not is_valid() or order_definition_key.strip_edges().is_empty():
 		return {}
 	if not allowed_control_areas.has(selected_control_area):
 		return {}
+	if balance_profile == null or not balance_profile.is_valid():
+		return {}
 	var activation_policy := "Manual" if selected_control_area == "Active" else "Automatic"
+	var expanded_requirements: Array[Dictionary] = []
+	for requirement in jar_requirements:
+		var count := int(requirement.get("count", 1))
+		var normalized := {"shape": String(requirement.get("shape", "")).strip_edges()}
+		var liquid := String(requirement.get("liquid", "")).strip_edges()
+		if not liquid.is_empty():
+			normalized["liquid"] = liquid
+		for _i in range(count):
+			expanded_requirements.append(normalized.duplicate(true))
+	var jar_order := {
+		"type": jar_order_type,
+		"area": jar_order_area,
+		"cooldownDurationLogicalMilli": jar_cooldown_logical_milli,
+		"requirements": expanded_requirements
+	}
+	var balance_report := SpaceSkillBalanceModel.evaluate(benefit_profile, jar_order, balance_context, balance_profile)
+	if not balance_report.get("valid", false):
+		push_error("Skill balance evaluation failed: " + String(balance_report.get("reason", "unknown")))
+		return {}
 	return {
 		"orderDefinitionKey": order_definition_key,
 		"skillDefinitionId": String(skill_id),
 		"skillDefinitionVersion": definition_version,
-		"jarOrder": {
-			"type": jar_order_type,
-			"area": jar_order_area,
-			"cooldownDurationLogicalMilli": jar_cooldown_logical_milli,
-			"requirements": jar_requirements.duplicate(true)
-		},
+		"jarOrder": jar_order,
 		"skillControl": {
 			"area": selected_control_area,
 			"activationPolicy": activation_policy
 		},
+		"benefitProfile": benefit_profile.duplicate(true),
+		"balanceReport": balance_report,
+		"balanceProfile": {
+			"profileId": String(balance_profile.profile_id),
+			"profileVersion": balance_profile.profile_version
+		},
+		"balanceContext": balance_context.duplicate(true),
 		"effectBinding": {
 			"effectDefinitionId": String(effect_definition_id),
 			"effectDefinitionVersion": effect_definition_version,
