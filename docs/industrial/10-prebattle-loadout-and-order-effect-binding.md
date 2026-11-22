@@ -278,3 +278,12 @@ The balance model's cooldown adjustment now compares expected activation counts 
 3. A liquid-bearing requirement without an explicit liquid quantity is rejected.
 
 This is an explicit synthetic probe, not a claim that real ship/device/workshop catalog values have been calibrated. The model is a deterministic forecast, not the Jar runtime's authoritative resource ledger. It does not yet simulate exact event chronology, fractional production accumulators, inventory overflow after each production tick, Jar reservation/settlement, or priority among Active/Passive skills. Those belong to the next integration/calibration stage and must be supplied by actual versioned catalogs and Jar contracts.
+
+
+## 15. Cross-repository resource-contract audit and forecast boundary
+
+The audit is recorded in `docs/industrial/11-real-resource-contract-audit.md`. Jar requirement entries contain `shape` and optional `liquid`, not numeric liquid units. The Jar solver's resolved operation plan determines actual free-liquid cost: POUR_IN and empty-Jar RESHAPE consume one free-liquid unit; full-Jar RESHAPE consumes the liquid already inside the Jar; POUR_OUT returns it to order staging. The resulting manifest computes required initial supply and B transfer quantities from the concrete path.
+
+The battle forecast no longer accepts a fictional `liquidUnits` member inside Jar requirements. It requires a separate `resourceCostForecast` with `liquidUnitsPerActivation` and a non-empty `forecastSource`. This is a Space-side estimate, not a Jar demand field. It may be based on a named initial-Jar scenario or, when available, a resolved Jar execution manifest. The adapter verifies liquid identities against the Jar requirements and does not infer one unit per liquid-bearing Jar.
+
+The same audit confirms that Jar production rates are per logical time unit (1000 logical milliseconds per unit), ship liquid capacity is shared across liquid types and measured in whole units, and the current sandbox file is not a production catalog. Actual enemy drop/acquisition, stone shape distribution, production devices, and workshop combinations remain unconnected; no numeric balance calibration is claimed.
