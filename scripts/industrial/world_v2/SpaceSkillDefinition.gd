@@ -12,7 +12,6 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 
 ## Jar-owned execution contract. Keep this data free of Space effect semantics.
 @export_enum("A", "B") var jar_order_type: String = "A"
-@export_enum("Active", "Passive") var jar_order_area: String = "Active"
 @export_range(0, 2147483647, 1) var jar_cooldown_logical_milli: int = 0
 @export var jar_requirements: Array[Dictionary] = []
 
@@ -46,7 +45,7 @@ func is_valid() -> bool:
 			return false
 	return true
 
-func build_jar_order() -> Dictionary:
+func build_jar_order(selected_control_area: String) -> Dictionary:
 	if not is_valid():
 		return {}
 	var expanded_requirements: Array[Dictionary] = []
@@ -60,7 +59,7 @@ func build_jar_order() -> Dictionary:
 			expanded_requirements.append(normalized.duplicate(true))
 	return {
 		"type": jar_order_type,
-		"area": jar_order_area,
+		"area": selected_control_area,
 		"cooldownDurationLogicalMilli": jar_cooldown_logical_milli,
 		"requirements": expanded_requirements
 	}
@@ -75,7 +74,7 @@ func create_order_binding(order_definition_key: String, selected_control_area: S
 	if not bool(balance_context.get("valid", false)) or float(balance_context.get("expectedBattleDurationLogicalMilli", 0.0)) <= 0.0:
 		return {}
 	var activation_policy := "Manual" if selected_control_area == "Active" else "Automatic"
-	var jar_order := build_jar_order()
+	var jar_order := build_jar_order(selected_control_area)
 	if benefit_metrics.is_empty():
 		return {}
 	var balance_report := SpaceSkillBalanceModel.evaluate(benefit_metrics, jar_order, balance_context, balance_profile)
