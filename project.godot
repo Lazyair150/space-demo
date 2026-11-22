@@ -20,6 +20,7 @@ config/icon="res://icon.svg"
 
 GameState="*uid://1mrntfgt1sqh"
 IndustrialRuntime="*res://scripts/industrial/runtime/IndustrialRuntime.gd"
+WorldV2ShipHost="*res://scripts/industrial/world_v2/WorldV2ShipHost.cs"
 
 [display]
 
