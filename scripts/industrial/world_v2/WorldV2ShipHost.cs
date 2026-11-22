@@ -178,6 +178,7 @@ public partial class WorldV2ShipHost : Node
             return new GDictionary { ["success"] = false, ["error"] = "Selected orders cannot be null" };
 
         var demandIds = new GArray();
+        var orderKeys = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
         try
         {
             foreach (var rawOrder in selectedOrders)
@@ -187,6 +188,8 @@ public partial class WorldV2ShipHost : Node
                     throw new InvalidOperationException("Selected order is missing orderDefinitionKey or jarOrder");
 
                 var orderKey = order["orderDefinitionKey"].AsString();
+                if (string.IsNullOrWhiteSpace(orderKey) || !orderKeys.Add(orderKey))
+                    throw new InvalidOperationException("Selected orderDefinitionKey is empty or duplicated");
                 var jarOrder = order["jarOrder"].AsGodotDictionary();
                 var requirements = jarOrder.ContainsKey("requirements")
                     ? jarOrder["requirements"].AsGodotArray()
