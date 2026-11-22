@@ -17,8 +17,12 @@ static func run() -> Dictionary:
 		"area": "Passive",
 		"cooldownDurationLogicalMilli": 10000,
 		"jarOrder": {"type": "A", "requirements": [
-			{"shape": "small", "liquid": "water", "liquidUnits": 2}
+			{"shape": "small", "liquid": "water"}
 		]},
+		"resourceCostForecast": {
+			"liquidUnitsPerActivation": {"water": 2},
+			"forecastSource": "synthetic_empty_jar_scenario"
+		},
 		"workshopOperationsPerActivation": 0.1
 	}]
 	var single := SpaceBattleEconomyEvaluator.evaluate(battle, resources, one_skill)
@@ -32,8 +36,12 @@ static func run() -> Dictionary:
 	var second := one_skill[0].duplicate(true)
 	second["skillId"] = "overdrive"
 	second["jarOrder"] = {"type": "A", "requirements": [
-		{"shape": "small", "liquid": "water", "liquidUnits": 1}
+		{"shape": "small", "liquid": "water"}
 	]}
+	second["resourceCostForecast"] = {
+		"liquidUnitsPerActivation": {"water": 1},
+		"forecastSource": "synthetic_empty_jar_scenario"
+	}
 	shared_skills.append(second)
 	var shared := SpaceBattleEconomyEvaluator.evaluate(battle, resources, shared_skills)
 	if not bool(shared.get("valid", false)):
@@ -41,11 +49,17 @@ static func run() -> Dictionary:
 	if float(shared.commonActivationFulfillment) >= float(single.commonActivationFulfillment):
 		return {"passed": false, "reason": "adding a competing skill must not improve shared fulfillment"}
 
-	var missing_units := one_skill.duplicate(true)
-	missing_units[0].jarOrder.requirements[0].erase("liquidUnits")
-	var rejected := SpaceBattleEconomyEvaluator.evaluate(battle, resources, missing_units)
+	var missing_forecast := one_skill.duplicate(true)
+	missing_forecast[0].erase("resourceCostForecast")
+	var rejected := SpaceBattleEconomyEvaluator.evaluate(battle, resources, missing_forecast)
 	if bool(rejected.get("valid", false)):
-		return {"passed": false, "reason": "liquid demand without explicit units must be rejected"}
+		return {"passed": false, "reason": "liquid demand without a separate forecast must be rejected"}
+	var non_one_to_one := SpaceJarRequirementCostAdapter.normalize(
+		one_skill[0].jarOrder,
+		{"liquidUnitsPerActivation": {"water": 3}, "forecastSource": "synthetic_reuse_scenario"}
+	)
+	if not bool(non_one_to_one.get("valid", false)) or int(non_one_to_one.liquidUnitsPerActivation.water) != 3:
+		return {"passed": false, "reason": "liquid cost forecast must not assume one unit per liquid-bearing Jar"}
 
 	return {
 		"passed": true,
