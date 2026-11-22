@@ -68,7 +68,8 @@ func _begin_ship_world() -> bool:
 		_battle_loadout.selected_order_bindings()
 	)
 	if not bool(materialized.get("success", false)):
-		jar_host.EndShipWorld()
+		if jar_host.IsShipWorldActive:
+			jar_host.EndShipWorld()
 		push_error("[Game] Selected order materialization failed: " + str(materialized.get("error", "")))
 		return false
 
