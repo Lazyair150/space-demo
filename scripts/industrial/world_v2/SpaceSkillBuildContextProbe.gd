@@ -11,12 +11,14 @@ static func run() -> Dictionary:
 			{"shape": "small", "liquid": "water"}
 		]
 	}
-	var devices := [{"shapeJarRatePerSecond": {"small": 2.0}}]
+	var devices := [{"shapeProcessingRatePerSecond": {"small": 2.0}}]
+	var ship_resources := {"expectedStoneProgressPerSecondByShape": {"small": 1.5, "large": 0.5}}
+	var shape_progress := {"small": 1.0, "large": 1.0}
 	var workshop := {
 		"operationCostByOrderType": {"A": 1.0, "B": 3.0},
 		"liquidHandlingOperationCost": 2.0
 	}
-	var result := SpaceSkillBuildContextEvaluator.evaluate(order, devices, workshop, 60000.0, profile)
+	var result := SpaceSkillBuildContextEvaluator.evaluate(order, devices, workshop, ship_resources, shape_progress, 60000.0, profile)
 	if not result.get("valid", false):
 		return {"passed": false, "reason": result.get("reason", "unknown")}
 	if not is_equal_approx(float(result.workshopOperationCount), 5.0):
@@ -24,7 +26,7 @@ static func run() -> Dictionary:
 	if not is_equal_approx(float(result.expectedActivations), 12.0):
 		return {"passed": false, "reason": "expected activation count is incorrect"}
 	var unsupported := SpaceSkillBuildContextEvaluator.evaluate(
-		order, [{"shapeJarRatePerSecond": {"large": 1.0}}], workshop, 60000.0, profile)
+		order, [{"shapeProcessingRatePerSecond": {"large": 1.0}}], workshop, ship_resources, shape_progress, 60000.0, profile)
 	if unsupported.get("valid", false):
 		return {"passed": false, "reason": "unsupported required shape must fail closed"}
 	var bottleneck_order := order.duplicate(true)
