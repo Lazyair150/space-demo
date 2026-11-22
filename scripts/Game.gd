@@ -20,7 +20,7 @@ var _order_effect_commit_callback: Callable
 
 ## Hangar must call this before adding the combat scene to the SceneTree.
 func configure_battle_loadout(loadout: SpaceBattleLoadoutSnapshot) -> bool:
-	if is_inside_tree() or loadout == null:
+	if is_inside_tree() or loadout == null or loadout.to_dictionary().is_empty():
 		return false
 	_battle_loadout = loadout
 	return true
