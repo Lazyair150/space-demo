@@ -8,13 +8,44 @@ const CURRENT_SCHEMA_VERSION: int = 1
 var _data: Dictionary = {}
 
 static func create(source: Dictionary) -> SpaceBattleLoadoutSnapshot:
-	var errors := validate_data(source)
+	var staged := source.duplicate(true)
+	var fingerprint := compute_fingerprint(staged)
+	if staged.has("loadoutFingerprint") and String(staged["loadoutFingerprint"]) != fingerprint:
+		push_error("Space battle loadout fingerprint does not match its contents")
+		return null
+	staged["loadoutFingerprint"] = fingerprint
+	var errors := validate_data(staged)
 	if not errors.is_empty():
 		push_error("Space battle loadout rejected: " + "; ".join(errors))
 		return null
 	var snapshot := SpaceBattleLoadoutSnapshot.new()
-	snapshot._data = source.duplicate(true)
+	snapshot._data = staged
 	return snapshot
+
+static func compute_fingerprint(source: Dictionary) -> String:
+	var canonical_source := source.duplicate(true)
+	canonical_source.erase("loadoutFingerprint")
+	var canonical_json := JSON.stringify(_canonicalize(canonical_source))
+	var hasher := HashingContext.new()
+	if hasher.start(HashingContext.HASH_SHA256) != OK:
+		return ""
+	hasher.update(canonical_json.to_utf8_buffer())
+	return hasher.finish().hex_encode()
+
+static func _canonicalize(value: Variant) -> Variant:
+	if value is Dictionary:
+		var keys: Array = value.keys()
+		keys.sort_custom(func(a: Variant, b: Variant) -> bool: return str(a) < str(b))
+		var result := {}
+		for key in keys:
+			result[key] = _canonicalize(value[key])
+		return result
+	if value is Array:
+		var result: Array = []
+		for item in value:
+			result.append(_canonicalize(item))
+		return result
+	return value
 
 static func validate_data(source: Dictionary) -> PackedStringArray:
 	var errors := PackedStringArray()
