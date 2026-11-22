@@ -6,6 +6,8 @@ class_name BuffInstance
 
 var definition: BuffDefinition
 var target: Node
+## Stable battle-local identity used to restore target references after loading.
+var target_key: String = ""
 var remaining: float = 0.0
 var stacks: int = 1
 
@@ -13,9 +15,10 @@ var _ticks_fired: int = 0
 # 距离下一次 on_tick 还差多少秒。刷新/叠层时按策略重置或保留。
 var _tick_acc: float = 0.0
 
-func setup(def: BuffDefinition, owner_target: Node, duration: float) -> void:
+func setup(def: BuffDefinition, owner_target: Node, duration: float, owner_target_key: String = "") -> void:
 	definition = def
 	target = owner_target
+	target_key = owner_target_key
 	remaining = duration
 	stacks = 1
 	_ticks_fired = 0
@@ -71,3 +74,47 @@ func owner_key() -> String:
 	if definition == null:
 		return "buff:?"
 	return "buff:%s" % String(definition.id)
+
+
+## Runtime snapshot excludes the Resource and Node references; those are resolved by the manager.
+func capture_runtime_state() -> Dictionary:
+	return {
+		"definitionId": String(definition.id) if definition != null else "",
+		"definitionVersion": definition.definition_version if definition != null else 0,
+		"targetKey": target_key,
+		"remaining": remaining,
+		"stacks": stacks,
+		"ticksFired": _ticks_fired,
+		"tickAccumulator": _tick_acc,
+		"customState": capture_custom_state()
+	}
+
+## Restore fields without invoking on_apply; the manager rebuilds stat modifiers separately.
+func restore_runtime_state(snapshot: Dictionary, resolved_definition: BuffDefinition, resolved_target: Node) -> bool:
+	if resolved_definition == null or not resolved_definition.is_valid():
+		return false
+	var restored_remaining := float(snapshot.get("remaining", -1.0))
+	var restored_stacks := int(snapshot.get("stacks", 0))
+	var restored_ticks := int(snapshot.get("ticksFired", -1))
+	var restored_acc := float(snapshot.get("tickAccumulator", -1.0))
+	if restored_remaining <= 0.0 or restored_stacks <= 0 or restored_stacks > resolved_definition.max_stacks or restored_ticks < 0 or restored_acc < 0.0:
+		return false
+	if resolved_definition.tick_interval <= 0.0 and restored_acc > 0.000001:
+		return false
+	if resolved_definition.tick_interval > 0.0 and restored_acc >= resolved_definition.tick_interval + 0.000001:
+		return false
+	definition = resolved_definition
+	target = resolved_target
+	target_key = String(snapshot.get("targetKey", ""))
+	remaining = restored_remaining
+	stacks = restored_stacks
+	_ticks_fired = restored_ticks
+	_tick_acc = restored_acc
+	return restore_custom_state(snapshot.get("customState", {}))
+
+## Subclasses with additional mutable behavior must override both custom-state hooks.
+func capture_custom_state() -> Dictionary:
+	return {}
+
+func restore_custom_state(_state: Variant) -> bool:
+	return true
