@@ -158,6 +158,16 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 						errors.append("skill activation policy must match its selected control area")
 
 			var effect: Variant = order.get("effectBinding", null)
+			var balance_report: Variant = order.get("balanceReport", null)
+			if not (balance_report is Dictionary) or not bool(balance_report.get("valid", false)):
+				errors.append("selected skill must include a valid benefit-to-Jar balance report")
+			else:
+				if float(balance_report.get("targetDifficulty", -1.0)) < 0.0 or float(balance_report.get("actualDifficulty", -1.0)) < 0.0:
+					errors.append("balance report difficulty values must be non-negative")
+			var balance_profile: Variant = order.get("balanceProfile", null)
+			if not (balance_profile is Dictionary) or _required_text(balance_profile, "profileId").is_empty() or int(balance_profile.get("profileVersion", 0)) <= 0:
+				errors.append("selected skill must identify its balance profile version")
+
 			if not (effect is Dictionary):
 				errors.append("effectBinding must be a dictionary")
 			else:
