@@ -33,23 +33,25 @@ These questions are intentionally open. No code should encode an answer until th
 
 ### A. What is the Jar world in the game?
 
-Choose the actual player-facing role:
-- a persistent industrial subsystem that runs while the player is elsewhere;
-- a station/room activity entered explicitly by the player;
-- a tactical support system that can affect a live combat encounter;
-- a progression/economy layer between encounters;
-- or a combination with explicit mode boundaries.
+**Settled semantic decision:** Jar is a system physically and logically inside the player's ship. It is part of the Space game world, not an autonomous background world and not a separate simulation that owns its own wall-clock progression.
 
-This choice determines whether Jar logical time advances during combat, only while its scene is active, or under a separate simulation policy.
+Consequences:
+- When the Space game world advances during normal flight or combat, the ship's Jar system advances as part of that same world.
+- When combat is paused and the game world is stationary, Jar is stationary too.
+- When a higher-level lifecycle event suspends or leaves the game world (game pause, return to main menu, unload/exit of the world, shutdown), Jar does not continue running.
+- Whether the Jar interface is visible, hidden, open, or closed does not by itself determine whether Jar time advances. UI visibility is presentation state; world advancement is simulation state.
+- Jar's WorldClock is an internal logical clock driven by time supplied from the owning Space world. It must not advance from an independent wall clock or an always-running background timer.
+
+The owning Space world is the time authority. The integration layer forwards the world's actual simulation-time delta to Jar exactly once for each applicable world advance. If the Space world does not advance, it forwards no positive delta. Any pause or time-scale policy must be applied at the owning world boundary, not inferred from scene visibility.
 
 ### B. What causes entry and exit?
 
 Define:
-- which game event opens the Jar interface/world;
+- which game event opens the Jar interface (the ship's Jar system itself is already part of the loaded game world);
 - whether opening it pauses combat, transitions to another scene, or overlays the current scene;
-- whether closing it leaves the Jar world running;
-- what happens if the player exits during an active order or workshop replacement;
-- whether the world can be entered again with active work in progress.
+- closing/hiding the interface does not independently pause Jar if the owning Space world continues advancing;
+- what happens if a higher-level event suspends or unloads the game world during an active order or workshop replacement;
+- how the same in-world Jar state is presented again when the player reopens the interface.
 
 The UI transition itself must not be confused with a master/slave workshop replacement. The latter is a domain operation inside the Jar world.
 
@@ -77,15 +79,19 @@ If a reward exists, Space owns reward policy and idempotency. Jar should report 
 
 ### E. How should time and interruption work?
 
-Define the relationship between:
-- Space simulation time;
-- Jar WorldClock logical time;
-- pause/menu/loading states;
-- scene-tree visibility and process mode;
-- active order execution;
-- workshop replacement.
+The time authority is settled: Space owns world progression; Jar consumes the simulation delta supplied by Space.
 
-A scene being hidden is not itself a domain pause command. The integration layer must explicitly translate approved game-state transitions into Jar clock policy.
+Required rules:
+- Each Space world simulation advance forwards its actual simulation delta to Jar exactly once.
+- If combat is paused, the Space world does not advance and Jar receives no advancing delta.
+- If the game is paused, returns to the main menu, unloads the world, or shuts down, Jar receives no advancing delta and its runtime follows the owning world's suspend/dispose lifecycle.
+- If the Jar interface is merely hidden while the game world continues, Jar continues to advance.
+- Scene visibility, UI focus, and Godot node process mode are not authoritative domain time sources.
+- Wall-clock elapsed time must never be used to catch up Jar while the owning game world was paused or absent.
+- Active orders and workshop replacement progress only through accepted world-time advancement. A pause freezes their progress; it does not implicitly cancel them.
+- The integration coordinator must prevent duplicate forwarding of the same world-time interval and must not independently tick Jar from a second process loop.
+
+Implementation detail still to design: map the Space world's pause/time-scale state to the precise delta forwarded into WorldV2RuntimeNode, and define the suspend/resume/dispose behavior for each higher-level game lifecycle transition.
 
 ### F. What is saved, and by whom?
 
@@ -115,7 +121,7 @@ No direct references from Jar Core to Godot nodes or Space scripts are allowed.
 2. A lifecycle state machine for entering, running, pausing, leaving, faulting, and restoring the Jar world.
 3. A resource import/export contract with units, caps, ownership, rejection, and ledger provenance.
 4. A completion/event contract distinguishing Jar completion from Space reward/mission consequences.
-5. A time policy specifying exactly when Jar logical time advances.
+5. A time policy specifying exactly how the owning Space world's simulation delta is forwarded once to Jar, including pause, time-scale, and world lifecycle behavior.
 6. A save/restore transaction design covering partial failure and active execution checkpoints.
 7. A migration plan that replaces the legacy industrial consumer without carrying forward unapproved legacy semantics.
 
