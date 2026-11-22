@@ -25,9 +25,6 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 @export var effect_definition_version: int = 1
 @export var effect_parameters: Dictionary = {}
 
-## Normalized Space-owned benefit dimensions consumed by the balance curve.
-@export var benefit_profile: Dictionary = {}
-
 func is_valid() -> bool:
 	if skill_id == &"" or definition_version <= 0 or display_name.strip_edges().is_empty():
 		return false
@@ -79,7 +76,9 @@ func create_order_binding(order_definition_key: String, selected_control_area: S
 		return {}
 	var activation_policy := "Manual" if selected_control_area == "Active" else "Automatic"
 	var jar_order := build_jar_order()
-	if benefit_metrics.is_empty():\n\t\treturn {}\n\tvar balance_report := SpaceSkillBalanceModel.evaluate(benefit_metrics, jar_order, balance_context, balance_profile)
+	if benefit_metrics.is_empty():
+		return {}
+	var balance_report := SpaceSkillBalanceModel.evaluate(benefit_metrics, jar_order, balance_context, balance_profile)
 	if not balance_report.get("valid", false):
 		push_error("Skill balance evaluation failed: " + String(balance_report.get("reason", "unknown")))
 		return {}
