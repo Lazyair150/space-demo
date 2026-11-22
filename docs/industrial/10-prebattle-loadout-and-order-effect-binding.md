@@ -1,6 +1,6 @@
 # World V2 × Space — pre-battle loadout and order-effect binding
 
-Status: architecture contract based on the settled gameplay purpose. The current combat host still uses a sandbox Jar configuration; this document defines the next replacement boundary, not a claim that hangar UI or loadout materialization already exists.
+Status: architecture contract plus initial loadout/dispatch boundary code. The current combat host still uses a sandbox Jar configuration; hangar UI, loadout materialization, and durable effect commit integration are not yet complete.
 
 ## 1. Build is a single player-authored composition
 
@@ -100,6 +100,13 @@ Jar order cooldown and Space buff duration are distinct. Both use the shared sim
 
 The current BuffDefinition/StatusEffectManager is a reusable effect executor. The new integration should bind orders to that system rather than create a second Buff implementation. The old BuffPickup remains a separate world pickup trigger; an order event must not be faked as a pickup collision.
 
+The branch now contains:
+- `SpaceBattleLoadoutSnapshot.gd`: validates and deep-copies the four-dimension battle build, including selected-order Jar data and versioned Space effect bindings;
+- `SpaceOrderEffectDispatcher.gd`: reads detached Jar events, resolves only bindings present in the frozen loadout, and delegates effect application plus durable effect/processed-ID persistence to an injected commit callback. It acknowledges Jar only after that callback reports a durable commit;
+- `WorldV2RuntimeNode` and `WorldV2ShipHost`: expose pending event reads and acknowledgments to GDScript; demand snapshots also expose orderDefinitionKey and cycleSequence.
+
+The dispatcher is an integration boundary, not yet a live combat feature: no Hangar currently constructs the snapshot, no durable commit callback is wired, and Game.gd does not yet drain events.
+
 ## 7. Shared time
 
 The active Space simulation step is the sole clock source for:
@@ -122,8 +129,10 @@ It does not yet have:
 - hangar/pre-battle loadout data and UI;
 - loadout-to-WorldV2Options materialization;
 - energy-stone processor ingestion/progress in the new Jar world;
-- stable orderDefinitionKey on Jar demands;
-- durable Jar successful-cycle outbox;
-- Space order-effect dispatcher and event acknowledgment/save state.
+- Hangar/pre-battle UI and materialization of the immutable snapshot into WorldV2Options and Jar demand creation;
+- binding the selected orders' orderDefinitionKey values to the actual Jar demand creation calls;
+- a concrete durable Space effect commit callback that atomically persists Buff/effect state with processed EventIds;
+- invoking the dispatcher at the Space physics-step boundary and restoring its state during battle save/load;
+- replacing the sandbox configuration with the frozen loadout-derived world configuration.
 
 Implement in that dependency order. Do not wire an order to a BuffDefinition until the Jar event identity and durable delivery contract exist.
