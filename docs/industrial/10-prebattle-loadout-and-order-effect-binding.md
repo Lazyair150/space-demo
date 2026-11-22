@@ -253,3 +253,28 @@ Added:
 - `SpaceBattleLoadoutSnapshot.gd`: rejects selected skill bindings without a valid balance report and versioned balance-profile identity.
 
 The model's current numeric weights are starter tuning defaults only. The context contract now consumes expected ship stone-progress rates, per-shape processor throughput, per-shape progress-per-Jar, and workshop operation costs. Production-device and ship encounter catalogs still need real data assets and calibration. Liquid-bearing Jars already add explicit cost and workshop handling pressure, but liquid availability still needs to be projected from the Jar liquid stock/production contract using its audited time units; do not infer liquid supply from the shape-stone processor rates. The next iteration is to wire the actual ship/drop and Jar liquid-supply profiles, then calibrate the curve against representative battle duration and observed resource acquisition. That is the step that turns the first measurable curve into the complete Space↔Jar economy model.
+
+
+## 14. Shared battle economy forecast (first implementation)
+
+The single-skill benefit/cost curve is now complemented by a battle-horizon, whole-loadout forecast:
+
+- `SpaceBattleEconomyEvaluator.gd` evaluates all equipped skills against shared shape-Jar, liquid, and workshop-operation budgets.
+- Shape-Jar supply is calculated from initial whole-Jar stock plus battle-horizon production, then floored to indivisible Jar units.
+- Liquid supply is calculated independently from initial liquid stock and liquid production rate. Liquid is not inferred from energy-stone or shape-processor throughput.
+- Every liquid-bearing Jar requirement must specify explicit `liquidUnits`. The evaluator rejects missing quantities rather than guessing that one filled Jar always means one unit.
+- Each skill's theoretical activation ceiling is bounded by its Jar cooldown and the expected battle duration. Active skills require an explicit `requestedActivations` planning assumption; Passive skills may use the cooldown ceiling as a forecast until a real trigger policy exists.
+- All equipped skills compete for the same resource and workshop budgets. The current first-pass allocator applies a deterministic common fulfillment fraction and reports bottlenecks; it deliberately does not invent priority or scheduling policy.
+- Liquid inventory capacity is instantaneous storage capacity, not lifetime throughput. Because consumption timing and production tick timing are not yet simulated, the current report preserves cumulative potential supply and separately reports initial-storage overflow risk. It must not be interpreted as a time-exact inventory simulation.
+- Workshop operations are forecast as a shared battle-horizon budget. Real per-workshop concurrency, A/B session constraints, and operation sequencing still need to be derived from the selected Workshop combination data.
+
+The balance model's cooldown adjustment now compares expected activation counts over the configured battle horizon against the profile's reference cooldown, instead of treating cooldown as a horizon-free ratio. The earlier ratio fallback remains for isolated formula probes only; production loadout validation requires a valid duration-bearing build context.
+
+### Probe and current limits
+
+`SpaceBattleEconomyEvaluatorProbe.gd` checks:
+1. A single liquid-bearing skill is constrained when the shared liquid/workshop budget cannot support all cooldown-available activations.
+2. Adding a competing skill cannot improve the shared fulfillment fraction.
+3. A liquid-bearing requirement without an explicit liquid quantity is rejected.
+
+This is an explicit synthetic probe, not a claim that real ship/device/workshop catalog values have been calibrated. The model is a deterministic forecast, not the Jar runtime's authoritative resource ledger. It does not yet simulate exact event chronology, fractional production accumulators, inventory overflow after each production tick, Jar reservation/settlement, or priority among Active/Passive skills. Those belong to the next integration/calibration stage and must be supplied by actual versioned catalogs and Jar contracts.
