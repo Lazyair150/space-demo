@@ -49,6 +49,13 @@ static func run() -> Dictionary:
 	if float(shared.commonActivationFulfillment) >= float(single.commonActivationFulfillment):
 		return {"passed": false, "reason": "adding a competing skill must not improve shared fulfillment"}
 
+	var plain_jar_skill := one_skill.duplicate(true)
+	plain_jar_skill[0].jarOrder.requirements = [{"shape": "small"}]
+	plain_jar_skill[0].erase("resourceCostForecast")
+	var plain_jar_result := SpaceBattleEconomyEvaluator.evaluate(battle, resources, plain_jar_skill)
+	if not bool(plain_jar_result.get("valid", false)):
+		return {"passed": false, "reason": "plain Jar requirements must not require a liquid forecast"}
+
 	var missing_forecast := one_skill.duplicate(true)
 	missing_forecast[0].erase("resourceCostForecast")
 	var rejected := SpaceBattleEconomyEvaluator.evaluate(battle, resources, missing_forecast)
