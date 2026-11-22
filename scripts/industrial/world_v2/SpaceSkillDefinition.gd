@@ -17,8 +17,8 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 @export var jar_requirements: Array[Dictionary] = []
 
 ## Space-owned player control assignment and trigger policy.
-@export_enum("Active", "Passive") var control_area: String = "Active"
-@export_enum("Manual", "Automatic") var activation_policy: String = "Manual"
+## The player chooses one allowed area when equipping this skill.
+@export var allowed_control_areas: Array[String] = ["Active", "Passive"]
 
 ## Space-owned benefit/effect binding. Buff is the first executor, not the only future type.
 @export var effect_definition_id: StringName = &""
@@ -32,14 +32,11 @@ func is_valid() -> bool:
 		return false
 	if jar_cooldown_logical_milli < 0 or jar_requirements.is_empty():
 		return false
-	if not ["Active", "Passive"].has(control_area):
+	if allowed_control_areas.is_empty():
 		return false
-	if not ["Manual", "Automatic"].has(activation_policy):
-		return false
-	if control_area == "Active" and activation_policy != "Manual":
-		return false
-	if control_area == "Passive" and activation_policy != "Automatic":
-		return false
+	for area in allowed_control_areas:
+		if not ["Active", "Passive"].has(area):
+			return false
 	if effect_definition_id == &"" or effect_definition_version <= 0:
 		return false
 	for requirement in jar_requirements:
@@ -49,9 +46,12 @@ func is_valid() -> bool:
 			return false
 	return true
 
-func create_order_binding(order_definition_key: String) -> Dictionary:
+func create_order_binding(order_definition_key: String, selected_control_area: String) -> Dictionary:
 	if not is_valid() or order_definition_key.strip_edges().is_empty():
 		return {}
+	if not allowed_control_areas.has(selected_control_area):
+		return {}
+	var activation_policy := "Manual" if selected_control_area == "Active" else "Automatic"
 	return {
 		"orderDefinitionKey": order_definition_key,
 		"skillDefinitionId": String(skill_id),
@@ -63,7 +63,7 @@ func create_order_binding(order_definition_key: String) -> Dictionary:
 			"requirements": jar_requirements.duplicate(true)
 		},
 		"skillControl": {
-			"area": control_area,
+			"area": selected_control_area,
 			"activationPolicy": activation_policy
 		},
 		"effectBinding": {
