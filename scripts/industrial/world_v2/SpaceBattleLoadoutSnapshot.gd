@@ -24,6 +24,8 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 		errors.append("shipWorldId is required")
 	if _required_text(source, "loadoutId").is_empty():
 		errors.append("loadoutId is required")
+	if _required_text(source, "loadoutFingerprint").is_empty():
+		errors.append("loadoutFingerprint is required")
 	if int(source.get("loadoutVersion", 0)) <= 0:
 		errors.append("loadoutVersion must be positive")
 
@@ -128,6 +130,9 @@ func loadout_id() -> String:
 
 func loadout_version() -> int:
 	return int(_data.get("loadoutVersion", 0))
+
+func loadout_fingerprint() -> String:
+	return String(_data.get("loadoutFingerprint", ""))
 
 func to_dictionary() -> Dictionary:
 	return _data.duplicate(true)
