@@ -90,7 +90,11 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 					errors.append("Jar order requirements must be non-empty")
 				else:
 					for raw_requirement in requirements:
-						if not (raw_requirement is Dictionary) or String(raw_requirement.get("shape", "")).strip_edges().is_empty():
+						if not (raw_requirement is Dictionary):
+							errors.append("Jar order requirement must be a dictionary")
+							continue
+						var requirement: Dictionary = raw_requirement
+						if String(requirement.get("shape", "")).strip_edges().is_empty():
 							errors.append("Jar order requirement must identify a shape")
 				if int(jar_order.get("cooldownDurationLogicalMilli", -1)) < 0:
 					errors.append("order cooldown cannot be negative")
