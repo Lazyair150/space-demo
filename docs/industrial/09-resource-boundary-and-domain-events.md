@@ -94,7 +94,7 @@ The event means **one successful order cycle completed**. It does not mean a buf
 - Space owns the buff's active duration, stacking/refresh policy, target selection, and actual gameplay effect. These must not be conflated with Jar's order cooldown.
 - If an order fails, is cancelled, or is interrupted, it must not emit a successful-cycle event. Any separate terminal telemetry is not a buff trigger.
 
-The current OrderDemandBoard already implements successful fulfillment and retained-order cooldown. It does not yet expose a durable successful-cycle outbox or persisted cycle sequence. That is a concrete Jar-side implementation gap, not a reason to infer completion from a UI snapshot.
+The Jar phase 4.10c branch now accepts opaque orderDefinitionKey values, increments a persisted per-demand cycleSequence on successful fulfillment, and writes OrderCycleCompleted events to a checkpointed outbox after resource settlement and reservation release. ApplicationService and the Godot Bridge expose pending reads and idempotent acknowledgments. Space's WorldV2RuntimeNode and WorldV2ShipHost now forward those APIs to GDScript. This is a real event channel; completion must never be inferred from a UI snapshot.
 
 ## 4. Space effect dispatcher
 
@@ -131,10 +131,10 @@ For energy-stone ingress, the eventual receipt must report source identity, acce
 A bounded resource ledger and detached world snapshot are not a durable completion-event channel.
 
 Required implementation:
-- successful cycle completion writes an outbox event in the same logical mutation boundary as the demand fulfillment/cooldown transition;
-- event identity and per-demand cycle sequence survive execution checkpoint and full save restoration;
-- read/ack operations are exposed through ApplicationService/Bridge using detached DTOs;
-- events remain available until Space acknowledges them, or until a coordinated save guarantees both sides committed;
+- successful cycle completion writes an outbox event only after resource settlement, reservation release, demand fulfillment/cooldown transition, and cycle sequence increment;
+- event identity, per-demand cycle sequence, Jar world-instance identity, and pending events survive the version-2 execution checkpoint;
+- read/ack operations are exposed through ApplicationService/Bridge using detached DTOs and are now surfaced through the Space runtime/ship host;
+- events remain available until Space acknowledges them;
 - duplicate reads and retries return the same event; acknowledgment is idempotent;
 - Space's effect dispatcher deduplicates before applying the effect.
 
@@ -156,6 +156,8 @@ For order effects:
 4. Space acknowledges the event after its own effect state and processed-event identity are durable.
 
 Space and Jar do not share one database transaction. Save recovery must use stable operation/event IDs and idempotent application, not assume cross-system atomic writes.
+
+Space now has a frozen-loadout snapshot contract and a callback-driven order-effect dispatcher boundary. The dispatcher will not acknowledge an event until the injected Space commit callback reports that both the effect state and processed EventId were durably saved. The callback and battle save/load wiring remain to be implemented; until then, the dispatcher must not be treated as an active effect path.
 
 ## 8. Explicitly not decided
 
