@@ -15,6 +15,9 @@ var _shake_strength:float
 
 func _ready() -> void:
 	GameState.reset_run()
+	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if jar_host != null and not jar_host.BeginShipWorld():
+		push_error("[Game] World V2 Jar host could not start: " + str(jar_host.FaultReason))
 	_camera_home=camera_2d.position
 	_scatter_asteroids()
 	if player:
@@ -24,12 +27,22 @@ func _ready() -> void:
 			player.damaged.connect(_on_player_damaged)
 
 func _physics_process(delta: float) -> void:
+	# This is the owning combat world's simulation step. Delta is already simulation-scaled.
+	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if jar_host != null:
+		jar_host.AdvanceSpaceSimulation(delta)
 	if _shake_time > 0.0:
 		_shake_time-=delta
 		var offset:=Vector2(randf_range(-1,1),randf_range(-1,1))*_shake_strength
 		camera_2d.position=_camera_home+offset
 		if _shake_time <=0.0:
 			camera_2d.position=_camera_home
+
+func _exit_tree() -> void:
+	# Leaving the owning ship-world is terminal for this Jar session.
+	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if jar_host != null:
+		jar_host.EndShipWorld()
 
 func _on_player_died()->void:
 	GameState.report_game_over()
