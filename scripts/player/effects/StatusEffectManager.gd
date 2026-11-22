@@ -255,8 +255,11 @@ func restore_runtime_state(snapshot: Dictionary, definition_resolver: Callable, 
 				return false
 		staged_instances.append(instance)
 	# Commit only after every resource, target and runtime field has validated.
-	for old_instance in _instances.duplicate():
-		_remove_instance(old_instance)
+	# Restore is reconstruction, not gameplay expiration: do not invoke on_expire
+	# or emit buff_removed while replacing the previous in-memory projection.
+	if _stats != null:
+		for old_instance in _instances:
+			_stats.remove_modifiers_by_owner(old_instance.owner_key())
 	_instances.clear()
 	_processed_order_event_ids = staged_ids
 	for instance in staged_instances:
