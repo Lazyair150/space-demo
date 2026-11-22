@@ -61,6 +61,14 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 		if _required_text(workshop, "definitionId").is_empty() or int(workshop.get("definitionVersion", 0)) <= 0:
 			errors.append("workshop combination must identify a versioned definition")
 
+	var jar_options: Variant = source.get("jarWorldOptions", null)
+	if not (jar_options is Dictionary):
+		errors.append("jarWorldOptions must be a fully materialized WorldV2Options dictionary")
+	else:
+		for required_key in ["shapes", "liquids", "producers", "workshops", "masterWorkshopName"]:
+			if not jar_options.has(required_key):
+				errors.append("jarWorldOptions is missing " + required_key)
+
 	var orders: Variant = source.get("selectedOrderBindings", null)
 	if not (orders is Array):
 		errors.append("selectedOrderBindings must be an array")
@@ -123,6 +131,15 @@ func loadout_version() -> int:
 
 func to_dictionary() -> Dictionary:
 	return _data.duplicate(true)
+
+func jar_world_options() -> Dictionary:
+	return _data.get("jarWorldOptions", {}).duplicate(true)
+
+func jar_world_options_json() -> String:
+	return JSON.stringify(jar_world_options())
+
+func selected_order_bindings() -> Array:
+	return _data.get("selectedOrderBindings", []).duplicate(true)
 
 func order_definition_keys() -> PackedStringArray:
 	var result := PackedStringArray()
