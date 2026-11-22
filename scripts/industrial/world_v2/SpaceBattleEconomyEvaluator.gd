@@ -51,16 +51,15 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 	var capacity := float(resources.get("liquidInventoryCapacity", -1.0))
 	if capacity < -1.0:
 		return _failure("liquidInventoryCapacity must be -1 or non-negative")
+	# Capacity constrains instantaneous stock, not cumulative lifetime throughput.
+	# Consumption frees room for later production; without a time-resolved trigger schedule,
+	# cumulative supply remains an upper-bound forecast and capacity is reported separately.
+	var liquid_storage_limited := false
 	if capacity >= 0.0:
-		liquid_budget.total_supply = minf(liquid_budget.total_supply, capacity)
-		var liquid_keys: Array = liquid_budget.supply.keys()
-		var total_liquid := 0.0
-		for key in liquid_keys:
-			total_liquid += float(liquid_budget.supply[key])
-		if total_liquid > capacity and total_liquid > 0.0:
-			var scale := capacity / total_liquid
-			for key in liquid_keys:
-				liquid_budget.supply[key] = float(liquid_budget.supply[key]) * scale
+		var initial_liquid_total := 0.0
+		for amount in resources.get("initialLiquids", {}).values():
+			initial_liquid_total += float(amount)
+		liquid_storage_limited = initial_liquid_total > capacity
 
 	var workshop_rate := float(resources.get("workshopOperationsPerSecond", -1.0))
 	if workshop_rate < 0.0:
@@ -106,6 +105,8 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 					return _failure("liquidUnits must be positive for " + skill_id + " / " + liquid)
 				liquid_cost[liquid] = float(liquid_cost.get(liquid, 0.0)) + units
 		var cooldown_ceiling := 1 + int(floor(maxf(0.0, duration_milli - 0.001) / cooldown))
+		if area == "Active" and not skill.has("requestedActivations"):
+			return _failure("Active skill requires an explicit requestedActivations planning assumption: " + skill_id)
 		var requested := int(skill.get("requestedActivations", cooldown_ceiling))
 		if requested < 0:
 			return _failure("requestedActivations cannot be negative: " + skill_id)
@@ -200,6 +201,8 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 		"totalRealizedActivations": total_realized,
 		"totalTheoreticalSkillActivations": total_requested,
 		"totalRealizedSkillActivations": total_realized,
+		"liquidStorageCapacity": capacity,
+		"liquidStorageInitialOverflowRisk": liquid_storage_limited,
 		"resourceBudget": {
 			"shapeSupply": shape_budget.supply,
 			"shapeUse": shape_used,
