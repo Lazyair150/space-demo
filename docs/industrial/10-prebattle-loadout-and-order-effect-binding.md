@@ -169,3 +169,15 @@ It does not yet have:
 - making the frozen-loadout path the normal Hangar-to-combat path and disabling the sandbox development fallback in production.
 
 Implement in that dependency order. Do not wire an order to a BuffDefinition until the Jar event identity and durable delivery contract exist.
+
+
+## 11. Versioned Skill Catalog foundation
+
+The branch now contains `SpaceSkillDefinition.gd` and `SpaceSkillCatalog.gd`:
+- A skill definition owns its stable skill ID/version, player-facing name/description, Jar execution contract (A/B type, Jar demand area, requirements, cooldown), and Space effect binding (effect ID/version/parameters).
+- Jar cost is represented by the Jar requirements/configuration itself. There is no separate balance number that can drift away from actual Jar consumption.
+- When equipping, the player selects Active or Passive from the skill's allowed control areas. The generated binding records that selection separately from the Jar demand contract.
+- Active maps to a manual activation request; Passive maps to automatic trigger policy. This is a control assignment, not a different effect type or a bypass around Jar.
+- SkillCatalog resolves exact skill versions and produces the selected-order binding consumed by the frozen battle loadout.
+
+This is the definition/registry/materialization foundation. Actual catalog assets, Hangar UI, manual activation command flow, passive trigger scheduler, and catalog compatibility validation are still outstanding.
