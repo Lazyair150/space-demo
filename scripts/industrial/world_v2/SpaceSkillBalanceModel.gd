@@ -76,6 +76,8 @@ static func evaluate(
 		+ profile.curve_coefficient * pow(benefit_score, profile.curve_exponent)
 	var ratio := actual_difficulty / maxf(target_difficulty, 0.000001)
 	var gap := actual_difficulty - target_difficulty
+	var additional_plain_jar_equivalent := maxf(0.0, -gap) / maxf(profile.jar_base_weight + 1.0, 0.000001)
+	var additional_liquid_jar_equivalent := maxf(0.0, -gap) / maxf(profile.jar_base_weight + profile.liquid_jar_weight + 2.0, 0.000001)
 	return {
 		"valid": true,
 		"profileId": String(profile.profile_id),
@@ -88,7 +90,9 @@ static func evaluate(
 		"actualDifficulty": actual_difficulty,
 		"difficultyRatio": ratio,
 		"difficultyGap": gap,
-		"balanceStatus": _status(ratio),
+		"additionalPlainJarEquivalentToReachCurve": additional_plain_jar_equivalent,
+		"additionalLiquidJarEquivalentToReachCurve": additional_liquid_jar_equivalent,
+		"balanceStatus": _status(ratio, profile),
 		"difficultyBand": _band(actual_difficulty, profile.difficulty_bands),
 		"costBreakdown": {
 			"jarCount": jar_count,
@@ -119,7 +123,7 @@ static func _benefit_score(benefit: Dictionary, profile: SpaceSkillBalanceProfil
 static func _status(ratio: float) -> String:
 	if ratio < 0.8:
 		return "undercosted"
-	if ratio > 1.25:
+	if ratio > profile.on_curve_max_ratio:
 		return "overcosted"
 	return "on_curve"
 
