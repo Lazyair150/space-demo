@@ -104,6 +104,7 @@ The branch now contains:
 - `SpaceBattleLoadoutSnapshot.gd`: validates and deep-copies the four-dimension battle build, including selected-order Jar data and versioned Space effect bindings;
 - `SpaceOrderEffectDispatcher.gd`: reads detached Jar events, resolves only bindings present in the frozen loadout, and delegates effect application plus durable effect/processed-ID persistence to an injected commit callback. It acknowledges Jar only after that callback reports a durable commit;
 - `WorldV2RuntimeNode` and `WorldV2ShipHost`: expose pending event reads and acknowledgments to GDScript; demand snapshots also expose orderDefinitionKey and cycleSequence.
+- `WorldV2RuntimeNode.InitializeWorldFromJson` and `WorldV2ShipHost.BeginShipWorldFromJson`: provide a no-sandbox-fallback construction path for a frozen loadout-derived Jar configuration. The current Game.gd still calls the sandbox probe entry point until Hangar materialization is implemented.
 
 The dispatcher is an integration boundary, not yet a live combat feature: no Hangar currently constructs the snapshot, no durable commit callback is wired, and Game.gd does not yet drain events.
 
