@@ -43,11 +43,11 @@ func drain_pending(jar_host: Object, commit_effect: Callable) -> int:
 	for raw_event in pending:
 		if not (raw_event is Dictionary):
 			push_error("Jar returned a malformed order-cycle event")
-			continue
+			break
 		var event: Dictionary = raw_event
 		if not _validate_event(event):
 			push_error("Jar returned an invalid order-cycle event: " + str(event))
-			continue
+			break
 
 		var event_id := String(event["eventId"])
 		if _processed_event_ids.has(event_id):
@@ -60,12 +60,12 @@ func drain_pending(jar_host: Object, commit_effect: Callable) -> int:
 		if order_binding.is_empty():
 			# Never acknowledge an event whose order is not part of this immutable battle build.
 			push_error("No selected order binding for orderDefinitionKey: " + order_key)
-			continue
+			break
 
 		var event_world_id := String(event["worldInstanceId"])
 		if not _jar_world_instance_id.is_empty() and _jar_world_instance_id != event_world_id:
 			push_error("Order-cycle event belongs to a different Jar world instance")
-			continue
+			break
 
 		var next_processed_ids := _processed_event_ids.keys()
 		next_processed_ids.append(event_id)
@@ -135,8 +135,17 @@ func restore_state(snapshot: Dictionary) -> bool:
 			return false
 		staged[event_id] = true
 
+	var restored_world_id := String(snapshot.get("jarWorldInstanceId", ""))
+	if not staged.is_empty() and restored_world_id.is_empty():
+		push_error("Processed order events require a Jar world-instance identity")
+		return false
+	for event_id in staged:
+		if not restored_world_id.is_empty() and not event_id.begins_with(restored_world_id + ":"):
+			push_error("Processed order event belongs to a different Jar world instance")
+			return false
+
 	_processed_event_ids = staged
-	_jar_world_instance_id = String(snapshot.get("jarWorldInstanceId", ""))
+	_jar_world_instance_id = restored_world_id
 	return true
 
 func is_processed(event_id: String) -> bool:
