@@ -60,6 +60,13 @@ func _begin_ship_world() -> bool:
 			return false
 		return jar_host.BeginShipWorld()
 
+	_order_effect_dispatcher = SpaceOrderEffectDispatcher.new()
+	if not _order_effect_dispatcher.configure(_battle_loadout):
+		return false
+	if not _battle_loadout.order_definition_keys().is_empty() and not _order_effect_commit_callback.is_valid():
+		push_error("[Game] Selected orders require a durable Space effect commit callback")
+		return false
+
 	if not jar_host.BeginShipWorldFromJson(_battle_loadout.jar_world_options_json()):
 		push_error("[Game] Jar rejected the frozen battle loadout configuration")
 		return false
@@ -71,15 +78,6 @@ func _begin_ship_world() -> bool:
 		if jar_host.IsShipWorldActive:
 			jar_host.EndShipWorld()
 		push_error("[Game] Selected order materialization failed: " + str(materialized.get("error", "")))
-		return false
-
-	_order_effect_dispatcher = SpaceOrderEffectDispatcher.new()
-	if not _order_effect_dispatcher.configure(_battle_loadout):
-		jar_host.EndShipWorld()
-		return false
-	if not _battle_loadout.order_definition_keys().is_empty() and not _order_effect_commit_callback.is_valid():
-		jar_host.EndShipWorld()
-		push_error("[Game] Selected orders require a durable Space effect commit callback")
 		return false
 	return true
 
