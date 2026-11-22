@@ -1,10 +1,10 @@
 # World V2 × Space — resource, order-effect, and event contract
 
-Status: updated with the settled gameplay purpose of Jar orders. Jar owns production/execution and order cooldown; Space owns the world effects produced by successful order cycles. Concrete effect definitions and resource conversion tables remain data/design work.
+Status: skill semantics are settled at the domain boundary. Jar orders are execution/cost blueprints for equipped Space skills; Jar owns resource consumption/execution/cooldown, while Space owns skill benefit/effect definitions, versions, targets, stacking, and duration. Concrete catalog content and trigger policies remain implementation/data work.
 
 ## 1. Settled gameplay model
 
-Jar is the ship-internal combat-energy system. An order is not merely a crafting job or inventory transaction: it is the executable prototype of a ship capability, including cooldown-based buffs.
+Jar is the ship-internal combat-energy system. An order is the Jar execution blueprint for a player-equipped Space skill. The player selects skills from a Skill Catalog; Jar sees only opaque order identity, requirements/cost, area assignment, and cooldown. A skill benefit may be a cooldown buff, combat action, support effect, or other Space-world capability.
 
 The pre-battle build is a player-authored composition of:
 1. **Ship selection** — selects the ship and its baseline capabilities/system configuration.
@@ -12,7 +12,7 @@ The pre-battle build is a player-authored composition of:
 3. **Workshop-combination selection** — determines how available Jars are constrained, reshaped, and routed to satisfy order requirements.
 4. **Order selection** — determines which capabilities the ship is configured to produce/execute and which Space world effects successful order cycles invoke.
 
-During combat, Space and Jar share one simulation clock. A pause freezes combat, Jar production, order execution, and order cooldowns together. The order's cooldown is part of Jar's domain timing; the resulting buff duration/cooldown presentation and actual effect application are Space combat responsibilities according to the selected effect definition.
+During combat, Space and Jar share one simulation clock. A pause freezes combat, Jar production, order execution, and order cooldowns together. Jar order cooldown is the skill reuse lockout. Space effect duration is how long an applied benefit remains active. These are independent timers with the same Space simulation-time source.
 
 Intended chain:
 
@@ -170,3 +170,21 @@ This contract does not yet choose:
 - final save-file format and cross-system recovery orchestration.
 
 These are separate design/data tasks. The boundary is fixed: Jar reports successful order cycles; Space owns their gameplay effects.
+
+
+## 9. Skill activation and Active/Passive assignment
+
+The loadout's Active/Passive area is a player-facing control assignment:
+- **Active**: the player chooses when to request the skill. The request still enters Jar's normal admission/execution path; unavailable resources, incompatible requirements, and cooldown prevent execution.
+- **Passive**: a Space-owned trigger/automation policy decides when to request the skill. Passive does not mean free, always-on, or continuously active; each execution still consumes its Jar-configured resources and observes Jar cooldown.
+- A skill's benefit type is independent of its area. Active skills may create timed effects; Passive skills may produce discrete triggered effects.
+- Exact trigger conditions, priorities, target policy, and automation behavior belong to versioned Space skill data, not Jar.
+
+The current code has the Active/Passive loadout area field and the effect-dispatch foundation. Manual activation commands and passive trigger scheduling are not yet implemented.
+
+Space effect implementation added on the current branch:
+- Buff definitions carry explicit positive versions and are resolved by exact version through SpaceEffectCatalog.
+- Buff instance state includes remaining duration, stack count, tick progress, target key, and a custom-state extension point.
+- StatusEffectManager captures/restores active instances and processed event IDs; restore validates into a staged set and rebuilds stat modifiers without replaying gameplay callbacks.
+- SpaceOrderEffectCommitter applies a Jar event idempotently and persists the effect state with the proposed dispatcher state before the dispatcher acknowledges Jar.
+- The state store uses a pending file plus recoverable previous snapshot; platform-specific crash/replace behavior remains to be validated and full battle save/load integration is still outstanding.
