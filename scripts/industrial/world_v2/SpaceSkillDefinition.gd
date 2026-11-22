@@ -27,7 +27,7 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 func is_valid() -> bool:
 	if skill_id == &"" or definition_version <= 0 or display_name.strip_edges().is_empty():
 		return false
-	if not ["A", "B"].has(jar_order_type) or not ["Active", "Passive"].has(jar_order_area):
+	if not ["A", "B"].has(jar_order_type):
 		return false
 	if jar_cooldown_logical_milli < 0 or jar_requirements.is_empty():
 		return false
