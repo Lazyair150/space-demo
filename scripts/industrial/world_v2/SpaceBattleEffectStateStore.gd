@@ -53,9 +53,12 @@ func save(effect_state: Dictionary, dispatcher_state: Dictionary, loadout_identi
 	return true
 
 func load() -> Dictionary:
-	if not FileAccess.file_exists(_path):
-		return {}
-	var file := FileAccess.open(_path, FileAccess.READ)
+	var selected_path := _path
+	if not FileAccess.file_exists(selected_path):
+		var backup_path := ProjectSettings.globalize_path(_path) + ".previous"
+		if not FileAccess.file_exists(backup_path):
+			return {}
+		selected_path = backup_path
 	if file == null:
 		return {}
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
