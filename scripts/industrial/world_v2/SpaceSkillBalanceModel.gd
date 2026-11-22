@@ -21,7 +21,17 @@ static func evaluate(
 	if cooldown_milli < 0.0:
 		return _failure("Jar cooldown cannot be negative")
 	var effective_cooldown := maxf(cooldown_milli, profile.cooldown_floor_logical_milli)
-	var frequency_multiplier := minf(profile.cooldown_reference_logical_milli / effective_cooldown, profile.cooldown_max_frequency_multiplier)
+	var battle_duration_milli := float(context.get("expectedBattleDurationLogicalMilli", 0.0))
+	var expected_activations := 0.0
+	var reference_activations := 0.0
+	var frequency_multiplier := 1.0
+	if battle_duration_milli > 0.0:
+		expected_activations = ceil(battle_duration_milli / effective_cooldown)
+		reference_activations = ceil(battle_duration_milli / profile.cooldown_reference_logical_milli)
+		frequency_multiplier = minf(expected_activations / maxf(reference_activations, 1.0), profile.cooldown_max_frequency_multiplier)
+	else:
+		# Compatibility for isolated formula probes; production loadouts require a duration-bearing context.
+		frequency_multiplier = minf(profile.cooldown_reference_logical_milli / effective_cooldown, profile.cooldown_max_frequency_multiplier)
 	benefit_score *= frequency_multiplier
 	if benefit_score < 0.0:
 		return _failure("benefit profile contains invalid values")
@@ -86,6 +96,9 @@ static func evaluate(
 		"baseBenefitScore": _benefit_score(benefit, profile),
 		"cooldownLogicalMilli": cooldown_milli,
 		"activationFrequencyMultiplier": frequency_multiplier,
+		"expectedBattleDurationLogicalMilli": battle_duration_milli,
+		"expectedActivations": expected_activations,
+		"referenceActivations": reference_activations,
 		"targetDifficulty": target_difficulty,
 		"actualDifficulty": actual_difficulty,
 		"difficultyRatio": ratio,
