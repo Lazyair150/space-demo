@@ -19,6 +19,7 @@ signal buff_refreshed(definition: BuffDefinition, remaining: float, stacks: int)
 
 var _instances: Array = []   # BuffInstance
 var _stats: StatCalculator
+var _processed_order_event_ids: Dictionary = {}
 
 func _ready() -> void:
 	_stats = get_node_or_null(stats_path) as StatCalculator
@@ -42,7 +43,7 @@ func advance_from_space_world(delta: float) -> int:
 func bind_stats(stats: StatCalculator) -> void:
 	_stats = stats
 
-func apply(definition: BuffDefinition, target: Node = null, duration_override: float = -1.0) -> BuffInstance:
+func apply(definition: BuffDefinition, target: Node = null, duration_override: float = -1.0, target_key: String = "") -> BuffInstance:
 	if definition == null or not definition.is_valid():
 		return null
 	var duration := definition.duration if duration_override < 0.0 else duration_override
@@ -81,11 +82,25 @@ func apply(definition: BuffDefinition, target: Node = null, duration_override: f
 				return existing
 
 	var instance := _new_instance(definition)
-	instance.setup(definition, target, duration)
+	instance.setup(definition, target, duration, target_key)
 	_instances.append(instance)
 	_register_modifiers(instance)
 	instance.on_apply()
 	buff_added.emit(definition, instance.stacks)
+	return instance
+
+## Runtime idempotency prevents a failed durable write/retry from stacking the same event twice.
+func apply_order_event(event_id: String, definition: BuffDefinition, target: Node = null, duration_override: float = -1.0, target_key: String = "") -> BuffInstance:
+	if event_id.strip_edges().is_empty():
+		push_error("Order effect event ID is required")
+		return null
+	if _processed_order_event_ids.has(event_id):
+		return find(definition.id) if definition != null else null
+	if definition == null:
+		return null
+	var instance := apply(definition, target, duration_override, target_key)
+	if instance != null:
+		_processed_order_event_ids[event_id] = true
 	return instance
 
 func remove(id: StringName) -> bool:
@@ -191,3 +206,58 @@ func _register_modifiers(instance: BuffInstance) -> void:
 			push_warning("Buff %s 的乘算修正 <1 且叠了 %d 层：结果会反直觉，请改用 FLAT 或不要叠层" % [String(instance.definition.id), instance.stacks])
 		value *= float(instance.stacks)
 		_stats.add_modifier(instance.owner_key(), stat, stage, value)
+
+
+## Capture all manager-owned state needed to reconstruct active effects and idempotency.
+func capture_runtime_state() -> Dictionary:
+	var entries: Array = []
+	for instance in _instances:
+		entries.append(instance.capture_runtime_state())
+	var event_ids := _processed_order_event_ids.keys()
+	event_ids.sort()
+	return {"schemaVersion": 1, "instances": entries, "processedOrderEventIds": event_ids}
+
+## Stage and validate the entire snapshot before mutating the live manager.
+## definition_resolver(id, version) -> BuffDefinition; target_resolver(target_key) -> Node.
+func restore_runtime_state(snapshot: Dictionary, definition_resolver: Callable, target_resolver: Callable) -> bool:
+	if int(snapshot.get("schemaVersion", 0)) != 1 or not definition_resolver.is_valid() or not target_resolver.is_valid():
+		return false
+	var raw_entries: Variant = snapshot.get("instances", null)
+	var raw_ids: Variant = snapshot.get("processedOrderEventIds", null)
+	if not (raw_entries is Array) or not (raw_ids is Array):
+		return false
+	var staged_instances: Array = []
+	var staged_ids := {}
+	for raw_id in raw_ids:
+		var event_id := String(raw_id)
+		if event_id.is_empty() or staged_ids.has(event_id):
+			return false
+		staged_ids[event_id] = true
+	for raw_entry in raw_entries:
+		if not (raw_entry is Dictionary):
+			return false
+		var entry: Dictionary = raw_entry
+		var definition: Variant = definition_resolver.call(String(entry.get("definitionId", "")), int(entry.get("definitionVersion", 0)))
+		if not (definition is BuffDefinition):
+			return false
+		var target_key := String(entry.get("targetKey", ""))
+		var target: Variant = target_resolver.call(target_key)
+		if target != null and not (target is Node):
+			return false
+		var instance := _new_instance(definition)
+		if not instance.restore_runtime_state(entry, definition, target as Node):
+			return false
+		for existing in staged_instances:
+			if existing.definition.id == instance.definition.id:
+				return false
+		staged_instances.append(instance)
+	# Commit only after every resource, target and runtime field has validated.
+	for old_instance in _instances.duplicate():
+		_remove_instance(old_instance)
+	_instances.clear()
+	_processed_order_event_ids = staged_ids
+	for instance in staged_instances:
+		_instances.append(instance)
+		_register_modifiers(instance)
+		# Deliberately do not call on_apply: this is reconstruction, not a new application.
+	return true
