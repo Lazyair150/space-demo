@@ -75,6 +75,7 @@ func drain_pending(jar_host: Object, commit_effect: Callable) -> int:
 			"shipWorldId": _loadout.ship_world_id(),
 			"loadoutId": _loadout.loadout_id(),
 			"loadoutVersion": _loadout.loadout_version(),
+			"loadoutFingerprint": _loadout.loadout_fingerprint(),
 			"jarWorldInstanceId": event_world_id,
 			"processedEventIds": next_processed_ids
 		}
@@ -107,6 +108,7 @@ func capture_state() -> Dictionary:
 		"shipWorldId": _loadout.ship_world_id(),
 		"loadoutId": _loadout.loadout_id(),
 		"loadoutVersion": _loadout.loadout_version(),
+		"loadoutFingerprint": _loadout.loadout_fingerprint(),
 		"jarWorldInstanceId": _jar_world_instance_id,
 		"processedEventIds": ids
 	}
@@ -117,7 +119,7 @@ func restore_state(snapshot: Dictionary) -> bool:
 	if int(snapshot.get("schemaVersion", 0)) != STATE_SCHEMA_VERSION:
 		push_error("Unsupported Space order dispatcher state schema")
 		return false
-	if String(snapshot.get("shipWorldId", "")) != _loadout.ship_world_id() or 		String(snapshot.get("loadoutId", "")) != _loadout.loadout_id() or 		int(snapshot.get("loadoutVersion", 0)) != _loadout.loadout_version():
+	if String(snapshot.get("shipWorldId", "")) != _loadout.ship_world_id() or String(snapshot.get("loadoutId", "")) != _loadout.loadout_id() or int(snapshot.get("loadoutVersion", 0)) != _loadout.loadout_version() or String(snapshot.get("loadoutFingerprint", "")) != _loadout.loadout_fingerprint():
 		push_error("Persisted order dispatcher state does not match the frozen battle loadout")
 		return false
 
