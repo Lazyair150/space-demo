@@ -22,6 +22,7 @@ static func run() -> Dictionary:
 	}
 	var liquid_order := {
 		"type": "A",
+		"cooldownDurationLogicalMilli": 10000,
 		"requirements": [
 			{"shape": "small", "liquid": "water"},
 			{"shape": "small", "liquid": "water"}
