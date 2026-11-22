@@ -75,7 +75,9 @@ static func evaluate(
 	if operations_per_cycle < 0.0 or liquid_operation_cost < 0.0:
 		return _failure("workshop operation costs cannot be negative")
 	var workshop_operations := operations_per_cycle + liquid_jar_count * liquid_operation_cost
-	var production_pressure := total_required_jars / maxf(total_production_capacity, 0.000001)
+	var production_pressure := 0.0
+	for pressure in shape_pressure.values():
+		production_pressure = maxf(production_pressure, float(pressure))
 	return {
 		"valid": true,
 		"expectedBattleDurationLogicalMilli": expected_battle_duration_logical_milli,
