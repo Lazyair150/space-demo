@@ -135,6 +135,7 @@ public partial class WorldV2ShipHost : Node
         if (deltaSeconds == 0)
             return true;
 
+        _worldHasAdvanced = true;
         var accumulated = _fractionalWorldTimeMilli + deltaSeconds * 1000.0;
         if (accumulated > long.MaxValue)
         {
@@ -147,7 +148,6 @@ public partial class WorldV2ShipHost : Node
         if (wholeMilliseconds <= 0)
             return true;
 
-        _worldHasAdvanced = true;
         // Exactly one call per Space simulation step; no _Process or wall-clock fallback.
         _runtime.AdvanceWorldTime(wholeMilliseconds);
         if (_runtime.IsFaulted)
