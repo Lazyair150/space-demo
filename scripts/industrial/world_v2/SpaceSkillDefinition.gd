@@ -52,14 +52,9 @@ func is_valid() -> bool:
 			return false
 	return true
 
-func create_order_binding(order_definition_key: String, selected_control_area: String, balance_profile: SpaceSkillBalanceProfile, balance_context: Dictionary = {}) -> Dictionary:
-	if not is_valid() or order_definition_key.strip_edges().is_empty():
+func build_jar_order() -> Dictionary:
+	if not is_valid():
 		return {}
-	if not allowed_control_areas.has(selected_control_area):
-		return {}
-	if balance_profile == null or not balance_profile.is_valid():
-		return {}
-	var activation_policy := "Manual" if selected_control_area == "Active" else "Automatic"
 	var expanded_requirements: Array[Dictionary] = []
 	for requirement in jar_requirements:
 		var count := int(requirement.get("count", 1))
@@ -69,12 +64,24 @@ func create_order_binding(order_definition_key: String, selected_control_area: S
 			normalized["liquid"] = liquid
 		for _i in range(count):
 			expanded_requirements.append(normalized.duplicate(true))
-	var jar_order := {
+	return {
 		"type": jar_order_type,
 		"area": jar_order_area,
 		"cooldownDurationLogicalMilli": jar_cooldown_logical_milli,
 		"requirements": expanded_requirements
 	}
+
+func create_order_binding(order_definition_key: String, selected_control_area: String, balance_profile: SpaceSkillBalanceProfile, balance_context: Dictionary) -> Dictionary:
+	if not is_valid() or order_definition_key.strip_edges().is_empty():
+		return {}
+	if not allowed_control_areas.has(selected_control_area):
+		return {}
+	if balance_profile == null or not balance_profile.is_valid():
+		return {}
+	if not bool(balance_context.get("valid", false)) or float(balance_context.get("expectedBattleDurationLogicalMilli", 0.0)) <= 0.0:
+		return {}
+	var activation_policy := "Manual" if selected_control_area == "Active" else "Automatic"
+	var jar_order := build_jar_order()
 	var balance_report := SpaceSkillBalanceModel.evaluate(benefit_profile, jar_order, balance_context, balance_profile)
 	if not balance_report.get("valid", false):
 		push_error("Skill balance evaluation failed: " + String(balance_report.get("reason", "unknown")))
