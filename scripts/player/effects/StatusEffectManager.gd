@@ -103,6 +103,9 @@ func apply_order_event(event_id: String, definition: BuffDefinition, target: Nod
 		_processed_order_event_ids[event_id] = true
 	return instance
 
+func has_processed_order_event(event_id: String) -> bool:
+	return _processed_order_event_ids.has(event_id)
+
 func remove(id: StringName) -> bool:
 	var instance := find(id)
 	if instance == null:
