@@ -1,6 +1,7 @@
 using System;
 using Godot;
 using GDictionary = Godot.Collections.Dictionary;
+using GArray = Godot.Collections.Array;
 
 namespace SpaceDemo.Industrial.WorldV2;
 
@@ -131,6 +132,27 @@ public partial class WorldV2ShipHost : Node
             return false;
         }
         return true;
+    }
+
+    /// <summary>
+    /// Read pending Jar order-cycle events at the Space world-step boundary.
+    /// Repeated reads return the same events until explicitly acknowledged.
+    /// </summary>
+    public GArray GetPendingOrderCycleEvents()
+    {
+        if (_runtime == null || !_runtime.IsInitialized || _runtime.IsDisposed)
+            return new GArray();
+        return _runtime.GetPendingOrderCycleEvents();
+    }
+
+    /// <summary>
+    /// Acknowledge only after Space has persisted the effect and processed-event identity.
+    /// </summary>
+    public bool AcknowledgeOrderCycleEvent(string eventId)
+    {
+        if (_runtime == null || !_runtime.IsInitialized || _runtime.IsDisposed)
+            return false;
+        return _runtime.AcknowledgeOrderCycleEvent(eventId);
     }
 
     public GDictionary GetWorldSnapshot()
