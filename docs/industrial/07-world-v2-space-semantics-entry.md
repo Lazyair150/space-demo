@@ -68,14 +68,24 @@ Do not assume the legacy ore/material/wallet mapping remains valid. The new Jar 
 
 ### D. What does Jar completion mean to Space?
 
-Decide whether a completed demand:
-- only changes Jar-owned inventory and workshop state;
-- emits a domain fact that Space may interpret;
-- creates a mission objective result;
-- unlocks a recipe/equipment/progression item;
-- or has no direct combat consequence.
+**Settled semantic decision:** A selected Jar order is the executable prototype of a ship capability. It is not merely a crafting task. Each successful order cycle emits a domain fact that causes Space to execute the world effect bound to that order in the active pre-battle loadout. Cooldown-based buffs are a central example; other combat-support or non-combat world effects may use the same mechanism.
 
-If a reward exists, Space owns reward policy and idempotency. Jar should report a completed domain result, not grant combat currency or mutate player stats.
+The pre-battle player build deliberately includes:
+- ship selection;
+- production-device selection;
+- workshop-combination selection;
+- order selection.
+
+These choices form one build. Production devices determine how typed energy stones collected in combat contribute to shape-specific Jar production progress; workshop combinations determine how Jars/resources can be constrained or reshaped to meet order requirements; selected orders determine which capabilities/effects can be triggered.
+
+Ownership:
+- Jar owns whether an order can be admitted, how it consumes resources, its execution, successful-cycle fact, and its configured order cooldown.
+- Space owns the immutable order-to-effect binding for the current battle, effect definition/version, buff/effect instance, active duration, stacking/refresh rules, target selection, and actual combat/world mutation.
+- A successful Jar event is a trigger fact, not proof that Space has already applied the effect.
+- Repeated successful cycles of a retained order are distinct triggers. DemandId alone is insufficient as an event identity; the event requires a persisted cycle sequence or equivalent unique identity.
+- Failed, cancelled, or interrupted execution does not trigger a successful-order effect.
+
+The event must be durable and idempotent across checkpoint/save recovery. Jar records the event; Space resolves it through the active loadout's effect binding and applies it once. Jar must not directly mutate Player, Enemy, health, damage, score, wallet, or reward state.
 
 ### E. How should time and interruption work?
 
@@ -129,8 +139,8 @@ Only after these artifacts are approved should the production scene, autoload, a
 
 ## Explicit non-goals for the first integration pass
 
-- No migration of old order rewards, materials, ore wallet, attack upgrades, or damage bonuses.
-- No coupling Jar order completion directly to enemy/player health or combat score.
+- No migration of old order rewards, materials, ore wallet, attack upgrades, or damage bonuses. New order effects are defined by Space's own effect catalog and loadout bindings.
+- No direct Jar-to-Player/Enemy/health/damage/score mutation. Space may apply effects triggered by successful Jar order-cycle events.
 - No automatic conversion of combat drops into liquid without an approved resource mapping.
 - No attempt to make the Jar world responsible for Space mission success/failure.
 - No deletion of the legacy implementation until the replacement flow and save compatibility policy are agreed.
