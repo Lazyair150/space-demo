@@ -2,7 +2,9 @@ extends RefCounted
 class_name SpaceSkillBuildContextEvaluator
 ## Converts the selected production-device/workshop build into measurable per-skill pressure.
 ## Expected schema:
-## device.shapeJarRatePerSecond: { shape_id: positive jars/second }
+## ship_resource_profile.expectedStoneProgressPerSecondByShape: { shape_id: non-negative progress/second }
+## device.shapeProcessingRatePerSecond: { shape_id: positive progress/second }
+## shape_progress_per_jar: { shape_id: positive progress units required for one Jar }
 ## workshop.operationCostByOrderType: { A|B: non-negative operations per cycle }
 ## workshop.liquidHandlingOperationCost: non-negative operations per liquid-bearing jar.
 
@@ -10,6 +12,8 @@ static func evaluate(
 	jar_order: Dictionary,
 	production_devices: Array,
 	workshop_combination: Dictionary,
+	ship_resource_profile: Dictionary,
+	shape_progress_per_jar: Dictionary,
 	expected_battle_duration_logical_milli: float,
 	profile: SpaceSkillBalanceProfile
 ) -> Dictionary:
@@ -26,15 +30,18 @@ static func evaluate(
 	for raw_device in production_devices:
 		if not (raw_device is Dictionary):
 			return _failure("production device selection must be a dictionary")
-		var rates: Variant = raw_device.get("shapeJarRatePerSecond", null)
+		var rates: Variant = raw_device.get("shapeProcessingRatePerSecond", null)
 		if not (rates is Dictionary) or rates.is_empty():
-			return _failure("production device must provide shapeJarRatePerSecond")
+			return _failure("production device must provide shapeProcessingRatePerSecond")
 		for shape in rates:
 			var rate := float(rates[shape])
 			if rate < 0.0:
 				return _failure("shape production rates cannot be negative")
 			aggregate_rates[String(shape)] = float(aggregate_rates.get(String(shape), 0.0)) + rate
 
+	var stone_rates: Variant = ship_resource_profile.get("expectedStoneProgressPerSecondByShape", null)
+	if not (stone_rates is Dictionary) or stone_rates.is_empty():
+		return _failure("ship resource profile must provide expectedStoneProgressPerSecondByShape")
 	var shape_demand := {}
 	var liquid_jar_count := 0
 	for raw_requirement in requirements:
@@ -57,14 +64,19 @@ static func evaluate(
 	var total_production_capacity := 0.0
 	var shape_pressure := {}
 	for shape in shape_demand:
-		var rate := float(aggregate_rates.get(shape, 0.0))
-		if rate <= 0.0:
-			return _failure("selected production devices cannot produce required shape: " + shape)
+		var processor_rate := float(aggregate_rates.get(shape, 0.0))
+		var stone_rate := float(stone_rates.get(shape, 0.0))
+		var progress_per_jar := float(shape_progress_per_jar.get(shape, 0.0))
+		if processor_rate <= 0.0 or stone_rate <= 0.0 or progress_per_jar <= 0.0:
+			return _failure("ship drops, selected processors, and Jar conversion must all support shape: " + shape)
+		var effective_progress_rate := minf(processor_rate, stone_rate)
+		var output_jar_rate := effective_progress_rate / progress_per_jar
 		var required := float(shape_demand[shape]) * expected_activations
-		var capacity := rate * battle_seconds
+		var capacity := output_jar_rate * battle_seconds
 		total_required_jars += required
 		total_production_capacity += capacity
 		shape_pressure[shape] = required / maxf(capacity, 0.000001)
+		aggregate_rates[shape] = output_jar_rate
 
 	var order_type := String(jar_order.get("type", ""))
 	var operation_costs: Variant = workshop_combination.get("operationCostByOrderType", null)
@@ -82,7 +94,8 @@ static func evaluate(
 		"valid": true,
 		"expectedBattleDurationLogicalMilli": expected_battle_duration_logical_milli,
 		"expectedActivations": expected_activations,
-		"aggregateShapeRates": aggregate_rates,
+		"effectiveShapeJarOutputRatesPerSecond": aggregate_rates,
+		"shipStoneProgressRatesPerSecond": stone_rates,
 		"shapeDemandPerActivation": shape_demand,
 		"shapePressure": shape_pressure,
 		"totalExpectedJarDemand": total_required_jars,
