@@ -80,3 +80,6 @@ Added `SpaceJarWorldResourceProfile.gd` as a versioned wrapper around the actual
 The rate conversion is explicit: Jar production is per logical time unit and one logical time unit is 1000 logical milliseconds. Since the evaluator horizon is also expressed in logical milliseconds, the numerical rate is preserved when projected as per logical second. This adapter does not create shape-Jar output or workshop operation capacity; those remain separate acquisition/device and workshop-combination inputs.
 
 `SpaceJarWorldResourceProfileProbe.gd` checks the materialized liquid stock/capacity/rate contract and rejects initial stock exceeding the shared capacity. It uses synthetic fixture values only; no production profile is claimed.
+
+
+The profile's liquid-side materialization carries `jarResourceProfileId` and `jarResourceProfileVersion` into the battle forecast. The evaluator preserves this provenance in its report and rejects an initial stock total above the configured shared capacity. The projected production total may still exceed capacity over the full battle horizon; that is reported as a no-consumption overflow risk until time-resolved consumption/production scheduling is implemented.
