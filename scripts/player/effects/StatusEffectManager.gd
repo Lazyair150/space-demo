@@ -14,6 +14,8 @@ signal buff_removed(definition: BuffDefinition)
 signal buff_refreshed(definition: BuffDefinition, remaining: float, stacks: int)
 
 @export var stats_path: NodePath
+## 由 Space 主世界统一提供时间时启用；此时禁止本节点用独立 _process 推进。
+@export var external_time_authority: bool = false
 
 var _instances: Array = []   # BuffInstance
 var _stats: StatCalculator
@@ -23,7 +25,19 @@ func _ready() -> void:
 
 # 供测试按显式 delta 驱动；正常运行时 _process 走同一条路径
 func _process(delta: float) -> void:
+	if external_time_authority:
+		return
 	advance(delta)
+
+## Space 世界时钟入口。外部时钟模式下每个世界推进步恰好调用一次。
+func advance_from_space_world(delta: float) -> int:
+	if not external_time_authority:
+		push_error("StatusEffectManager 尚未启用 external_time_authority")
+		return 0
+	if delta < 0.0:
+		push_error("Buff 世界时间增量不能为负数")
+		return 0
+	return advance(delta)
 
 func bind_stats(stats: StatCalculator) -> void:
 	_stats = stats
