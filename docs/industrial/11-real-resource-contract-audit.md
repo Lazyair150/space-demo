@@ -69,3 +69,14 @@ Accordingly this audit does not invent enemy drop rates, stone shape distributio
 5. Build scenario materializers that create evaluator inputs from frozen loadouts and named assumptions.
 6. When a concrete Jar execution plan is available, use its resource manifest for actual initial liquid supply/transfer; retain recipe-only estimates as explicitly labeled forecasts.
 7. Calibrate the benefit/cost curve only after representative real profiles and acquisition scenarios exist.
+
+
+## 7. Versioned Jar-world resource profile adapter
+
+Added `SpaceJarWorldResourceProfile.gd` as a versioned wrapper around the actual `WorldV2Options`-shaped configuration. It validates the Jar liquid vocabulary, whole-unit initial stock, shared ship-liquid capacity, liquid production rates, producer shape keys, workshop roster, fixed Master/Slave references, and workshop staging constraints before exposing either:
+- a deep-copied `jarWorldOptions` payload for the frozen loadout; or
+- the liquid-side fields consumed by the Space battle economy evaluator.
+
+The rate conversion is explicit: Jar production is per logical time unit and one logical time unit is 1000 logical milliseconds. Since the evaluator horizon is also expressed in logical milliseconds, the numerical rate is preserved when projected as per logical second. This adapter does not create shape-Jar output or workshop operation capacity; those remain separate acquisition/device and workshop-combination inputs.
+
+`SpaceJarWorldResourceProfileProbe.gd` checks the materialized liquid stock/capacity/rate contract and rejects initial stock exceeding the shared capacity. It uses synthetic fixture values only; no production profile is claimed.
