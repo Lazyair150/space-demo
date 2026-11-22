@@ -106,16 +106,34 @@ public partial class WorldV2RuntimeNode : Node
             return;
 
         _worldTimeRemainderMilli -= wholeWorldTimeMilli;
+        AdvanceWorldTime(wholeWorldTimeMilli);
+    }
+
+    /// <summary>
+    /// Advances Jar by the owning Space world's already-authorized simulation-time delta.
+    /// Production integration should disable AutoAdvance and call this exactly once
+    /// for each Space world advance; UI visibility and wall-clock time are not authorities.
+    /// </summary>
+    public bool AdvanceWorldTime(long deltaWorldTimeMilli)
+    {
+        if (deltaWorldTimeMilli < 0)
+            throw new ArgumentOutOfRangeException(nameof(deltaWorldTimeMilli));
+
+        if (deltaWorldTimeMilli == 0 || _session == null || _faulted || _disposed)
+            return false;
+
         try
         {
-            var advance = _session.AdvanceWorld(wholeWorldTimeMilli);
+            var advance = _session.AdvanceWorld(deltaWorldTimeMilli);
             if (advance.RuntimeFaulted)
             {
                 LatchFault(advance.FaultReason ?? "World v2 Core entered a runtime fault state", "core");
                 EmitSignal(SignalName.SnapshotChanged);
-                return;
+                return false;
             }
+
             EmitSignal(SignalName.SnapshotChanged);
+            return true;
         }
         catch (Exception ex)
         {
@@ -123,6 +141,7 @@ public partial class WorldV2RuntimeNode : Node
             if (!_faulted)
                 LatchFault(ex.Message, "host advance");
             EmitSignal(SignalName.SnapshotChanged);
+            return false;
         }
     }
 
