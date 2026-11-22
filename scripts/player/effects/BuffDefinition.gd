@@ -35,7 +35,9 @@ enum StackPolicy {
 @export var instance_script: Script
 
 func is_valid() -> bool:
-	if id == &"" or definition_version <= 0 or duration <= 0.0:
+	if id == &"" or definition_version <= 0 or duration <= 0.0 or max_stacks <= 0:
+		return false
+	if tick_interval < 0.0 or tick_damage < 0:
 		return false
 	for value in balance_metrics.values():
 		if float(value) < 0.0:
