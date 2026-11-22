@@ -25,7 +25,12 @@ func resolve_balance_metrics(definition_id: String, version: int) -> Dictionary:
 	var definition := resolve_buff(definition_id, version)
 	if definition == null or definition.balance_metrics.is_empty():
 		return {}
-	return definition.balance_metrics.duplicate(true)
+	var metrics := definition.balance_metrics.duplicate(true)
+	# These values are derived from the exact effect definition, never hand-copied into a skill.
+	metrics["duration"] = definition.duration
+	metrics["periodic_damage"] = float(definition.tick_damage) * floor(definition.duration / definition.tick_interval) if definition.tick_interval > 0.0 else 0.0
+	metrics["stack_potential"] = float(definition.max_stacks) if definition.stack_policy == BuffDefinition.StackPolicy.ADD_STACK else 1.0
+	return metrics
 
 func contains(definition_id: String, version: int) -> bool:
 	return resolve_buff(definition_id, version) != null
