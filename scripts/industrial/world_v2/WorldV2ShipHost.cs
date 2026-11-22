@@ -18,6 +18,8 @@ public partial class WorldV2ShipHost : Node
     private HostState _state = HostState.Absent;
     private double _fractionalWorldTimeMilli;
     private string _faultReason = "";
+    private bool _worldHasAdvanced;
+    private bool _ordersMaterialized;
 
     public string LifecycleState => _state.ToString();
     public bool IsShipWorldActive => _state == HostState.Active;
@@ -48,6 +50,8 @@ public partial class WorldV2ShipHost : Node
 
         _state = HostState.Created;
         _fractionalWorldTimeMilli = 0;
+        _worldHasAdvanced = false;
+        _ordersMaterialized = false;
         _faultReason = "";
         var runtime = new WorldV2RuntimeNode
         {
@@ -143,6 +147,7 @@ public partial class WorldV2ShipHost : Node
         if (wholeMilliseconds <= 0)
             return true;
 
+        _worldHasAdvanced = true;
         // Exactly one call per Space simulation step; no _Process or wall-clock fallback.
         _runtime.AdvanceWorldTime(wholeMilliseconds);
         if (_runtime.IsFaulted)
@@ -157,6 +162,57 @@ public partial class WorldV2ShipHost : Node
     /// Read pending Jar order-cycle events at the Space world-step boundary.
     /// Repeated reads return the same events until explicitly acknowledged.
     /// </summary>
+    /// <summary>
+    /// Adds the frozen loadout's selected Jar orders before the first simulation step.
+    /// Any partial materialization failure disposes the not-yet-started ship world.
+    /// </summary>
+    public GDictionary MaterializeSelectedOrders(GArray selectedOrders)
+    {
+        if (_state != HostState.Active || _runtime == null || !_runtime.IsInitialized)
+            return new GDictionary { ["success"] = false, ["error"] = "Ship world is not active" };
+        if (_worldHasAdvanced)
+            return new GDictionary { ["success"] = false, ["error"] = "Orders must be materialized before the first world step" };
+        if (_ordersMaterialized)
+            return new GDictionary { ["success"] = false, ["error"] = "Selected orders have already been materialized" };
+        if (selectedOrders == null)
+            return new GDictionary { ["success"] = false, ["error"] = "Selected orders cannot be null" };
+
+        var demandIds = new GArray();
+        try
+        {
+            foreach (var rawOrder in selectedOrders)
+            {
+                var order = rawOrder.AsGodotDictionary();
+                if (!order.ContainsKey("orderDefinitionKey") || !order.ContainsKey("jarOrder"))
+                    throw new InvalidOperationException("Selected order is missing orderDefinitionKey or jarOrder");
+
+                var orderKey = order["orderDefinitionKey"].AsString();
+                var jarOrder = order["jarOrder"].AsGodotDictionary();
+                var requirements = jarOrder.ContainsKey("requirements")
+                    ? jarOrder["requirements"].AsGodotArray()
+                    : new GArray();
+                var demandId = _runtime.AddJarDemand(
+                    jarOrder.ContainsKey("type") ? jarOrder["type"].AsString() : "",
+                    jarOrder.ContainsKey("area") ? jarOrder["area"].AsString() : "",
+                    jarOrder.ContainsKey("cooldownDurationLogicalMilli")
+                        ? jarOrder["cooldownDurationLogicalMilli"].AsInt64()
+                        : -1,
+                    orderKey,
+                    requirements);
+                demandIds.Add(demandId);
+            }
+
+            _ordersMaterialized = true;
+            return new GDictionary { ["success"] = true, ["demandIds"] = demandIds };
+        }
+        catch (Exception ex)
+        {
+            EndShipWorld();
+            LatchFault("Selected order materialization failed: " + ex.Message);
+            return new GDictionary { ["success"] = false, ["error"] = ex.Message };
+        }
+    }
+
     public GArray GetPendingOrderCycleEvents()
     {
         if (_runtime == null || !_runtime.IsInitialized || _runtime.IsDisposed)
