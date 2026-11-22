@@ -99,10 +99,11 @@ func _physics_process(delta: float) -> void:
 	if player != null and player.effects != null:
 		player.effects.advance_from_space_world(delta)
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	var jar_step_advanced := false
 	if jar_host != null:
-		jar_host.AdvanceSpaceSimulation(delta)
-		if _order_effect_dispatcher != null and _order_effect_commit_callback.is_valid():
-			_order_effect_dispatcher.drain_pending(jar_host, _order_effect_commit_callback)
+		jar_step_advanced = jar_host.AdvanceSpaceSimulation(delta)
+	if jar_step_advanced and delta > 0.0 and _order_effect_dispatcher != null and _order_effect_commit_callback.is_valid():
+		_order_effect_dispatcher.drain_pending(jar_host, _order_effect_commit_callback)
 	if _shake_time > 0.0:
 		_shake_time-=delta
 		var offset:=Vector2(randf_range(-1,1),randf_range(-1,1))*_shake_strength
