@@ -16,7 +16,7 @@ static func evaluate(
 	if not (requirements is Array) or requirements.is_empty():
 		return _failure("Jar requirements must be a non-empty array")
 
-	var benefit_score := _benefit_score(benefit, profile)
+	var benefit_score := _benefit_score(benefit, profile)\n\tvar cooldown_milli := float(jar_order.get("cooldownDurationLogicalMilli", -1.0))\n\tif cooldown_milli < 0.0:\n\t\treturn _failure("Jar cooldown cannot be negative")\n\tvar effective_cooldown := maxf(cooldown_milli, profile.cooldown_floor_logical_milli)\n\tvar frequency_multiplier := minf(profile.cooldown_reference_logical_milli / effective_cooldown, profile.cooldown_max_frequency_multiplier)\n\tbenefit_score *= frequency_multiplier
 	if benefit_score < 0.0:
 		return _failure("benefit profile contains invalid values")
 
@@ -74,7 +74,7 @@ static func evaluate(
 		"valid": true,
 		"profileId": String(profile.profile_id),
 		"profileVersion": profile.profile_version,
-		"benefitScore": benefit_score,
+		"benefitScore": benefit_score,\n\t\t"baseBenefitScore": _benefit_score(benefit, profile),\n\t\t"cooldownLogicalMilli": cooldown_milli,\n\t\t"activationFrequencyMultiplier": frequency_multiplier,
 		"targetDifficulty": target_difficulty,
 		"actualDifficulty": actual_difficulty,
 		"difficultyRatio": ratio,
