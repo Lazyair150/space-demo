@@ -13,7 +13,9 @@ class_name SpaceSkillBalanceProfile
 	"coverage": 0.35,
 	"control": 0.45,
 	"survivability": 0.8,
-	"utility": 0.3
+	"utility": 0.3,
+	"periodic_damage": 0.5,
+	"stack_potential": 0.2
 }
 @export var benefit_scales: Dictionary = {
 	"power": 10.0,
@@ -21,7 +23,9 @@ class_name SpaceSkillBalanceProfile
 	"coverage": 1.0,
 	"control": 10.0,
 	"survivability": 10.0,
-	"utility": 10.0
+	"utility": 10.0,
+	"periodic_damage": 20.0,
+	"stack_potential": 5.0
 }
 
 ## Target difficulty curve: base + coefficient * benefit^exponent.
