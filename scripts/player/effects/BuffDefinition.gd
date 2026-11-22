@@ -29,7 +29,7 @@ enum StackPolicy {
 @export var tick_damage: int = 0
 
 # 需要特殊行为的 Buff（例如中毒）指定自己的实例脚本，否则用 BuffInstance
-@export var instance_script: Script
+## Balance annotations belong to this exact effect version, next to its real gameplay values.\n@export var balance_metrics: Dictionary = {}\n\n@export var instance_script: Script
 
 func is_valid() -> bool:
-	return id != &"" and definition_version > 0 and duration > 0.0
+	if id == &"" or definition_version <= 0 or duration <= 0.0:\n\t\treturn false\n\tfor value in balance_metrics.values():\n\t\tif float(value) < 0.0:\n\t\t\treturn false\n\treturn true
