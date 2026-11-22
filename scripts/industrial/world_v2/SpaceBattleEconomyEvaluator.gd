@@ -54,12 +54,10 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 	# Capacity constrains instantaneous stock, not cumulative lifetime throughput.
 	# Consumption frees room for later production; without a time-resolved trigger schedule,
 	# cumulative supply remains an upper-bound forecast and capacity is reported separately.
-	var liquid_storage_limited := false
+	var liquid_storage_overflow_risk := false
+	var projected_liquid_without_consumption := liquid_budget.total_supply
 	if capacity >= 0.0:
-		var initial_liquid_total := 0.0
-		for amount in resources.get("initialLiquids", {}).values():
-			initial_liquid_total += float(amount)
-		liquid_storage_limited = initial_liquid_total > capacity
+		liquid_storage_overflow_risk = projected_liquid_without_consumption > capacity
 
 	var workshop_rate := float(resources.get("workshopOperationsPerSecond", -1.0))
 	if workshop_rate < 0.0:
@@ -202,7 +200,8 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 		"totalTheoreticalSkillActivations": total_requested,
 		"totalRealizedSkillActivations": total_realized,
 		"liquidStorageCapacity": capacity,
-		"liquidStorageInitialOverflowRisk": liquid_storage_limited,
+		"liquidStorageOverflowRiskWithoutConsumption": liquid_storage_overflow_risk,
+		"projectedLiquidSupplyBeforeStorageOverflow": projected_liquid_without_consumption,
 		"resourceBudget": {
 			"shapeSupply": shape_budget.supply,
 			"shapeUse": shape_used,
