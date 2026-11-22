@@ -15,6 +15,9 @@ var _shake_strength:float
 
 func _ready() -> void:
 	GameState.reset_run()
+	# Buff durations consume the same combat simulation delta as Jar and actors.
+	if player != null and player.effects != null:
+		player.effects.external_time_authority = true
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if jar_host != null and not jar_host.BeginShipWorld():
 		push_error("[Game] World V2 Jar host could not start: " + str(jar_host.FaultReason))
@@ -28,6 +31,10 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	# This is the owning combat world's simulation step. Delta is already simulation-scaled.
+	# Advance active buffs first. Effects emitted by Jar during this step begin their duration
+	# at the step boundary and are advanced starting with the next step.
+	if player != null and player.effects != null:
+		player.effects.advance_from_space_world(delta)
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if jar_host != null:
 		jar_host.AdvanceSpaceSimulation(delta)
