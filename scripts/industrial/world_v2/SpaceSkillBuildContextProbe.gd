@@ -33,8 +33,10 @@ static func run() -> Dictionary:
 	bottleneck_order["requirements"].append({"shape": "large"})
 	var bottleneck := SpaceSkillBuildContextEvaluator.evaluate(
 		bottleneck_order,
-		[{"shapeJarRatePerSecond": {"small": 10.0, "large": 0.1}}],
+		[{"shapeProcessingRatePerSecond": {"small": 10.0, "large": 0.1}}],
 		workshop,
+		ship_resources,
+		shape_progress,
 		60000.0,
 		profile
 	)
