@@ -53,6 +53,12 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 	var capacity := float(resources.get("liquidInventoryCapacity", -1.0))
 	if capacity < -1.0:
 		return _failure("liquidInventoryCapacity must be -1 or non-negative")
+	if capacity >= 0.0:
+		var initial_liquid_total := 0.0
+		for amount in resources.get("initialLiquids", {}).values():
+			initial_liquid_total += float(amount)
+		if initial_liquid_total > capacity:
+			return _failure("initial liquid stock exceeds shared liquid inventory capacity")
 	# Capacity constrains instantaneous stock, not cumulative lifetime throughput.
 	# Consumption frees room for later production; without a time-resolved trigger schedule,
 	# cumulative supply remains an upper-bound forecast and capacity is reported separately.
@@ -192,6 +198,8 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 		"totalTheoreticalSkillActivations": total_requested,
 		"totalRealizedSkillActivations": total_realized,
 		"liquidStorageCapacity": capacity,
+		"liquidResourceProfileId": String(resources.get("jarResourceProfileId", "")),
+		"liquidResourceProfileVersion": int(resources.get("jarResourceProfileVersion", 0)),
 		"liquidStorageOverflowRiskWithoutConsumption": liquid_storage_overflow_risk,
 		"projectedLiquidSupplyBeforeStorageOverflow": projected_liquid_without_consumption,
 		"resourceBudget": {
