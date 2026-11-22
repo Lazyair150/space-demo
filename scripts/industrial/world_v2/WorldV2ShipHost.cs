@@ -1,0 +1,171 @@
+using System;
+using Godot;
+using GDictionary = Godot.Collections.Dictionary;
+
+namespace SpaceDemo.Industrial.WorldV2;
+
+[GlobalClass]
+public partial class WorldV2ShipHost : Node
+{
+    [Signal] public delegate void ShipWorldFaultedEventHandler(string message);
+
+    [Export] public string WorldConfigPath { get; set; } =
+        "res://data/industrial/world_v2_sandbox.json";
+
+    private enum HostState { Absent, Created, Active, Paused, Suspended, Disposed, Faulted }
+    private WorldV2RuntimeNode? _runtime;
+    private HostState _state = HostState.Absent;
+    private double _fractionalWorldTimeMilli;
+    private string _faultReason = "";
+
+    public string LifecycleState => _state.ToString();
+    public bool IsShipWorldActive => _state == HostState.Active;
+    public bool IsFaulted => _state == HostState.Faulted;
+    public string FaultReason => _faultReason;
+
+    public bool BeginShipWorld()
+    {
+        if (_state == HostState.Active || _state == HostState.Paused)
+            return true;
+        if (_state == HostState.Created || _state == HostState.Suspended || _state == HostState.Faulted)
+            return false;
+
+        _state = HostState.Created;
+        _fractionalWorldTimeMilli = 0;
+        _faultReason = "";
+        var runtime = new WorldV2RuntimeNode
+        {
+            Name = "WorldV2Runtime",
+            WorldConfigPath = WorldConfigPath,
+            AutoAdvance = false
+        };
+        _runtime = runtime;
+        AddChild(runtime); // Runtime _Ready creates its single owned Bridge session.
+
+        if (!runtime.IsInitialized || runtime.IsFaulted)
+        {
+            LatchFault(ReadRuntimeFault(runtime, "World V2 Runtime initialization failed"));
+            return false;
+        }
+
+        _state = HostState.Active;
+        GD.Print("[WorldV2ShipHost] Jar runtime active; external Space clock enabled");
+        return true;
+    }
+
+    public void PauseShipWorld()
+    {
+        if (_state == HostState.Active)
+            _state = HostState.Paused;
+    }
+
+    public void ResumeShipWorld()
+    {
+        if (_state == HostState.Paused)
+            _state = HostState.Active;
+    }
+
+    public void SuspendShipWorld()
+    {
+        if (_state == HostState.Active || _state == HostState.Paused || _state == HostState.Created)
+            _state = HostState.Suspended;
+        _fractionalWorldTimeMilli = 0;
+    }
+
+    public void EndShipWorld()
+    {
+        if (_state == HostState.Disposed || _state == HostState.Absent)
+        {
+            _state = HostState.Disposed;
+            return;
+        }
+
+        _state = HostState.Suspended;
+        _fractionalWorldTimeMilli = 0;
+        var runtime = _runtime;
+        _runtime = null;
+        if (runtime != null)
+        {
+            if (runtime.GetParent() == this)
+                RemoveChild(runtime); // _ExitTree disposes the Bridge session.
+            runtime.QueueFree();
+        }
+        _state = HostState.Disposed;
+    }
+
+    /// <summary>
+    /// Sole production time ingress. deltaSeconds must be the already-scaled
+    /// simulation delta from the owning Space world step.
+    /// </summary>
+    public bool AdvanceSpaceSimulation(double deltaSeconds)
+    {
+        if (double.IsNaN(deltaSeconds) || double.IsInfinity(deltaSeconds) || deltaSeconds < 0)
+            throw new ArgumentOutOfRangeException(nameof(deltaSeconds));
+        if (_state != HostState.Active)
+            return false;
+        if (_runtime == null || !_runtime.IsInitialized || _runtime.IsDisposed)
+        {
+            LatchFault("Active ship-world has no operational World V2 Runtime");
+            return false;
+        }
+        if (deltaSeconds == 0)
+            return true;
+
+        var accumulated = _fractionalWorldTimeMilli + deltaSeconds * 1000.0;
+        if (accumulated > long.MaxValue)
+        {
+            LatchFault("Space simulation delta exceeds the supported Jar world-time range");
+            return false;
+        }
+
+        var wholeMilliseconds = (long)Math.Floor(accumulated);
+        _fractionalWorldTimeMilli = accumulated - wholeMilliseconds;
+        if (wholeMilliseconds <= 0)
+            return true;
+
+        // Exactly one call per Space simulation step; no _Process or wall-clock fallback.
+        _runtime.AdvanceWorldTime(wholeMilliseconds);
+        if (_runtime.IsFaulted)
+        {
+            LatchFault(ReadRuntimeFault(_runtime, "World V2 Runtime faulted during Space time forwarding"));
+            return false;
+        }
+        return true;
+    }
+
+    public GDictionary GetWorldSnapshot()
+    {
+        if (_runtime == null || !_runtime.IsInitialized)
+            return new GDictionary { ["available"] = false, ["lifecycleState"] = _state.ToString() };
+        var snapshot = _runtime.GetWorldSnapshot();
+        snapshot["available"] = true;
+        snapshot["lifecycleState"] = _state.ToString();
+        return snapshot;
+    }
+
+    public override void _ExitTree() => EndShipWorld();
+
+    private void LatchFault(string message)
+    {
+        if (_state == HostState.Faulted)
+            return;
+        _faultReason = message;
+        _state = HostState.Faulted;
+        GD.PushError("[WorldV2ShipHost] " + message);
+        EmitSignal(SignalName.ShipWorldFaulted, message);
+    }
+
+    private static string ReadRuntimeFault(WorldV2RuntimeNode runtime, string fallback)
+    {
+        try
+        {
+            var snapshot = runtime.GetWorldSnapshot();
+            var reason = snapshot.GetValueOrDefault("faultReason").AsString();
+            return string.IsNullOrWhiteSpace(reason) ? fallback : reason;
+        }
+        catch
+        {
+            return fallback;
+        }
+    }
+}
