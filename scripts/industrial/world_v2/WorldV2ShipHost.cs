@@ -160,7 +160,7 @@ public partial class WorldV2ShipHost : Node
         try
         {
             var snapshot = runtime.GetWorldSnapshot();
-            var reason = snapshot.GetValueOrDefault("faultReason").AsString();
+            var reason = snapshot.ContainsKey("faultReason") ? snapshot["faultReason"].AsString() : "";
             return string.IsNullOrWhiteSpace(reason) ? fallback : reason;
         }
         catch
