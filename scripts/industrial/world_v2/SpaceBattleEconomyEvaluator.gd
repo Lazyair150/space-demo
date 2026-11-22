@@ -108,6 +108,7 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 			"desiredActivations": desired,
 			"shapeCostPerActivation": shape_cost,
 			"liquidCostPerActivation": liquid_cost,
+			"liquidCostForecastSource": normalized_cost.forecastSource,
 			"workshopCostPerActivation": operations
 		})
 
@@ -168,6 +169,7 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 			"activationFulfillment": common_fraction,
 			"shapeResourceUse": per_skill_shape_used,
 			"liquidResourceUse": per_skill_liquid_used,
+			"liquidCostForecastSource": demand.liquidCostForecastSource,
 			"workshopOperationsUsed": operations_used
 		})
 
