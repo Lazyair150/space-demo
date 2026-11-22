@@ -14,6 +14,7 @@ static func run() -> Dictionary:
 	}
 	var simple_order := {
 		"type": "A",
+		"cooldownDurationLogicalMilli": 10000,
 		"requirements": [
 			{"shape": "small"},
 			{"shape": "small"}
@@ -37,6 +38,11 @@ static func run() -> Dictionary:
 	var stronger := SpaceSkillBalanceModel.evaluate(stronger_benefit, liquid_order, {}, profile)
 	if float(stronger.targetDifficulty) <= float(liquid.targetDifficulty):
 		return {"passed": false, "reason": "stronger benefit must raise target difficulty"}
+	var fast_order := liquid_order.duplicate(true)
+	fast_order["cooldownDurationLogicalMilli"] = 2000
+	var fast := SpaceSkillBalanceModel.evaluate(benefit, fast_order, {}, profile)
+	if float(fast.targetDifficulty) <= float(liquid.targetDifficulty):
+		return {"passed": false, "reason": "shorter cooldown must raise sustained benefit target"}
 	var more_complex := liquid_order.duplicate(true)
 	more_complex["requirements"].append({"shape": "large", "liquid": "oil"})
 	var complex_result := SpaceSkillBalanceModel.evaluate(benefit, more_complex, {}, profile)
