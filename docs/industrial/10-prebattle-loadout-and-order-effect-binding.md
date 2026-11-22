@@ -181,3 +181,71 @@ The branch now contains `SpaceSkillDefinition.gd` and `SpaceSkillCatalog.gd`:
 - SkillCatalog resolves exact skill versions and produces the selected-order binding consumed by the frozen battle loadout.
 
 This is the definition/registry/materialization foundation. Actual catalog assets, Hangar UI, manual activation command flow, passive trigger scheduler, and catalog compatibility validation are still outstanding.
+
+
+## 12. Skill benefit-to-Jar difficulty curve (the balance bridge)
+
+The skill model is not "effect plus arbitrary recipe". The Space benefit is the value side of the curve; the exact Jar execution contract is the payment side. The two are evaluated together before a skill binding can enter a frozen battle loadout.
+
+### Benefit side
+
+Each skill carries a normalized `benefitProfile` with dimensions such as:
+- power;
+- duration;
+- coverage/area;
+- control;
+- survivability;
+- utility.
+
+A versioned `SpaceSkillBalanceProfile` supplies per-dimension scales and weights. This produces a base benefit score. These are tunable data, not fixed balance truths.
+
+Jar cooldown also affects sustained value. Shorter cooldown permits more executions over the same Space battle time, so the model applies a configurable activation-frequency multiplier derived from `cooldownDurationLogicalMilli`. A zero cooldown is bounded by a configurable floor and maximum multiplier; it cannot create an infinite value.
+
+### Payment side: actual Jar difficulty
+
+The evaluator reads the exact Jar requirement entries that will be materialized. Each normalized entry represents one physical required Jar. A grouped skill-authored requirement with `count=N` is expanded into N individual Jar requirement entries before both evaluation and Jar materialization. This is important: count must never be a display-only number that the Jar bridge silently ignores.
+
+The first cost model includes independently visible terms:
+- total required Jar count;
+- number of liquid-bearing Jars;
+- distinct liquid variety;
+- distinct shape variety;
+- per-shape and per-liquid difficulty multipliers;
+- A/B order execution class;
+- workshop-operation pressure supplied by the selected workshop combination;
+- production pressure supplied by the selected production-device build.
+
+Liquid-bearing Jars are intentionally more expensive than empty Jars in the default tuning profile. This is a balance parameter, not a hard-coded Jar rule. Liquid type and shape scarcity can further modify the cost through versioned profile data.
+
+### Curve and diagnostics
+
+The first curve is:
+
+`targetDifficulty = baseDifficulty + coefficient * effectiveBenefit ^ exponent`
+
+`difficultyRatio = actualJarDifficulty / targetDifficulty`
+
+The evaluator reports:
+- `undercosted`: Jar payment is below the target curve;
+- `on_curve`: payment is within the configured tolerance;
+- `overcosted`: payment exceeds the target curve.
+
+It also returns a component breakdown so a designer can see whether cost comes from liquid Jars, variety, workshop complexity, production pressure, or the order class. The evaluator does **not** auto-invent recipes or alter Jar requirements to force a score. Recipe generation/optimization is a later design tool; the current model diagnoses and compares authored recipes without hiding their actual cost.
+
+### Important non-equivalences
+
+- Benefit score is not the same as a Buff's raw numeric magnitude. It is a normalized balance measure across heterogeneous effect dimensions.
+- Difficulty score is not simply total Jar count. Liquid-bearing Jars, shape/liquid diversity, and build-specific processing constraints matter.
+- Jar cooldown is not effect duration. Cooldown contributes to how often the skill can produce value; effect duration contributes to how much benefit each activation delivers.
+- The Active/Passive control area does not itself make a skill stronger or cheaper. It determines who requests execution. Both modes pay the same Jar contract.
+
+### Current implementation
+
+Added:
+- `SpaceSkillBalanceProfile.gd`: versioned tunable weights, scales, curve parameters, cooldown frequency bounds, resource multipliers, and difficulty bands.
+- `SpaceSkillBalanceModel.gd`: deterministic evaluator and cost breakdown.
+- `SpaceSkillBalanceModelProbe.gd`: checks that liquid Jars increase difficulty, stronger benefits raise target difficulty, shorter cooldown raises sustained target value, and more complex resource requirements increase actual difficulty.
+- `SpaceSkillDefinition.gd`: carries benefit metrics, expands grouped requirement counts to individual Jar entries, evaluates the curve, and includes the balance report/profile identity in the generated binding.
+- `SpaceBattleLoadoutSnapshot.gd`: rejects selected skill bindings without a valid balance report and versioned balance-profile identity.
+
+The model's current numeric weights are starter tuning defaults only. It is not yet calibrated against actual battle pickup rates, per-shape processor throughput, or the complete workshop combination catalog. The next iteration must derive `productionPressure` and `workshopOperationCount` from the selected build's real data, then compare the predicted skill demand against expected resource income over a representative battle duration. That is the step that turns a local recipe difficulty score into the complete Space↔Jar economy curve.
