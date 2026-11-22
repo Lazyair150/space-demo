@@ -139,3 +139,22 @@ The first host slice is now present in this branch:
 - The first wiring uses the existing World V2 sandbox config and creates a fresh Jar session per combat-scene lifetime. This is an integration slice, not the final ship save/load or player-facing Jar UI.
 
 This implementation has not yet been locally compiled or run in Godot in this turn. It must not be described as validated. The next code pass should add a focused host lifecycle/clock probe and compile-level checks, then move to explicit resource import/export contracts.
+
+
+## 11. Shared clock now includes the existing Space buff manager
+
+The existing Space Buff system was audited:
+- StatusEffectManager previously advanced BuffInstance duration from its own _process(delta).
+- That was a second time ingress, distinct from the combat world's _physics_process(delta) used by actors and the Jar host.
+- StatusEffectManager now has an explicit external_time_authority mode and advance_from_space_world(delta) entry point.
+- The combat scene enables external authority and advances already-active buffs from the same physics delta used by Jar. Its independent _process path is disabled in this mode.
+- Buffs already active at the start of a physics step consume that step's delta. A future Jar completion event applied at the end of the step will begin consuming duration on the next step, avoiding immediate loss of one whole frame's duration.
+
+This closes the known dual-clock path for combat Buff durations. It does not yet implement the Jar completion-event outbox or connect any order to a BuffDefinition.
+
+## 12. Current integration boundary limitations
+
+- The host still loads world_v2_sandbox.json; pre-battle ship/device/workshop/order loadout materialization is not implemented yet.
+- The existing BuffDefinition/StatusEffectManager system exists in Space, but there is not yet a selected-order -> effect-definition binding or event dispatcher.
+- Typed energy-stone pickup ingress and shape-specific production-device processing are not yet wired to the World V2 production area.
+- The production host/clock and Buff shared-clock changes in this phase have not yet been locally compiled or run in Godot.
