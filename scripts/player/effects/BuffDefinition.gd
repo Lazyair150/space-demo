@@ -14,6 +14,8 @@ enum StackPolicy {
 }
 
 @export var id: StringName = &""
+## Increment whenever the gameplay meaning or serialized behavior of this definition changes.
+@export var definition_version: int = 1
 @export var label: String = ""
 @export var duration: float = 5.0
 @export var stack_policy: StackPolicy = StackPolicy.REFRESH
@@ -30,4 +32,4 @@ enum StackPolicy {
 @export var instance_script: Script
 
 func is_valid() -> bool:
-	return id != &"" and duration > 0.0
+	return id != &"" and definition_version > 0 and duration > 0.0
