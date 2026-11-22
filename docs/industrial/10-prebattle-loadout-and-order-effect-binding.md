@@ -101,12 +101,14 @@ Jar order cooldown and Space buff duration are distinct. Both use the shared sim
 The current BuffDefinition/StatusEffectManager is a reusable effect executor. The new integration should bind orders to that system rather than create a second Buff implementation. The old BuffPickup remains a separate world pickup trigger; an order event must not be faked as a pickup collision.
 
 The branch now contains:
-- `SpaceBattleLoadoutSnapshot.gd`: validates and deep-copies the four-dimension battle build, including selected-order Jar data and versioned Space effect bindings;
+- `SpaceBattleLoadoutSnapshot.gd`: validates and deep-copies the four-dimension battle build, including a fully materialized `jarWorldOptions` object, selected-order Jar data, versioned Space effect bindings, and a stable loadout fingerprint;
 - `SpaceOrderEffectDispatcher.gd`: reads detached Jar events, resolves only bindings present in the frozen loadout, and delegates effect application plus durable effect/processed-ID persistence to an injected commit callback. It acknowledges Jar only after that callback reports a durable commit;
 - `WorldV2RuntimeNode` and `WorldV2ShipHost`: expose pending event reads and acknowledgments to GDScript; demand snapshots also expose orderDefinitionKey and cycleSequence.
-- `WorldV2RuntimeNode.InitializeWorldFromJson` and `WorldV2ShipHost.BeginShipWorldFromJson`: provide a no-sandbox-fallback construction path for a frozen loadout-derived Jar configuration. The current Game.gd still calls the sandbox probe entry point until Hangar materialization is implemented.
+- `WorldV2RuntimeNode.InitializeWorldFromJson` and `WorldV2ShipHost.BeginShipWorldFromJson`: provide a no-sandbox-fallback construction path for a frozen loadout-derived Jar configuration.
+- `WorldV2RuntimeNode.AddJarDemand` and `WorldV2ShipHost.MaterializeSelectedOrders`: materialize all selected Jar demands before the first Space simulation step. A partial failure disposes the not-yet-started ship world; demand creation is not allowed after time begins.
+- `Game.gd`: accepts a frozen loadout and a durable effect-commit callback before entering the SceneTree; starts the Jar world from loadout JSON, materializes selected orders, then drains pending events after each Jar advance. Sandbox startup remains an explicit development-only fallback.
 
-The dispatcher is an integration boundary, not yet a live combat feature: no Hangar currently constructs the snapshot, no durable commit callback is wired, and Game.gd does not yet drain events.
+The dispatcher is an integration boundary, not yet a complete live combat feature: no Hangar currently constructs the snapshot, and no concrete durable commit callback/save implementation is wired. If a loadout selects orders without a valid callback, Game.gd fails closed and does not enter combat.
 
 ## 7. Shared time
 
@@ -130,10 +132,10 @@ It does not yet have:
 - hangar/pre-battle loadout data and UI;
 - loadout-to-WorldV2Options materialization;
 - energy-stone processor ingestion/progress in the new Jar world;
-- Hangar/pre-battle UI and materialization of the immutable snapshot into WorldV2Options and Jar demand creation;
+- Hangar/pre-battle UI and construction of the immutable snapshot from actual ship/device/workshop/order catalog selections;
 - binding the selected orders' orderDefinitionKey values to the actual Jar demand creation calls;
 - a concrete durable Space effect commit callback that atomically persists Buff/effect state with processed EventIds;
-- invoking the dispatcher at the Space physics-step boundary and restoring its state during battle save/load;
-- replacing the sandbox configuration with the frozen loadout-derived world configuration.
+- restoring the dispatcher and effect state during battle save/load;
+- making the frozen-loadout path the normal Hangar-to-combat path and disabling the sandbox development fallback in production.
 
 Implement in that dependency order. Do not wire an order to a BuffDefinition until the Jar event identity and durable delivery contract exist.
