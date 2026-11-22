@@ -39,6 +39,7 @@ func _ready() -> void:
 		player.effects.external_time_authority = true
 	if not _begin_ship_world():
 		push_error("[Game] Ship world initialization failed; combat build is not allowed to proceed")
+		return
 	_camera_home=camera_2d.position
 	_scatter_asteroids()
 	if player:
