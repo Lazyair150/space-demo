@@ -47,6 +47,40 @@ func _ready() -> void:
 		if not player.damaged.is_connected(_on_player_damaged):
 			player.damaged.connect(_on_player_damaged)
 
+func _begin_ship_world() -> bool:
+	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if jar_host == null:
+		push_error("[Game] WorldV2ShipHost autoload is unavailable")
+		return false
+
+	if _battle_loadout == null:
+		if not allow_sandbox_world_for_development:
+			push_error("[Game] Combat requires a frozen pre-battle loadout")
+			return false
+		return jar_host.BeginShipWorld()
+
+	if not jar_host.BeginShipWorldFromJson(_battle_loadout.jar_world_options_json()):
+		push_error("[Game] Jar rejected the frozen battle loadout configuration")
+		return false
+
+	var materialized: Dictionary = jar_host.MaterializeSelectedOrders(
+		_battle_loadout.selected_order_bindings()
+	)
+	if not bool(materialized.get("success", false)):
+		jar_host.EndShipWorld()
+		push_error("[Game] Selected order materialization failed: " + str(materialized.get("error", "")))
+		return false
+
+	_order_effect_dispatcher = SpaceOrderEffectDispatcher.new()
+	if not _order_effect_dispatcher.configure(_battle_loadout):
+		jar_host.EndShipWorld()
+		return false
+	if not _battle_loadout.order_definition_keys().is_empty() and not _order_effect_commit_callback.is_valid():
+		jar_host.EndShipWorld()
+		push_error("[Game] Selected orders require a durable Space effect commit callback")
+		return false
+	return true
+
 func _physics_process(delta: float) -> void:
 	# This is the owning combat world's simulation step. Delta is already simulation-scaled.
 	# Advance active buffs first. Effects emitted by Jar during this step begin their duration
