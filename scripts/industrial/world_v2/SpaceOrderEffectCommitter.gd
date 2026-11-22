@@ -38,13 +38,13 @@ func commit(event: Dictionary, order_binding: Dictionary, next_dispatcher_state:
 		push_error("Selected skill references an unavailable exact effect version: %s@%d" % [definition_id, version])
 		return false
 	var parameters: Dictionary = effect_binding.get("effectParameters", {})
-	var target: Variant = _target_resolver.call(effect_binding, event)
-	if target != null and not (target is Node):
-		push_error("Skill effect target resolver returned a non-Node target")
-		return false
 	var duration_override := float(parameters.get("durationOverride", -1.0))
 	var event_id := String(event.get("eventId", ""))
 	if not _manager.has_processed_order_event(event_id):
+		var target: Variant = _target_resolver.call(effect_binding, event)
+		if target != null and not (target is Node):
+			push_error("Skill effect target resolver returned a non-Node target")
+			return false
 		var applied := _manager.apply_order_event(
 			event_id,
 			definition,
