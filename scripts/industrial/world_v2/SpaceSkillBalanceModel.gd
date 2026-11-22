@@ -120,7 +120,7 @@ static func _benefit_score(benefit: Dictionary, profile: SpaceSkillBalanceProfil
 		score += normalized * float(profile.benefit_weights[dimension])
 	return score
 
-static func _status(ratio: float) -> String:
+static func _status(ratio: float, profile: SpaceSkillBalanceProfile) -> String:
 	if ratio < profile.on_curve_min_ratio:
 		return "undercosted"
 	if ratio > profile.on_curve_max_ratio:
