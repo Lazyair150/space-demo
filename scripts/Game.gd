@@ -12,15 +12,33 @@ const ASTEROID_COUNT:=10
 var _camera_home:Vector2
 var _shake_time:float
 var _shake_strength:float
+var _battle_loadout: SpaceBattleLoadoutSnapshot
+var _order_effect_dispatcher: SpaceOrderEffectDispatcher
+var _order_effect_commit_callback: Callable
+
+@export var allow_sandbox_world_for_development: bool = true
+
+## Hangar must call this before adding the combat scene to the SceneTree.
+func configure_battle_loadout(loadout: SpaceBattleLoadoutSnapshot) -> bool:
+	if is_inside_tree() or loadout == null:
+		return false
+	_battle_loadout = loadout
+	return true
+
+## The callback must atomically persist Space effect state and dispatcher state before returning true.
+func configure_order_effect_commit_callback(callback: Callable) -> bool:
+	if is_inside_tree() or not callback.is_valid():
+		return false
+	_order_effect_commit_callback = callback
+	return true
 
 func _ready() -> void:
 	GameState.reset_run()
 	# Buff durations consume the same combat simulation delta as Jar and actors.
 	if player != null and player.effects != null:
 		player.effects.external_time_authority = true
-	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
-	if jar_host != null and not jar_host.BeginShipWorld():
-		push_error("[Game] World V2 Jar host could not start: " + str(jar_host.FaultReason))
+	if not _begin_ship_world():
+		push_error("[Game] Ship world initialization failed; combat build is not allowed to proceed")
 	_camera_home=camera_2d.position
 	_scatter_asteroids()
 	if player:
@@ -38,6 +56,8 @@ func _physics_process(delta: float) -> void:
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if jar_host != null:
 		jar_host.AdvanceSpaceSimulation(delta)
+		if _order_effect_dispatcher != null and _order_effect_commit_callback.is_valid():
+			_order_effect_dispatcher.drain_pending(jar_host, _order_effect_commit_callback)
 	if _shake_time > 0.0:
 		_shake_time-=delta
 		var offset:=Vector2(randf_range(-1,1),randf_range(-1,1))*_shake_strength
