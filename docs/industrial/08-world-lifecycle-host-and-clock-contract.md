@@ -150,11 +150,21 @@ The existing Space Buff system was audited:
 - The combat scene enables external authority and advances already-active buffs from the same physics delta used by Jar. Its independent _process path is disabled in this mode.
 - Buffs already active at the start of a physics step consume that step's delta. A future Jar completion event applied at the end of the step will begin consuming duration on the next step, avoiding immediate loss of one whole frame's duration.
 
-This closes the known dual-clock path for combat Buff durations. It does not yet implement the Jar completion-event outbox or connect any order to a BuffDefinition.
+This closes the known dual-clock path for combat Buff durations. Jar's phase 4.10c branch now implements the successful-cycle outbox; Space consumes its detached events through the host boundary described below. No concrete order-to-BuffDefinition numerical mapping is implied yet.
 
-## 12. Current integration boundary limitations
+## 12. Current integration boundary status
 
-- The host still loads world_v2_sandbox.json; pre-battle ship/device/workshop/order loadout materialization is not implemented yet.
-- The existing BuffDefinition/StatusEffectManager system exists in Space, but there is not yet a selected-order -> effect-definition binding or event dispatcher.
+Implemented on the current Space branch:
+- Jar PR #28 provides opaque orderDefinitionKey, persisted cycleSequence, OrderCycleCompleted outbox events, checkpoint persistence, and ApplicationService/Bridge read/ack operations.
+- WorldV2RuntimeNode and WorldV2ShipHost expose pending-event reads and acknowledgments to GDScript; demand snapshots expose orderDefinitionKey and cycleSequence.
+- SpaceBattleLoadoutSnapshot validates and deep-copies the four pre-battle build dimensions: ship, production devices, workshop combination, and selected orders with versioned effect bindings. It includes the materialized jarWorldOptions object and a deterministic SHA-256 loadout fingerprint.
+- WorldV2ShipHost.BeginShipWorldFromJson provides a no-sandbox-fallback construction path. MaterializeSelectedOrders adds selected Jar demands before the first simulation step and disposes the unstarted world if any demand fails.
+- SpaceOrderEffectDispatcher validates events against the frozen order bindings, deduplicates by eventId, and requires an injected durable commit callback before acknowledging Jar.
+- Game.gd supports pre-tree loadout/callback configuration and drains events after advancing Jar, so newly emitted effects begin their duration on the next simulation step.
+
+Still incomplete:
+- Hangar/pre-battle UI does not yet construct the snapshot from actual catalogs or call the frozen-loadout path. The existing default development route still uses world_v2_sandbox.json.
+- No concrete durable effect-commit callback is wired. It must atomically persist Buff/effect state and processed EventIds; until then, selected-order combat startup fails closed.
+- Dispatcher/effect state save/restore is not connected to a battle save system.
 - Typed energy-stone pickup ingress and shape-specific production-device processing are not yet wired to the World V2 production area.
-- The production host/clock and Buff shared-clock changes in this phase have not yet been locally compiled or run in Godot.
+- The production host/clock, C# loadout materialization path, and GDScript loadout/dispatcher scripts have not yet been locally compiled or run in Godot.
