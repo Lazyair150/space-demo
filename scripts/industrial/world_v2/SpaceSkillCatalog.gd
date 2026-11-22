@@ -41,7 +41,7 @@ func create_order_binding_for_build(
 	if benefit_metrics.is_empty():
 		push_error("Skill effect version has no balance metrics: " + effect_id)
 		return {}
-	var jar_order := definition.build_jar_order()
+	var jar_order := definition.build_jar_order(selected_control_area)
 	if jar_order.is_empty():
 		return {}
 	var context := SpaceSkillBuildContextEvaluator.evaluate(
