@@ -26,5 +26,35 @@ func create_order_binding(skill_id: String, version: int, order_definition_key: 
 		return {}
 	return definition.create_order_binding(order_definition_key, selected_control_area, balance_profile, balance_context)
 
+func create_order_binding_for_build(
+	skill_id: String,
+	version: int,
+	order_definition_key: String,
+	selected_control_area: String,
+	balance_profile: SpaceSkillBalanceProfile,
+	production_devices: Array,
+	workshop_combination: Dictionary,
+	expected_battle_duration_logical_milli: float
+) -> Dictionary:
+	var definition := resolve_skill(skill_id, version)
+	if definition == null:
+		return {}
+	if balance_profile == null or not balance_profile.is_valid():
+		return {}
+	var jar_order := definition.build_jar_order()
+	if jar_order.is_empty():
+		return {}
+	var context := SpaceSkillBuildContextEvaluator.evaluate(
+		jar_order,
+		production_devices,
+		workshop_combination,
+		expected_battle_duration_logical_milli,
+		balance_profile
+	)
+	if not context.get("valid", false):
+		push_error("Skill build difficulty context rejected: " + String(context.get("reason", "unknown")))
+		return {}
+	return definition.create_order_binding(order_definition_key, selected_control_area, balance_profile, context)
+
 func _key(skill_id: String, version: int) -> String:
 	return "%s@%d" % [skill_id, version]
