@@ -28,6 +28,8 @@ func create_order_binding_for_build(
 	balance_profile: SpaceSkillBalanceProfile,
 	production_devices: Array,
 	workshop_combination: Dictionary,
+	ship_resource_profile: Dictionary,
+	shape_progress_per_jar: Dictionary,
 	expected_battle_duration_logical_milli: float,
 	effect_catalog: SpaceEffectCatalog
 ) -> Dictionary:
@@ -48,6 +50,8 @@ func create_order_binding_for_build(
 		jar_order,
 		production_devices,
 		workshop_combination,
+		ship_resource_profile,
+		shape_progress_per_jar,
 		expected_battle_duration_logical_milli,
 		balance_profile
 	)
