@@ -198,7 +198,9 @@ public partial class WorldV2RuntimeNode : Node
 
         var request = new WorldV2AddJarDemandRequest(
             inputs, type, demandArea, cooldownDurationLogicalMilli, orderDefinitionKey);
-        return RequireOperationalSession().AddJarDemand(request);
+        var demandId = RequireOperationalSession().AddJarDemand(request);
+        EmitSignal(SignalName.SnapshotChanged);
+        return demandId;
     }
 
     public void PauseWorld()
