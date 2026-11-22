@@ -19,6 +19,7 @@ public partial class WorldV2RuntimeNode : Node
     [Export] public string WorldConfigPath { get; set; } =
         "res://data/industrial/world_v2_sandbox.json";
     [Export] public bool AutoAdvance { get; set; } = true;
+    [Export] public bool InitializeOnReady { get; set; } = true;
 
     private WorldV2BridgeSession? _session;
     private double _worldTimeRemainderMilli;
@@ -31,12 +32,24 @@ public partial class WorldV2RuntimeNode : Node
     public bool IsDisposed => _disposed;
     public bool CanAcceptCommands => _session != null && !_faulted && !_disposed;
 
-    public override void _Ready() => InitializeWorld();
-
-    public bool InitializeWorld()
+    public override void _Ready()
     {
-        // A node's session is single-owner and single-initialization.
-        // Reject duplicate requests without replacing or faulting the live world.
+        if (InitializeOnReady)
+            InitializeWorld();
+    }
+
+    /// <summary>Initialize from the configured file. Used only by isolated probes/default sandbox host.</summary>
+    public bool InitializeWorld() =>
+        InitializeWorldFromJson(
+            Godot.FileAccess.GetFileAsString(WorldConfigPath),
+            WorldConfigPath);
+
+    /// <summary>
+    /// Initialize from a caller-frozen world configuration. Production Hangar flow must use
+    /// this path so the ship host never silently substitutes the sandbox configuration.
+    /// </summary>
+    public bool InitializeWorldFromJson(string json, string sourceLabel = "battle loadout")
+    {
         if (_disposed)
             return false;
 
@@ -46,27 +59,25 @@ public partial class WorldV2RuntimeNode : Node
             return false;
         }
 
-        // A new initialization attempt may recover from a previous configuration fault.
         _faulted = false;
         _faultReason = null;
 
         try
         {
-            var json = Godot.FileAccess.GetFileAsString(WorldConfigPath);
             if (string.IsNullOrWhiteSpace(json))
-                throw new InvalidOperationException("无法读取 World v2 配置: " + WorldConfigPath);
+                throw new InvalidOperationException("World V2 configuration is empty: " + sourceLabel);
 
             var options = JsonSerializer.Deserialize<WorldV2Options>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
             if (options == null)
-                throw new InvalidOperationException("World v2 配置反序列化结果为空");
+                throw new InvalidOperationException("World v2 configuration deserialized to null");
 
             var validation = options.Validate();
             if (!validation.IsValid)
                 throw new InvalidOperationException(
-                    "World v2 配置校验失败: " + string.Join("；", validation.Errors));
+                    "World v2 configuration validation failed: " + string.Join("; ", validation.Errors));
 
             var session = new WorldV2BridgeSession();
             try
@@ -85,7 +96,7 @@ public partial class WorldV2RuntimeNode : Node
             _faultReason = null;
             EmitSignal(SignalName.RuntimeReady);
             EmitSignal(SignalName.SnapshotChanged);
-            GD.Print("[WorldV2Runtime] initialized: ", WorldConfigPath);
+            GD.Print("[WorldV2Runtime] initialized: ", sourceLabel);
             return true;
         }
         catch (Exception ex)
