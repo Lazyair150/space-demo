@@ -29,6 +29,11 @@ class_name SpaceSkillBalanceProfile
 @export var curve_coefficient: float = 1.0
 @export var curve_exponent: float = 1.25
 
+## Shorter Jar cooldown means more activations per battle-time unit and therefore greater effective benefit.
+@export var cooldown_reference_logical_milli: float = 10000.0
+@export var cooldown_floor_logical_milli: float = 1000.0
+@export var cooldown_max_frequency_multiplier: float = 5.0
+
 ## Actual Jar requirement difficulty. Every requirement entry represents one required jar.
 @export var jar_base_weight: float = 1.0
 @export var liquid_jar_weight: float = 2.0
@@ -53,7 +58,7 @@ class_name SpaceSkillBalanceProfile
 func is_valid() -> bool:
 	if profile_id == &"" or profile_version <= 0:
 		return false
-	if curve_base_difficulty < 0.0 or curve_coefficient < 0.0 or curve_exponent <= 0.0:
+	if curve_base_difficulty < 0.0 or curve_coefficient < 0.0 or curve_exponent <= 0.0:\n\t\treturn false\n\tif cooldown_reference_logical_milli <= 0.0 or cooldown_floor_logical_milli <= 0.0 or cooldown_max_frequency_multiplier < 1.0:
 		return false
 	for key in benefit_weights:
 		if float(benefit_weights[key]) < 0.0:
