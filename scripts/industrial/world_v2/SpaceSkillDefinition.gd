@@ -47,9 +47,6 @@ func is_valid() -> bool:
 			return false
 		if int(requirement.get("count", 1)) <= 0:
 			return false
-	for dimension in benefit_profile:
-		if float(benefit_profile[dimension]) < 0.0:
-			return false
 	return true
 
 func build_jar_order() -> Dictionary:
@@ -71,7 +68,7 @@ func build_jar_order() -> Dictionary:
 		"requirements": expanded_requirements
 	}
 
-func create_order_binding(order_definition_key: String, selected_control_area: String, balance_profile: SpaceSkillBalanceProfile, balance_context: Dictionary) -> Dictionary:
+func create_order_binding(order_definition_key: String, selected_control_area: String, balance_profile: SpaceSkillBalanceProfile, balance_context: Dictionary, benefit_metrics: Dictionary) -> Dictionary:
 	if not is_valid() or order_definition_key.strip_edges().is_empty():
 		return {}
 	if not allowed_control_areas.has(selected_control_area):
@@ -82,7 +79,7 @@ func create_order_binding(order_definition_key: String, selected_control_area: S
 		return {}
 	var activation_policy := "Manual" if selected_control_area == "Active" else "Automatic"
 	var jar_order := build_jar_order()
-	var balance_report := SpaceSkillBalanceModel.evaluate(benefit_profile, jar_order, balance_context, balance_profile)
+	if benefit_metrics.is_empty():\n\t\treturn {}\n\tvar balance_report := SpaceSkillBalanceModel.evaluate(benefit_metrics, jar_order, balance_context, balance_profile)
 	if not balance_report.get("valid", false):
 		push_error("Skill balance evaluation failed: " + String(balance_report.get("reason", "unknown")))
 		return {}
@@ -95,7 +92,7 @@ func create_order_binding(order_definition_key: String, selected_control_area: S
 			"area": selected_control_area,
 			"activationPolicy": activation_policy
 		},
-		"benefitProfile": benefit_profile.duplicate(true),
+		"benefitProfile": benefit_metrics.duplicate(true),
 		"balanceReport": balance_report,
 		"balanceProfile": {
 			"profileId": String(balance_profile.profile_id),
