@@ -83,6 +83,8 @@ static func evaluate(
 	if not (operation_costs is Dictionary) or not operation_costs.has(order_type):
 		return _failure("workshop combination must define operationCostByOrderType for " + order_type)
 	var operations_per_cycle := float(operation_costs[order_type])
+	if not workshop_combination.has("liquidHandlingOperationCost"):
+		return _failure("workshop combination must define liquidHandlingOperationCost")
 	var liquid_operation_cost := float(workshop_combination.get("liquidHandlingOperationCost", 0.0))
 	if operations_per_cycle < 0.0 or liquid_operation_cost < 0.0:
 		return _failure("workshop operation costs cannot be negative")
