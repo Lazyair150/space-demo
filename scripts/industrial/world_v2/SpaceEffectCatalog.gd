@@ -21,6 +21,12 @@ func resolve_buff(definition_id: String, version: int) -> BuffDefinition:
 	var result: Variant = _definitions.get(_key(definition_id, version), null)
 	return result as BuffDefinition
 
+func resolve_balance_metrics(definition_id: String, version: int) -> Dictionary:
+	var definition := resolve_buff(definition_id, version)
+	if definition == null or definition.balance_metrics.is_empty():
+		return {}
+	return definition.balance_metrics.duplicate(true)
+
 func contains(definition_id: String, version: int) -> bool:
 	return resolve_buff(definition_id, version) != null
 
