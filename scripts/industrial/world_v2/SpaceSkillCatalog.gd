@@ -20,11 +20,11 @@ func resolve_skill(skill_id: String, version: int) -> SpaceSkillDefinition:
 		return null
 	return _definitions.get(_key(skill_id, version), null) as SpaceSkillDefinition
 
-func create_order_binding(skill_id: String, version: int, order_definition_key: String) -> Dictionary:
+func create_order_binding(skill_id: String, version: int, order_definition_key: String, selected_control_area: String) -> Dictionary:
 	var definition := resolve_skill(skill_id, version)
 	if definition == null:
 		return {}
-	return definition.create_order_binding(order_definition_key)
+	return definition.create_order_binding(order_definition_key, selected_control_area)
 
 func _key(skill_id: String, version: int) -> String:
 	return "%s@%d" % [skill_id, version]
