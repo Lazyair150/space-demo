@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.Json;
 using Godot;
 using JarSystem.Core.World;
+using JarSystem.Core.World.Demands;
 using JarSystem.WorldV2Bridge;
 using GDictionary = Godot.Collections.Dictionary;
 using GArray = Godot.Collections.Array;
@@ -154,6 +155,50 @@ public partial class WorldV2RuntimeNode : Node
             EmitSignal(SignalName.SnapshotChanged);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Materialize one selected order as a Jar demand. The caller supplies only Jar-owned
+    /// specification data plus the opaque order key; Space effect definitions stay in Space.
+    /// </summary>
+    public int AddJarDemand(
+        string type,
+        string area,
+        long cooldownDurationLogicalMilli,
+        string orderDefinitionKey,
+        GArray requirements)
+    {
+        if (string.IsNullOrWhiteSpace(type))
+            throw new ArgumentException("Order type cannot be empty", nameof(type));
+        if (string.IsNullOrWhiteSpace(orderDefinitionKey))
+            throw new ArgumentException("orderDefinitionKey cannot be empty", nameof(orderDefinitionKey));
+        if (cooldownDurationLogicalMilli < 0)
+            throw new ArgumentOutOfRangeException(nameof(cooldownDurationLogicalMilli));
+        if (requirements == null || requirements.Count == 0)
+            throw new ArgumentException("Order requirements cannot be empty", nameof(requirements));
+
+        if (!Enum.TryParse<DemandAreaKind>(area, ignoreCase: false, out var demandArea) ||
+            !Enum.IsDefined(demandArea))
+            throw new ArgumentException("Order area must be Active or Passive", nameof(area));
+
+        var inputs = new System.Collections.Generic.List<WorldV2RequirementInput>(requirements.Count);
+        foreach (var raw in requirements)
+        {
+            var requirement = raw.AsGodotDictionary();
+            var shape = requirement.ContainsKey("shape")
+                ? requirement["shape"].AsString()
+                : "";
+            if (string.IsNullOrWhiteSpace(shape))
+                throw new ArgumentException("Every order requirement must identify a shape", nameof(requirements));
+            var liquid = requirement.ContainsKey("liquid")
+                ? requirement["liquid"].AsString()
+                : "";
+            inputs.Add(new WorldV2RequirementInput(shape, string.IsNullOrWhiteSpace(liquid) ? null : liquid));
+        }
+
+        var request = new WorldV2AddJarDemandRequest(
+            inputs, type, demandArea, cooldownDurationLogicalMilli, orderDefinitionKey);
+        return RequireOperationalSession().AddJarDemand(request);
     }
 
     public void PauseWorld()
