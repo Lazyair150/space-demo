@@ -27,4 +27,13 @@ static func run() -> Dictionary:
 		order, [{"shapeJarRatePerSecond": {"large": 1.0}}], workshop, 60000.0, profile)
 	if unsupported.get("valid", false):
 		return {"passed": false, "reason": "unsupported required shape must fail closed"}
-	return {"passed": true, "productionPressure": result.productionPressure}
+	var bottleneck := SpaceSkillBuildContextEvaluator.evaluate(
+		order,
+		[{"shapeJarRatePerSecond": {"small": 10.0}}, {"shapeJarRatePerSecond": {"small": 0.1}}],
+		workshop,
+		60000.0,
+		profile
+	)
+	if not bottleneck.get("valid", false) or float(bottleneck.productionPressure) <= 0.0:
+		return {"passed": false, "reason": "per-shape bottleneck pressure was not calculated"}
+	return {"passed": true, "productionPressure": result.productionPressure, "bottleneckPressure": bottleneck.productionPressure}
