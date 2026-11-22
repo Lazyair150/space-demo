@@ -70,13 +70,13 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 			if not (jar_order is Dictionary):
 				errors.append("selected order must contain jarOrder data")
 			else:
-				if not String(jar_order.get("type", "")).is_valid_identifier() and not String(jar_order.get("type", "")).in(["A", "B"]):
+				if not ["A", "B"].has(String(jar_order.get("type", ""))):
 					errors.append("Jar order type must be A or B")
 				if not (jar_order.get("requirements", null) is Array) or jar_order.get("requirements", []).is_empty():
 					errors.append("Jar order requirements must be a non-empty array")
 				if int(jar_order.get("cooldownDurationLogicalMilli", -1)) < 0:
 					errors.append("order cooldown cannot be negative")
-				if not String(jar_order.get("area", "")).in(["Active", "Passive"]):
+				if not ["Active", "Passive"].has(String(jar_order.get("area", ""))):
 					errors.append("order area must be Active or Passive")
 			var effect: Variant = order.get("effectBinding", null)
 			if not (effect is Dictionary) or _required_text(effect, "effectDefinitionId").is_empty() or int(effect.get("effectDefinitionVersion", 0)) <= 0:
