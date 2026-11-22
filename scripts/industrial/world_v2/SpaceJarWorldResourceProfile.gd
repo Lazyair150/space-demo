@@ -99,14 +99,27 @@ static func validate_world_options(options: Dictionary) -> Array[String]:
 			elif float(rate) < 0.0 or not is_finite(float(rate)):
 				errors.append("liquidProductionRates must be finite and non-negative: " + String(key))
 
+	var execution_unit: Variant = options.get("executionLogicalTimePerUnit", null)
+	if typeof(execution_unit) != TYPE_INT or int(execution_unit) <= 0:
+		errors.append("executionLogicalTimePerUnit must be a positive integer")
+	for rate_key in ["jarFlowRatePerLogicalTime", "liquidFlowRatePerLogicalTime"]:
+		var flow_rate: Variant = options.get(rate_key, null)
+		if (typeof(flow_rate) != TYPE_INT and typeof(flow_rate) != TYPE_FLOAT) or float(flow_rate) < 0.0 or not is_finite(float(flow_rate)):
+			errors.append(rate_key + " must be finite and non-negative")
+
 	var producers: Variant = options.get("producers", null)
 	if not (producers is Array):
 		errors.append("producers must be an array")
 	else:
+		var producer_names := {}
 		for producer in producers:
 			if not (producer is Dictionary) or String(producer.get("name", "")).strip_edges().is_empty():
 				errors.append("producer entries require a name")
 				continue
+			var producer_name := String(producer.name).strip_edges()
+			if producer_names.has(producer_name):
+				errors.append("producer names must be unique: " + producer_name)
+			producer_names[producer_name] = true
 			var producer_rates: Variant = producer.get("rates", null)
 			if not (producer_rates is Dictionary):
 				errors.append("producer rates must be a dictionary")
@@ -145,8 +158,9 @@ static func validate_world_options(options: Dictionary) -> Array[String]:
 			for capacity_key in ["maxJars", "maxLiquids"]:
 				if typeof(workshop.get(capacity_key, null)) != TYPE_INT or int(workshop[capacity_key]) <= 0:
 					errors.append("workshop " + name + " requires positive " + capacity_key)
-			if workshop.has("liquidStagingCapacity") and int(workshop.liquidStagingCapacity) < 0:
-				errors.append("workshop liquidStagingCapacity cannot be negative")
+			if workshop.has("liquidStagingCapacity") and workshop.liquidStagingCapacity != null:
+				if typeof(workshop.liquidStagingCapacity) != TYPE_INT or int(workshop.liquidStagingCapacity) < 0:
+					errors.append("workshop liquidStagingCapacity must be a non-negative integer")
 		var master_name := String(options.get("masterWorkshopName", ""))
 		var slave_name := String(options.get("slaveWorkshopName", ""))
 		if not workshop_names.has(master_name):
