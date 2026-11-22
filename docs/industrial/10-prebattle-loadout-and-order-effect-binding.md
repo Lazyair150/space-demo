@@ -176,7 +176,7 @@ Implement in that dependency order. Do not wire an order to a BuffDefinition unt
 The branch now contains `SpaceSkillDefinition.gd` and `SpaceSkillCatalog.gd`:
 - A skill definition owns its stable skill ID/version, player-facing name/description, Jar execution contract (A/B type, Jar demand area, requirements, cooldown), and Space effect binding (effect ID/version/parameters).
 - Jar cost is represented by the Jar requirements/configuration itself. There is no separate balance number that can drift away from actual Jar consumption.
-- When equipping, the player selects Active or Passive from the skill's allowed control areas. The generated binding records that selection separately from the Jar demand contract.
+- When equipping, the player selects Active or Passive from the skill's allowed control areas. That selection is materialized as the Jar demand area and the Space activation policy (manual or automatic); there is no second conflicting area value.
 - Active maps to a manual activation request; Passive maps to automatic trigger policy. This is a control assignment, not a different effect type or a bypass around Jar.
 - SkillCatalog resolves exact skill versions and produces the selected-order binding consumed by the frozen battle loadout.
 
@@ -197,13 +197,15 @@ Each skill carries a normalized `benefitProfile` with dimensions such as:
 - survivability;
 - utility.
 
-A versioned `SpaceSkillBalanceProfile` supplies per-dimension scales and weights. This produces a base benefit score. These are tunable data, not fixed balance truths.
+The metrics are stored on the exact versioned effect definition (`BuffDefinition.balance_metrics` for the current Buff executor), beside its real modifier/tick/duration data. They are not separately authored on the skill resource, preventing a skill from claiming a stronger benefit than the effect version it actually invokes. A versioned `SpaceSkillBalanceProfile` supplies per-dimension scales and weights. Designers must update the metrics and increment the effect version whenever gameplay meaning changes. These are tunable annotations, not fixed balance truths.
 
 Jar cooldown also affects sustained value. Shorter cooldown permits more executions over the same Space battle time, so the model applies a configurable activation-frequency multiplier derived from `cooldownDurationLogicalMilli`. A zero cooldown is bounded by a configurable floor and maximum multiplier; it cannot create an infinite value.
 
 ### Payment side: actual Jar difficulty
 
 The evaluator reads the exact Jar requirement entries that will be materialized. Each normalized entry represents one physical required Jar. A grouped skill-authored requirement with `count=N` is expanded into N individual Jar requirement entries before both evaluation and Jar materialization. This is important: count must never be a display-only number that the Jar bridge silently ignores.
+
+The build-context evaluator estimates output per shape as `min(expected ship stone progress rate, selected device processing rate) / progress required per Jar`. It estimates expected skill activations over the configured battle horizon and calculates pressure separately for each required shape. The worst shape bottleneck controls production pressure; a plentiful shape cannot hide a shortage of another shape. Unsupported ship-drop, processor, or shape-conversion combinations fail closed. Workshop operation cost is derived from the selected workshop combination and includes an explicit per-liquid-Jar handling cost.
 
 The first cost model includes independently visible terms:
 - total required Jar count;
@@ -213,7 +215,7 @@ The first cost model includes independently visible terms:
 - per-shape and per-liquid difficulty multipliers;
 - A/B order execution class;
 - workshop-operation pressure supplied by the selected workshop combination;
-- production pressure supplied by the selected production-device build.
+- production pressure supplied by the selected ship's expected stone yield and the selected production-device processing throughput.
 
 Liquid-bearing Jars are intentionally more expensive than empty Jars in the default tuning profile. This is a balance parameter, not a hard-coded Jar rule. Liquid type and shape scarcity can further modify the cost through versioned profile data.
 
@@ -242,10 +244,12 @@ It also returns a component breakdown so a designer can see whether cost comes f
 ### Current implementation
 
 Added:
+- `BuffDefinition.balance_metrics`: versioned benefit annotations stored beside the actual effect definition; SpaceEffectCatalog resolves them by exact effect ID/version.
+- `SpaceSkillBuildContextEvaluator.gd`: derives shape output pressure from expected ship stone-progress input, selected processor throughput, and per-shape progress-per-Jar; derives workshop and liquid-handling operation pressure from the selected workshop combination.
 - `SpaceSkillBalanceProfile.gd`: versioned tunable weights, scales, curve parameters, cooldown frequency bounds, resource multipliers, and difficulty bands.
 - `SpaceSkillBalanceModel.gd`: deterministic evaluator and cost breakdown.
 - `SpaceSkillBalanceModelProbe.gd`: checks that liquid Jars increase difficulty, stronger benefits raise target difficulty, shorter cooldown raises sustained target value, and more complex resource requirements increase actual difficulty.
 - `SpaceSkillDefinition.gd`: carries benefit metrics, expands grouped requirement counts to individual Jar entries, evaluates the curve, and includes the balance report/profile identity in the generated binding.
 - `SpaceBattleLoadoutSnapshot.gd`: rejects selected skill bindings without a valid balance report and versioned balance-profile identity.
 
-The model's current numeric weights are starter tuning defaults only. It is not yet calibrated against actual battle pickup rates, per-shape processor throughput, or the complete workshop combination catalog. The next iteration must derive `productionPressure` and `workshopOperationCount` from the selected build's real data, then compare the predicted skill demand against expected resource income over a representative battle duration. That is the step that turns a local recipe difficulty score into the complete Space↔Jar economy curve.
+The model's current numeric weights are starter tuning defaults only. The context contract now consumes expected ship stone-progress rates, per-shape processor throughput, per-shape progress-per-Jar, and workshop operation costs. Production-device and ship encounter catalogs still need real data assets and calibration. Liquid-bearing Jars already add explicit cost and workshop handling pressure, but liquid availability still needs to be projected from the Jar liquid stock/production contract using its audited time units; do not infer liquid supply from the shape-stone processor rates. The next iteration is to wire the actual ship/drop and Jar liquid-supply profiles, then calibrate the curve against representative battle duration and observed resource acquisition. That is the step that turns the first measurable curve into the complete Space↔Jar economy model.
