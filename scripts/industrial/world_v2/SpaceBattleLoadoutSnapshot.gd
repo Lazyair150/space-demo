@@ -164,6 +164,16 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 			else:
 				if float(balance_report.get("targetDifficulty", -1.0)) < 0.0 or float(balance_report.get("actualDifficulty", -1.0)) < 0.0:
 					errors.append("balance report difficulty values must be non-negative")
+				var breakdown: Variant = balance_report.get("costBreakdown", null)
+				if not (breakdown is Dictionary):
+					errors.append("balance report must include a cost breakdown")
+				elif jar_order is Dictionary and jar_order.get("requirements", null) is Array:
+					var required_liquid_jars := 0
+					for requirement in jar_order["requirements"]:
+						if requirement is Dictionary and not String(requirement.get("liquid", "")).strip_edges().is_empty():
+							required_liquid_jars += 1
+					if int(breakdown.get("jarCount", -1)) != jar_order["requirements"].size() or int(breakdown.get("liquidJarCount", -1)) != required_liquid_jars:
+						errors.append("balance report cost breakdown does not match actual Jar requirements")
 			var balance_context: Variant = order.get("balanceContext", null)
 			if not (balance_context is Dictionary) or not bool(balance_context.get("valid", false)) or float(balance_context.get("expectedBattleDurationLogicalMilli", 0.0)) <= 0.0:
 				errors.append("selected skill must include build-derived production/workshop difficulty context")
