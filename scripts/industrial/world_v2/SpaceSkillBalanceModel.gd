@@ -121,7 +121,7 @@ static func _benefit_score(benefit: Dictionary, profile: SpaceSkillBalanceProfil
 	return score
 
 static func _status(ratio: float) -> String:
-	if ratio < 0.8:
+	if ratio < profile.on_curve_min_ratio:
 		return "undercosted"
 	if ratio > profile.on_curve_max_ratio:
 		return "overcosted"
