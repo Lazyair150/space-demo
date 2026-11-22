@@ -43,15 +43,17 @@ func commit(event: Dictionary, order_binding: Dictionary, next_dispatcher_state:
 		push_error("Skill effect target resolver returned a non-Node target")
 		return false
 	var duration_override := float(parameters.get("durationOverride", -1.0))
-	var applied := _manager.apply_order_event(
-		String(event.get("eventId", "")),
-		definition,
-		target as Node,
-		duration_override,
-		String(parameters.get("targetKey", ""))
-	)
-	if applied == null:
-		return false
+	var event_id := String(event.get("eventId", ""))
+	if not _manager.has_processed_order_event(event_id):
+		var applied := _manager.apply_order_event(
+			event_id,
+			definition,
+			target as Node,
+			duration_override,
+			String(parameters.get("targetKey", ""))
+		)
+		if applied == null:
+			return false
 	var identity := {
 		"shipWorldId": _loadout.ship_world_id(),
 		"loadoutId": _loadout.loadout_id(),
