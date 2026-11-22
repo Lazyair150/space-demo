@@ -15,14 +15,19 @@ var _shake_strength:float
 var _battle_loadout: SpaceBattleLoadoutSnapshot
 var _order_effect_dispatcher: SpaceOrderEffectDispatcher
 var _order_effect_commit_callback: Callable
+var _persisted_order_dispatcher_state: Dictionary = {}
 
 @export var allow_sandbox_world_for_development: bool = true
 
 ## Hangar must call this before adding the combat scene to the SceneTree.
-func configure_battle_loadout(loadout: SpaceBattleLoadoutSnapshot) -> bool:
+func configure_battle_loadout(
+	loadout: SpaceBattleLoadoutSnapshot,
+	persisted_dispatcher_state: Dictionary = {}
+) -> bool:
 	if is_inside_tree() or loadout == null or loadout.to_dictionary().is_empty():
 		return false
 	_battle_loadout = loadout
+	_persisted_order_dispatcher_state = persisted_dispatcher_state.duplicate(true)
 	return true
 
 ## The callback must atomically persist Space effect state and dispatcher state before returning true.
@@ -61,7 +66,7 @@ func _begin_ship_world() -> bool:
 		return jar_host.BeginShipWorld()
 
 	_order_effect_dispatcher = SpaceOrderEffectDispatcher.new()
-	if not _order_effect_dispatcher.configure(_battle_loadout):
+	if not _order_effect_dispatcher.configure(_battle_loadout, _persisted_order_dispatcher_state):
 		return false
 	if not _battle_loadout.order_definition_keys().is_empty() and not _order_effect_commit_callback.is_valid():
 		push_error("[Game] Selected orders require a durable Space effect commit callback")
@@ -80,6 +85,12 @@ func _begin_ship_world() -> bool:
 		push_error("[Game] Selected order materialization failed: " + str(materialized.get("error", "")))
 		return false
 	return true
+
+## Save integration captures processed EventIds and Jar world identity with the frozen loadout identity.
+func capture_order_dispatcher_state() -> Dictionary:
+	if _order_effect_dispatcher == null:
+		return {}
+	return _order_effect_dispatcher.capture_state()
 
 func _physics_process(delta: float) -> void:
 	# This is the owning combat world's simulation step. Delta is already simulation-scaled.
