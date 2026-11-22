@@ -164,6 +164,9 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 			else:
 				if float(balance_report.get("targetDifficulty", -1.0)) < 0.0 or float(balance_report.get("actualDifficulty", -1.0)) < 0.0:
 					errors.append("balance report difficulty values must be non-negative")
+			var balance_context: Variant = order.get("balanceContext", null)
+			if not (balance_context is Dictionary) or not bool(balance_context.get("valid", false)) or float(balance_context.get("expectedBattleDurationLogicalMilli", 0.0)) <= 0.0:
+				errors.append("selected skill must include build-derived production/workshop difficulty context")
 			var balance_profile: Variant = order.get("balanceProfile", null)
 			if not (balance_profile is Dictionary) or _required_text(balance_profile, "profileId").is_empty() or int(balance_profile.get("profileVersion", 0)) <= 0:
 				errors.append("selected skill must identify its balance profile version")
