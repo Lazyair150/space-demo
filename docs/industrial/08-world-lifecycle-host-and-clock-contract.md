@@ -1,10 +1,10 @@
 # World V2 × Space — world host and simulation clock contract
 
-Status: architecture contract derived from the current Space repository audit. This document does not claim production wiring is complete.
+Status: architecture contract derived from the current Space repository audit. The first host/clock integration slice is implemented but has not yet been locally compiled or run in Godot.
 
 ## 1. Repository facts verified
 
-- `project.godot` currently registers `GameState` and the legacy `IndustrialRuntime` as autoloads. There is no World V2 production host yet.
+- `project.godot` registers `GameState`, the legacy `IndustrialRuntime`, and the new `WorldV2ShipHost` autoload.
 - `Game.tscn` is the active combat scene. `Game.gd` currently uses `_physics_process(delta)` only for camera shake; it does not own a general simulation clock.
 - Player movement, firing cooldown, enemy movement, and other combat actors use physics processing and the supplied physics `delta`.
 - `main_menu.gd` enters the combat scene or the legacy industrial scene with `change_scene_to_file`. The current industrial UI is a full scene, not an overlay over the combat world.
