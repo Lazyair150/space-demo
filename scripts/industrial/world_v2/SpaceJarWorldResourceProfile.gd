@@ -26,15 +26,27 @@ func build_jar_world_options() -> Dictionary:
 		return {}
 	return world_options.duplicate(true)
 
+func build_loadout_fields() -> Dictionary:
+	if not is_valid():
+		return {}
+	return {
+		"jarResourceProfile": {
+			"profileId": String(profile_id),
+			"profileVersion": profile_version
+		},
+		"jarWorldOptions": build_jar_world_options()
+	}
+
 func build_liquid_economy_resources() -> Dictionary:
 	if not is_valid():
 		return {}
-	var duration_unit_seconds := LOGICAL_MILLI_PER_TIME_UNIT / 1000.0
-	if not is_equal_approx(duration_unit_seconds, 1.0):
-		return {}
+	var logical_rate_to_second_rate := 1000.0 / LOGICAL_MILLI_PER_TIME_UNIT
+	var rates_per_logical_second := {}
+	for liquid in world_options.liquidProductionRates:
+		rates_per_logical_second[liquid] = float(world_options.liquidProductionRates[liquid]) * logical_rate_to_second_rate
 	return {
 		"initialLiquids": world_options.initialLiquidStock.duplicate(true),
-		"liquidOutputPerSecond": world_options.liquidProductionRates.duplicate(true),
+		"liquidOutputPerSecond": rates_per_logical_second,
 		"liquidInventoryCapacity": int(world_options.shipLiquidCapacity),
 		"liquidRateUnit": "per_logical_time_unit",
 		"jarResourceProfileId": String(profile_id),
