@@ -59,6 +59,7 @@ func load() -> Dictionary:
 		if not FileAccess.file_exists(backup_path):
 			return {}
 		selected_path = backup_path
+	var file := FileAccess.open(selected_path, FileAccess.READ)
 	if file == null:
 		return {}
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
