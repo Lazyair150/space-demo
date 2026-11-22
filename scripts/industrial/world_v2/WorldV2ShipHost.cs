@@ -24,7 +24,22 @@ public partial class WorldV2ShipHost : Node
     public bool IsFaulted => _state == HostState.Faulted;
     public string FaultReason => _faultReason;
 
-    public bool BeginShipWorld()
+    public bool BeginShipWorld() => BeginShipWorldInternal(null);
+
+    /// <summary>
+    /// Starts a ship world from a validated, frozen battle-loadout configuration.
+    /// Unlike the sandbox probe entry point, this path never falls back to WorldConfigPath.
+    /// </summary>
+    public bool BeginShipWorldFromJson(string worldOptionsJson)
+    {
+        if (_state == HostState.Active || _state == HostState.Paused)
+            return false;
+        if (string.IsNullOrWhiteSpace(worldOptionsJson))
+            throw new ArgumentException("Frozen World V2 configuration JSON cannot be empty", nameof(worldOptionsJson));
+        return BeginShipWorldInternal(worldOptionsJson);
+    }
+
+    private bool BeginShipWorldInternal(string? worldOptionsJson)
     {
         if (_state == HostState.Active || _state == HostState.Paused)
             return true;
@@ -38,12 +53,16 @@ public partial class WorldV2ShipHost : Node
         {
             Name = "WorldV2Runtime",
             WorldConfigPath = WorldConfigPath,
-            AutoAdvance = false
+            AutoAdvance = false,
+            InitializeOnReady = false
         };
         _runtime = runtime;
-        AddChild(runtime); // Runtime _Ready creates its single owned Bridge session.
+        AddChild(runtime);
 
-        if (!runtime.IsInitialized || runtime.IsFaulted)
+        var initialized = worldOptionsJson == null
+            ? runtime.InitializeWorld()
+            : runtime.InitializeWorldFromJson(worldOptionsJson, "frozen battle loadout");
+        if (!initialized || !runtime.IsInitialized || runtime.IsFaulted)
         {
             LatchFault(ReadRuntimeFault(runtime, "World V2 Runtime initialization failed"));
             return false;
