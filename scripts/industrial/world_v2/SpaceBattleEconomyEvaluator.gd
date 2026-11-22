@@ -35,7 +35,7 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 		resources.get("initialShapeJars", {}),
 		resources.get("shapeJarOutputPerSecond", {}),
 		duration_seconds,
-		false
+		true
 	)
 	if not shape_budget.valid:
 		return _failure("invalid shape resource budget: " + shape_budget.reason)
