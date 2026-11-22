@@ -83,3 +83,6 @@ The rate conversion is explicit: Jar production is per logical time unit and one
 
 
 The profile's liquid-side materialization carries `jarResourceProfileId` and `jarResourceProfileVersion` into the battle forecast. The evaluator preserves this provenance in its report and rejects an initial stock total above the configured shared capacity. The projected production total may still exceed capacity over the full battle horizon; that is reported as a no-consumption overflow risk until time-resolved consumption/production scheduling is implemented.
+
+
+The profile preflight additionally checks the positive execution logical-time unit, finite non-negative Jar flow rates, unique producer names, workshop shape-mark vocabulary/uniqueness, liquid-ban vocabulary, positive workshop Jar/liquid capacities, and optional non-negative staging capacity. Jar Core remains the final authority and repeats its own WorldV2Options validation.
