@@ -125,3 +125,17 @@ The legacy menu shortcut into the old industrial scene must not be treated as th
 - Whether Jar completion has any mission/progression/equipment meaning in Space.
 - Which Space pickups/resources can be imported, at what conversion ratio, and with what capacity policy.
 - Save identity, checkpoint versioning, and whether menu suspension preserves an in-progress Jar execution.
+
+
+## 10. First production-host implementation status
+
+The first host slice is now present in this branch:
+
+- `WorldV2ShipHost.cs` is registered as the `WorldV2ShipHost` autoload. It owns a child `WorldV2RuntimeNode`, sets `AutoAdvance = false` before the child enters the tree, and exposes explicit begin/pause/resume/suspend/end operations.
+- `Game.gd` begins the Jar session when the combat ship-world scene enters, forwards the scene's `_physics_process(delta)` to `AdvanceSpaceSimulation(delta)` once per physics callback, and ends the Jar session when that owning scene exits.
+- The host retains fractional milliseconds, forwards only whole milliseconds, and never runs its own process loop.
+- The host latches Jar faults and stops forwarding. It does not stop or control the Space simulation.
+- The current game has no explicit pause-menu API in the audited path. If a future pause sets the SceneTree paused, the normal pausable physics callback stops; any custom pause implementation must also call the host pause/resume operations or otherwise guarantee that no simulation callback reaches it.
+- The first wiring uses the existing World V2 sandbox config and creates a fresh Jar session per combat-scene lifetime. This is an integration slice, not the final ship save/load or player-facing Jar UI.
+
+This implementation has not yet been locally compiled or run in Godot in this turn. It must not be described as validated. The next code pass should add a focused host lifecycle/clock probe and compile-level checks, then move to explicit resource import/export contracts.
