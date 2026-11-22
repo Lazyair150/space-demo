@@ -142,6 +142,21 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 				if not ["Active", "Passive"].has(String(jar_order.get("area", ""))):
 					errors.append("order area must be Active or Passive")
 
+			var skill_identity_present := order.has("skillDefinitionId") or order.has("skillDefinitionVersion")
+			if skill_identity_present and (_required_text(order, "skillDefinitionId").is_empty() or int(order.get("skillDefinitionVersion", 0)) <= 0):
+				errors.append("skill definition identity must be fully versioned")
+			if order.has("skillControl"):
+				var skill_control: Variant = order.get("skillControl")
+				if not (skill_control is Dictionary):
+					errors.append("skillControl must be a dictionary")
+				else:
+					var control_area := String(skill_control.get("area", ""))
+					var activation_policy := String(skill_control.get("activationPolicy", ""))
+					if not ["Active", "Passive"].has(control_area):
+						errors.append("skill control area must be Active or Passive")
+					if (control_area == "Active" and activation_policy != "Manual") or (control_area == "Passive" and activation_policy != "Automatic"):
+						errors.append("skill activation policy must match its selected control area")
+
 			var effect: Variant = order.get("effectBinding", null)
 			if not (effect is Dictionary):
 				errors.append("effectBinding must be a dictionary")
