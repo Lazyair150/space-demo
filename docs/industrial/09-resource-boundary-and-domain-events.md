@@ -1,114 +1,170 @@
-# World V2 × Space — resource boundary and domain event contract
+# World V2 × Space — resource, order-effect, and event contract
 
-Status: semantic contract proposal grounded in the current Jar API. Resource conversion and gameplay consequences remain undecided; this document does not authorize a particular pickup mapping or reward.
+Status: updated with the settled gameplay purpose of Jar orders. Jar owns production/execution and order cooldown; Space owns the world effects produced by successful order cycles. Concrete effect definitions and resource conversion tables remain data/design work.
 
-## 1. Verified Jar-side capabilities and gaps
+## 1. Settled gameplay model
 
-The current World V2 Bridge exposes:
-- world creation/replacement and external-time advancement;
-- demand add/move/start and workshop replacement/cancel commands;
-- detached world snapshots;
-- resource-ledger incremental reads;
-- execution-resource checkpoint capture/restore.
+Jar is the ship-internal combat-energy system. An order is not merely a crafting job or inventory transaction: it is the executable prototype of a ship capability, including cooldown-based buffs.
 
-It does **not** currently expose a runtime command for importing Space-owned resources into the ship liquid inventory, nor a domain event/outbox for completed orders.
+The pre-battle build is a player-authored composition of:
+1. **Ship selection** — selects the ship and its baseline capabilities/system configuration.
+2. **Production-device selection** — determines how collected typed energy stones are processed into shape-specific Jar production progress.
+3. **Workshop-combination selection** — determines how available Jars are constrained, reshaped, and routed to satisfy order requirements.
+4. **Order selection** — determines which capabilities the ship is configured to produce/execute and which Space world effects successful order cycles invoke.
 
-The Core \`ShipLiquidInventory\` is a shared-capacity liquid-only inventory. Its current public operations include:
-- \`Produce(liquid, amount)\`: partial acceptance; overflow is discarded;
-- \`TryWithdraw(amounts)\`: all-or-nothing withdrawal;
-- \`Return(amounts)\`: partial return; overflow is discarded;
-- checkpoint capture/restore.
+During combat, Space and Jar share one simulation clock. A pause freezes combat, Jar production, order execution, and order cooldowns together. The order's cooldown is part of Jar's domain timing; the resulting buff duration/cooldown presentation and actual effect application are Space combat responsibilities according to the selected effect definition.
 
-\`Produce\` must not be reused as a semantic shortcut for Space imports: it represents Jar's own liquid production and its ledger cause is \`production\`. External transfer from Space is a different cause and needs an explicit application contract. The bounded resource ledger is an audit feed, not a durable order-completion event channel.
+Intended chain:
 
-## 2. Ownership and direction
+\`\`\`
+Pre-battle loadout
+  ├─ ship
+  ├─ production devices
+  ├─ workshop combination
+  └─ selected orders ──> Space effect bindings
+                           |
+Combat world begins       |
+  |                       |
+typed energy-stone drops  |
+  v                       |
+Jar production -> Jars -> workshop processing
+                              |
+                         order execution
+                              |
+                         order cycle succeeds
+                              |
+                    stable completion fact
+                              |
+                    Space effect dispatcher
+                              |
+                  buff / combat / world effect
+\`\`\`
 
-| Data/resource | Authoritative owner | Boundary direction |
-|---|---|---|
-| Enemy drops, energy stones, salvage, mission rewards | Space | Space may explicitly offer an import |
-| Ship liquid inventory | Jar World V2 | Jar accepts/rejects an import and reports a receipt |
-| Jars, workshops, demands, execution and Jar liquid staging | Jar World V2 | Never mutated directly by Space |
-| Order completion fact | Jar World V2 | Jar emits a stable domain event |
-| Mission/progression/equipment/score consequences | Space | Space interprets the event under its own policy |
+Jar must not implement the buff itself, mutate enemies, change player health, or grant legacy wallet/reward values. It reports that the configured order cycle succeeded; Space applies the effect associated with the pre-battle configuration.
 
-No Space pickup is automatically a Jar liquid. The mapping must be a named, versioned conversion rule approved by Space gameplay design. A resource that has no approved mapping stays Space-owned.
+## 2. Ownership
 
-## 3. Proposed import command contract
+| State | Owner |
+|---|---|
+| Ship selection, production device selection, workshop combination selection, selected order loadout | Space / pre-battle loadout |
+| Energy stones in the combat world and their pickup identity | Space |
+| Energy-stone processing policy and shape-specific production progress, once configured in Jar | Jar production domain |
+| Jar resources, ship liquid inventory, jars, workshops, demands, reservations, execution, and order cooldown | Jar World V2 |
+| Order definition -> Space effect binding | Space loadout/effect catalog |
+| Successful order-cycle fact | Jar World V2 |
+| Buff instances, duration, stacking/refresh rules, cooldown display, combat modifiers, and other world effects | Space combat/effect system |
 
-The integration should eventually add a narrow Bridge/Application command with value-only input:
+The Space effect binding must be versioned and captured with the pre-battle loadout. A running battle must not silently change the meaning of an already selected order if the global effect catalog is updated mid-run.
 
-- \`operationId\`: stable, globally unique identity generated by Space before the transfer is attempted;
-- \`sourceKind\` and \`sourceId\`: provenance of the Space resource (for example, a particular pickup/drop);
-- \`conversionId\` and \`conversionVersion\`: the approved mapping used;
-- \`liquids\`: an immutable map of Jar liquid identifiers to positive integer quantities.
+## 3. Order identity and completion mapping
 
-The result should report:
-- the operation identity;
-- requested quantities;
-- accepted quantities;
-- rejected quantities that remain Space-owned;
-- discarded quantities, only if a separately approved rule explicitly permits destruction;
-- a stable rejection reason when no quantity is accepted.
+The current Jar order demand has a runtime integer DemandId, an order specification, and its own cooldown duration/remaining time. A persistent demand may remain on the board after successful fulfillment, enter its cooldown, become ready again, and execute another cycle.
 
-Required behavior:
-1. Retrying the same \`operationId\` with the same payload returns the original receipt and does not import twice.
-2. Reusing an \`operationId\` with a different payload is rejected as an identity conflict.
-3. Validation of liquid vocabulary, conversion version, quantity, and capacity occurs inside the Jar application/domain boundary.
-4. The resource mutation and its ledger facts are committed as one Jar-side operation; a ledger failure must not leave an unreported inventory mutation.
-5. The operation identity and receipt survive execution checkpoint/save restoration for the lifetime of the owning ship-world.
-6. Space removes only the quantity reported as accepted. Rejected quantity remains available to Space unless a deliberate alternative is approved.
+Therefore DemandId alone is not a unique completion identity. The same configured order can successfully execute many times in one battle.
 
-This is an application-level transfer, not an arbitrary write to \`ShipLiquidInventory.Balances\`. It must not be implemented by exposing \`WorldV2Context\` or mutable Core entities to Godot.
+The integration contract should distinguish:
 
-### Capacity policy recommendation (not yet approved)
+- orderDefinitionId: stable opaque identity of the selected order blueprint/loadout slot. Jar stores or transports it without interpreting it.
+- demandId: Jar runtime identity of the currently loaded demand.
+- cycleSequence: monotonically increasing successful fulfillment number for that demand (or an equivalent persisted unique cycle identity).
+- eventId: stable identity derived from ship-world identity + demand identity + cycle sequence, or allocated and persisted atomically by Jar.
+- effectDefinitionId and effectDefinitionVersion: Space-owned binding captured in the loadout. These are not interpreted by Jar.
 
-Prefer partial acceptance with the unaccepted remainder retained by Space. Do not silently discard Space-owned resources merely because the Jar ship inventory is full. This differs from Jar's internal production/settlement overflow rules: those are already owned by Jar and have an explicit discard contract.
+Recommended event payload:
+- eventId
+- shipWorldId
+- jarWorldInstanceId
+- orderDefinitionId
+- demandId
+- cycleSequence
+- effectDefinitionId
+- effectDefinitionVersion
+- completedAtWorldTime
+- executionResult / requirement summary
+- any Jar-owned output references that Space is explicitly allowed to consume
 
-## 4. Proposed Jar-to-Space completion event
+The event means **one successful order cycle completed**. It does not mean a buff was applied successfully; Space's effect dispatcher owns that result.
 
-A completed order should produce a domain fact, not directly grant a reward. The event should contain only stable, domain-relevant data:
+### Repeated cycles and cooldown
 
-- \`eventId\`: stable idempotency identity;
-- \`shipWorldId\` and \`jarWorldInstanceId\`;
-- \`demandId\` and execution/session identity;
-- terminal outcome (success, cancellation, domain rejection, or other defined terminal state);
-- the completed requirement/result summary;
-- resource/result references that remain Jar-owned.
+- Jar owns the order's configured cooldown duration and remaining time.
+- On successful fulfillment, Jar's existing demand-area policy determines whether the demand is removed or retained and put on cooldown.
+- For retained orders, each successful cycle produces a distinct event ID even though demandId is unchanged.
+- The cooldown counts down only while the owning Space simulation advances.
+- Space owns the buff's active duration, stacking/refresh policy, target selection, and actual gameplay effect. These must not be conflated with Jar's order cooldown.
+- If an order fails, is cancelled, or is interrupted, it must not emit a successful-cycle event. Any separate terminal telemetry is not a buff trigger.
 
-Space may map this fact to a mission, unlock, equipment, score, or no consequence at all. Jar must not mutate Space health, enemy state, damage, wallet, score, reward, or progression.
+The current OrderDemandBoard already implements successful fulfillment and retained-order cooldown. It does not yet expose a durable successful-cycle outbox or persisted cycle sequence. That is a concrete Jar-side implementation gap, not a reason to infer completion from a UI snapshot.
 
-Delivery requirements:
-- event IDs are stable across retries and checkpoint restoration;
-- events are retained until Space has durably acknowledged them, or until a save transaction guarantees both sides have advanced together;
-- Space deduplicates by event ID before applying any consequence;
-- a UI snapshot or bounded resource-ledger cursor is not a substitute for this event stream;
-- presentation may display the event but must not be the event's owner or acknowledgment authority.
+## 4. Space effect dispatcher
 
-A failed or cancelled order is still a domain outcome, but it must not be reinterpreted as a successful product/reward.
+Space should resolve each successful completion event through the immutable effect binding captured by the active pre-battle loadout.
 
-## 5. Save and transaction boundary
+Responsibilities:
+1. Validate that the event belongs to the active ship-world and a selected order binding.
+2. Deduplicate by eventId before applying effects.
+3. Resolve the exact effectDefinitionId + version captured for this battle.
+4. Apply the effect through the Space combat/world effect system.
+5. Record the event as processed and retain enough state to recover safely after save/load or interruption.
 
-Space and Jar do not share one database transaction. The first integration should therefore avoid pretending that two independent writes are atomic.
+The effect catalog may eventually include cooldown buffs, temporary modifiers, triggered combat actions, support effects, or non-combat world effects. Their detailed semantics are Space-owned. No particular stacking, refresh, target, or numerical effect rule is implied here.
 
-Required direction:
-1. Space creates and persists a pending transfer intent with a stable operation ID.
+A successful event may produce no effect if the Space binding explicitly defines a no-op/disabled outcome; it must never fall through to an unrelated default reward.
+
+## 5. Resource import: typed energy stones and Jar liquids
+
+Space owns the physical energy-stone drops and pickup lifecycle. The established design says energy stones are typed by shape/property; the universal processor accepts all stone types and contributes to the corresponding shape-specific Jar production progress. Different production devices may have different per-shape processing rates. Production progress is independent per shape, and completing a unit produces a Jar.
+
+This processing is distinct from importing a liquid into the Jar ship liquid inventory. The current Jar ship liquid inventory is a bounded liquid-only inventory; it does not represent the energy-stone input buffer or shape-progress accumulator.
+
+Keep two ingress paths distinct:
+
+- **Energy-stone ingress:** Space pickup identity/type/quantity -> configured production-device processing input -> shape-specific processing progress -> Jar output. Device configuration and progress persistence must be explicit; do not route stones through ship-liquid inventory production.
+- **Liquid ingress:** only if Space has a separate approved source of actual Jar liquid, use an idempotent liquid-import command into the ship liquid inventory.
+
+The current World V2 Bridge exposes neither a production-device energy-stone ingress command nor a generic Space-liquid import command. Both are future adapter/API work.
+
+For energy-stone ingress, the eventual receipt must report source identity, accepted quantity, processed/remainder quantity, and output Jars/progress delta. Replaying the same pickup identity must not process it twice. Whether unprocessed stones are retained, rejected, or discarded must be explicit; do not silently destroy Space-owned pickups.
+
+## 6. Completion event durability
+
+A bounded resource ledger and detached world snapshot are not a durable completion-event channel.
+
+Required implementation:
+- successful cycle completion writes an outbox event in the same logical mutation boundary as the demand fulfillment/cooldown transition;
+- event identity and per-demand cycle sequence survive execution checkpoint and full save restoration;
+- read/ack operations are exposed through ApplicationService/Bridge using detached DTOs;
+- events remain available until Space acknowledges them, or until a coordinated save guarantees both sides committed;
+- duplicate reads and retries return the same event; acknowledgment is idempotent;
+- Space's effect dispatcher deduplicates before applying the effect.
+
+Do not invoke Godot or Space callbacks from Jar Core during a mutation. Jar records the fact; the Space host drains the detached outbox through a controlled application boundary.
+
+## 7. Resource and save transaction boundary
+
+For any future Space-to-Jar resource transfer:
+1. Space persists a pending intent with a stable source/operation identity.
 2. Space submits the import command.
-3. Jar atomically records the operation receipt with its inventory mutation and checkpoint state.
-4. Space reads the receipt and finalizes only the accepted amount.
-5. On retry or recovery, Space resubmits the same operation ID and receives the same receipt.
+3. Jar atomically records its receipt and inventory/progress mutation.
+4. Space finalizes only the accepted amount.
+5. Retrying the same operation returns the original receipt.
 
-For completion events, Jar persists an outbox event and Space persists its processed-event ID together with the consequence. If the save architecture cannot atomically commit Space consequence plus processed ID, the consequence handler itself must be idempotent.
+For order effects:
+1. Jar persists the successful-cycle outbox event.
+2. Space resolves the event against the battle's immutable effect binding.
+3. Space applies the effect idempotently using eventId.
+4. Space acknowledges the event after its own effect state and processed-event identity are durable.
 
-The final save identity/version and recovery protocol are still open. The above is the required failure-safe shape, not a claim that the current Bridge already implements it.
+Space and Jar do not share one database transaction. Save recovery must use stable operation/event IDs and idempotent application, not assume cross-system atomic writes.
 
-## 6. Explicit non-decisions
+## 8. Explicitly not decided
 
-No rule is chosen here for:
-- whether energy stones, enemy drops, salvage, or other pickups can become Jar liquids;
-- which liquid each Space resource maps to, or the conversion ratio;
-- whether imports occur immediately, at a station, or through a player command;
-- whether Jar products are exported from the ship or remain Jar-owned;
-- whether any successful order has mission/progression/equipment value;
-- what gameplay action should trigger workshop replacement.
+This contract does not yet choose:
+- numerical buff effects, durations, targets, stacking, refresh, or interaction rules;
+- whether all selected orders are buffs or whether some produce other world effects;
+- exact energy-stone shape vocabulary, per-device rate tables, or partial processing policy beyond the established shape-specific progress model;
+- whether and how any other Space resource imports as liquid;
+- the player interaction that initiates workshop replacement during combat;
+- final save-file format and cross-system recovery orchestration.
 
-Those decisions belong to the Space game design. The adapter must remain generic until they are settled.
+These are separate design/data tasks. The boundary is fixed: Jar reports successful order cycles; Space owns their gameplay effects.
