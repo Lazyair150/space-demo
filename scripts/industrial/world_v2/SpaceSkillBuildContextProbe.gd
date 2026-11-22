@@ -27,13 +27,17 @@ static func run() -> Dictionary:
 		order, [{"shapeJarRatePerSecond": {"large": 1.0}}], workshop, 60000.0, profile)
 	if unsupported.get("valid", false):
 		return {"passed": false, "reason": "unsupported required shape must fail closed"}
+	var bottleneck_order := order.duplicate(true)
+	bottleneck_order["requirements"].append({"shape": "large"})
 	var bottleneck := SpaceSkillBuildContextEvaluator.evaluate(
-		order,
-		[{"shapeJarRatePerSecond": {"small": 10.0}}, {"shapeJarRatePerSecond": {"small": 0.1}}],
+		bottleneck_order,
+		[{"shapeJarRatePerSecond": {"small": 10.0, "large": 0.1}}],
 		workshop,
 		60000.0,
 		profile
 	)
-	if not bottleneck.get("valid", false) or float(bottleneck.productionPressure) <= 0.0:
-		return {"passed": false, "reason": "per-shape bottleneck pressure was not calculated"}
+	if not bottleneck.get("valid", false):
+		return {"passed": false, "reason": bottleneck.get("reason", "bottleneck context failed")}
+	if not is_equal_approx(float(bottleneck.productionPressure), float(bottleneck.shapePressure["large"])):
+		return {"passed": false, "reason": "aggregate supply hid the limiting shape rate"}
 	return {"passed": true, "productionPressure": result.productionPressure, "bottleneckPressure": bottleneck.productionPressure}
