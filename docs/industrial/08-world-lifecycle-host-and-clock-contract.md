@@ -168,3 +168,17 @@ Still incomplete:
 - Dispatcher/effect state save/restore is not connected to a battle save system.
 - Typed energy-stone pickup ingress and shape-specific production-device processing are not yet wired to the World V2 production area.
 - The production host/clock, C# loadout materialization path, and GDScript loadout/dispatcher scripts have not yet been locally compiled or run in Godot.
+
+
+## 13. Skill model and effect-state persistence update
+
+The player-facing concept is a **Skill Catalog**. Each equipped skill is represented on the Jar side by an executable order blueprint plus Space-owned effect binding. The existing loadout `area` field assigns a skill to Active or Passive; a separate activation policy will distinguish manual player requests from passive trigger automation. Neither area nor trigger policy may bypass Jar resource feasibility or cooldown.
+
+New Space foundations on the current branch:
+- `BuffDefinition.definition_version` is a positive versioned identity; `SpaceEffectCatalog` resolves exact ID/version pairs.
+- `BuffInstance` snapshots preserve target key, remaining duration, stacks, tick count/accumulator, and an extension point for subclass-owned mutable state.
+- `StatusEffectManager` snapshots preserve active instances and processed Jar event IDs. Restore stages and validates all entries, then rebuilds stat modifiers without replaying apply/expire gameplay callbacks.
+- `SpaceOrderEffectCommitter` resolves the selected effect binding, applies it with runtime EventId idempotency, and saves the effect snapshot together with the dispatcher's proposed processed-ID state.
+- `SpaceBattleEffectStateStore` uses a pending snapshot and recoverable previous file. Its replacement/recovery behavior still needs platform validation; it is not claimed to be a cross-platform filesystem transaction.
+
+Not yet implemented: Skill Catalog content/data, actual Active input requests, Passive trigger/automation policy, target-policy catalog data, full battle save/load orchestration, and Hangar construction of the frozen build. The combat sandbox path remains development-only.
