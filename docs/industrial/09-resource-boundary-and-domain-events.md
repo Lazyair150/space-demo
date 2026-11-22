@@ -188,3 +188,16 @@ Space effect implementation added on the current branch:
 - StatusEffectManager captures/restores active instances and processed event IDs; restore validates into a staged set and rebuilds stat modifiers without replaying gameplay callbacks.
 - SpaceOrderEffectCommitter applies a Jar event idempotently and persists the effect state with the proposed dispatcher state before the dispatcher acknowledges Jar.
 - The state store uses a pending file plus recoverable previous snapshot; platform-specific crash/replace behavior remains to be validated and full battle save/load integration is still outstanding.
+
+
+## 8. Audited Jar liquid-cost semantics
+
+The authoritative Jar requirement entry contains a required shape and an optional target liquid; it does not contain a numeric liquid amount. Numeric free-liquid demand is derived from the concrete solver plan and its resource manifest:
+- POUR_IN consumes one free-liquid unit.
+- Empty-Jar RESHAPE consumes one free-liquid unit of its cost liquid.
+- Full-Jar RESHAPE consumes the liquid already inside the Jar.
+- POUR_OUT returns the Jar's liquid to the order staging balance.
+
+For B-class orders, the slave transfer quantity is independently derived from the slave execution path. Only the required amount is transferred from Master to Slave.
+
+Space must not add a synthetic `liquidUnits` property to Jar requirements. Recipe-only battle forecasts carry a separate, named `resourceCostForecast`; a resolved Jar manifest is the authoritative quantity when a concrete plan is available. See `11-real-resource-contract-audit.md`.
