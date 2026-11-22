@@ -14,15 +14,17 @@ class_name SpaceBattleEconomyEvaluator
 ##   liquidInventoryCapacity: non-negative total units; -1 means unbounded/unknown
 ##   workshopOperationsPerSecond: non-negative operations/second
 ## skills: array of { skillId, area: Active|Passive, cooldownDurationLogicalMilli,
-##   jarOrder: { type, requirements:[{shape, liquid?, liquidUnits?}] },
+##   jarOrder: { type, requirements:[{shape, liquid?}] },
+##   resourceCostForecast: { liquidUnitsPerActivation, forecastSource },
 ##   workshopOperationsPerActivation, requestedActivations? }
 ##
 ## For Active skills, requestedActivations is an explicit player-planning assumption.
 ## For Passive skills, requestedActivations is an explicit trigger forecast. If omitted,
 ## the cooldown ceiling is used. This avoids pretending trigger policy is already implemented.
 ##
-## Liquid units are intentionally explicit. A liquid-bearing Jar without liquidUnits is
-## rejected: the evaluator must not invent the amount from the fact that a Jar has liquid.
+## Jar requirements do not carry numeric liquid quantities. The separate forecast is a
+## Space-side estimate of external liquid demand per activation, derived from a named
+## scenario or a resolved Jar execution plan. It is never copied into the Jar contract.
 
 static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -> Dictionary:
 	var duration_milli := float(battle.get("durationLogicalMilli", 0.0))
@@ -84,24 +86,12 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 		var requirements: Variant = order.get("requirements", null)
 		if not (requirements is Array) or requirements.is_empty():
 			return _failure("skill Jar requirements must be non-empty: " + skill_id)
-		var shape_cost := {}
-		var liquid_cost := {}
-		for raw_requirement in requirements:
-			if not (raw_requirement is Dictionary):
-				return _failure("Jar requirement must be a dictionary: " + skill_id)
-			var requirement: Dictionary = raw_requirement
-			var shape := String(requirement.get("shape", "")).strip_edges()
-			if shape.is_empty():
-				return _failure("Jar requirement shape missing: " + skill_id)
-			shape_cost[shape] = float(shape_cost.get(shape, 0.0)) + 1.0
-			var liquid := String(requirement.get("liquid", "")).strip_edges()
-			if not liquid.is_empty():
-				if not requirement.has("liquidUnits"):
-					return _failure("liquidUnits must be explicit for " + skill_id + " / " + liquid)
-				var units := float(requirement.get("liquidUnits", -1.0))
-				if units <= 0.0:
-					return _failure("liquidUnits must be positive for " + skill_id + " / " + liquid)
-				liquid_cost[liquid] = float(liquid_cost.get(liquid, 0.0)) + units
+		var cost_forecast: Variant = skill.get("resourceCostForecast", null)
+		var normalized_cost := SpaceJarRequirementCostAdapter.normalize(order, cost_forecast)
+		if not bool(normalized_cost.get("valid", false)):
+			return _failure("invalid Jar resource-cost forecast for " + skill_id + ": " + String(normalized_cost.get("reason", "unknown")))
+		var shape_cost: Dictionary = normalized_cost.shapeJarsPerActivation
+		var liquid_cost: Dictionary = normalized_cost.liquidUnitsPerActivation
 		var cooldown_ceiling := 1 + int(floor(maxf(0.0, duration_milli - 0.001) / cooldown))
 		if area == "Active" and not skill.has("requestedActivations"):
 			return _failure("Active skill requires an explicit requestedActivations planning assumption: " + skill_id)
