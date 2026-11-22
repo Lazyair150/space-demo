@@ -200,7 +200,9 @@ public partial class WorldV2RuntimeNode : Node
                 }),
                 ["cooldownDurationLogicalMilli"] = demand.CooldownDurationLogicalMilli,
                 ["cooldownRemainingLogicalMilli"] = demand.CooldownRemainingLogicalMilli,
-                ["isCoolingDown"] = demand.IsCoolingDown
+                ["isCoolingDown"] = demand.IsCoolingDown,
+                ["orderDefinitionKey"] = demand.OrderDefinitionKey ?? "",
+                ["cycleSequence"] = demand.CycleSequence
             }),
             ["activeSessions"] = ToGodotArray(snapshot.ActiveSessions, session => (Variant)new GDictionary
             {
@@ -217,6 +219,32 @@ public partial class WorldV2RuntimeNode : Node
             ["reservationCount"] = snapshot.ReservationCount,
             ["replacement"] = ToReplacementDictionary(snapshot.Replacement)
         };
+    }
+
+    /// <summary>
+    /// Returns detached pending Jar order-cycle facts for the Space effect dispatcher.
+    /// Reading does not consume events; callers must acknowledge only after their
+    /// effect state and processed-event identity have been persisted.
+    /// </summary>
+    public GArray GetPendingOrderCycleEvents()
+    {
+        var events = RequireSession().GetPendingOrderCycleEvents();
+        return ToGodotArray(events, item => (Variant)new GDictionary
+        {
+            ["eventId"] = item.EventId,
+            ["worldInstanceId"] = item.WorldInstanceId,
+            ["demandId"] = item.DemandId,
+            ["orderDefinitionKey"] = item.OrderDefinitionKey,
+            ["cycleSequence"] = item.CycleSequence
+        });
+    }
+
+    /// <summary>Confirm a pending event after Space has durably applied it.</summary>
+    public bool AcknowledgeOrderCycleEvent(string eventId)
+    {
+        if (string.IsNullOrWhiteSpace(eventId))
+            throw new ArgumentException("EventId 不能为空", nameof(eventId));
+        return RequireOperationalSession().AcknowledgeOrderCycleEvent(eventId);
     }
 
     public override void _ExitTree()
