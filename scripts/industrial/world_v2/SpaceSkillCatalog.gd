@@ -34,12 +34,18 @@ func create_order_binding_for_build(
 	balance_profile: SpaceSkillBalanceProfile,
 	production_devices: Array,
 	workshop_combination: Dictionary,
-	expected_battle_duration_logical_milli: float
+	expected_battle_duration_logical_milli: float,
+	effect_catalog: SpaceEffectCatalog
 ) -> Dictionary:
 	var definition := resolve_skill(skill_id, version)
 	if definition == null:
 		return {}
-	if balance_profile == null or not balance_profile.is_valid():
+	if balance_profile == null or not balance_profile.is_valid() or effect_catalog == null:
+		return {}
+	var effect_id := String(definition.effect_definition_id)
+	var benefit_metrics := effect_catalog.resolve_balance_metrics(effect_id, definition.effect_definition_version)
+	if benefit_metrics.is_empty():
+		push_error("Skill effect version has no balance metrics: " + effect_id)
 		return {}
 	var jar_order := definition.build_jar_order()
 	if jar_order.is_empty():
@@ -54,7 +60,7 @@ func create_order_binding_for_build(
 	if not context.get("valid", false):
 		push_error("Skill build difficulty context rejected: " + String(context.get("reason", "unknown")))
 		return {}
-	return definition.create_order_binding(order_definition_key, selected_control_area, balance_profile, context)
+	return definition.create_order_binding(order_definition_key, selected_control_area, balance_profile, context, benefit_metrics)
 
 func _key(skill_id: String, version: int) -> String:
 	return "%s@%d" % [skill_id, version]
