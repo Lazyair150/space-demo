@@ -337,4 +337,51 @@ static func run() -> bool:
 	invalid_progression_data.ownedInstances[0].instanceId = "probe.parser.instance.a"
 	if SpacePlayerProgressionState.from_data(invalid_progression_data) != null:
 		return false
+
+	# Versioned curves drive progression; the generic evaluator does not assign
+	# gameplay meaning to subsystem-owned attribute keys.
+	var parser_curve := SpaceProgressionCurveDefinition.new()
+	parser_curve.curve_id = &"probe.parser-growth"
+	parser_curve.definition_version = 2
+	parser_curve.item_kind = "ore_parser"
+	parser_curve.max_level = 3
+	parser_curve.experience_threshold_by_level = {"2": 100, "3": 300}
+	parser_curve.attribute_keyframes = {
+		"productionRateMultiplier": [
+			{"level": 1, "value": 1.0},
+			{"level": 2, "value": 1.25},
+			{"level": 3, "value": 1.6}
+		],
+		"batchCapacityBonus": [
+			{"level": 1, "value": 0.0},
+			{"level": 3, "value": 4.0}
+		]
+	}
+	if not parser_curve.get_validation_errors().is_empty():
+		return false
+	if parser_curve.level_for_experience(99) != 1 or parser_curve.level_for_experience(100) != 2 or parser_curve.level_for_experience(300) != 3:
+		return false
+	var level_two_growth := parser_curve.build_growth_attributes(2)
+	if absf(float(level_two_growth.productionRateMultiplier) - 1.25) > 0.000001:
+		return false
+	if absf(float(level_two_growth.batchCapacityBonus) - 2.0) > 0.000001:
+		return false # Linear interpolation between authored keyframes.
+	if not SpaceProgressionGrowthService.apply_to_player_state(progression, "probe.parser.instance.b", parser_curve, 260):
+		return false
+	var curve_upgraded := progression.resolve_instance("probe.parser.instance.b")
+	if curve_upgraded == null or curve_upgraded.level != 2 or curve_upgraded.experience != 260:
+		return false
+	if absf(float(curve_upgraded.growth_attributes.productionRateMultiplier) - 1.25) > 0.000001:
+		return false
+	var wrong_kind_curve := parser_curve.duplicate(true) as SpaceProgressionCurveDefinition
+	wrong_kind_curve.item_kind = "ship"
+	if SpaceProgressionGrowthService.calculate_update(curve_upgraded, wrong_kind_curve, 300) != null:
+		return false # A parser curve cannot be applied to a ship instance.
+	var regressing_xp := SpaceProgressionGrowthService.calculate_update(curve_upgraded, parser_curve, 200)
+	if regressing_xp != null:
+		return false
+	var invalid_curve := parser_curve.duplicate(true) as SpaceProgressionCurveDefinition
+	invalid_curve.experience_threshold_by_level["3"] = 90
+	if invalid_curve.get_validation_errors().is_empty():
+		return false # Cumulative XP thresholds must strictly increase.
 	return true
