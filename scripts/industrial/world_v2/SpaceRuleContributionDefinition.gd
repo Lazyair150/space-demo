@@ -80,7 +80,7 @@ func resolve(
 
 func _is_supported_scalar(value: Variant) -> bool:
 	match typeof(value):
-		TYPE_INT, TYPE_STRING, TYPE_BOOL:
+		TYPE_INT, TYPE_STRING, TYPE_STRING_NAME, TYPE_BOOL:
 			return true
 		TYPE_FLOAT:
 			return is_finite(float(value))
