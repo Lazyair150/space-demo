@@ -79,6 +79,11 @@ func _apply_board_definition() -> void:
 		_board_configuration_valid = false
 		push_error("Hangar board definition rejected: " + "; ".join(errors))
 		return
+	var projection_errors := board_definition.get_runtime_projection_errors()
+	if not projection_errors.is_empty():
+		_board_configuration_valid = false
+		push_error("Hangar board exceeds the current runtime slot projection: " + "; ".join(projection_errors))
+		return
 	var configuration := board_definition.build_hangar_configuration()
 	if configuration.is_empty():
 		_board_configuration_valid = false
