@@ -229,6 +229,8 @@ func _render_view_model(view_model: Dictionary) -> void:
 		_status_label.text = String(inventory.get("unavailableReason", view_model.get("lastError", "目录不可用")))
 	elif not _identity_is_supplied():
 		_status_label.text = "目录已加载。等待所属游戏流程提供 shipWorldId / loadoutId / loadoutVersion。"
+	elif not _slot_configuration_is_valid():
+		_status_label.text = "机库槽位配置无效：设备槽位必须唯一且不能占用解析器槽位，技能订单键必须唯一。"
 	elif not devices.is_empty() and device_slot_ids.is_empty():
 		_status_label.text = "目录含生产设备，但游戏流程尚未提供 device_slot_ids；请先配置真实设备槽位。"
 	elif not skills.is_empty() and skill_order_bindings.is_empty():
@@ -389,6 +391,7 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 			if choice is Dictionary:
 				skill_picker.add_item("%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))])
 				skill_picker.set_item_metadata(skill_picker.item_count - 1, choice.duplicate())
+				skill_picker.set_item_tooltip(skill_picker.item_count - 1, String(choice.get("description", "")))
 		controls.add_child(skill_picker)
 		var area_picker := OptionButton.new()
 		area_picker.custom_minimum_size.x = 145
@@ -481,6 +484,8 @@ func _on_refresh_pressed() -> void:
 
 func _on_refresh_confirmed() -> void:
 	_controller.refresh_inventory()
+	if _duration_picker.value > 0.0:
+		_controller.set_expected_battle_duration(_duration_picker.value)
 
 func _on_build_pressed() -> void:
 	var snapshot := _controller.build_loadout_snapshot()
@@ -500,7 +505,27 @@ func _update_build_enabled(view_model: Dictionary) -> void:
 		not bool(view_model.get("canBuild", false))
 		or _duration_picker.value <= 0.0
 		or not binding_configuration_complete
+		or not _slot_configuration_is_valid()
 	)
+
+func _slot_configuration_is_valid() -> bool:
+	if parser_slot_id.strip_edges().is_empty():
+		return false
+	var seen_device_slots := {}
+	for raw_slot in device_slot_ids:
+		var slot_id := String(raw_slot).strip_edges()
+		if slot_id.is_empty() or slot_id == parser_slot_id or seen_device_slots.has(slot_id):
+			return false
+		seen_device_slots[slot_id] = true
+	var seen_order_keys := {}
+	for binding in skill_order_bindings:
+		if not (binding is Dictionary):
+			return false
+		var order_key := String(binding.get("orderDefinitionKey", "")).strip_edges()
+		if order_key.is_empty() or seen_order_keys.has(order_key):
+			return false
+		seen_order_keys[order_key] = true
+	return true
 
 func _identity_is_supplied() -> bool:
 	return (
