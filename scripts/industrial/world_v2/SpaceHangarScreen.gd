@@ -52,6 +52,8 @@ func _ready() -> void:
 	_preparation = get_node_or_null("Preparation") as SpaceHangarPreparation
 	_controller = SpaceHangarSelectionController.new()
 	if _preparation != null:
+		if GameState.space_progression_state == null:
+			SpaceDemoProgressionBootstrap.ensure_starting_inventory(_preparation.catalog_bundle_resource)
 		_preparation.player_progression_state = GameState.space_progression_state
 	GameState.space_progression_state_changed.connect(_on_progression_state_changed)
 	GameState.space_campaign_progress_changed.connect(_on_campaign_progress_changed)
@@ -165,7 +167,7 @@ func _build_interface() -> void:
 	add_child(_refresh_confirmation)
 	_refresh_confirmation.confirmed.connect(_on_refresh_confirmed)
 	_build_button = Button.new()
-	_build_button.text = "检查并冻结装配快照"
+	_build_button.text = "装配并进入战斗"
 	_build_button.disabled = true
 	footer.add_child(_build_button)
 	_build_button.pressed.connect(_on_build_pressed)
@@ -202,11 +204,14 @@ func _refresh_stage_picker() -> void:
 		_stage_picker.set_item_disabled(0, true)
 		_stage_info_label.text = "关卡数据不可用；请为 Hangar 配置版本化的 SpaceStageCatalog。"
 		return
+	_stage_picker.add_item("自由战斗 · 无关卡目标")
+	_stage_picker.set_item_metadata(0, {})
+	_stage_picker.select(0)
+	_stage_info_label.text = "自由战斗：保留无尽战斗循环，不启用有限关卡结算。"
 	var cleared: Array = []
 	if GameState.space_campaign_progress_state != null:
 		cleared = GameState.space_campaign_progress_state.cleared_stage_keys()
 	var stages := stage_catalog.stages_for_campaign(campaign_id)
-	var first_unlocked_index := -1
 	for stage in stages:
 		var unlocked := stage_catalog.is_unlocked(stage, cleared)
 		var prefix := "" if unlocked else "🔒 "
@@ -215,15 +220,9 @@ func _refresh_stage_picker() -> void:
 		_stage_picker.set_item_metadata(item_index, {"stageId": String(stage.stage_id), "version": stage.definition_version})
 		if not unlocked:
 			_stage_picker.set_item_disabled(item_index, true)
-		elif first_unlocked_index < 0:
-			first_unlocked_index = item_index
-	if first_unlocked_index >= 0:
-		_stage_picker.select(first_unlocked_index)
-		_on_stage_selected(first_unlocked_index)
-	else:
-		_stage_picker.add_item("当前战役没有可挑战关卡")
-		_stage_picker.set_item_disabled(_stage_picker.item_count - 1, true)
-		_stage_info_label.text = "请检查战役目录及前置关卡记录。"
+	if stages.is_empty():
+		_stage_info_label.text += "\\n当前战役没有可挑战关卡。"
+
 
 func _on_stage_selected(index: int) -> void:
 	_selected_stage = null
@@ -231,6 +230,9 @@ func _on_stage_selected(index: int) -> void:
 		return
 	var metadata: Variant = _stage_picker.get_item_metadata(index)
 	if not (metadata is Dictionary):
+		return
+	if metadata.is_empty():
+		_stage_info_label.text = "自由战斗：不启用有限关卡目标与结算。"
 		return
 	_selected_stage = stage_catalog.resolve_stage(String(metadata.get("stageId", "")), int(metadata.get("version", 0)))
 	if _selected_stage == null:
@@ -692,7 +694,48 @@ func _on_build_pressed() -> void:
 	if snapshot == null:
 		_status_label.text = String(_controller.get_view_model().get("lastError", "装配快照构建失败"))
 		return
-	_status_label.text = "装配快照已冻结：%s" % snapshot.loadout_fingerprint()
+	var game_scene := load("res://scenes/game/Game.tscn") as PackedScene
+	if game_scene == null:
+		_status_label.text = "战斗场景不可用，无法启动。"
+		return
+	var game := game_scene.instantiate()
+	if game == null:
+		_status_label.text = "战斗场景实例化失败。"
+		return
+	var commit_callback := _create_order_effect_commit_callback(game, snapshot) if not snapshot.order_definition_keys().is_empty() else Callable()
+	if not SpaceHangarBattleLauncher.launch_new_battle(
+		get_tree().root, game, snapshot, commit_callback, _selected_stage
+	):
+		if not game.is_inside_tree():
+			game.free()
+		_status_label.text = "战斗启动被拒绝：请检查 Core 订单可行性、效果提交回调和关卡配置。"
+		return
+	visible = false
+
+func _create_order_effect_commit_callback(game: Node, loadout: SpaceBattleLoadoutSnapshot) -> Callable:
+	var bundle := _preparation.create_catalog_bundle() if _preparation != null else null
+	if bundle == null or bundle.effect_catalog == null:
+		return Callable()
+	var committer := SpaceOrderEffectCommitter.new()
+	var store := SpaceBattleEffectStateStore.new()
+	var configured := false
+	var callback := func(event: Dictionary, binding: Dictionary, next_dispatcher_state: Dictionary) -> bool:
+		var player_node := game.get_node_or_null("Arena/Player")
+		if player_node == null:
+			return false
+		var manager := player_node.get("effects") as StatusEffectManager
+		if manager == null:
+			return false
+		if not configured:
+			var target_resolver := func(_effect_binding: Dictionary, _event: Dictionary) -> Node:
+				return player_node
+			var checkpoint_provider := func() -> Dictionary:
+				return game.call("capture_jar_space_runtime_checkpoint")
+			if not committer.configure(bundle.effect_catalog, manager, store, loadout, target_resolver, checkpoint_provider):
+				return false
+			configured = true
+		return committer.commit(event, binding, next_dispatcher_state)
+	return callback
 
 func _update_build_enabled(view_model: Dictionary) -> void:
 	if not is_instance_valid(_build_button):
