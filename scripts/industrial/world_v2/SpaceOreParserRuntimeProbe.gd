@@ -13,7 +13,7 @@ static func run() -> Dictionary:
 	}
 	definition.progress_per_jar_by_shape = {
 		"圆罐": 2.0,
-		"方罐": 2.0
+		"方罐": 3.0
 	}
 	var runtime := SpaceOreParserRuntime.new()
 	var initialized := runtime.initialize(definition, "probe-ship-world-parser", ["圆罐", "方罐"])
