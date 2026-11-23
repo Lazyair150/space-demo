@@ -13,6 +13,11 @@ static func run() -> bool:
 		return false
 	if runtime_catalog.workshop_combination_catalog.resolve_definition("demo.world.starter", 1) == null or runtime_catalog.workshop_combination_catalog.resolve_definition("demo.world.deep_field", 1) == null:
 		return false
+	if not DEMO_CATALOG.workshop_combination_catalog.definitions[0].workshop_definitions.is_empty():
+		return false
+	var runtime_world := runtime_catalog.workshop_combination_catalog.resolve_definition("demo.world.starter", 1)
+	if runtime_world.workshop_definitions.size() != 2:
+		return false
 	if runtime_catalog.skill_catalog == null or runtime_catalog.skill_catalog.is_empty() or runtime_catalog.effect_catalog == null or runtime_catalog.effect_catalog.is_empty():
 		return false
 	if runtime_catalog.ore_parser_catalog.resolve_definition("demo.parser.universal", 1) == null or runtime_catalog.ore_parser_catalog.resolve_definition("demo.parser.precision", 1) == null:
