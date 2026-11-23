@@ -90,11 +90,17 @@ static func evaluate_workshop(
 		# -1 is a Core fallback sentinel, not a physical capacity. Encode the absence
 		# of an explicit limit as zero and preserve the fallback choice separately.
 		"liquid_staging_capacity": maxf(0.0, float(definition.liquid_staging_capacity)),
-		"uses_core_staging_fallback": 1.0 if definition.liquid_staging_capacity < 0 else 0.0,
-		"base_mark_count": float(definition.base_marks.size()),
-		"additional_mark_count": float(definition.additional_marks.size()),
-		"banned_liquid_count": float(definition.banned_liquids.size())
+		"uses_core_staging_fallback": 1.0 if definition.liquid_staging_capacity < 0 else 0.0
 	}
+	# Preserve the identity of each rule instead of collapsing different marks/Bans
+	# into counts that would make unlike workshop configurations look equivalent.
+	for raw_shape in shape_vocabulary:
+		var shape := String(raw_shape)
+		metrics["base_mark." + shape] = 1.0 if definition.base_marks.has(shape) else 0.0
+		metrics["additional_mark." + shape] = 1.0 if definition.additional_marks.has(shape) else 0.0
+	for raw_liquid in liquid_vocabulary:
+		var liquid := String(raw_liquid)
+		metrics["ban." + liquid] = 1.0 if definition.banned_liquids.has(liquid) else 0.0
 	return _score(model, metrics)
 
 
