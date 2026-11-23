@@ -112,9 +112,14 @@ func configure_battle_loadout_from_checkpoint(
 	return true
 
 func _ready() -> void:
+	if not GameFlow.begin_battle_preparation():
+		push_error("[Game] Application flow rejected battle scene entry")
+		process_mode = Node.PROCESS_MODE_DISABLED
+		return
 	if not _persisted_run_state.is_empty():
 		if not GameState.restore_run_state(_persisted_run_state):
 			push_error("[Game] Saved transient run state is invalid")
+			GameFlow.fault_battle()
 			process_mode = Node.PROCESS_MODE_DISABLED
 			return
 	elif _persisted_jar_execution_checkpoint_json.is_empty():
@@ -125,10 +130,17 @@ func _ready() -> void:
 		player.effects.external_time_authority = true
 	if not _restore_saved_effect_state():
 		push_error("[Game] Saved Space effect state could not be restored")
-		process_mode = Node.PROCESS_MODE_DISABLED
+		GameFlow.fault_battle()
+			process_mode = Node.PROCESS_MODE_DISABLED
 		return
 	if not _begin_ship_world():
 		push_error("[Game] Ship world initialization failed; combat build is not allowed to proceed")
+		GameFlow.fault_battle()
+			process_mode = Node.PROCESS_MODE_DISABLED
+		return
+	if not GameFlow.mark_battle_running():
+		push_error("[Game] Application flow could not enter the running battle phase")
+		GameFlow.fault_battle()
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 	_camera_home=camera_2d.position
@@ -527,12 +539,18 @@ func _physics_process(delta: float) -> void:
 func _exit_tree() -> void:
 	# A combat scene must never leak SceneTree pause into the next screen.
 	get_tree().paused = false
+	GameFlow.end_battle()
 	# Leaving the owning ship-world is terminal for this Jar session.
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if jar_host != null:
 		jar_host.EndShipWorld()
 
 func _on_player_died()->void:
+	GameFlow.end_battle()
+	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if jar_host != null:
+		jar_host.EndShipWorld()
+	process_mode = Node.PROCESS_MODE_DISABLED
 	GameState.report_game_over()
 	await get_tree().create_timer(1.0, false).timeout
 	get_tree().change_scene_to_file("res://scenes/menus/GameOver.tscn")
