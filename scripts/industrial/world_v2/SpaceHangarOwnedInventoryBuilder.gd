@@ -106,14 +106,18 @@ static func _build_owned_workshop_pairs(bundle: SpaceHangarCatalogBundleResource
 			continue
 		var master_id := String(combination.workshop_pair.master_workshop_id)
 		var slave_id := String(combination.workshop_pair.slave_workshop_id)
+		var master_definition := _resolve_workshop_definition(bundle, master_id, 0)
+		var slave_definition := _resolve_workshop_definition(bundle, slave_id, 0)
+		if master_definition == null or slave_definition == null:
+			continue
 		var masters: Array = []
 		var slaves: Array = []
 		for instance in progression.owned_instances:
 			if instance == null or instance.item_kind != "workshop":
 				continue
-			if String(instance.definition_id) == master_id:
+			if String(instance.definition_id) == master_id and instance.definition_version == master_definition.definition_version:
 				masters.append(instance)
-			elif String(instance.definition_id) == slave_id:
+			elif String(instance.definition_id) == slave_id and instance.definition_version == slave_definition.definition_version:
 				slaves.append(instance)
 		for master in masters:
 			for slave in slaves:
