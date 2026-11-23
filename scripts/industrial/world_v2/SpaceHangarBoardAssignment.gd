@@ -18,7 +18,7 @@ static func create_entry(slot: SpaceHangarBoardSlotDefinition, choice: Dictionar
 		"definitionVersion": version
 	}
 
-static func validate(board: SpaceHangarBoardDefinition, assignments: Dictionary, inventory: Dictionary) -> PackedStringArray:
+static func validate(board: SpaceHangarBoardDefinition, assignments: Dictionary, inventory: Dictionary, require_complete: bool = true) -> PackedStringArray:
 	var errors := PackedStringArray()
 	if board == null or not board.get_validation_errors().is_empty():
 		errors.append("a valid Board Definition is required")
@@ -53,7 +53,7 @@ static func validate(board: SpaceHangarBoardDefinition, assignments: Dictionary,
 			errors.append("owned instance item kind does not match slot: " + slot_id)
 	for slot_id in slots:
 		var slot: Dictionary = slots[slot_id]
-		if bool(slot.get("required", false)) and not assignments.has(slot_id):
+		if require_complete and bool(slot.get("required", false)) and not assignments.has(slot_id):
 			errors.append("required Board Slot is empty: " + slot_id)
 	return errors
 
