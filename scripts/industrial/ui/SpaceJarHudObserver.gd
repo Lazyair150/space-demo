@@ -128,12 +128,16 @@ func _render_resource_jars(raw_jars: Variant) -> void:
 		_resource_jars.add_child(UiKit.label("舱段库存：0", UiKit.FONT_SMALL, UiKit.MUTED))
 		return
 	var counts := {}
+	var filled_by_shape := {}
 	for jar in raw_jars:
 		if jar is Dictionary:
 			var shape := String(jar.get("shape", ""))
 			counts[shape] = int(counts.get(shape, 0)) + 1
+			if not String(jar.get("liquid", "")).is_empty():
+				filled_by_shape[shape] = int(filled_by_shape.get(shape, 0)) + 1
 	for shape in counts:
-		_resource_jars.add_child(_shape_token(String(shape), "×%d" % int(counts[shape])))
+		var filled := int(filled_by_shape.get(shape, 0))
+		_resource_jars.add_child(_shape_token(String(shape), "×%d · 装液%d" % [int(counts[shape]), filled]))
 
 func _render_resource_liquids(raw_liquids: Variant) -> void:
 	UiKit.clear_children(_resource_liquids)
