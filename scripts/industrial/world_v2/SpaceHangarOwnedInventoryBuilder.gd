@@ -77,6 +77,12 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 					"allowedControlAreas": definition.allowed_control_areas.duplicate(),
 					"iconTexture": definition.display_icon
 				})
+	for effect in bundle.effect_definitions:
+		if effect != null:
+			result.effectChoices.append({
+				"id": String(effect.id), "version": effect.definition_version,
+				"label": effect.label, "iconTexture": effect.display_icon
+			})
 	var workshop_pairs := _build_owned_workshop_pairs(bundle, progression)
 	if workshop_pairs.is_empty():
 		result.workshopChoices = []
@@ -130,7 +136,9 @@ static func _build_owned_workshop_pairs(bundle: SpaceHangarCatalogBundleResource
 					"masterInstanceId": String(master.instance_id),
 					"slaveInstanceId": String(slave.instance_id),
 					"masterWorkshopId": master_id,
-					"slaveWorkshopId": slave_id
+					"slaveWorkshopId": slave_id,
+					"masterLevel": master.level,
+					"slaveLevel": slave.level
 				})
 	return result
 
