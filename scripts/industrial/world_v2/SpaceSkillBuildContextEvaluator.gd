@@ -52,8 +52,8 @@ static func evaluate(
 			if not parser_progress.has(shape):
 				return _failure("ore parser is missing progress-per-Jar for shape: " + String(shape))
 			var raw_threshold: Variant = parser_progress[shape]
-			if (typeof(raw_threshold) != TYPE_INT and typeof(raw_threshold) != TYPE_FLOAT) or not is_finite(float(raw_threshold)) or float(raw_threshold) <= 0.0 or float(raw_threshold) > 1000000000.0:
-				return _failure("ore parser progress-per-Jar is invalid for shape: " + String(shape))
+			if (typeof(raw_threshold) != TYPE_INT and typeof(raw_threshold) != TYPE_FLOAT) or not is_finite(float(raw_threshold)) or float(raw_threshold) <= 0.0 or float(raw_threshold) > 1000000000.0 or round(float(raw_threshold) * 1000000.0) < 1.0:
+				return _failure("ore parser progress-per-Jar is invalid or below fixed-point precision for shape: " + String(shape))
 			var raw_rate: Variant = rates[shape]
 			if (typeof(raw_rate) != TYPE_INT and typeof(raw_rate) != TYPE_FLOAT) or not is_finite(float(raw_rate)) or float(raw_rate) < 0.0 or float(raw_rate) > 1000000000.0:
 				return _failure("shape processing rates are outside the supported fixed-point range")
@@ -65,7 +65,12 @@ static func evaluate(
 	var stone_rates: Variant = ship_resource_profile.get("expectedStoneProgressPerSecondByShape", null)
 	if not (stone_rates is Dictionary) or stone_rates.is_empty():
 		return _failure("ship resource profile must provide expectedStoneProgressPerSecondByShape")
+	if stone_rates.size() != aggregate_rates.size():
+		return _failure("ship stone progress rates must cover the universal parser's exact Jar shape vocabulary")
 	for shape_key in stone_rates:
+		var shape_name := String(shape_key)
+		if not aggregate_rates.has(shape_name) or not parser_progress_per_jar.has(shape_name):
+			return _failure("ship stone progress profile contains a shape outside the selected parser: " + shape_name)
 		var raw_stone_rate: Variant = stone_rates[shape_key]
 		if (typeof(raw_stone_rate) != TYPE_INT and typeof(raw_stone_rate) != TYPE_FLOAT) or not is_finite(float(raw_stone_rate)) or float(raw_stone_rate) < 0.0 or float(raw_stone_rate) > 1000000000.0:
 			return _failure("ship stone progress rates are outside the supported fixed-point range")
