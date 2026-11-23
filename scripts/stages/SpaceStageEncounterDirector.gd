@@ -10,7 +10,7 @@ var _next_beat_index: int = 0
 var _difficulty_profile: Dictionary = {}
 
 func configure(stage: SpaceStageDefinition, frozen_loadout_data: Dictionary) -> bool:
-	if _state != State.READY or stage == null or not stage.is_valid():
+	if _state != State.READY or _stage != null or stage == null or not stage.is_valid():
 		return false
 	var profile := SpaceStageProgressionProfile.evaluate(stage, frozen_loadout_data)
 	if not bool(profile.get("valid", false)):
@@ -55,7 +55,7 @@ func capture_state() -> Dictionary:
 	}
 
 func restore_state(stage: SpaceStageDefinition, frozen_loadout_data: Dictionary, source: Dictionary) -> bool:
-	if _state != State.READY or stage == null or not stage.is_valid() or int(source.get("schemaVersion", 0)) != 1:
+	if _state != State.READY or _stage != null or stage == null or not stage.is_valid() or int(source.get("schemaVersion", 0)) != 1:
 		return false
 	if String(source.get("stageId", "")) != String(stage.stage_id) or int(source.get("definitionVersion", 0)) != stage.definition_version:
 		return false
