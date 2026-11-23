@@ -3,8 +3,16 @@ class_name SpaceHangarBoardDefinitionProbe
 ## Verifies generic board structure separately from the narrower current runtime projection.
 
 const DEMO_BOARD: SpaceHangarBoardDefinition = preload("res://data/hangar/demo_board.tres")
+const DEMO_CATALOG: SpaceHangarCatalogBundleResource = preload("res://data/hangar/demo_catalog_bundle.tres")
 
 static func run() -> bool:
+	if DEMO_CATALOG == null:
+		return false
+	var runtime_catalog := DEMO_CATALOG.create_runtime_bundle()
+	if runtime_catalog == null or runtime_catalog.workshop_catalog == null or runtime_catalog.workshop_catalog.resolve_definition("demo.workshop.alpha", 1) == null:
+		return false
+	if runtime_catalog.skill_catalog == null or runtime_catalog.skill_catalog.is_empty() or runtime_catalog.effect_catalog == null or runtime_catalog.effect_catalog.is_empty():
+		return false
 	if DEMO_BOARD == null or not DEMO_BOARD.get_validation_errors().is_empty():
 		return false
 	if not DEMO_BOARD.get_runtime_projection_errors().is_empty():
