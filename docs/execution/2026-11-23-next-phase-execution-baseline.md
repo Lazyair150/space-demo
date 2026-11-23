@@ -85,6 +85,7 @@
 - 完成定义：调用链和所有权边界有源码证据；发现的问题形成修复提交，不以文档审计代替修复。
 
 ### Phase B — 子系统真实指标与强度模型
+- [x] 通用 scoring contract 已支持显式 higher/lower/target_value 语义；Workshop 容量、逐 shape Mark、逐 liquid Ban 和 Core fallback 的生产模型被强制使用 target_value；unconfigured 模型不能进入生产 Pool。此项只完成模型机制，不代表真实维度/权重已配置。
 - [ ] Parser：从实际运行效果确定解析效率、能量石维持时间、稳定性、吞吐量等指标及方向；区分原始定义属性与成长后有效属性。
 - [ ] Workshop：从实际规则确定 Jar 容量、液体容量、暂存容量、Mark/Ban、操作成本和副作用；不能简单假定容量越大越强。
 - [ ] Skill：把 Space 效果收益与真实 Jar Order 成本、冷却、资源量、执行难度关联；收益越高通常应有更高资源代价，但必须由实际模型计算。
