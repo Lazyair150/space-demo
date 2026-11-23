@@ -153,9 +153,9 @@ func allocate_energy_stone_pickup_id() -> String:
 	if _next_energy_stone_pickup_sequence >= 9223372036854775807:
 		return ""
 	var pickup_id := "space-stone:" + _battle_loadout.ship_world_id() + ":" + str(_next_energy_stone_pickup_sequence)
-	_next_energy_stone_pickup_sequence += 1
 	if pickup_id.length() > 128:
 		return ""
+	_next_energy_stone_pickup_sequence += 1
 	return pickup_id
 
 ## Persist this beside the frozen loadout and Jar execution checkpoint.
