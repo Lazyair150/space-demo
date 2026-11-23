@@ -412,6 +412,7 @@ public partial class WorldV2RuntimeNode : Node
         finally
         {
             _worldTimeRemainderMilli = 0;
+            _worldOptions = null;
         }
     }
 
