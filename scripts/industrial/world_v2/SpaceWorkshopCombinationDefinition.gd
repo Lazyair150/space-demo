@@ -12,7 +12,8 @@ class_name SpaceWorkshopCombinationDefinition
 @export var jar_world_options: Dictionary = {}
 ## Exact-version Core-owned Jar order templates available in this World V2 vocabulary.
 @export var core_order_templates: Array[SpaceCoreOrderTemplateDefinition] = []
-@export var workshop_definitions: Array[SpaceWorkshopDefinition] = []
+## Runtime-injected view of the global SpaceWorkshopCatalog. Never author a role pair here.
+var workshop_definitions: Array[SpaceWorkshopDefinition] = []
 @export var operation_cost_by_order_type: Dictionary = {}
 @export var liquid_handling_operation_cost: float = 0.0
 
@@ -129,17 +130,9 @@ func find_workshop_definition(definition_id: String) -> SpaceWorkshopDefinition:
 func build_selection() -> Dictionary:
 	if not get_validation_errors().is_empty():
 		return {}
-	var roster: Array[Dictionary] = []
-	for definition in workshop_definitions:
-		roster.append({
-			"definitionId": String(definition.workshop_id),
-			"definitionVersion": definition.definition_version,
-			"name": definition.display_name
-		})
 	return {
 		"definitionId": String(combination_id),
 		"definitionVersion": definition_version,
-		"workshopRoster": roster,
 		"workshopCombinationProfile": {
 			"operationCostByOrderType": operation_cost_by_order_type.duplicate(true),
 			"liquidHandlingOperationCost": liquid_handling_operation_cost
