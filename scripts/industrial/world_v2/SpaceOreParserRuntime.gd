@@ -95,6 +95,8 @@ func advance(delta_logical_milli: int) -> Dictionary:
 	for shape_value in shapes:
 		var shape := String(shape_value)
 		var base_rate_micro := int(round(float(_definition.shape_processing_rate_per_second[shape]) * MICRO))
+		if _definition.production_percentage > 0 and delta_logical_milli > int(MAX_INT64 / _definition.production_percentage):
+			return _failure("ore parser logical time factor exceeds the supported fixed-point range")
 		var rate_factor := _definition.production_percentage * delta_logical_milli
 		var rate_remainder := int(_rate_remainder_by_shape[shape])
 		if rate_factor > 0 and base_rate_micro > int((MAX_INT64 - rate_remainder) / rate_factor):
