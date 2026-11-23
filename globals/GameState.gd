@@ -61,6 +61,38 @@ func reset_run()->void:
 	wave_changed.emit(wave)
 	segment_changed.emit(segment, wave)
 
+## Transient run state is distinct from the persistent wallet/high-score files.
+## It is captured with the Jar/Space battle checkpoint when resuming an active run.
+func capture_run_state() -> Dictionary:
+	return {
+		"schemaVersion": 1,
+		"score": score,
+		"wave": wave,
+		"segment": segment
+	}
+
+func restore_run_state(state: Dictionary) -> bool:
+	if int(state.get("schemaVersion", 0)) != 1:
+		return false
+	var raw_score: Variant = state.get("score", null)
+	var raw_wave: Variant = state.get("wave", null)
+	var raw_segment: Variant = state.get("segment", null)
+	if typeof(raw_score) != TYPE_INT or int(raw_score) < 0:
+		return false
+	if typeof(raw_wave) != TYPE_INT or int(raw_wave) < 0:
+		return false
+	if typeof(raw_segment) != TYPE_STRING or not ["", "热身", "压力", "精英", "喘息"].has(String(raw_segment)):
+		return false
+	if int(raw_wave) == 0 and not String(raw_segment).is_empty():
+		return false
+	score = int(raw_score)
+	wave = int(raw_wave)
+	segment = String(raw_segment)
+	score_changed.emit(score)
+	wave_changed.emit(wave)
+	segment_changed.emit(segment, wave)
+	return true
+
 ## 当前战斗段落名（热身/压力/精英/喘息）。由 Spawner 每波开始时设置，
 ## HUD 只负责显示——段落属于战斗节奏数据，不放在界面里。
 func set_segment(label:String)->void:
