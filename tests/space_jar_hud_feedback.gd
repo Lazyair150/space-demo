@@ -16,6 +16,12 @@ func _check(ok: bool, message: String) -> void:
 		print("FAIL ", message)
 
 func _run() -> void:
+	var visuals = load("res://scripts/industrial/ui/ShapeVisuals.gd")
+	_check(visuals.glyph_for("圆罐") == "●", "round Jar uses the round glyph")
+	_check(visuals.glyph_for("方罐") == "■", "square Jar uses the square glyph")
+	_check(visuals.glyph_for("三棱舱段") == "▲", "triangular archetype has a reserved glyph")
+	_check(visuals.glyph_for("长条舱段") == "▬", "long archetype has a reserved glyph")
+	_check(visuals.color_for("圆罐") != visuals.color_for("方罐"), "current Jar shapes remain visually distinguishable")
 	var observer_script = load("res://scripts/industrial/ui/SpaceJarHudObserver.gd")
 	var observer = observer_script.new()
 	_check(observer._filled_jar_count([
