@@ -59,17 +59,17 @@ static func acquire_candidate(
 	instance.definition_version = definition_version
 	instance.level = 1
 	instance.experience = 0
-	instance.growth_attributes = {
-		"roguelike": {
-			"poolId": String(pool.pool_id),
-			"poolVersion": pool.definition_version,
-			"powerModelId": String(pool.power_model_id),
-			"powerModelVersion": pool.power_model_version,
-			"rarity": rarity,
-			"basePowerScore": power_score,
-			"powerMetrics": power_metrics.duplicate(true),
-			"rewardId": reward_id
-		}
+	instance.growth_attributes = {}
+	instance.acquisition_provenance = {
+		"source": "roguelike_reward",
+		"poolId": String(pool.pool_id),
+		"poolVersion": pool.definition_version,
+		"powerModelId": String(pool.power_model_id),
+		"powerModelVersion": pool.power_model_version,
+		"rarity": rarity,
+		"basePowerScore": power_score,
+		"powerMetrics": power_metrics.duplicate(true),
+		"rewardId": reward_id
 	}
 	var acquired := false
 	if GameState.space_progression_state == state:
