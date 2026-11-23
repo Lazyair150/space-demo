@@ -552,7 +552,10 @@ func _shutdown_battle(faulted: bool, reason: String) -> void:
 		GameFlow.fault_battle(reason, _last_completed_world_time_milli, _last_completed_logical_time_milli)
 		var pause_controller := get_node_or_null("PauseController")
 		if pause_controller != null and pause_controller.has_method("show_fault"):
-			pause_controller.call("show_fault", reason)
+			var fault_presentation := reason
+			if _last_completed_world_time_milli >= 0 and _last_completed_logical_time_milli >= 0:
+				fault_presentation += "\\nLast completed step: world %d ms / logical %d ms" % [_last_completed_world_time_milli, _last_completed_logical_time_milli]
+			pause_controller.call("show_fault", fault_presentation)
 	else:
 		GameFlow.end_battle()
 	process_mode = Node.PROCESS_MODE_DISABLED
