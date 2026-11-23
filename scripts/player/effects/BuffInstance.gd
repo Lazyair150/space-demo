@@ -93,10 +93,30 @@ func capture_runtime_state() -> Dictionary:
 func restore_runtime_state(snapshot: Dictionary, resolved_definition: BuffDefinition, resolved_target: Node) -> bool:
 	if resolved_definition == null or not resolved_definition.is_valid():
 		return false
-	var restored_remaining := float(snapshot.get("remaining", -1.0))
-	var restored_stacks := int(snapshot.get("stacks", 0))
-	var restored_ticks := int(snapshot.get("ticksFired", -1))
-	var restored_acc := float(snapshot.get("tickAccumulator", -1.0))
+	var raw_definition_id: Variant = snapshot.get("definitionId", null)
+	var raw_definition_version: Variant = snapshot.get("definitionVersion", null)
+	var raw_target_key: Variant = snapshot.get("targetKey", null)
+	var raw_remaining: Variant = snapshot.get("remaining", null)
+	var raw_stacks: Variant = snapshot.get("stacks", null)
+	var raw_ticks: Variant = snapshot.get("ticksFired", null)
+	var raw_accumulator: Variant = snapshot.get("tickAccumulator", null)
+	var raw_custom_state: Variant = snapshot.get("customState", null)
+	if typeof(raw_definition_id) != TYPE_STRING or String(raw_definition_id) != String(resolved_definition.id):
+		return false
+	if typeof(raw_definition_version) != TYPE_INT or int(raw_definition_version) != resolved_definition.definition_version:
+		return false
+	if typeof(raw_target_key) != TYPE_STRING:
+		return false
+	if (typeof(raw_remaining) != TYPE_INT and typeof(raw_remaining) != TYPE_FLOAT) or (typeof(raw_accumulator) != TYPE_INT and typeof(raw_accumulator) != TYPE_FLOAT):
+		return false
+	if typeof(raw_stacks) != TYPE_INT or typeof(raw_ticks) != TYPE_INT or not (raw_custom_state is Dictionary):
+		return false
+	var restored_remaining := float(raw_remaining)
+	var restored_stacks := int(raw_stacks)
+	var restored_ticks := int(raw_ticks)
+	var restored_acc := float(raw_accumulator)
+	if not is_finite(restored_remaining) or not is_finite(restored_acc):
+		return false
 	if restored_remaining <= 0.0 or restored_stacks <= 0 or restored_stacks > resolved_definition.max_stacks or restored_ticks < 0 or restored_acc < 0.0:
 		return false
 	if resolved_definition.tick_interval <= 0.0 and restored_acc > 0.000001:
@@ -105,12 +125,12 @@ func restore_runtime_state(snapshot: Dictionary, resolved_definition: BuffDefini
 		return false
 	definition = resolved_definition
 	target = resolved_target
-	target_key = String(snapshot.get("targetKey", ""))
+	target_key = String(raw_target_key)
 	remaining = restored_remaining
 	stacks = restored_stacks
 	_ticks_fired = restored_ticks
 	_tick_acc = restored_acc
-	return restore_custom_state(snapshot.get("customState", {}))
+	return restore_custom_state(raw_custom_state)
 
 ## Subclasses with additional mutable behavior must override both custom-state hooks.
 func capture_custom_state() -> Dictionary:
