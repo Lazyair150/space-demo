@@ -344,3 +344,20 @@
 - 通用 Assignment 编辑入口现已在 Draft 内检查工作台实例与当前选中 World 规则配置的兼容性；通过通用 `assign_instance` 替换主/从工作台时，不会绕过原有 World compatibility 约束。
 - 修正 Board Definition Probe 的 demo slot count：demo Board 实际定义 5 个槽位，Probe 现在按 5 验证。
 - Loadout freeze 的完整性检查现在同时阻止 required slot 缺失，并将运行时投影身份集合与 Assignment Map 精确对照。
+
+
+## 13. 已安装零件的声明式 Rule Contribution 来源（2026-11-24）
+
+- 新增 `SpaceRuleContributionDefinition`：组件 Definition 可声明稳定 RuleId/version、Effect、Target、Scope、Priority、常量参数，以及参数到 Owned Instance 成长属性的显式绑定。
+- Workshop、Ore Parser、Production Device、Skill Definition 均可声明 `rule_contributions`；这些规则声明仍是纯数据，不允许闭包或任意可执行脚本。
+- 新增 `SpaceRuleContributionResolver`：按 Board Assignment 逐槽位解析 exact catalog Definition + exact Owned Instance，生成来源包含 Definition/version、Owned Instance ID、progression revision、slot ID 的贡献记录。
+- Workshop 现有 base_marks / additional_marks / banned_liquids 被保留为兼容基础能力，同时转换成同一 Rule Contribution 数据格式；容量仍属于 capability/runtime projection，不伪装成规则算子。
+- Resolver 会拒绝实例重复、Definition/version 不匹配、缺少成长参数、重复贡献身份；贡献按槽位与 RuleId 规范化排序并计算独立 fingerprint。
+- Owned Loadout Assembler 已将解析后的 `boardRuleProfile` 冻结进 Loadout Snapshot；Snapshot 验证 Profile fingerprint、Board/Assignment fingerprint、贡献来源实例和 Definition 必须与对应槽位一致。
+- Probe 新增成长属性绑定、progression revision 和缺失成长属性拒绝场景。
+
+### 当前重要边界
+- `boardRuleProfile` 已从 Space Owned Assignment 解析并冻结，但本轮尚未把它送入 Jar Core WorldV2Options/WorkshopSolveSnapshot 的正式输入协议；当前 Core 仍通过旧 WorkshopCapability/ModifierStack 适配器生成 legacy Profile。
+- 因此跨仓库的精确 Owned Instance → Rule Contribution → Effective Rule Profile 链目前完成了 Space 侧的生产与快照，尚未完成 Core 侧消费。下一步应扩展 WorldV2Bridge 的显式版本化输入契约，让 Core 校验贡献来源与 Board Assignment，并按 workshop/skill/parser/device 等 scope 合成真正的 Board Effective Rule Profile。
+- 任何尚无执行器的 Effect 只能保留为明确的 Undetermined，不可被忽略，也不可直接变成“可行”。
+- 本轮没有运行 Godot / GDScript Probe；不宣称 Probe 已通过。
