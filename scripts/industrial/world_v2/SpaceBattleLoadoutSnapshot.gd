@@ -103,6 +103,14 @@ static func _validate_board_assignment_snapshot(source: Dictionary) -> PackedStr
 		return errors
 	if int(snapshot.get("schemaVersion", 0)) != 1 or _required_text(snapshot, "assignmentFingerprint").is_empty():
 		errors.append("boardAssignmentSnapshot requires schema version and assignment fingerprint")
+	var fingerprint_payload: Dictionary = snapshot.duplicate(true)
+	var supplied_fingerprint := String(fingerprint_payload.get("assignmentFingerprint", ""))
+	fingerprint_payload.erase("assignmentFingerprint")
+	var assignment_hasher := HashingContext.new()
+	assignment_hasher.start(HashingContext.HASH_SHA256)
+	assignment_hasher.update(JSON.stringify(fingerprint_payload).to_utf8_buffer())
+	if supplied_fingerprint.is_empty() or assignment_hasher.finish().hex_encode() != supplied_fingerprint:
+		errors.append("boardAssignmentSnapshot fingerprint does not match its canonical content")
 	var board: Variant = snapshot.get("boardDefinition", null)
 	if not (board is Dictionary):
 		errors.append("boardAssignmentSnapshot must freeze its Board Definition")
