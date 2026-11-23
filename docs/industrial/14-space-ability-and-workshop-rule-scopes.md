@@ -97,3 +97,14 @@ The same lifecycle applies to ships, universal energy-stone parsers, other produ
 - Catalog definitions remain immutable. A frozen battle loadout must eventually include both the exact definition identity and the selected owned-instance snapshot so an in-progress battle is insulated from later upgrades.
 
 The first implementation adds the persistent progression aggregate and contract probes. It deliberately does not yet connect the Hangar pickers or battle assembler to a player's progression save. Until that integration lands, the existing definition-only Hangar selection remains a development authoring flow, not a complete player progression flow. The next integration stage must make the player progression state the source of selectable owned instances, freeze the selected instance snapshots into loadouts, and resolve effective runtime profiles from definition + instance growth without mutating the catalog definition.
+
+
+## Versioned growth curves and calculation boundary
+
+`SpaceProgressionCurveDefinition` is an exact-version, item-kind-specific curve asset. It defines cumulative total-XP thresholds for entering levels and keyframes for subsystem-owned growth attributes. The shared evaluator supports linear interpolation or step interpolation, but does not interpret the resulting attribute names or decide what those attributes do in gameplay.
+
+`SpaceProgressionGrowthService` receives an owned instance, its matching curve version, and the new total accumulated XP. It derives the target level and complete growth-attribute snapshot, then produces a revision-incremented instance update. The player aggregate remains the persistence/commit authority and rejects stale revisions. XP cannot move backwards, and a curve for one item kind cannot update another kind.
+
+Curve assets are authored separately for ships, parsers, production devices, workshops, and skills. They should expose only attributes understood by their owning subsystem. For example, a parser curve may define per-shape processing-rate growth or batch-capacity growth; a ship curve may define hull or mobility growth; a workshop curve may define capacity or capability growth; a skill curve may define effect parameters or order-cost adjustments. These are examples of attribute contracts, not default balance values. No universal level multiplier or upgrade formula is imposed.
+
+A curve version is part of the progression calculation input and must be recorded by the progression/upgrade transaction that applies it. Changing a curve for future progression must not silently rewrite the already stored growth attributes of existing instances. Battle loadouts freeze the resolved instance growth values, not a live reference to the curve asset.
