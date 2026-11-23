@@ -31,7 +31,7 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 				result.shipChoices.append({
 					"id": String(definition.ship_id), "version": definition.definition_version,
 					"instanceId": String(instance.instance_id), "level": instance.level,
-					"experience": instance.experience, "growthAttributes": instance.growth_attributes.duplicate(true),
+					"experience": instance.experience, "progressionRevision": instance.progression_revision, "growthAttributes": instance.growth_attributes.duplicate(true),
 					"label": definition.display_name, "iconTexture": definition.display_icon,
 					"hullTexture": definition.display_hull_texture
 				})
@@ -42,7 +42,7 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 				result.parserChoices.append({
 					"id": String(definition.parser_id), "version": definition.definition_version,
 					"instanceId": String(instance.instance_id), "level": instance.level,
-					"experience": instance.experience, "growthAttributes": instance.growth_attributes.duplicate(true),
+					"experience": instance.experience, "progressionRevision": instance.progression_revision, "growthAttributes": instance.growth_attributes.duplicate(true),
 					"label": definition.display_name, "iconTexture": definition.display_icon
 				})
 			"production_device":
@@ -52,7 +52,7 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 				result.deviceChoices.append({
 					"id": String(definition.device_id), "version": definition.definition_version,
 					"instanceId": String(instance.instance_id), "level": instance.level,
-					"experience": instance.experience, "growthAttributes": instance.growth_attributes.duplicate(true),
+					"experience": instance.experience, "progressionRevision": instance.progression_revision, "growthAttributes": instance.growth_attributes.duplicate(true),
 					"kind": definition.device_kind, "label": definition.display_name,
 					"iconTexture": definition.display_icon
 				})
@@ -67,7 +67,7 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 				result.workshopInstanceChoices.append({
 					"id": String(definition.workshop_id), "version": definition.definition_version,
 					"instanceId": String(instance.instance_id), "level": instance.level,
-					"experience": instance.experience, "growthAttributes": instance.growth_attributes.duplicate(true),
+					"experience": instance.experience, "progressionRevision": instance.progression_revision, "growthAttributes": instance.growth_attributes.duplicate(true),
 					"label": definition.display_name, "iconTexture": definition.display_icon,
 					"compatibleWorldKeys": compatible_world_keys
 				})
@@ -78,7 +78,7 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 				result.skillChoices.append({
 					"id": String(definition.skill_id), "version": definition.definition_version,
 					"instanceId": String(instance.instance_id), "level": instance.level,
-					"experience": instance.experience, "growthAttributes": instance.growth_attributes.duplicate(true),
+					"experience": instance.experience, "progressionRevision": instance.progression_revision, "growthAttributes": instance.growth_attributes.duplicate(true),
 					"label": definition.display_name, "description": definition.description,
 					"category": definition.ability_category, "primaryShape": String(definition.primary_shape),
 					"orderTemplateId": String(definition.jar_order_template_id),
