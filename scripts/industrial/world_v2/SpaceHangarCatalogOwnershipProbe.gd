@@ -428,7 +428,7 @@ static func run() -> bool:
 		return false
 
 	var composed_parser := SpaceProgressionRuntimeProfileComposer.compose_parser(
-		parsers.resolve_definition("probe.parser", 1), curve_upgraded, ["round"]
+		parsers.resolve_definition("probe.parser", 1), curve_upgraded, ["round", "square", "diamond", "triangle", "hex"]
 	)
 	if composed_parser.is_empty() or absf(float(composed_parser.shapeProcessingRatePerSecond.round) - 1.25) > 0.000001:
 		return false
@@ -441,7 +441,7 @@ static func run() -> bool:
 	workshop_growth_instance.definition_id = local_master.workshop_id
 	workshop_growth_instance.definition_version = local_master.definition_version
 	workshop_growth_instance.growth_attributes = {"maxJarsBonus": 2}
-	var composed_workshop := SpaceProgressionRuntimeProfileComposer.compose_workshop(local_master, workshop_growth_instance, ["round", "square"])
+	var composed_workshop := SpaceProgressionRuntimeProfileComposer.compose_workshop(local_master, workshop_growth_instance, ["round", "square", "diamond", "triangle", "hex"])
 	if composed_workshop.is_empty() or int(composed_workshop.maxJars) != 10:
 		return false
 	if not composed_workshop.ban.has("blocked-liquid") or int(composed_workshop.maxLiquids) != 5:
@@ -452,7 +452,7 @@ static func run() -> bool:
 	workshop_mark_instance.definition_id = local_slave.workshop_id
 	workshop_mark_instance.definition_version = local_slave.definition_version
 	workshop_mark_instance.growth_attributes = {"additionalMark.square": 1}
-	var composed_workshop_marks := SpaceProgressionRuntimeProfileComposer.compose_workshop(local_slave, workshop_mark_instance, ["round", "square"])
+	var composed_workshop_marks := SpaceProgressionRuntimeProfileComposer.compose_workshop(local_slave, workshop_mark_instance, ["round", "square", "diamond", "triangle", "hex"])
 	if composed_workshop_marks.is_empty() or not composed_workshop_marks.additionalMarks.has("square"):
 		return false
 
