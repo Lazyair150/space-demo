@@ -27,7 +27,29 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 		return false
 	if skill_pool.validate_effective_metrics(String(first.definitionId), int(first.definitionVersion), String(first.rarity), {"normalized_strength": 1.1}).is_empty():
 		return false
-	var excluded := library.roll_candidate("skill", rng_a, PackedStringArray(), PackedStringArray(), PackedStringArray(["skill:probe.skills.item@1"]))
+	skill_pool.entries.append({
+		"definitionId": "probe.skills.second.item",
+		"definitionVersion": 1,
+		"rarity": "rare",
+		"powerScore": 4.0,
+		"powerMetrics": {"normalized_strength": 0.4},
+		"weight": 2.0,
+		"tags": ["offense", "advanced"]
+	})
+	var offer_rng := RandomNumberGenerator.new()
+	offer_rng.seed = 55421
+	var offer := SpaceRoguelikeIndividualOfferService.roll_offer(library, "skill", offer_rng, 2)
+	if not bool(offer.get("success", false)) or offer.offers.size() != 2:
+		return false
+	var offered_keys := {}
+	for item in offer.offers:
+		var key := "%s@%d" % [String(item.definitionId), int(item.definitionVersion)]
+		if offered_keys.has(key):
+			return false
+		offered_keys[key] = true
+	if offered_keys.size() != 2:
+		return false
+	var excluded := library.roll_candidate("skill", rng_a, PackedStringArray(), PackedStringArray(), PackedStringArray(["skill:probe.skills.item@1", "skill:probe.skills.second.item@1"]))
 	if bool(excluded.get("success", false)):
 		return false
 	var underpowered := _pool("probe.invalid-low", "skill")
