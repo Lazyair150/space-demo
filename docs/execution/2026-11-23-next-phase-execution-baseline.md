@@ -420,3 +420,5 @@
 - 上述 Probe 仍未在 Godot 中执行；属于已写入的自动验收代码，不代表运行通过。
 
 - 动态槽位面板现按 Board Slot 的 areaId 分组展示工作区、分解区、订单区和生产区；旧选择投影路径也必须与 Skill Slot 的 controlArea 完全一致，不再覆盖或猜测槽位属性。
+
+- Board 动态面板按 areaId 分组；Hangar 状态栏会直接显示未安装的 required Slot 和被拒绝的选择原因，避免无反馈的静默失败。
