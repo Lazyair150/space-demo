@@ -137,6 +137,7 @@ Implemented in this phase:
 - HUD presentation continues while paused.
 - Combat wave spawn, wave-break, death-transition, and explosion-lifetime timers now opt out of process-while-paused behavior.
 - The Industrial screen's restart-confirmation countdown also explicitly respects SceneTree pause; the isolated World V2 Core clock probe explicitly keeps its test timers running so it can verify Jar's internal pause independently of Godot pause.
+- Source review of Asteroid, enemy, player, projectile, pickup, and player-feature scenes found no explicit process-mode overrides. They inherit the pausable combat root. The BuffPickup lifetime Timer and DoubleShot second-shot Timer also inherit that policy; the pause menu and HUD are the deliberate always-process exceptions.
 - Combat scene teardown clears the SceneTree pause gate.
 - Production Host already constructs its Runtime with `AutoAdvance = false`, and its own HostState gate rejects advances unless Active.
 
