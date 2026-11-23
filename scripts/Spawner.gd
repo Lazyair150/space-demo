@@ -145,7 +145,7 @@ func _start_stage_beat(beat: Dictionary) -> void:
 	if chasers < 0 or shooters < 0 or elites < 0:
 		_fault_stage("authored stage composition is malformed")
 		return
-	if (chasers > 0 or elites > 0) and chaser_scene == null:
+	if segment_name != "boss" and (chasers > 0 or elites > 0) and chaser_scene == null:
 		_fault_stage("stage requires a chaser scene but none is configured")
 		return
 	if shooters > 0 and shooter_scene == null:
