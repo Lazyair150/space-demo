@@ -107,9 +107,10 @@ static func _evaluate_exact_definition(
 				for workshop in combination.workshop_definitions:
 					if workshop != null and String(workshop.workshop_id) == definition_id and workshop.definition_version == definition_version:
 						var shapes: Variant = entry.get("shapeVocabulary", null)
-						if not (shapes is Array) or shapes.is_empty():
-							return {"success": false, "reason": "workshop entry has no exact evaluation shape vocabulary"}
-						return SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, shapes, pool.power_model)
+						var liquids: Variant = entry.get("liquidVocabulary", null)
+						if not (shapes is Array) or shapes.is_empty() or not (liquids is Array) or liquids.is_empty():
+							return {"success": false, "reason": "workshop entry has no exact evaluation shape/liquid vocabularies"}
+						return SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, shapes, liquids, pool.power_model)
 			return {"success": false, "reason": "workshop exact definition is absent from the prepared catalog"}
 		"skill":
 			var skill := bundle.skill_catalog.resolve_skill(definition_id, definition_version)
