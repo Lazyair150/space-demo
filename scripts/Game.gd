@@ -1,5 +1,8 @@
 extends Node2D
 
+signal stage_completed(result: Dictionary)
+signal stage_faulted(reason: String)
+
 const ENERGY_STONE_PICKUP_SCENE: PackedScene = preload("res://scenes/industrial/SpaceEnergyStonePickup.tscn")
 
 const ARENA_RECT:=Rect2(80,80,1120,560)
@@ -15,6 +18,8 @@ var _camera_home:Vector2
 var _shake_time:float
 var _shake_strength:float
 var _battle_loadout: SpaceBattleLoadoutSnapshot
+var _stage_director: SpaceStageEncounterDirector
+var _selected_stage: SpaceStageDefinition
 var _order_effect_dispatcher: SpaceOrderEffectDispatcher
 var _order_effect_commit_callback: Callable
 var _persisted_order_dispatcher_state: Dictionary = {}
@@ -49,6 +54,22 @@ func configure_battle_loadout(
 	_persisted_jar_execution_checkpoint_json = persisted_jar_execution_checkpoint_json
 	_persisted_space_clock_remainder_milli = persisted_space_clock_remainder_milli
 	return true
+
+## A finite stage must be frozen with the same owned-instance snapshots as the battle loadout.
+## Call before adding the combat scene to the SceneTree.
+func configure_battle_stage(stage: SpaceStageDefinition) -> bool:
+	if is_inside_tree() or stage == null or not stage.is_valid() or _battle_loadout == null:
+		return false
+	var director := SpaceStageEncounterDirector.new()
+	if not director.configure(stage, _battle_loadout.to_dictionary()):
+		return false
+	_selected_stage = stage
+	_stage_director = director
+	return true
+
+## Read by the child Spawner during its _ready; configuration is pre-tree only.
+func get_stage_director_for_spawner() -> SpaceStageEncounterDirector:
+	return _stage_director
 
 ## The callback must atomically persist Space effect state and dispatcher state before returning true.
 func configure_order_effect_commit_callback(callback: Callable) -> bool:
@@ -206,11 +227,31 @@ func _ready() -> void:
 			return
 	_camera_home = camera_2d.position
 	_scatter_asteroids()
+	var spawner := get_node_or_null("Spawner")
+	if spawner != null:
+		if spawner.has_signal("stage_completed") and not spawner.stage_completed.is_connected(_on_stage_completed):
+			spawner.stage_completed.connect(_on_stage_completed)
+		if spawner.has_signal("stage_faulted") and not spawner.stage_faulted.is_connected(_on_stage_faulted):
+			spawner.stage_faulted.connect(_on_stage_faulted)
 	if player:
 		if not player.died.is_connected(_on_player_died):
 			player.died.connect(_on_player_died)
 		if not player.damaged.is_connected(_on_player_damaged):
 			player.damaged.connect(_on_player_damaged)
+
+## Encounter completion is deliberately not reward settlement or campaign persistence.
+func _on_stage_completed(result: Dictionary) -> void:
+	if _selected_stage == null or _battle_shutdown_started:
+		return
+	var identity: Variant = result.get("stageIdentity", null)
+	if not (identity is Dictionary) or String(identity.get("stageId", "")) != String(_selected_stage.stage_id) or int(identity.get("definitionVersion", 0)) != _selected_stage.definition_version:
+		_shutdown_battle(true, "finite stage completion identity mismatch")
+		return
+	stage_completed.emit(result.duplicate(true))
+
+func _on_stage_faulted(reason: String) -> void:
+	stage_faulted.emit(reason)
+	_shutdown_battle(true, "finite stage runtime fault: " + reason)
 
 func _restore_saved_effect_state() -> bool:
 	if _persisted_effect_state.is_empty():
