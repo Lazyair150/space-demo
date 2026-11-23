@@ -15,6 +15,29 @@ static func run() -> Dictionary:
 		"圆罐": 2.0,
 		"方罐": 3.0
 	}
+	# Two owned copies of one exact parser Definition must never share runtime state identity.
+	var owned_profile_a := definition.build_runtime_profile()
+	owned_profile_a["ownedInstance"] = {
+		"instanceId": "parser-copy-a", "itemKind": "ore_parser",
+		"definitionId": String(definition.parser_id), "definitionVersion": definition.definition_version
+	}
+	var owned_profile_b := definition.build_runtime_profile()
+	owned_profile_b["ownedInstance"] = {
+		"instanceId": "parser-copy-b", "itemKind": "ore_parser",
+		"definitionId": String(definition.parser_id), "definitionVersion": definition.definition_version
+	}
+	var owned_runtime_id_a := SpaceOreParserRuntime.build_runtime_instance_id("probe-ship-world", owned_profile_a)
+	var owned_runtime_id_b := SpaceOreParserRuntime.build_runtime_instance_id("probe-ship-world", owned_profile_b)
+	if owned_runtime_id_a.is_empty() or owned_runtime_id_b.is_empty() or owned_runtime_id_a == owned_runtime_id_b:
+		return _failure("same Definition copies must resolve to distinct Owned Instance runtime identities")
+	var mismatched_owned_profile := owned_profile_a.duplicate(true)
+	mismatched_owned_profile.ownedInstance.definitionId = "another-parser"
+	if not SpaceOreParserRuntime.build_runtime_instance_id("probe-ship-world", mismatched_owned_profile).is_empty():
+		return _failure("parser runtime identity accepted an Owned Instance from another Definition")
+	var definition_only_profile := definition.build_runtime_profile()
+	if SpaceOreParserRuntime.build_runtime_instance_id("probe-ship-world", definition_only_profile) != "probe-ship-world:definition:probe-universal-parser@1":
+		return _failure("definition-only development identity must remain stable and explicit")
+
 	var runtime := SpaceOreParserRuntime.new()
 	var initialized := runtime.initialize(definition, "probe-ship-world-parser", ["圆罐", "方罐"])
 	if not bool(initialized.get("success", false)):
