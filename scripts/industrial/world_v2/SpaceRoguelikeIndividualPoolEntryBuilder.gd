@@ -16,8 +16,7 @@ static func append_parser(
 	if not bool(evaluated.get("success", false)):
 		return evaluated
 	return _append(pool, definition.parser_id, definition.definition_version, rarity, weight, tags, evaluated, {
-		"shapeVocabulary": shape_vocabulary.duplicate(true),
-		"liquidVocabulary": liquid_vocabulary.duplicate(true)
+		"shapeVocabulary": shape_vocabulary.duplicate(true)
 	})
 
 static func append_workshop(
@@ -35,7 +34,8 @@ static func append_workshop(
 	if not bool(evaluated.get("success", false)):
 		return evaluated
 	return _append(pool, definition.workshop_id, definition.definition_version, rarity, weight, tags, evaluated, {
-		"shapeVocabulary": shape_vocabulary.duplicate(true)
+		"shapeVocabulary": shape_vocabulary.duplicate(true),
+		"liquidVocabulary": liquid_vocabulary.duplicate(true)
 	})
 
 static func append_skill(
