@@ -53,13 +53,7 @@ static func resolve(
 	var contribution_identities := {}
 	for contribution in contributions:
 		var source: Dictionary = contribution.get("source", {})
-		var identity := "|".join([
-			String(source.get("slotId", "")),
-			String(source.get("sourceInstanceId", "")),
-			String(contribution.get("ruleId", "")),
-			str(int(contribution.get("ruleVersion", 0))),
-			String(contribution.get("target", ""))
-		])
+		var identity := String(source.get("slotId", "")) + "|" + String(source.get("sourceInstanceId", "")) + "|" + String(contribution.get("ruleId", "")) + "|" + str(int(contribution.get("ruleVersion", 0))) + "|" + String(contribution.get("target", ""))
 		if contribution_identities.has(identity):
 			return {}
 		contribution_identities[identity] = true
