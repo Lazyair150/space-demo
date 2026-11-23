@@ -28,7 +28,7 @@ static func run() -> bool:
 	if order_areas.get("orders.active.primary", "") != "Active" or order_areas.get("orders.passive.recon", "") != "Passive":
 		return false
 	var slot_index := DEMO_BOARD.build_slot_index()
-	if slot_index.size() != 4 or DEMO_BOARD.get_slots_for_area("workshop").size() != 2:
+	if slot_index.size() != 5 or DEMO_BOARD.get_slots_for_area("workshop").size() != 2:
 		return false
 
 	# The board structure accepts multiple independent positions in the same area.
@@ -48,7 +48,7 @@ static func run() -> bool:
 	if not expanded.get_validation_errors().is_empty() or not expanded.get_runtime_projection_errors().is_empty():
 		return false
 	var expanded_config := expanded.build_hangar_configuration()
-	if expanded_config.get("skillOrderBindings", []).size() != 2 or expanded_config.get("deviceSlotIds", []).size() != 1:
+	if expanded_config.get("skillOrderBindings", []).size() != 3 or expanded_config.get("deviceSlotIds", []).size() != 1:
 		return false
 
 	# Unsupported multiplicity is rejected explicitly, never silently overwritten.
