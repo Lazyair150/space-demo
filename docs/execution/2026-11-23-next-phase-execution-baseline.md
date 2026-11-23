@@ -226,4 +226,4 @@
 
 - 计算修正：Encounter evaluator 先在临时 intrinsic-only model 上验证基础 Parser 指标，再将 supply-context 维度并入完整模型评分，避免模型包含供给维度时被提前的精确维度数量检查拒绝。
 - 边界修正：drop chance 为 0 且无 weighted stone entries 是合法的“无掉落遭遇”，所有供给量/维持时间输出 0；若 drop chance 大于 0 却无正权重供给则拒绝。Probe 已加入零掉落和无效击杀速率覆盖，仍未运行。
-- 本轮最新 GitHub 核对：PR #2 head `197d6ec3ee7d35dce1592841a909cb5eba529abb`，Draft/Open/未合并；compare main...branch ahead 612 / behind 0。Space Demo Godot 4.7.1 .NET、GDScript parse 与 runtime Probe 均未执行。
+- 本轮最新 GitHub 核对（执行文档更新前）：PR #2 head `197d6ec3ee7d35dce1592841a909cb5eba529abb`；执行文档更新后 head 为 `5df294dc9001ab82f9eef69a21da93255eb4b859`，compare main...branch ahead 613 / behind 0。PR 仍 Draft/Open/未合并。Space Demo Godot 4.7.1 .NET、GDScript parse 与 runtime Probe 均未执行。
