@@ -44,6 +44,9 @@ func _ready() -> void:
 	GameFlow.enter_screen(GameFlow.Screen.HANGAR)
 	_preparation = get_node_or_null("Preparation") as SpaceHangarPreparation
 	_controller = SpaceHangarSelectionController.new()
+	if _preparation != null:
+		_preparation.player_progression_state = GameState.space_progression_state
+	GameState.space_progression_state_changed.connect(_on_progression_state_changed)
 	_build_interface()
 	_controller.view_model_changed.connect(_on_view_model_changed)
 	var ready := _controller.configure(_preparation, loadout_identity)
@@ -606,3 +609,10 @@ func _identity_is_supplied() -> bool:
 
 func _array_size(value: Variant) -> int:
 	return value.size() if value is Array else 0
+
+func _on_progression_state_changed(state: SpacePlayerProgressionState) -> void:
+	if _preparation == null:
+		return
+	_preparation.player_progression_state = state
+	if _controller != null:
+		_controller.refresh_inventory()
