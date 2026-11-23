@@ -15,4 +15,4 @@ recommended_loadout_level = 1
 estimated_minutes = 4
 wave_plans = Array[Dictionary]([{"segment":"warmup","chaser_count":3,"shooter_count":0,"elite_count":0,"break_seconds":2.0},{"segment":"pressure","chaser_count":3,"shooter_count":1,"elite_count":0,"break_seconds":3.0}])
 completion_rewards = {}
-difficulty_profile = {"under_level_penalty_per_level":0.0,"over_level_pressure_per_level":0.0,"minimum_encounter_scale":1.0,"maximum_encounter_scale":1.0}
+difficulty_profile = {"under_level_assistance_per_level":0.06,"over_level_pressure_per_level":0.08,"minimum_encounter_scale":0.8,"maximum_encounter_scale":1.4}
