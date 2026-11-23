@@ -22,6 +22,7 @@ var _stage_director: SpaceStageEncounterDirector
 var _selected_stage: SpaceStageDefinition
 var _stage_objective_runtime: SpaceStageObjectiveRuntime
 var _stage_encounters_completed: bool = false
+var _stage_completion_emitted: bool = false
 var _stage_protected_target: Node
 var _order_effect_dispatcher: SpaceOrderEffectDispatcher
 var _order_effect_commit_callback: Callable
@@ -260,8 +261,9 @@ func _on_stage_encounters_completed(result: Dictionary) -> void:
 	_try_complete_stage()
 
 func _try_complete_stage() -> void:
-	if _selected_stage == null or _stage_objective_runtime == null or _battle_shutdown_started or not _stage_objective_runtime.is_complete():
+	if _selected_stage == null or _stage_objective_runtime == null or _battle_shutdown_started or _stage_completion_emitted or not _stage_encounters_completed or not _stage_objective_runtime.is_complete():
 		return
+	_stage_completion_emitted = true
 	stage_completed.emit({
 		"stageIdentity": {"stageId": String(_selected_stage.stage_id), "definitionVersion": _selected_stage.definition_version},
 		"objectiveProgress": _stage_objective_runtime.progress(),
