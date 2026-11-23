@@ -156,6 +156,8 @@ func _build_individual_pool_inventory() -> Array[Dictionary]:
 		result.append({
 			"poolId": String(pool.pool_id),
 			"poolVersion": pool.definition_version,
+			"powerModelId": String(pool.power_model_id),
+			"powerModelVersion": pool.power_model_version,
 			"itemKind": pool.item_kind,
 			"entryCount": pool.entries.size(),
 			"powerBands": pool.power_bands.duplicate(true)
