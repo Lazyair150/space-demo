@@ -210,12 +210,17 @@ func restore_state(state: Dictionary) -> Dictionary:
 			var remaining_volume := int(raw_stone.get("remainingVolumeMicro", 0))
 			if pickup_id.is_empty() or remaining_volume <= 0 or queued_pickup_ids.has(pickup_id) or not seen.has(pickup_id):
 				return _failure("ore parser checkpoint contains an invalid or repeated queued pickup: " + String(shape))
-			if String(seen[pickup_id]) != shape + ":" + str(remaining_volume) and not String(seen[pickup_id]).begins_with(shape + ":"):
-				return _failure("queued pickup identity does not match its stone type")
+			var pickup_fingerprint := String(seen[pickup_id])
+			var pickup_parts := pickup_fingerprint.split(":")
+			if pickup_parts.size() != 2 or pickup_parts[0] != shape or not pickup_parts[1].is_valid_int() or int(pickup_parts[1]) < remaining_volume:
+				return _failure("queued pickup identity does not match its stone type/remaining volume")
 			queued_pickup_ids[pickup_id] = true
 	for pickup_id in seen:
-		if String(pickup_id).strip_edges().is_empty() or not (seen[pickup_id] is String) or not String(seen[pickup_id]).contains(":"):
+		if String(pickup_id).strip_edges().is_empty() or not (seen[pickup_id] is String):
 			return _failure("ore parser checkpoint contains an invalid pickup identity")
+		var fingerprint_parts := String(seen[pickup_id]).split(":")
+		if fingerprint_parts.size() != 2 or not _stone_queues_by_shape.has(fingerprint_parts[0]) or not fingerprint_parts[1].is_valid_int() or int(fingerprint_parts[1]) <= 0:
+			return _failure("ore parser checkpoint contains an invalid pickup fingerprint")
 	var maximum_pending_sequence := 0
 	for operation_id in pending:
 		var batch: Variant = pending[operation_id]
