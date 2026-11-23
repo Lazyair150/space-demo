@@ -97,6 +97,34 @@ static func evaluate_workshop(
 	}
 	return _score(model, metrics)
 
+
+## Evaluate the actual post-growth local rules, not the base workshop definition.
+## Capacity metrics are raw observations only; their power direction/weight remains
+## unconfigured until a reference workload and Master/Slave role context are authored.
+static func evaluate_effective_workshop(
+	definition: SpaceWorkshopDefinition,
+	instance: SpaceOwnedProgressionInstance,
+	shape_vocabulary: Array,
+	liquid_vocabulary: Array,
+	model: SpaceIndividualPowerModelDefinition
+) -> Dictionary:
+	var effective := SpaceProgressionRuntimeProfileComposer.compose_workshop(
+		definition, instance, shape_vocabulary
+	)
+	if effective.is_empty():
+		return _failure("workshop Owned Instance growth could not be composed into valid local rules")
+	var effective_definition := SpaceWorkshopDefinition.new()
+	effective_definition.workshop_id = definition.workshop_id
+	effective_definition.definition_version = definition.definition_version
+	effective_definition.display_name = String(effective.get("name", ""))
+	effective_definition.base_marks = effective.get("baseMarks", []).duplicate()
+	effective_definition.additional_marks = effective.get("additionalMarks", []).duplicate()
+	effective_definition.banned_liquids = effective.get("ban", []).duplicate()
+	effective_definition.max_jars = int(effective.get("maxJars", 0))
+	effective_definition.max_liquids = int(effective.get("maxLiquids", 0))
+	effective_definition.liquid_staging_capacity = int(effective.get("liquidStagingCapacity", -1))
+	return evaluate_workshop(effective_definition, shape_vocabulary, liquid_vocabulary, model)
+
 static func evaluate_skill(
 	definition: SpaceSkillDefinition,
 	benefit_metrics: Dictionary,
