@@ -11,6 +11,11 @@ func _ready() -> void:
     runtime.SnapshotChanged.connect(_on_snapshot_changed)
     print("[WorldV2Probe] scene ready")
 
+    var ore_parser_probe: Dictionary = SpaceOreParserRuntimeProbe.run()
+    assert(bool(ore_parser_probe.get("passed", false)), "ore parser probe failed: " + String(ore_parser_probe.get("reason", "")))
+    print("[SpaceOreParserRuntimeProbe] passed percentage=", ore_parser_probe.get("productionPercentage", -1),
+        " pending_batches=", ore_parser_probe.get("pendingBatchesBeforeAck", 0))
+
     # The child Runtime node enters _Ready before this parent probe.
     # Its RuntimeReady signal may already have fired, so inspect its state too.
     if runtime.IsInitialized:
