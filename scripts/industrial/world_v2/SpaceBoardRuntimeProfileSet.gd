@@ -51,26 +51,36 @@ static func build(
 					return {}
 			"skill":
 				consumer = "space.skill"
+				var skill_profile_found := false
 				for binding in order_bindings:
 					if binding is Dictionary and String(binding.get("orderDefinitionKey", "")) == slot_id:
+						var jar_order: Variant = binding.get("jarOrder", null)
+						var skill_control: Variant = binding.get("skillControl", null)
+						var benefit_profile: Variant = binding.get("benefitProfile", null)
+						var effect_binding: Variant = binding.get("effectBinding", null)
+						if not (jar_order is Dictionary) or not (skill_control is Dictionary) or not (benefit_profile is Dictionary) or not (effect_binding is Dictionary) or effect_binding.is_empty():
+							return {}
 						runtime_profile = {
-							"jarOrder": binding.get("jarOrder", {}).duplicate(true),
-						"skillControl": binding.get("skillControl", {}).duplicate(true),
-						"benefitProfile": binding.get("benefitProfile", {}).duplicate(true),
-						"effectBinding": binding.get("effectBinding", {}).duplicate(true)
+							"jarOrder": jar_order.duplicate(true),
+							"skillControl": skill_control.duplicate(true),
+							"benefitProfile": benefit_profile.duplicate(true),
+							"effectBinding": effect_binding.duplicate(true)
 						}
+						skill_profile_found = true
 						break
-				if runtime_profile.is_empty() or runtime_profile.get("effectBinding", {}).is_empty():
+				if not skill_profile_found:
 					return {}
 			"production_device":
 				consumer = "space.production_device"
+				var device_profile_found := false
 				for device in device_selections:
 					if device is Dictionary and String(device.get("slotId", "")) == slot_id and String(device.get("deviceKind", "")) != "ore_parser":
 						var device_profile: Variant = device.get("deviceRuntimeProfile", null)
 						if device_profile is Dictionary:
 							runtime_profile = device_profile.duplicate(true)
-						break
-				if runtime_profile.is_empty():
+							device_profile_found = true
+							break
+				if not device_profile_found:
 					return {}
 			_:
 				return {}
