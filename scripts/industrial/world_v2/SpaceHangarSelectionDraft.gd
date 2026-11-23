@@ -34,6 +34,9 @@ func set_ship(definition_id: String, version: int) -> bool:
 func set_parser(definition_id: String, version: int, slot_id: String) -> bool:
 	if slot_id.strip_edges().is_empty() or not _has_exact_choice("parserChoices", definition_id, version):
 		return false
+	for raw_device in _selection.deviceSelections:
+		if String(raw_device.get("slotId", "")) == slot_id:
+			return false
 	_selection.parserId = definition_id
 	_selection.parserVersion = version
 	_selection.parserSlotId = slot_id
