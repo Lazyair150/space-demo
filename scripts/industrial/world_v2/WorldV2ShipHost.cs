@@ -303,6 +303,62 @@ public partial class WorldV2ShipHost : Node
         return _runtime.AcknowledgeOrderCycleEvent(eventId);
     }
 
+    /// <summary>
+    /// Capture Jar's checkpoint only between complete Space steps. The fractional Space
+    /// clock remainder is captured separately by CaptureSpaceClockRemainderMilli.
+    /// </summary>
+    public string CaptureExecutionCheckpointJson()
+    {
+        if (_state != HostState.Active || _runtime == null ||
+            !_runtime.IsInitialized || _runtime.IsDisposed)
+            throw new InvalidOperationException("Ship world is not active");
+        if (_hasPreparedSpaceStep)
+            throw new InvalidOperationException("Cannot capture Jar checkpoint while a Space step is prepared");
+        return _runtime.CaptureExecutionCheckpointJson();
+    }
+
+    /// <summary>
+    /// Restore Jar state before any world advance or selected-order materialization.
+    /// The checkpoint already contains demands, active sessions, inventory and ledger receipts.
+    /// </summary>
+    public bool RestoreExecutionCheckpointJson(string json)
+    {
+        if (_state != HostState.Active || _runtime == null ||
+            !_runtime.IsInitialized || _runtime.IsDisposed ||
+            _worldHasAdvanced || _hasPreparedSpaceStep || _ordersMaterialized)
+            return false;
+        var restored = _runtime.RestoreExecutionCheckpointJson(json);
+        if (!restored || _runtime.IsFaulted)
+        {
+            LatchFault(ReadRuntimeFault(_runtime, "Jar execution checkpoint restore failed"));
+            return false;
+        }
+        _ordersMaterialized = true;
+        return true;
+    }
+
+    /// <summary>Capture the Host-owned fractional-millisecond remainder at a step boundary.</summary>
+    public double CaptureSpaceClockRemainderMilli()
+    {
+        if (_state != HostState.Active || _hasPreparedSpaceStep)
+            throw new InvalidOperationException("Space clock remainder is available only at an active step boundary");
+        return _fractionalWorldTimeMilli;
+    }
+
+    /// <summary>
+    /// Restore the fractional-millisecond remainder before the first simulation step.
+    /// This value is Space clock state, not part of Jar's execution checkpoint.
+    /// </summary>
+    public bool RestoreSpaceClockRemainderMilli(double remainderMilli)
+    {
+        if (_state != HostState.Active || _worldHasAdvanced || _hasPreparedSpaceStep ||
+            double.IsNaN(remainderMilli) || double.IsInfinity(remainderMilli) ||
+            remainderMilli < 0.0 || remainderMilli >= 1.0)
+            return false;
+        _fractionalWorldTimeMilli = remainderMilli;
+        return true;
+    }
+
     public GDictionary GetWorldSnapshot()
     {
         if (_runtime == null || !_runtime.IsInitialized)
