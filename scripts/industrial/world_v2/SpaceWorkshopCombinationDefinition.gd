@@ -57,8 +57,6 @@ func get_validation_errors() -> PackedStringArray:
 		var template_shapes: Array = shapes if shapes is Array else []
 		var template_liquids: Array = liquids if liquids is Array else []
 		errors.append_array(template.get_validation_errors(template_shapes, template_liquids))
-	if workshop_definitions.is_empty():
-		errors.append("workshop combination must provide at least one workshop component definition")
 	var ids := {}
 	var names := {}
 	for workshop in workshop_definitions:
