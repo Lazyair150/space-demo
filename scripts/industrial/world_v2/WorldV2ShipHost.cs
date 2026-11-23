@@ -17,6 +17,8 @@ public partial class WorldV2ShipHost : Node
     private WorldV2RuntimeNode? _runtime;
     private HostState _state = HostState.Absent;
     private double _fractionalWorldTimeMilli;
+    private bool _hasPreparedSpaceStep;
+    private long _preparedSpaceStepMilliseconds;
     private string _faultReason = "";
     private bool _worldHasAdvanced;
     private bool _ordersMaterialized;
@@ -50,6 +52,8 @@ public partial class WorldV2ShipHost : Node
 
         _state = HostState.Created;
         _fractionalWorldTimeMilli = 0;
+        _hasPreparedSpaceStep = false;
+        _preparedSpaceStepMilliseconds = 0;
         _worldHasAdvanced = false;
         _ordersMaterialized = false;
         _faultReason = "";
@@ -94,6 +98,8 @@ public partial class WorldV2ShipHost : Node
         if (_state == HostState.Active || _state == HostState.Paused || _state == HostState.Created)
             _state = HostState.Suspended;
         _fractionalWorldTimeMilli = 0;
+        _hasPreparedSpaceStep = false;
+        _preparedSpaceStepMilliseconds = 0;
     }
 
     public void EndShipWorld()
@@ -106,6 +112,8 @@ public partial class WorldV2ShipHost : Node
 
         _state = HostState.Suspended;
         _fractionalWorldTimeMilli = 0;
+        _hasPreparedSpaceStep = false;
+        _preparedSpaceStepMilliseconds = 0;
         var runtime = _runtime;
         _runtime = null;
         if (runtime != null)
@@ -129,10 +137,11 @@ public partial class WorldV2ShipHost : Node
             throw new ArgumentOutOfRangeException(nameof(deltaSeconds));
         if (_state != HostState.Active)
             return 0;
-        if (deltaSeconds == 0)
-            return 0;
+        if (_hasPreparedSpaceStep)
+            throw new InvalidOperationException("The previous Space time step has not been forwarded to Jar");
 
-        _worldHasAdvanced = true;
+        if (deltaSeconds > 0)
+            _worldHasAdvanced = true;
         var accumulated = _fractionalWorldTimeMilli + deltaSeconds * 1000.0;
         if (accumulated > long.MaxValue)
         {
@@ -142,6 +151,8 @@ public partial class WorldV2ShipHost : Node
 
         var wholeMilliseconds = (long)Math.Floor(accumulated);
         _fractionalWorldTimeMilli = accumulated - wholeMilliseconds;
+        _preparedSpaceStepMilliseconds = wholeMilliseconds;
+        _hasPreparedSpaceStep = true;
         return wholeMilliseconds;
     }
 
@@ -155,6 +166,10 @@ public partial class WorldV2ShipHost : Node
             throw new ArgumentOutOfRangeException(nameof(deltaWorldTimeMilli));
         if (_state != HostState.Active)
             return false;
+        if (!_hasPreparedSpaceStep || deltaWorldTimeMilli != _preparedSpaceStepMilliseconds)
+            throw new InvalidOperationException("Jar must receive exactly the delta prepared by AccumulateSpaceSimulationDelta");
+        _hasPreparedSpaceStep = false;
+        _preparedSpaceStepMilliseconds = 0;
         if (_runtime == null || !_runtime.IsInitialized || _runtime.IsDisposed)
         {
             LatchFault("Active ship-world has no operational World V2 Runtime");
