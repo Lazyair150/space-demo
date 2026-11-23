@@ -120,7 +120,7 @@ func _ready() -> void:
 		if not GameState.restore_run_state(_persisted_run_state):
 			push_error("[Game] Saved transient run state is invalid")
 			GameFlow.fault_battle()
-			process_mode = Node.PROCESS_MODE_DISABLED
+		process_mode = Node.PROCESS_MODE_DISABLED
 			return
 	elif _persisted_jar_execution_checkpoint_json.is_empty():
 		GameState.reset_run()
