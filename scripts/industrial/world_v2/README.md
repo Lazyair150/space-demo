@@ -395,7 +395,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - SpaceEnergyStonePickup 只把稳定 ID、原石类型和体积交给当前战斗 Game；解析器接受（包括同载荷重复确认）后才销毁拾取物，冲突或无解析器时保留拾取物。
 - 下一个拾取 ID 序号与解析器检查点一起捕获/恢复，避免恢复后重用已经分配的 ID。
 
-当前 EnemyChaser / EnemyShooter 场景没有被填入任何生产掉落 profile，因此不会改变现有掉落平衡。尚未完成的是正式敌机/遭遇 profile 内容、未拾取掉落物的战斗存档恢复，以及 Hangar 将真实 ship/device/workshop catalog 构筑物化为 frozen loadout。
+当前 EnemyChaser / EnemyShooter 场景没有被填入任何生产掉落 profile，因此不会改变现有掉落平衡。尚未完成的是正式敌机/遭遇 profile 内容、外层保存协调器将 Game 的 Jar/Space checkpoint 与玩家/效果/敌人状态作为单一事务持久化，以及 Hangar 将真实 ship/device/workshop/parser catalog 构筑物化为 frozen loadout。Game 级 parser envelope 已捕获并恢复未拾取实体和 Spawner 掉落 RNG。
 
 ### 4.14e 战前解析器精确版本目录与存档连续性
 
