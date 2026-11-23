@@ -1,5 +1,7 @@
 extends Resource
 class_name SpaceOreParserDefinition
+
+const MAX_FIXED_POINT_UNITS: float = 1000000000.0
 ## Versioned pre-battle definition for the universal energy-stone parser.
 ## production_percentage belongs to this selected parser. It scales this parser's
 ## own per-shape throughput; it is not a distribution of output among Jar shapes.
@@ -45,15 +47,15 @@ func get_validation_errors(shape_names: Array) -> Array[String]:
 			errors.append("parser is missing processing rate for shape: " + shape)
 			continue
 		var rate: Variant = shape_processing_rate_per_second[shape]
-		if (typeof(rate) != TYPE_INT and typeof(rate) != TYPE_FLOAT) or not is_finite(float(rate)) or float(rate) < 0.0:
-			errors.append("parser processing rate must be finite and non-negative: " + shape)
+		if (typeof(rate) != TYPE_INT and typeof(rate) != TYPE_FLOAT) or not is_finite(float(rate)) or float(rate) < 0.0 or float(rate) > MAX_FIXED_POINT_UNITS:
+			errors.append("parser processing rate is outside the supported fixed-point range: " + shape)
 
 		if not progress_per_jar_by_shape.has(shape):
 			errors.append("parser is missing progress-per-Jar for shape: " + shape)
 			continue
 		var threshold: Variant = progress_per_jar_by_shape[shape]
-		if (typeof(threshold) != TYPE_INT and typeof(threshold) != TYPE_FLOAT) or not is_finite(float(threshold)) or float(threshold) <= 0.0:
-			errors.append("progress-per-Jar must be finite and positive: " + shape)
+		if (typeof(threshold) != TYPE_INT and typeof(threshold) != TYPE_FLOAT) or not is_finite(float(threshold)) or float(threshold) <= 0.0 or float(threshold) > MAX_FIXED_POINT_UNITS:
+			errors.append("progress-per-Jar is outside the supported fixed-point range: " + shape)
 
 	for shape in shape_processing_rate_per_second:
 		if not known_shapes.has(String(shape)):
