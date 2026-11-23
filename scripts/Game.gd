@@ -525,6 +525,8 @@ func _physics_process(delta: float) -> void:
 			camera_2d.position=_camera_home
 
 func _exit_tree() -> void:
+	# A combat scene must never leak SceneTree pause into the next screen.
+	get_tree().paused = false
 	# Leaving the owning ship-world is terminal for this Jar session.
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if jar_host != null:
@@ -532,7 +534,7 @@ func _exit_tree() -> void:
 
 func _on_player_died()->void:
 	GameState.report_game_over()
-	await get_tree().create_timer(1.0).timeout
+	await get_tree().create_timer(1.0, false).timeout
 	get_tree().change_scene_to_file("res://scenes/menus/GameOver.tscn")
 
 func _on_player_damaged()->void:
