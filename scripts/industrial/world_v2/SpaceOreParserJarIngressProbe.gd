@@ -5,6 +5,9 @@ extends Node
 func _ready() -> void:
     var parser_probe := SpaceOreParserRuntimeProbe.run()
     assert(bool(parser_probe.get("passed", false)), "Space ore parser unit probe must pass")
+    var build_context_probe := SpaceSkillBuildContextEvaluatorProbe.run()
+    assert(bool(build_context_probe.get("passed", false)),
+        "parser percentage build-context probe must pass: " + String(build_context_probe.get("reason", "")))
 
     var jar_host := WorldV2ShipHost.new()
     add_child(jar_host)
