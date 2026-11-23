@@ -1,71 +1,137 @@
 extends RefCounted
 class_name SpaceBattleEffectStateStore
-## Persists effect runtime state and dispatcher EventIds as ONE replaceable snapshot.
-## Uses a pending file and a recoverable previous snapshot; platform durability must be verified.
+## One replaceable save snapshot for Space effects, dispatcher EventIds, Jar Core checkpoint,
+## Space parser/pickups, and the shared simulation clock. A pending file and recoverable
+## previous snapshot protect against interrupted replacement; platform durability is separate.
 
 var _path: String
 
 func _init(path: String = "user://battle_effect_state.json") -> void:
-	_path = path
+    _path = path
 
-func save(effect_state: Dictionary, dispatcher_state: Dictionary, loadout_identity: Dictionary) -> bool:
-	var payload := {
-		"schemaVersion": 1,
-		"loadoutIdentity": loadout_identity.duplicate(true),
-		"effectState": effect_state.duplicate(true),
-		"dispatcherState": dispatcher_state.duplicate(true)
-	}
-	var absolute_path := ProjectSettings.globalize_path(_path)
-	var temporary_path := absolute_path + ".pending"
-	var file := FileAccess.open(temporary_path, FileAccess.WRITE)
-	if file == null:
-		push_error("Unable to open battle effect snapshot temporary file: " + temporary_path)
-		return false
-	file.store_string(JSON.stringify(payload))
-	file.flush()
-	var write_error := file.get_error()
-	file.close()
-	if write_error != OK:
-		DirAccess.remove_absolute(temporary_path)
-		push_error("Unable to flush battle effect snapshot")
-		return false
+## Legacy three-domain save remains supported. Supplying runtime_checkpoint upgrades the
+## snapshot to schema v2 and commits all cross-domain state in the same file replacement.
+func save(
+    effect_state: Dictionary,
+    dispatcher_state: Dictionary,
+    loadout_identity: Dictionary,
+    runtime_checkpoint: Dictionary = {}
+) -> bool:
+    if not _valid_loadout_identity(loadout_identity):
+        push_error("Battle save requires a complete frozen loadout identity")
+        return false
+    var schema_version := 1
+    var payload := {
+        "schemaVersion": schema_version,
+        "loadoutIdentity": loadout_identity.duplicate(true),
+        "effectState": effect_state.duplicate(true),
+        "dispatcherState": dispatcher_state.duplicate(true)
+    }
+    if not runtime_checkpoint.is_empty():
+        if not _valid_runtime_checkpoint(runtime_checkpoint, loadout_identity):
+            push_error("Battle runtime checkpoint is incomplete or does not match the frozen loadout")
+            return false
+        payload["schemaVersion"] = 2
+        payload["runtimeCheckpoint"] = runtime_checkpoint.duplicate(true)
+    return _replace_snapshot(payload)
 
-	if FileAccess.file_exists(absolute_path):
-		var backup_path := absolute_path + ".previous"
-		if FileAccess.file_exists(backup_path):
-			DirAccess.remove_absolute(backup_path)
-		var backup_error := DirAccess.rename_absolute(absolute_path, backup_path)
-		if backup_error != OK:
-			DirAccess.remove_absolute(temporary_path)
-			push_error("Unable to stage previous battle effect snapshot")
-			return false
-		var replace_error := DirAccess.rename_absolute(temporary_path, absolute_path)
-		if replace_error != OK:
-			DirAccess.rename_absolute(backup_path, absolute_path)
-			push_error("Unable to replace battle effect snapshot")
-			return false
-		DirAccess.remove_absolute(backup_path)
-		return true
+func _replace_snapshot(payload: Dictionary) -> bool:
+    var absolute_path := ProjectSettings.globalize_path(_path)
+    var temporary_path := absolute_path + ".pending"
+    var file := FileAccess.open(temporary_path, FileAccess.WRITE)
+    if file == null:
+        push_error("Unable to open battle snapshot temporary file: " + temporary_path)
+        return false
+    file.store_string(JSON.stringify(payload))
+    file.flush()
+    var write_error := file.get_error()
+    file.close()
+    if write_error != OK:
+        DirAccess.remove_absolute(temporary_path)
+        push_error("Unable to flush battle snapshot")
+        return false
 
-	var rename_error := DirAccess.rename_absolute(temporary_path, absolute_path)
-	if rename_error != OK:
-		DirAccess.remove_absolute(temporary_path)
-		push_error("Unable to commit battle effect snapshot")
-		return false
-	return true
+    if FileAccess.file_exists(absolute_path):
+        var backup_path := absolute_path + ".previous"
+        if FileAccess.file_exists(backup_path):
+            DirAccess.remove_absolute(backup_path)
+        var backup_error := DirAccess.rename_absolute(absolute_path, backup_path)
+        if backup_error != OK:
+            DirAccess.remove_absolute(temporary_path)
+            push_error("Unable to stage previous battle snapshot")
+            return false
+        var replace_error := DirAccess.rename_absolute(temporary_path, absolute_path)
+        if replace_error != OK:
+            DirAccess.rename_absolute(backup_path, absolute_path)
+            push_error("Unable to replace battle snapshot")
+            return false
+        DirAccess.remove_absolute(backup_path)
+        return true
 
-func load() -> Dictionary:
-	var absolute_path := ProjectSettings.globalize_path(_path)
-	var candidates := [absolute_path, absolute_path + ".previous"]
-	for candidate in candidates:
-		if not FileAccess.file_exists(candidate):
-			continue
-		var file := FileAccess.open(candidate, FileAccess.READ)
-		if file == null:
-			continue
-		var parsed: Variant = JSON.parse_string(file.get_as_text())
-		file.close()
-		if parsed is Dictionary and int(parsed.get("schemaVersion", 0)) == 1:
-			return parsed.duplicate(true)
-	push_error("No valid battle effect snapshot or recoverable previous snapshot exists")
-	return {}
+    var rename_error := DirAccess.rename_absolute(temporary_path, absolute_path)
+    if rename_error != OK:
+        DirAccess.remove_absolute(temporary_path)
+        push_error("Unable to commit battle snapshot")
+        return false
+    return true
+
+func load(expected_loadout_identity: Dictionary = {}) -> Dictionary:
+    var absolute_path := ProjectSettings.globalize_path(_path)
+    var candidates := [absolute_path, absolute_path + ".previous"]
+    for candidate in candidates:
+        if not FileAccess.file_exists(candidate):
+            continue
+        var file := FileAccess.open(candidate, FileAccess.READ)
+        if file == null:
+            continue
+        var parsed: Variant = JSON.parse_string(file.get_as_text())
+        file.close()
+        if not (parsed is Dictionary) or not _valid_snapshot(parsed):
+            continue
+        if not expected_loadout_identity.is_empty() and parsed.get("loadoutIdentity", {}) != expected_loadout_identity:
+            continue
+        return parsed.duplicate(true)
+    push_error("No valid matching battle snapshot or recoverable previous snapshot exists")
+    return {}
+
+func _valid_snapshot(payload: Dictionary) -> bool:
+    var version := int(payload.get("schemaVersion", 0))
+    var identity: Variant = payload.get("loadoutIdentity", null)
+    var effects: Variant = payload.get("effectState", null)
+    var dispatcher: Variant = payload.get("dispatcherState", null)
+    if not _valid_loadout_identity(identity) or not (effects is Dictionary) or not (dispatcher is Dictionary):
+        return false
+    if version == 1:
+        return not payload.has("runtimeCheckpoint")
+    if version != 2:
+        return false
+    var runtime_checkpoint: Variant = payload.get("runtimeCheckpoint", null)
+    return runtime_checkpoint is Dictionary and _valid_runtime_checkpoint(runtime_checkpoint, identity)
+
+func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity: Dictionary) -> bool:
+    if int(runtime_checkpoint.get("schemaVersion", 0)) != 1:
+        return false
+    if runtime_checkpoint.get("loadoutIdentity", {}) != loadout_identity:
+        return false
+    var jar_json: Variant = runtime_checkpoint.get("jarExecutionCheckpointJson", null)
+    var clock: Variant = runtime_checkpoint.get("spaceClockRemainderMilli", null)
+    var parser: Variant = runtime_checkpoint.get("oreParserState", null)
+    if typeof(jar_json) != TYPE_STRING or String(jar_json).is_empty():
+        return false
+    if (typeof(clock) != TYPE_INT and typeof(clock) != TYPE_FLOAT) or not is_finite(float(clock)) or float(clock) < 0.0 or float(clock) >= 1.0:
+        return false
+    if not (parser is Dictionary) or int(parser.get("schemaVersion", 0)) != 1:
+        return false
+    if not (parser.get("parserRuntime", null) is Dictionary) or not (parser.get("pendingPickups", null) is Array):
+        return false
+    return true
+
+func _valid_loadout_identity(identity: Variant) -> bool:
+    if not (identity is Dictionary):
+        return false
+    return (
+        not String(identity.get("shipWorldId", "")).is_empty()
+        and not String(identity.get("loadoutId", "")).is_empty()
+        and int(identity.get("loadoutVersion", 0)) > 0
+        and String(identity.get("loadoutFingerprint", "")).length() == 64
+    )
