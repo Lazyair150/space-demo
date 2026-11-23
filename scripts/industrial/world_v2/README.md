@@ -344,9 +344,9 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 
 ## 4.14b 战前原石解析器与离散 Jar 产出链
 
-- `SpaceOreParserDefinition.gd` 是战前选定解析器的版本化定义，包含 `productionPercentage`、每形状处理速率、每形状产出一只 Jar 所需进度。
+- `SpaceOreParserDefinition.gd` 是战前选定解析器的版本化定义，包含 `productionPercentage`、每形状处理速率、每形状产出一只 Jar 所需进度；`SpaceOreParserCatalog.gd` 按精确 ID/版本注册和解析定义，拒绝静默版本替换，并在注册时复制配置。
 - `productionPercentage` 属于解析器本身，按百分比缩放该解析器自己的各形状处理吞吐；它不把产出比例分配给不同形状，也不属于能量石类型。
-- `SpaceBattleLoadoutSnapshot` 要求构筑中恰好选择一个通用 `ore_parser`，并把完整解析器属性纳入冻结快照与指纹。
+- `SpaceBattleLoadoutSnapshot.create_with_ore_parser` 通过精确版本 Catalog 将解析器属性物化到生产设备槽，再创建不可变快照；它拒绝重复解析器、槽位冲突和未知版本。`SpaceBattleLoadoutSnapshot` 要求构筑中恰好选择一个通用 `ore_parser`，并把完整解析器属性纳入冻结快照与指纹。
 - `SpaceOreParserRuntime.gd` 无条件接受当前世界词表中的所有原石类型；类型决定目标 Jar 形状，体积是有限可解析资源量。各形状队列、进度和速率余数独立；未解析完的原石体积不会丢失。
 - `SpaceEnergyStoneDropProfile.gd` 是版本化敌机/遭遇掉落配置，定义可掉落的原石类型、体积和权重；默认无掉落数据，不含任何虚构概率或体积。敌机可选配置该 profile。
 - 达到每形状的完整 Jar 进度阈值后，解析器创建稳定 operationId 的待交付批次。批次在确认前留在解析器状态中。
@@ -357,9 +357,11 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `SpaceEnergyStoneDropProfile.gd` 提供无默认掉落数值的版本化加权原石掉落表；`Game.spawn_energy_stone_drop(profile, position, rng)` 冻结 profile、按当前 Jar 形状词表抽取类型/体积、分配可持久化的稳定 pickup ID 并生成拾取物。敌机/小行星的实际死亡事件仍需调用该入口。
 - `SpaceOreParserRuntimeProbe.gd` 覆盖百分比吞吐、并行独立进度、重复拾取去重、身份冲突、固定点分步一致性、输出批次检查点和单次确认。
 - `SpaceSkillBuildContextEvaluatorProbe.gd` 验证 50% / 100% 是解析器自身吞吐修正，不会把一个形状的产量份额分给另一个形状。
+- `SpaceOreParserCatalogProbe.gd` 验证精确版本解析、注册配置隔离、槽位/shape 覆盖、未知版本拒绝，以及解析器属性/版本变化会改变冻结 loadout fingerprint。
+- `SpaceSkillBuildContextEvaluatorProbe.gd` 还验证 Ship 原石进度表必须与通用解析器形状词表完全一致，并拒绝低于固定点精度的 Jar 阈值。
 - `SpaceOreParserJarIngressProbe.gd` 与 `scenes/industrial/SpaceOreParserJarIngressProbe.tscn` 验证 Host 毫秒余数和 prepared-step 单次消费、版本化加权掉落 profile、typed pickup 场景与稳定 ID、Space 原石解析、Jar 离散导入、模拟丢失回执后的幂等重试，以及不会直接注入主台。
 
-当前仍缺少实际 Hangar/敌机掉落资产对解析器配置与拾取入口的连接；没有填写任何正式生产百分比、速率、体积或进度阈值。Godot 4.7.1 .NET 对本轮最新 C#/GDScript 的实际编译和运行尚未完成，不能把静态提交视为已通过本机验收。
+当前仍缺少实际 Hangar UI/真实生产设备 Catalog 资产对解析器 Catalog 的连接；没有填写任何正式生产百分比、速率、体积或进度阈值。Godot 4.7.1 .NET 对本轮最新 C#/GDScript 的实际编译和运行尚未完成，不能把静态提交视为已通过本机验收。
 
 
 ### 4.14c Space 原石解析器到 Jar 仓库端到端探针
@@ -394,3 +396,12 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - 下一个拾取 ID 序号与解析器检查点一起捕获/恢复，避免恢复后重用已经分配的 ID。
 
 当前 EnemyChaser / EnemyShooter 场景没有被填入任何生产掉落 profile，因此不会改变现有掉落平衡。尚未完成的是正式敌机/遭遇 profile 内容、未拾取掉落物的战斗存档恢复，以及 Hangar 将真实 ship/device/workshop catalog 构筑物化为 frozen loadout。
+
+### 4.14e 战前解析器精确版本目录与存档连续性
+
+- `SpaceOreParserCatalog.gd` 以 `(parserId, definitionVersion)` 注册/解析版本；注册时复制 Resource 配置，调用方后续修改原始 Resource 不会污染 Catalog。
+- `SpaceBattleLoadoutSnapshot.create_with_ore_parser` 是战前构筑的解析器入口：按指定精确版本从 Catalog 生成生产设备选择，检查槽位冲突和重复解析器，再把解析器 profile 纳入 loadout fingerprint。不同解析器版本/属性必须产生不同 fingerprint。
+- `SpaceOreParserCatalogProbe.gd` 覆盖精确版本、未知版本拒绝、注册隔离、slot/shape 覆盖、冻结构筑指纹以及重复解析器拒绝。
+- `SpaceSkillBuildContextEvaluator` 现在要求 Ship 原石进度表与解析器形状集合精确一致；不允许缺形状后静默按 0 产能处理。进度阈值必须能表示为至少一个固定点微单位。
+- Space parser envelope schema v2 在原有 parser 状态、pickup ID 序号和未拾取实体列表之外，加入 Spawner 的 `RandomNumberGenerator.state`。恢复时必须同时恢复该 RNG 状态，避免同一战斗检查点之后重新抽取出不同掉落序列。
+- `capture_jar_space_runtime_checkpoint` 仍把 Jar execution checkpoint、Host 时钟余数、Space parser envelope 和订单事件 dispatcher 状态放入同一个 checkpoint 对象；调用方必须把它作为一次保存事务持久化。
