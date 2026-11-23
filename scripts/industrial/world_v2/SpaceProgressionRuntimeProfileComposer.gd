@@ -134,8 +134,8 @@ static func compose_skill_binding(binding: Dictionary, definition: SpaceSkillDef
 	if not _apply_flat_numeric_overlay(adjusted_benefit, _filter_prefixes(instance.growth_attributes, ["benefitAdd.", "benefitMul."]), "benefitAdd.", "benefitMul."):
 		return {}
 	var report := SpaceSkillBalanceModel.evaluate(adjusted_benefit, jar_order, context, balance_profile)
-	if not bool(report.get("valid", false)):
-		return {}
+	if not bool(report.get("valid", false)) or String(report.get("balanceStatus", "")) == "undercosted":
+		return {} # Growth may not increase skill benefit beyond its authored Jar cost curve.
 	result["benefitProfile"] = adjusted_benefit
 	result["balanceReport"] = report
 	result["effectBinding"] = result.get("effectBinding", {}).duplicate(true)
