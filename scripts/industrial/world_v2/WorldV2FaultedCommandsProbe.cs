@@ -68,6 +68,9 @@ public partial class WorldV2FaultedCommandsProbe : Node
                     ["圆罐"] = 1.0,
                     ["方罐"] = 0.0
                 }));
+            ExpectFaultRejected("ImportProducedJars", () => runtime.ImportProducedJars(
+                "faulted-probe-batch",
+                new Godot.Collections.Dictionary { ["圆罐"] = 1 }));
             ExpectFaultRejected("AddSingleRequirementDemand",
                 () => runtime.AddSingleRequirementDemand("圆罐", "酒", "A", "Passive", 0));
             ExpectFaultRejected("MoveDemand", () => runtime.MoveDemand(1, "Active"));
