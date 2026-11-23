@@ -89,12 +89,12 @@ static func _probe_parser_encounter_supply() -> bool:
 		"average_processing_rate": 3.0, "average_effective_processing_rate": 1.5,
 		"average_progress_required_per_jar": 1.5,
 		"conditional_mean_stone_volume.round": 15.0,
-		"expected_supply_volume_per_enemy.round": 0.1875,
-		"expected_supply_volume_per_second.round": 0.375,
+		"expected_supply_volume_per_enemy.round": 3.75,
+		"expected_supply_volume_per_second.round": 7.5,
 		"stone_processing_seconds_per_drop.round": 15.0,
 		"conditional_mean_stone_volume.square": 40.0,
-		"expected_supply_volume_per_enemy.square": 0.25,
-		"expected_supply_volume_per_second.square": 0.5,
+		"expected_supply_volume_per_enemy.square": 10.0,
+		"expected_supply_volume_per_second.square": 20.0,
 		"stone_processing_seconds_per_drop.square": 20.0
 	}
 	var model := _model("probe.parser.encounter.power", "ore_parser", metrics)
