@@ -18,9 +18,11 @@ func get_validation_errors() -> PackedStringArray:
 	for key in ["shapes", "liquids", "producers", "workshops", "masterWorkshopName"]:
 		if not jar_world_options.has(key):
 			errors.append("workshop combination Jar options are missing " + key)
-	if not (jar_world_options.get("shapes", null) is Array) or (jar_world_options.get("shapes", []) as Array).is_empty():
+	var shapes: Variant = jar_world_options.get("shapes", null)
+	if not (shapes is Array) or shapes.is_empty():
 		errors.append("workshop combination must provide a non-empty Jar shape vocabulary")
-	if not (jar_world_options.get("workshops", null) is Array) or (jar_world_options.get("workshops", []) as Array).is_empty():
+	var workshops: Variant = jar_world_options.get("workshops", null)
+	if not (workshops is Array) or workshops.is_empty():
 		errors.append("workshop combination must provide a non-empty workshop roster")
 	if not operation_cost_by_order_type.has("A") or not operation_cost_by_order_type.has("B"):
 		errors.append("workshop combination must author operation costs for both A and B")
