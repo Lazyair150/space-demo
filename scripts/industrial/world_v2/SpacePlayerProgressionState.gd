@@ -5,6 +5,8 @@ class_name SpacePlayerProgressionState
 
 const CURRENT_SCHEMA_VERSION := 1
 
+signal progression_changed(state_revision: int)
+
 @export var schema_version: int = CURRENT_SCHEMA_VERSION
 @export var player_id: StringName = &""
 @export var state_revision: int = 1
@@ -43,6 +45,7 @@ func unlock_definition(item_kind: String, definition_id: String, definition_vers
 		return false
 	unlocked_definition_keys.append(key)
 	state_revision += 1
+	progression_changed.emit(state_revision)
 	return true
 
 func acquire_instance(instance: SpaceOwnedProgressionInstance) -> bool:
@@ -53,6 +56,7 @@ func acquire_instance(instance: SpaceOwnedProgressionInstance) -> bool:
 		return false
 	owned_instances.append(instance.duplicate(true) as SpaceOwnedProgressionInstance)
 	state_revision += 1
+	progression_changed.emit(state_revision)
 	return true
 
 func resolve_instance(instance_id: String) -> SpaceOwnedProgressionInstance:
@@ -79,6 +83,7 @@ func replace_instance_progression(updated: SpaceOwnedProgressionInstance) -> boo
 				return false
 			owned_instances[index] = updated.duplicate(true) as SpaceOwnedProgressionInstance
 			state_revision += 1
+			progression_changed.emit(state_revision)
 			return true
 	return false
 
