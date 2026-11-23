@@ -117,6 +117,8 @@ func _build_overlay() -> void:
 	column.add_child(_title_label)
 	_reason_label = Label.new()
 	_reason_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_reason_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_reason_label.custom_minimum_size = Vector2(280, 54)
 	column.add_child(_reason_label)
 	_primary_button = Button.new()
 	_primary_button.text = "继续游戏  /  Resume"
