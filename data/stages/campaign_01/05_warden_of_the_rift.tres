@@ -11,6 +11,7 @@ sequence_index = 5
 display_name = "Warden of the Rift"
 briefing = "进入裂隙核心，击败守卫者，结束第一段战役。"
 objective = "boss"
+objective_parameters = {"boss_definition_id":"rift_warden"}
 recommended_loadout_level = 5
 estimated_minutes = 8
 wave_plans = Array[Dictionary]([{"segment":"pressure","chaser_count":3,"shooter_count":2,"elite_count":1,"break_seconds":3.0},{"segment":"boss","chaser_count":0,"shooter_count":0,"elite_count":1,"break_seconds":0.0,"boss_id":"rift_warden"}])
