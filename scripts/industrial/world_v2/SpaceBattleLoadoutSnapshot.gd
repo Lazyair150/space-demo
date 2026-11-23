@@ -249,7 +249,7 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 					var template_identity: Variant = order.get("jarOrderTemplate", null)
 					if not (template_identity is Dictionary):
 						errors.append("template-backed skill must freeze its exact template identity")
-					elif _required_text(template_identity, "templateId").is_empty() or int(template_identity.get("templateVersion", 0)) <= 0 or _required_text(template_identity, "templateName") != template_name:
+					elif _required_text(template_identity, "templateId").is_empty() or int(template_identity.get("templateVersion", 0)) <= 0 or _required_text(template_identity, "templateName") != template_name or ("%s@%d" % [_required_text(template_identity, "templateId"), int(template_identity.get("templateVersion", 0))]) != template_name:
 						errors.append("frozen Core template identity must match the runtime templateName")
 					var templates: Variant = jar_options.get("orderTemplates", []) if jar_options is Dictionary else []
 					var matched_template: Dictionary = {}
