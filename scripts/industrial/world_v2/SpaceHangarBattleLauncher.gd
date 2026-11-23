@@ -21,8 +21,15 @@ static func launch_new_battle(
 		return false
 	if not bool(game.call("configure_battle_loadout", loadout)):
 		return false
+	if not GameFlow.begin_battle_preparation():
+		push_error("GameFlow rejected the Hangar-to-Battle launch")
+		return false
 	parent.add_child(game)
-	return game.is_inside_tree()
+	if not game.is_inside_tree():
+		GameFlow.fault_battle()
+		push_error("Combat scene could not be attached after loadout freeze")
+		return false
+	return true
 
 static func launch_resumed_battle(
 	parent: Node,
@@ -48,8 +55,15 @@ static func launch_resumed_battle(
 	)):
 		push_error("Hangar rejected the saved battle checkpoint or its frozen loadout identity")
 		return false
+	if not GameFlow.begin_battle_preparation():
+		push_error("GameFlow rejected the Hangar resume launch")
+		return false
 	parent.add_child(game)
-	return game.is_inside_tree()
+	if not game.is_inside_tree():
+		GameFlow.fault_battle()
+		push_error("Restored combat scene could not be attached")
+		return false
+	return true
 
 static func _can_attach(parent: Node, game: Node) -> bool:
 	return parent != null and parent.is_inside_tree() and game != null and not game.is_inside_tree()
