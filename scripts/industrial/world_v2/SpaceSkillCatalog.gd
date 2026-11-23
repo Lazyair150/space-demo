@@ -64,5 +64,11 @@ func create_order_binding_for_build(
 		return {}
 	return definition.create_order_binding(order_definition_key, selected_control_area, balance_profile, context, benefit_metrics)
 
+func is_empty() -> bool:
+	return _definitions.is_empty()
+
+func definition_count() -> int:
+	return _definitions.size()
+
 func _key(skill_id: String, version: int) -> String:
 	return "%s@%d" % [skill_id, version]
