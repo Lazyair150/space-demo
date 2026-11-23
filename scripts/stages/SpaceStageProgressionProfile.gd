@@ -26,7 +26,7 @@ static func evaluate(stage: SpaceStageDefinition, loadout_data: Dictionary) -> D
 		return {"valid": false, "reason": "battle loadout has no frozen owned progression instances"}
 	var delta := level - float(stage.recommended_loadout_level)
 	var tuning := stage.difficulty_profile
-	var under_tuned_penalty := float(tuning.get("under_level_penalty_per_level", 0.0))
+	var under_tuned_penalty := float(tuning.get("under_level_assistance_per_level", 0.0))
 	var over_level_pressure := float(tuning.get("over_level_pressure_per_level", 0.0))
 	var minimum := float(tuning.get("minimum_encounter_scale", 1.0))
 	var maximum := float(tuning.get("maximum_encounter_scale", 1.0))
