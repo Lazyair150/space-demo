@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="SpaceEnergyStoneDropProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceEnergyStoneDropProfile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+profile_id = &"demo.encounter.stone_supply"
+profile_version = 1
+drop_chance = 0.45
+weighted_stones = Array[Dictionary]([{"stoneType": "圆罐", "volume": 10.0, "weight": 3.0}, {"stoneType": "方罐", "volume": 12.0, "weight": 2.0}, {"stoneType": "三角罐", "volume": 15.0, "weight": 1.0}, {"stoneType": "长条罐", "volume": 20.0, "weight": 1.0}, {"stoneType": "六边罐", "volume": 25.0, "weight": 1.0}])
