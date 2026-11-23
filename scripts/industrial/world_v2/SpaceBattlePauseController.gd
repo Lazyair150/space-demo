@@ -33,12 +33,17 @@ func set_paused(value: bool, reason: String = "player") -> void:
 	var tree := get_tree()
 	var host := tree.root.get_node_or_null("WorldV2ShipHost")
 	if value:
+		var pause_reason := GameFlow.PauseReason.WINDOW_FOCUS_LOST if reason == "window_focus_lost" else GameFlow.PauseReason.PLAYER
+		if not GameFlow.pause_battle(pause_reason):
+			return
 		if host != null:
 			host.call("PauseShipWorld")
 		_paused = true
 		_reason = reason
 		tree.paused = true
 	else:
+		if not GameFlow.resume_battle():
+			return
 		_paused = false
 		_reason = ""
 		tree.paused = false
@@ -95,4 +100,5 @@ func _exit_tree() -> void:
 	tree.paused = false
 	if host != null:
 		host.call("ResumeShipWorld")
+	GameFlow.resume_battle()
 	_paused = false
