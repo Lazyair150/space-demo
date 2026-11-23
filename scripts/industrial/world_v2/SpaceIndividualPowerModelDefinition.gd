@@ -94,8 +94,14 @@ func calculate_power_score(metrics: Dictionary) -> Dictionary:
 				normalized = 1.0 - normalized
 			"target_value":
 				var target := float(dimension.targetValue)
-				var maximum_distance := maxf(target - minimum, maximum - target)
-				normalized = 1.0 - absf(float(value) - target) / maximum_distance
+				if is_equal_approx(float(value), target):
+					normalized = 1.0
+				elif float(value) < target:
+					var lower_span := target - minimum
+					normalized = 0.0 if lower_span <= 0.0 else 1.0 - (target - float(value)) / lower_span
+				else:
+					var upper_span := maximum - target
+					normalized = 0.0 if upper_span <= 0.0 else 1.0 - (float(value) - target) / upper_span
 			_:
 				if not bool(dimension.higherIsBetter):
 					normalized = 1.0 - normalized
