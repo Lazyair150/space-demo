@@ -67,7 +67,9 @@ static func compose_workshop(definition: SpaceWorkshopDefinition, instance: Spac
 	if not _matches(definition, instance, "workshop", String(definition.workshop_id if definition != null else &""), definition.definition_version if definition != null else 0):
 		return {}
 	var growth := instance.growth_attributes
-	if not _only_keys(growth, ["maxJarsBonus", "maxLiquidsBonus", "liquidStagingCapacityBonus", "additionalMarks"]):
+	if not _only_workshop_keys(growth):
+		return {}
+	if not _is_integer_value(growth.get("maxJarsBonus", 0)) or not _is_integer_value(growth.get("maxLiquidsBonus", 0)) or not _is_integer_value(growth.get("liquidStagingCapacityBonus", 0)):
 		return {}
 	var max_jars := definition.max_jars + int(growth.get("maxJarsBonus", 0))
 	var max_liquids := definition.max_liquids + int(growth.get("maxLiquidsBonus", 0))
@@ -79,14 +81,18 @@ static func compose_workshop(definition: SpaceWorkshopDefinition, instance: Spac
 	if max_jars <= 0 or max_liquids <= 0 or staging < -1:
 		return {}
 	var marks: Array = definition.additional_marks.duplicate()
-	var extra: Variant = growth.get("additionalMarks", [])
-	if not (extra is Array):
-		return {}
-	for mark in extra:
-		var key := String(mark).strip_edges()
-		if key.is_empty() or not shape_vocabulary.has(key) or definition.base_marks.has(key) or marks.has(key):
+	for raw_key in growth:
+		var attribute := String(raw_key)
+		if not attribute.begins_with("additionalMark."):
+			continue
+		var key := attribute.trim_prefix("additionalMark.")
+		var enabled: Variant = growth[raw_key]
+		if not _is_integer_value(enabled) or int(enabled) not in [0, 1]:
 			return {}
-		marks.append(key)
+		if int(enabled) == 1:
+			if key.is_empty() or not shape_vocabulary.has(key) or definition.base_marks.has(key) or marks.has(key):
+				return {}
+			marks.append(key)
 	var result := {
 		"name": definition.display_name,
 		"baseMarks": definition.base_marks.duplicate(),
@@ -104,9 +110,7 @@ static func compose_skill(definition: SpaceSkillDefinition, instance: SpaceOwned
 	if not _matches(definition, instance, "skill", String(definition.skill_id if definition != null else &""), definition.definition_version if definition != null else 0):
 		return null
 	var growth := instance.growth_attributes
-	if not _only_keys(growth, []):
-		return null
-	var result := definition.duplicate(true) as SpaceSkillDefinition
+		var result := definition.duplicate(true) as SpaceSkillDefinition
 	var parameters := result.effect_parameters.duplicate(true)
 	if not _apply_flat_numeric_overlay(parameters, growth, "effectAdd.", "effectMul."):
 		return null
@@ -179,3 +183,16 @@ static func _apply_flat_numeric_overlay(target: Dictionary, growth: Dictionary, 
 		if not is_finite(float(target[field])):
 			return false
 	return true
+
+static func _only_workshop_keys(growth: Dictionary) -> bool:
+	for raw_key in growth:
+		var key := String(raw_key)
+		if ["maxJarsBonus", "maxLiquidsBonus", "liquidStagingCapacityBonus"].has(key):
+			continue
+		if key.begins_with("additionalMark.") and not key.trim_prefix("additionalMark.").is_empty():
+			continue
+		return false
+	return true
+
+static func _is_integer_value(value: Variant) -> bool:
+	return typeof(value) == TYPE_INT or (typeof(value) == TYPE_FLOAT and is_finite(float(value)) and is_equal_approx(float(value), roundf(float(value))))
