@@ -333,9 +333,6 @@ static func run() -> bool:
 		return false
 	if int(restored_progression.build_owned_instance_snapshot("probe.parser.instance.a").get("level", 0)) != 2:
 		return false
-	var restored_curve_snapshot := restored_progression.build_owned_instance_snapshot("probe.parser.instance.b")
-	if String(restored_curve_snapshot.get("growthCurveId", "")) != "probe.parser-growth" or int(restored_curve_snapshot.get("growthCurveVersion", 0)) != 2:
-		return false
 	var invalid_progression_data := progression_data.duplicate(true)
 	invalid_progression_data.ownedInstances[0].instanceId = "probe.parser.instance.a"
 	if SpacePlayerProgressionState.from_data(invalid_progression_data) != null:
@@ -387,6 +384,12 @@ static func run() -> bool:
 		return false
 	if curve_upgraded.growth_curve_id != parser_curve.curve_id or curve_upgraded.growth_curve_version != parser_curve.definition_version:
 		return false # The exact curve version is persisted with the calculated result.
+	var curve_restored_state := SpacePlayerProgressionState.from_data(progression.to_data())
+	if curve_restored_state == null:
+		return false
+	var restored_curve_snapshot := curve_restored_state.build_owned_instance_snapshot("probe.parser.instance.b")
+	if String(restored_curve_snapshot.get("growthCurveId", "")) != "probe.parser-growth" or int(restored_curve_snapshot.get("growthCurveVersion", 0)) != 2:
+		return false
 	var wrong_kind_curve := parser_curve.duplicate(true) as SpaceProgressionCurveDefinition
 	wrong_kind_curve.item_kind = "ship"
 	if SpaceProgressionGrowthService.calculate_update(curve_upgraded, wrong_kind_curve, 300) != null:
