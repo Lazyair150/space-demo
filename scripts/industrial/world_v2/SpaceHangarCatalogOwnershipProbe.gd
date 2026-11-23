@@ -362,6 +362,15 @@ static func run() -> bool:
 	}
 	if not parser_curve.get_validation_errors().is_empty():
 		return false
+	var curve_catalog := SpaceProgressionCurveCatalog.new()
+	if not curve_catalog.register_definition(parser_curve) or curve_catalog.register_definition(parser_curve):
+		return false
+	var resolved_curve := curve_catalog.resolve_definition("ore_parser", "probe.parser-growth", 2)
+	if resolved_curve == null or not curve_catalog.contains_definition("ore_parser", "probe.parser-growth", 2):
+		return false
+	resolved_curve.attribute_keyframes.productionRateMultiplier[1].value = 99.0
+	if absf(float(curve_catalog.resolve_definition("ore_parser", "probe.parser-growth", 2).attribute_keyframes.productionRateMultiplier[1].value) - 1.25) > 0.000001:
+		return false # Curve catalog returns detached immutable-by-interface copies.
 	if parser_curve.level_for_experience(99) != 1 or parser_curve.level_for_experience(100) != 2 or parser_curve.level_for_experience(300) != 3:
 		return false
 	var level_two_growth := parser_curve.build_growth_attributes(2)
