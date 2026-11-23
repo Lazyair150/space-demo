@@ -10,6 +10,7 @@ const MICRO: int = 1000000
 const RATE_DENOMINATOR: int = 100000
 const STATE_SCHEMA_VERSION: int = 2
 const MAX_INT64: int = 9223372036854775807
+const MAX_FIXED_POINT_UNITS: float = 1000000000.0
 
 var _definition: SpaceOreParserDefinition
 var _parser_instance_id: String = ""
@@ -34,7 +35,9 @@ func initialize(
 	if not errors.is_empty():
 		return _failure("; ".join(errors))
 
-	_definition = definition
+	# Freeze the selected pre-battle parser definition; later Resource edits must not
+	# silently change a running battle or invalidate its checkpoint fingerprint.
+	_definition = SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
 	_parser_instance_id = parser_instance_id
 	_parser_token = _sha256(parser_instance_id).substr(0, 20)
 	_stone_queues_by_shape.clear()
@@ -103,7 +106,7 @@ func advance(delta_logical_milli: int) -> Dictionary:
 	for shape_value in shapes:
 		var shape := String(shape_value)
 		var raw_rate := float(_definition.shape_processing_rate_per_second[shape])
-		if raw_rate > 9000000000000.0:
+		if raw_rate > MAX_FIXED_POINT_UNITS:
 			return _failure("ore parser processing rate exceeds the fixed-point representation limit: " + shape)
 		var base_rate_micro := int(round(raw_rate * MICRO))
 		var percentage := _definition.production_percentage
@@ -141,7 +144,7 @@ func advance(delta_logical_milli: int) -> Dictionary:
 			return _failure("ore parser progress arithmetic exceeds the supported fixed-point range")
 		var progress := previous_progress + consumed_micro
 		var raw_threshold := float(_definition.progress_per_jar_by_shape[shape])
-		if raw_threshold > 9000000000000.0:
+		if raw_threshold > MAX_FIXED_POINT_UNITS:
 			return _failure("ore parser progress threshold exceeds the fixed-point representation limit: " + shape)
 		var threshold := int(round(raw_threshold * MICRO))
 		var produced := int(progress / threshold)
