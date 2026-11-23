@@ -95,6 +95,7 @@ static func _pool(id: String, kind: String) -> SpaceRoguelikeIndividualPool:
 	model.metric_dimensions = {"normalized_strength": {"minimum": 0.0, "maximum": 1.0, "weight": 1.0, "higherIsBetter": true}}
 	pool.power_model = model
 	pool.item_kind = kind
+	pool.require_definition_evaluation = false
 	pool.power_bands = {
 		"common": {"minimum": 1.0, "maximum": 3.0},
 		"rare": {"minimum": 3.1, "maximum": 5.0}
