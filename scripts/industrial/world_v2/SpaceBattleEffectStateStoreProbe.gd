@@ -31,7 +31,7 @@ static func run() -> Dictionary:
             ]
         }
     }
-    var effects := {"activeEffects": [], "processedOrderEventIds": ["event-1"]}
+    var effects := {"schemaVersion": 1, "instances": [], "processedOrderEventIds": ["event-1"]}
     var dispatcher := {"schemaVersion": 1, "processedEventIds": ["event-1"]}
 
     if not store.save(effects, dispatcher, identity, runtime_checkpoint):
