@@ -62,6 +62,12 @@ public partial class WorldV2FaultedCommandsProbe : Node
             ExpectFaultRejected("PauseWorld", runtime.PauseWorld);
             ExpectFaultRejected("ResumeWorld", runtime.ResumeWorld);
             ExpectFaultRejected("SetWorldSpeedRatio", () => runtime.SetWorldSpeedRatio(1.0));
+            ExpectFaultRejected("UpdateProducerRates", () => runtime.UpdateProducerRates(
+                "陶工", new Godot.Collections.Dictionary
+                {
+                    ["圆罐"] = 1.0,
+                    ["方罐"] = 0.0
+                }));
             ExpectFaultRejected("AddSingleRequirementDemand",
                 () => runtime.AddSingleRequirementDemand("圆罐", "酒", "A", "Passive", 0));
             ExpectFaultRejected("MoveDemand", () => runtime.MoveDemand(1, "Active"));
