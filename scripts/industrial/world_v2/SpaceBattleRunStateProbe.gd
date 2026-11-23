@@ -3,7 +3,10 @@ class_name SpaceBattleRunStateProbe
 ## Checks that transient run progression is checkpointable without touching persistent wallet data.
 
 static func run() -> Dictionary:
-    var game_state := Engine.get_main_loop().root.get_node_or_null("GameState")
+    var scene_tree := Engine.get_main_loop() as SceneTree
+    if scene_tree == null:
+        return _failure("SceneTree is unavailable")
+    var game_state := scene_tree.root.get_node_or_null("GameState")
     if game_state == null or not game_state.has_method("capture_run_state") or not game_state.has_method("restore_run_state"):
         return _failure("GameState run checkpoint API is unavailable")
     var original: Dictionary = game_state.capture_run_state()
