@@ -12,7 +12,7 @@ static func calculate_update(
 		return null
 	if not instance.get_validation_errors().is_empty() or not curve.get_validation_errors().is_empty():
 		return null
-	if instance.item_kind != curve.item_kind or total_experience < instance.experience:
+	if instance.item_kind != curve.item_kind or total_experience <= instance.experience:
 		return null
 	if instance.growth_curve_id != &"" and (instance.growth_curve_id != curve.curve_id or instance.growth_curve_version != curve.definition_version):
 		return null # Existing curve provenance can only change through an explicit migration path.
@@ -42,3 +42,19 @@ static func apply_to_player_state(
 		return false
 	var updated := calculate_update(current, curve, total_experience)
 	return updated != null and player_state.replace_instance_progression(updated)
+
+static func apply_with_catalog(
+	player_state: SpacePlayerProgressionState,
+	instance_id: String,
+	curve_catalog: SpaceProgressionCurveCatalog,
+	item_kind: String,
+	curve_id: String,
+	curve_version: int,
+	total_experience: int
+) -> bool:
+	if curve_catalog == null:
+		return false
+	var curve := curve_catalog.resolve_definition(item_kind, curve_id, curve_version)
+	if curve == null:
+		return false
+	return apply_to_player_state(player_state, instance_id, curve, total_experience)
