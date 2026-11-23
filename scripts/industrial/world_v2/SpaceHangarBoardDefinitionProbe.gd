@@ -141,12 +141,12 @@ static func _probe_assignments() -> bool:
 	}
 	var assignments := {
 		"workshop.master": {
-			"slotId": "workshop.master", "componentKind": "workshop",
+			"slotId": "workshop.master", "componentKind": "workshop", "roleId": "master",
 			"ownedInstanceId": "owned.master", "definitionId": "workshop.alpha", "definitionVersion": 1, "sourceRevision": 4
 		},
 		"workshop.slave": {
-			"slotId": "workshop.slave", "componentKind": "workshop",
-			"ownedInstanceId": "owned.slave", "definitionId": "workshop.alpha", "definitionVersion": 1, "sourceRevision": 4
+			"slotId": "workshop.slave", "componentKind": "workshop", "roleId": "slave",
+			"ownedInstanceId": "owned.slave", "definitionId": "workshop.alpha", "definitionVersion": 1, "sourceRevision": 5
 		},
 		"decomposition.parser.primary": {
 			"slotId": "decomposition.parser.primary", "componentKind": "ore_parser",
