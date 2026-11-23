@@ -238,24 +238,51 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 				order_keys[order_key] = true
 
 			var jar_order: Variant = order.get("jarOrder", null)
+			var resolved_order_requirements: Array = []
 			if not (jar_order is Dictionary):
 				errors.append("selected order must contain jarOrder data")
 			else:
-				if not ["A", "B"].has(String(jar_order.get("type", ""))):
-					errors.append("Jar order type must be A or B")
-				var requirements: Variant = jar_order.get("requirements", null)
-				if not (requirements is Array):
-					errors.append("Jar order requirements must be an array")
-				elif requirements.is_empty():
-					errors.append("Jar order requirements must be non-empty")
+				if jar_order.has("templateName"):
+					var template_name := _required_text(jar_order, "templateName")
+					if template_name.is_empty() or jar_order.has("type") or jar_order.has("requirements"):
+						errors.append("template-backed Jar order must contain only a templateName, not copied type/requirements")
+					var templates: Variant = jar_options.get("orderTemplates", []) if jar_options is Dictionary else []
+					var matched_template: Dictionary = {}
+					if templates is Array:
+						for raw_template in templates:
+							if raw_template is Dictionary and String(raw_template.get("name", "")) == template_name:
+								matched_template = raw_template
+								break
+					if matched_template.is_empty():
+							errors.append("Jar order templateName must resolve in frozen jarWorldOptions.orderTemplates")
+					else:
+						if not ["A", "B"].has(String(matched_template.get("type", ""))):
+							errors.append("Core order template type must be A or B")
+						var template_requirements: Variant = matched_template.get("requirements", null)
+						if not (template_requirements is Array) or template_requirements.is_empty():
+							errors.append("Core order template must contain non-empty requirements")
+						elif template_requirements is Array:
+							resolved_order_requirements = template_requirements
 				else:
-					for raw_requirement in requirements:
-						if not (raw_requirement is Dictionary):
-							errors.append("Jar order requirement must be a dictionary")
-							continue
-						var requirement: Dictionary = raw_requirement
-						if String(requirement.get("shape", "")).strip_edges().is_empty():
-							errors.append("Jar order requirement must identify a shape")
+						errors.append("jarWorldOptions.orderTemplates must be an array")
+				else:
+					# Compatibility for legacy development bindings only.
+					if not ["A", "B"].has(String(jar_order.get("type", ""))):
+						errors.append("Jar order type must be A or B")
+					var legacy_requirements: Variant = jar_order.get("requirements", null)
+					if not (legacy_requirements is Array):
+						errors.append("Jar order requirements must be an array")
+					elif legacy_requirements.is_empty():
+						errors.append("Jar order requirements must be non-empty")
+					elif legacy_requirements is Array:
+						resolved_order_requirements = legacy_requirements
+				for raw_requirement in resolved_order_requirements:
+					if not (raw_requirement is Dictionary):
+						errors.append("Jar order requirement must be a dictionary")
+						continue
+					var requirement: Dictionary = raw_requirement
+					if String(requirement.get("shape", "")).strip_edges().is_empty():
+						errors.append("Jar order requirement must identify a shape")
 				if int(jar_order.get("cooldownDurationLogicalMilli", -1)) < 0:
 					errors.append("order cooldown cannot be negative")
 				if not ["Active", "Passive"].has(String(jar_order.get("area", ""))):
@@ -267,7 +294,7 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 			else:
 				var primary_shape := String(presentation.get("primaryShape", "")).strip_edges()
 				if not primary_shape.is_empty() and jar_order is Dictionary:
-					var presentation_requirements: Variant = jar_order.get("requirements", [])
+					var presentation_requirements: Variant = resolved_order_requirements
 					var primary_shape_found := false
 					if presentation_requirements is Array:
 						for raw_requirement in presentation_requirements:
@@ -302,12 +329,12 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 				var breakdown: Variant = balance_report.get("costBreakdown", null)
 				if not (breakdown is Dictionary):
 					errors.append("balance report must include a cost breakdown")
-				elif jar_order is Dictionary and jar_order.get("requirements", null) is Array:
+				elif jar_order is Dictionary and not resolved_order_requirements.is_empty():
 					var required_liquid_jars := 0
-					for requirement in jar_order["requirements"]:
+					for requirement in resolved_order_requirements:
 						if requirement is Dictionary and not String(requirement.get("liquid", "")).strip_edges().is_empty():
 							required_liquid_jars += 1
-					if int(breakdown.get("jarCount", -1)) != jar_order["requirements"].size() or int(breakdown.get("liquidJarCount", -1)) != required_liquid_jars:
+					if int(breakdown.get("jarCount", -1)) != resolved_order_requirements.size() or int(breakdown.get("liquidJarCount", -1)) != required_liquid_jars:
 						errors.append("balance report cost breakdown does not match actual Jar requirements")
 			var balance_context: Variant = order.get("balanceContext", null)
 			if not (balance_context is Dictionary) or not bool(balance_context.get("valid", false)) or float(balance_context.get("expectedBattleDurationLogicalMilli", 0.0)) <= 0.0:
