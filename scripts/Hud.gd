@@ -28,6 +28,8 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var jar_observer := SpaceJarHudObserver.new()
 	jar_observer.name = "JarResourceObserver"
+	jar_observer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	jar_observer.mouse_filter = Control.MOUSE_FILTER_PASS
 	var root := get_node_or_null("Root") as Control
 	if root != null:
 		root.add_child(jar_observer)
