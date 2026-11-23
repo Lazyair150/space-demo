@@ -141,7 +141,11 @@ func _ready() -> void:
 		return
 	if not _begin_ship_world():
 		push_error("[Game] Ship world initialization failed; combat build is not allowed to proceed")
-		_shutdown_battle(true, "battle initialization failed")
+		var initialization_reason := "battle initialization failed"
+		var failed_host := get_node_or_null("/root/WorldV2ShipHost")
+		if failed_host != null and failed_host.IsFaulted and not String(failed_host.FaultReason).is_empty():
+			initialization_reason = "World V2 Host fault: " + String(failed_host.FaultReason)
+		_shutdown_battle(true, initialization_reason)
 		return
 	var active_jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if active_jar_host != null and not active_jar_host.ShipWorldFaulted.is_connected(_on_ship_world_faulted):
@@ -497,12 +501,17 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 		"loadoutVersion": _battle_loadout.loadout_version(),
 		"loadoutFingerprint": _battle_loadout.loadout_fingerprint()
 	}
+	var jar_checkpoint := String(jar_host.CaptureExecutionCheckpointJson())
+	var parser_checkpoint := capture_ore_parser_state()
+	if jar_checkpoint.is_empty() or int(parser_checkpoint.get("schemaVersion", 0)) != 2:
+		push_error("[Game] Coordinated checkpoint is incomplete: Jar or ore-parser state is missing")
+		return {}
 	return {
 		"schemaVersion": 2,
 		"loadoutIdentity": identity,
-		"jarExecutionCheckpointJson": jar_host.CaptureExecutionCheckpointJson(),
+		"jarExecutionCheckpointJson": jar_checkpoint,
 		"spaceClockRemainderMilli": jar_host.CaptureSpaceClockRemainderMilli(),
-		"oreParserState": capture_ore_parser_state(),
+		"oreParserState": parser_checkpoint,
 		"runState": GameState.capture_run_state()
 	}
 
