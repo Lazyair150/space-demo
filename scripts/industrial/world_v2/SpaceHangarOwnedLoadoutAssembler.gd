@@ -144,7 +144,7 @@ static func assemble(
 	frozen["progressionOwnerPlayerId"] = String(progression.player_id)
 	frozen["progressionStateRevision"] = progression.state_revision
 	var owned_snapshots: Array[Dictionary] = [
-		ship_instance.build_frozen_snapshot(), parser_instance.build_frozen_snapshot(),
+		ship_instance.build_frozen_snapshot(),
 		master_instance.build_frozen_snapshot(), slave_instance.build_frozen_snapshot()
 	]
 	for device in devices:
