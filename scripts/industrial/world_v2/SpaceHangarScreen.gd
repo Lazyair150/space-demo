@@ -266,7 +266,7 @@ func _fill_picker(picker: OptionButton, raw_choices: Variant, empty_text: String
 		var version := int(choice.get("version", 0))
 		if definition_id.is_empty() or version <= 0:
 			continue
-		var instance_suffix := " · Lv%d · %s" % [int(choice.get("level", 1)), String(choice.get("instanceId", ""))] if choice.has("instanceId") else ""
+		var instance_suffix := " · Lv%d · %s" % [int(choice.get("level", 1)), String(choice.get("instanceId", ""))] if choice.has("instanceId") else " · 主台 Lv%d / 从台 Lv%d" % [int(choice.get("masterLevel", 1)), int(choice.get("slaveLevel", 1))] if choice.has("masterInstanceId") else ""
 		var label := String(choice.get("label", definition_id)) + instance_suffix
 		var icon_texture: Variant = choice.get("iconTexture")
 		if not (icon_texture is Texture2D):
