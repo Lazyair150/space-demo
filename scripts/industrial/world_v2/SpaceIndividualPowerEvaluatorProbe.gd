@@ -144,7 +144,15 @@ static func _probe_skill() -> bool:
 	var template_report := SpaceIndividualPowerEvaluator.evaluate_skill(
 		template_skill, benefit, context, balance, model, world_options
 	)
-	return bool(template_report.get("success", false)) and float(template_report.powerMetrics.get("jar_count", 0.0)) == 3.0 and float(template_report.powerMetrics.get("order_type_b", 0.0)) == 1.0
+	if not bool(template_report.get("success", false)) or float(template_report.powerMetrics.get("jar_count", 0.0)) != 3.0 or float(template_report.powerMetrics.get("order_type_b", 0.0)) != 1.0:
+		return false
+	var template_pool := _pool_for_model("probe.skill.template.pool", "skill", model)
+	var template_entry := SpaceRoguelikeIndividualPoolEntryBuilder.append_skill(
+		template_pool, template_skill, benefit, context, balance, "common", 1.0, [], world_options
+	)
+	return bool(template_entry.get("success", false)) \
+		and String(template_entry.entry.get("orderTemplateName", "")) == "probe.skill.offense@2" \
+		and template_pool.is_valid()
 
 static func _model(id: String, kind: String, metrics: Dictionary) -> SpaceIndividualPowerModelDefinition:
 	var model := SpaceIndividualPowerModelDefinition.new()
