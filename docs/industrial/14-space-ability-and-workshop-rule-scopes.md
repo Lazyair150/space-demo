@@ -25,10 +25,10 @@ These describe one workshop in isolation and remain attached to that workshop re
 - additional marks;
 - staging Ban;
 - Jar capacity;
-- liquid staging capacity;
+- per-liquid capacity and optional aggregate order-staging capacity;
 - other local capabilities explicitly supported by the Jar Core contract.
 
-They belong to a versioned `SpaceWorkshopDefinition`.
+They belong to a versioned `SpaceWorkshopDefinition`. The aggregate `liquidStagingCapacity` remains distinct from the per-liquid `maxLiquids`; when omitted, Core applies its documented fallback.
 
 ### Master/Slave relationship rules
 

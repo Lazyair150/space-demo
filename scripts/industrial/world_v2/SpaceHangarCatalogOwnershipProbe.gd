@@ -70,6 +70,7 @@ static func run() -> bool:
 	local_master.banned_liquids = ["blocked-liquid"]
 	local_master.max_jars = 8
 	local_master.max_liquids = 5
+	local_master.liquid_staging_capacity = 3
 	var local_slave := SpaceWorkshopDefinition.new()
 	local_slave.workshop_id = &"probe.slave"
 	local_slave.definition_version = 2
@@ -119,6 +120,8 @@ static func run() -> bool:
 	if String(resolved_options.workshops[0].baseMarks[0]) != "round" or String(resolved_options.workshops[0].ban[0]) != "blocked-liquid":
 		return false
 	if String(resolved_options.masterWorkshopName) != "Probe Master" or String(resolved_options.slaveWorkshopName) != "Probe Slave":
+		return false
+	if int(resolved_options.workshops[0].maxLiquids) != 5 or int(resolved_options.workshops[0].liquidStagingCapacity) != 3:
 		return false
 	if not workshops.create_selection("probe.workshop", 5).has("workshopPair"):
 		return false

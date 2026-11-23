@@ -10,7 +10,9 @@ class_name SpaceWorkshopDefinition
 @export var additional_marks: Array[String] = []
 @export var banned_liquids: Array[String] = []
 @export_range(1, 2147483647, 1) var max_jars: int = 1
-@export_range(0, 2147483647, 1) var max_liquids: int = 0
+@export_range(1, 2147483647, 1) var max_liquids: int = 1
+## Optional aggregate staging limit. -1 means use Core's documented maxLiquids fallback.
+@export_range(-1, 2147483647, 1) var liquid_staging_capacity: int = -1
 
 func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
@@ -20,7 +22,7 @@ func get_validation_errors() -> PackedStringArray:
 		errors.append("workshop display name is required")
 	if base_marks.is_empty():
 		errors.append("workshop must define at least one base mark")
-	if max_jars <= 0 or max_liquids < 0:
+	if max_jars <= 0 or max_liquids <= 0 or liquid_staging_capacity < -1:
 		errors.append("workshop capacities are invalid")
 	if _has_duplicates(base_marks) or _has_duplicates(additional_marks) or _has_duplicates(banned_liquids):
 		errors.append("workshop local rule lists must not contain duplicates")
@@ -29,7 +31,7 @@ func get_validation_errors() -> PackedStringArray:
 func build_core_definition() -> Dictionary:
 	if not get_validation_errors().is_empty():
 		return {}
-	return {
+	var result := {
 		"name": display_name,
 		"baseMarks": base_marks.duplicate(),
 		"additionalMarks": additional_marks.duplicate(),
@@ -37,6 +39,9 @@ func build_core_definition() -> Dictionary:
 		"maxJars": max_jars,
 		"maxLiquids": max_liquids
 	}
+	if liquid_staging_capacity >= 0:
+		result["liquidStagingCapacity"] = liquid_staging_capacity
+	return result
 
 func _has_duplicates(values: Array) -> bool:
 	var seen := {}
