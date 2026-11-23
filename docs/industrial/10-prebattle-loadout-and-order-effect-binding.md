@@ -430,3 +430,17 @@ This establishes the editor-authored data-loading seam. It does not create a pro
 - The inventory reports `isReady=false` when the runtime bundle cannot be materialized. Empty catalog data remains visible as empty choices rather than being replaced by placeholder gameplay definitions.
 - This is a read-only UI adapter, not a second registry or compatibility authority. The assembler and catalog bundle remain authoritative at final build time.
 - The probe now checks that an empty authored bundle reports unavailable readiness and an empty ship list.
+
+
+### Hangar exact-version selection draft
+
+`SpaceHangarSelectionDraft` is the mutable UI-side state holder built on top of the read-only inventory adapter:
+
+- It accepts one inventory snapshot and refuses selection edits while `isReady=false`.
+- Ship, parser, workshop, and device choices are accepted only when the exact `(id, version)` pair exists in that snapshot. It never upgrades a selection to a newer version.
+- Device slots are unique, and the parser slot cannot collide with an existing or subsequently-added production-device slot.
+- Skill choices must exist at the exact version and the chosen control area must be present in that skill's authored `allowedControlAreas`.
+- Device and skill entries can be replaced/removed by their stable slot/order key. The draft returns detached selection data and creates a `SpaceHangarSelection` only when its domain validation succeeds.
+- This class is intentionally not a compatibility oracle: ship/device/workshop/skill cross-constraints and the final immutable loadout remain the responsibility of `SpaceHangarLoadoutAssembler`.
+
+The draft is UI-independent and can be bound to either a Control-based scene or a later UI framework. No scene, MainMenu route, default build, or production catalog data is introduced by this increment. Godot compilation and runtime probes remain pending.
