@@ -9,24 +9,26 @@ var _preparation: SpaceHangarPreparation
 var _identity: Dictionary = {}
 var _inventory: Dictionary = {}
 var _draft: SpaceHangarSelectionDraft
+var _board_definition: SpaceHangarBoardDefinition
 var _last_error: String = ""
 
-func configure(preparation: SpaceHangarPreparation, identity: Dictionary) -> bool:
+func configure(preparation: SpaceHangarPreparation, identity: Dictionary, board: SpaceHangarBoardDefinition = null) -> bool:
 	_preparation = preparation
 	_identity = identity.duplicate(true)
+	_board_definition = board.duplicate(true) as SpaceHangarBoardDefinition if board != null else null
 	return refresh_inventory()
 
 func refresh_inventory() -> bool:
 	if _preparation == null or _preparation.catalog_bundle_resource == null:
 		_inventory = _unavailable_inventory("Authored Hangar catalog bundle is not assigned")
 		_draft = SpaceHangarSelectionDraft.new()
-		_draft.configure(_inventory)
+		_draft.configure(_inventory, board)
 		_last_error = "Hangar catalog bundle is not configured"
 		_emit_changed()
 		return false
 	_inventory = _preparation.build_owned_selection_inventory() if (_preparation.require_owned_instances or _preparation.player_progression_state != null) else _preparation.catalog_bundle_resource.build_selection_inventory()
 	_draft = SpaceHangarSelectionDraft.new()
-	var ready := _draft.configure(_inventory)
+	var ready := _draft.configure(_inventory, _board_definition)
 	_last_error = "" if ready else "Authored Hangar catalogs are incomplete or invalid"
 	_emit_changed()
 	return ready
