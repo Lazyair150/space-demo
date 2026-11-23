@@ -5,6 +5,7 @@ class_name SpaceShipDefinition
 @export var ship_id: StringName = &""
 @export var definition_version: int = 1
 @export var display_name: String = ""
+@export var display_icon: Texture2D
 @export var expected_stone_progress_per_second_by_shape: Dictionary = {}
 
 func get_validation_errors(configured_shapes: Array) -> PackedStringArray:
