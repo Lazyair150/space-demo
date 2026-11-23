@@ -42,7 +42,8 @@ func build_selection_inventory() -> Dictionary:
 				ships.append({
 					"id": String(definition.ship_id),
 					"version": definition.definition_version,
-					"label": definition.display_name
+					"label": definition.display_name,
+					"iconTexture": definition.display_icon
 				})
 	if production_device_catalog != null:
 		for definition in production_device_catalog.definitions:
@@ -51,7 +52,8 @@ func build_selection_inventory() -> Dictionary:
 					"id": String(definition.device_id),
 					"version": definition.definition_version,
 					"kind": definition.device_kind,
-					"label": definition.display_name
+					"label": definition.display_name,
+					"iconTexture": definition.display_icon
 				})
 	if ore_parser_catalog != null:
 		for definition in ore_parser_catalog.definitions:
@@ -59,7 +61,8 @@ func build_selection_inventory() -> Dictionary:
 				parsers.append({
 					"id": String(definition.parser_id),
 					"version": definition.definition_version,
-					"label": String(definition.parser_id)
+					"label": definition.display_name if not definition.display_name.is_empty() else String(definition.parser_id),
+					"iconTexture": definition.display_icon
 				})
 	if workshop_combination_catalog != null:
 		for definition in workshop_combination_catalog.definitions:
@@ -67,7 +70,8 @@ func build_selection_inventory() -> Dictionary:
 				workshops.append({
 					"id": String(definition.combination_id),
 					"version": definition.definition_version,
-					"label": definition.display_name
+					"label": definition.display_name,
+					"iconTexture": definition.display_icon
 				})
 	for definition in skill_definitions:
 		if definition != null:
@@ -82,7 +86,8 @@ func build_selection_inventory() -> Dictionary:
 			effects.append({
 				"id": String(definition.id),
 				"version": definition.definition_version,
-				"label": definition.label
+				"label": definition.label,
+					"iconTexture": definition.display_icon
 			})
 	var ready := create_runtime_bundle() != null
 	return {
