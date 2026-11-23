@@ -47,10 +47,12 @@ func set_workshop(definition_id: String, version: int, master_instance_id: Strin
 	var world_key := definition_id + "@" + str(version)
 	var master := _find_workshop_instance(master_instance_id, world_key) if not master_instance_id.is_empty() else {}
 	var slave := _find_workshop_instance(slave_instance_id, world_key) if not slave_instance_id.is_empty() else {}
+	# A World profile change must never silently uninstall an incompatible owned
+	# workshop. Reject the change and preserve the existing Board assignments.
 	if not master_instance_id.is_empty() and master.is_empty():
-		master_instance_id = ""
+		return false
 	if not slave_instance_id.is_empty() and slave.is_empty():
-		slave_instance_id = ""
+		return false
 	if not master_instance_id.is_empty() and master_instance_id == slave_instance_id:
 		return false
 	var master_slot := _slot_for_role("master")
