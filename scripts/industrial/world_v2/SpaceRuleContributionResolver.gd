@@ -45,9 +45,17 @@ static func resolve(
 		if authored is Array:
 			for contribution_definition in authored:
 				if contribution_definition == null:
+					push_error("Board Rule Contribution cannot be null in slot: " + slot_id)
+					return {}
+				# This resolver builds the Core-facing Board Rule Profile. Core currently
+				# has an execution consumer only for workshop scope; component-local parser,
+				# skill and device rules must wait for their own runtime profile consumers.
+				if kind != "workshop":
+					push_error("Board Rule Contribution has no Core ingress consumer for component kind: " + kind + " at " + slot_id)
 					return {}
 				var resolved := contribution_definition.resolve(instance, slot_id)
-				if resolved.is_empty():
+				if resolved.is_empty() or String(resolved.get("scope", "")) != "workshop":
+					push_error("Core-facing Board Rule Contribution must resolve to workshop scope: " + slot_id)
 					return {}
 				contributions.append(resolved)
 	var contribution_identities := {}
