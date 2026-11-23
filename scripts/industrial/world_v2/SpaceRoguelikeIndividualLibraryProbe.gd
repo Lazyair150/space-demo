@@ -1,7 +1,7 @@
 extends RefCounted
 class_name SpaceRoguelikeIndividualLibraryProbe
 
-static func run() -> bool:
+static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgressionState = null, skill_id: String = "", skill_version: int = 1) -> bool:
 	var parser_pool := _pool("probe.parsers", "ore_parser")
 	var workshop_pool := _pool("probe.workshops", "workshop")
 	var skill_pool := _pool("probe.skills", "skill")
@@ -36,6 +36,21 @@ static func run() -> bool:
 	overpowered.entries[0].powerScore = 9.0
 	if overpowered.is_valid():
 		return false
+	if bundle != null or state != null:
+		if bundle == null or state == null or skill_id.is_empty() or skill_version <= 0:
+			return false
+		skill_pool.entries[0].definitionId = skill_id
+		skill_pool.entries[0].definitionVersion = skill_version
+		var reward_library := SpaceRoguelikeIndividualLibrary.new()
+		reward_library.library_id = &"probe.reward-library"
+		reward_library.definition_version = 1
+		reward_library.pools = [parser_pool, workshop_pool, skill_pool]
+		var reward_rng := RandomNumberGenerator.new()
+		reward_rng.seed = 98231
+		var reward_candidate := reward_library.roll_candidate("skill", reward_rng)
+		var acquired := SpaceRoguelikeIndividualRewardService.acquire_candidate(state, bundle, reward_library, reward_candidate, "probe.roguelike-owned-copy")
+		if not bool(acquired.get("success", false)) or state.resolve_instance("probe.roguelike-owned-copy") == null:
+			return false
 	return true
 
 static func _pool(id: String, kind: String) -> SpaceRoguelikeIndividualPool:
