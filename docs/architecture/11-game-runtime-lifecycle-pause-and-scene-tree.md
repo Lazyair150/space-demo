@@ -182,3 +182,15 @@ MainMenu, Game, IndustrialMain, GameOver, bootstrap, and the combat pause contro
 The Hangar's combat scene is attached as a configured child rather than replacing the root scene. Its launcher therefore uses the same `begin_battle_preparation()` lifecycle gate before attachment; it does not call `change_scene_to_file`. The distinction is explicit: GameFlow owns application screen replacement, while the Hangar launcher owns one prevalidated embedded combat attachment.
 
 For checkpoint restoration, `Game._ready()` performs all synchronous restoration and starts the Host, then immediately transitions to `RESUME_READY` and asks the always-process pause controller to pause the Host and SceneTree before the first frame can advance. The overlay remains visible until the player explicitly confirms Resume. The ready state is observable in the versioned GameFlow snapshot and is not conflated with an ordinary player pause.
+
+### Unified battle checkpoint consistency boundary
+
+Schema-v3 SpaceBattleEffectStateStore snapshots are now validated as one cross-domain transaction, not merely as individually well-typed dictionaries:
+
+- The dispatcher state must use its supported schema and repeat the exact frozen ship/loadout identity stored at the snapshot root.
+- A non-empty processed-event ledger must carry one Jar world-instance identity. Every event ID must use that world identity and canonical positive demand/cycle sequence values.
+- The StatusEffectManager processedOrderEventIds set must exactly equal the dispatcher's processedEventIds set. Duplicate, missing, extra, malformed, or cross-world event identities reject the entire save/load candidate.
+- Game.configure_battle_loadout_from_checkpoint repeats the effect/dispatcher identity and event-ledger checks before accepting a caller-supplied snapshot, so callers cannot bypass the file Store by constructing a Dictionary manually.
+- This preserves the intended outbox handoff: Space writes the effect state, next dispatcher state, and a Jar checkpoint that may still contain the event in its outbox as one replaceable snapshot; only after the durable write succeeds does the live dispatcher acknowledge the Jar event. If a crash occurs before acknowledgement, restore sees the already-processed event and acknowledges it without reapplying the effect.
+
+SpaceBattleEffectStateStoreProbe now covers mismatched event ledgers, wrong frozen-loadout identity, and non-canonical Jar event IDs in addition to incomplete runtime state. The probe is committed but has not been executed in Godot.
