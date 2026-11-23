@@ -132,7 +132,7 @@ static func run() -> bool:
 	var resolved_options := workshops.create_jar_world_options("probe.workshop", 5)
 	if String(resolved_options.workshops[0].baseMarks[0]) != "round" or String(resolved_options.workshops[0].ban[0]) != "blocked-liquid":
 		return false
-	if String(resolved_options.masterWorkshopName) != "Probe Master" or String(resolved_options.slaveWorkshopName) != "Probe Slave":
+	if String(resolved_options.masterWorkshopName) != "Probe Master（主台）" or String(resolved_options.slaveWorkshopName) != "Probe Slave（从台）":
 		return false
 	if resolved_options.orderTemplates.size() != 1 or String(resolved_options.orderTemplates[0].name) != "probe.offense@1":
 		return false
@@ -140,7 +140,13 @@ static func run() -> bool:
 		return false # Core template metadata is deeply copied and materialized into the frozen World options.
 	if int(resolved_options.workshops[0].maxLiquids) != 5 or int(resolved_options.workshops[0].liquidStagingCapacity) != 3:
 		return false
-	if not workshops.create_selection("probe.workshop", 5).has("workshopPair"):
+	if workshops.create_selection("probe.workshop", 5).has("workshopPair"):
+		return false
+	var reversed_options := workshops.create_jar_world_options("probe.workshop", 5, "probe.slave", "probe.master")
+	if String(reversed_options.masterWorkshopName) != "Probe Slave（主台）" or String(reversed_options.slaveWorkshopName) != "Probe Master（从台）":
+		return false
+	var same_definition_options := workshops.create_jar_world_options("probe.workshop", 5, "probe.master", "probe.master")
+	if String(same_definition_options.masterWorkshopName) != "Probe Master（主台）" or String(same_definition_options.slaveWorkshopName) != "Probe Master（从台）":
 		return false
 	resolved_workshop.jar_world_options.shapes[0] = "mutated-resolved"
 	resolved_workshop.operation_cost_by_order_type["A"] = 88.0
@@ -639,9 +645,12 @@ static func run() -> bool:
 		return false
 	if owned_inventory.shipChoices.size() != 1 or owned_inventory.parserChoices.size() != 1 or owned_inventory.deviceChoices.size() != 1 or owned_inventory.skillChoices.size() != 1:
 		return false
-	if owned_inventory.workshopChoices.size() != 1 or owned_inventory.workshopInstanceChoices.size() != 2:
+	if owned_inventory.workshopWorldChoices.size() != 1 or owned_inventory.workshopInstanceChoices.size() != 2:
 		return false
-	if String(owned_inventory.workshopChoices[0].masterInstanceId) != String(owned_master.instance_id) or String(owned_inventory.workshopChoices[0].slaveInstanceId) != String(owned_slave.instance_id):
+	var owned_workshop_ids := {}
+	for choice in owned_inventory.workshopInstanceChoices:
+		owned_workshop_ids[String(choice.instanceId)] = true
+	if not owned_workshop_ids.has(String(owned_master.instance_id)) or not owned_workshop_ids.has(String(owned_slave.instance_id)):
 		return false
 	var cross_subsystem_growth := skill_growth_instance.duplicate(true) as SpaceOwnedProgressionInstance
 	cross_subsystem_growth.growth_attributes = {"maxJarsBonus": 2}
