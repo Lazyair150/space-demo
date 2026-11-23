@@ -16,7 +16,8 @@ static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleR
 		_instance("demo.parser.universal.01", "ore_parser", "demo.parser.universal", 1),
 		_instance("demo.workshop.alpha.01", "workshop", "demo.workshop.alpha", 1),
 		_instance("demo.workshop.beta.01", "workshop", "demo.workshop.beta", 1),
-		_instance("demo.skill.rapid_fire.01", "skill", "demo.skill.rapid_fire", 1)
+		_instance("demo.skill.rapid_fire.01", "skill", "demo.skill.rapid_fire", 1),
+		_instance("demo.skill.recon_scan.01", "skill", "demo.skill.recon_scan", 1)
 	]
 	for instance in starting_instances:
 		if not state.unlock_and_acquire_instance(instance, "demo-start:" + String(instance.instance_id)):
