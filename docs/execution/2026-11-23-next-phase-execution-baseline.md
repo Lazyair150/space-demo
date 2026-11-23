@@ -68,7 +68,7 @@
 1. **正式生产目录为空缺**：当前 `data/` 下可见 `effects`、`industrial`、`stages`；`data/industrial` 仅有 World V2 sandbox/invalid JSON。需要核对各 Resource catalog 与 Hangar bundle 的生产资源绑定；不得凭空创建平衡值。
 2. **个体强度模型尚未生产化**：现有通用 evaluator / power model 框架不能代替解析器、工作台、技能各自真实指标的定义、归一化、权重与有效预算。
 3. **Hangar 正式路径未闭环**：`SpaceHangar.tscn` 目前绑定 stage catalog 与 Preparation；MainMenu Start 仍需核对是否绕过 Hangar；选择、冻结、Launch、恢复和战斗结算要形成一条真实路径。
-4. **订单资源需求来源可能重复**：`SpaceSkillDefinition.jar_requirements` 仍被用于构建订单/平衡预估；需要将 Core order template 的实际生成结果确立为唯一权威来源，避免预测清单与真实订单漂移。
+4. **订单资源需求来源重复（已证实）**：`WorldV2Options` 原先没有 `orderTemplates`；Core `AddJarDemand` 与 Space Host 都直接传递需求数组，`SpaceSkillDefinition.jar_requirements` 因而同时承担定义、预估和实际执行来源。Core 侧模板入口已在 Jar Core PR #60 建立；Space 侧尚待改为引用模板键。
 5. **Stage reward transaction 未完成**：Campaign clear 与 progression reward 尚无跨 aggregate 原子提交；Offer UI / 玩家选取 / durable receipt 仍需接通。
 6. **Protected Target 未完成**：有 objective contract，但真实可受攻击 Actor、敌人目标选择、被摧毁事件与 checkpoint identity 仍需实现。
 7. **Typed Effect 系统未完成**：当前 Buff-first；Beam / Projectile / Missile / Shield / SupportUnit / Recon 等需要真实类型化定义和执行器。
@@ -141,6 +141,7 @@
 - `Spawner` 的 boss beat 将 boss 数量固定为 1，不随 encounter scale 复制；普通敌人数才缩放。
 - `SpaceStageBossActor.configure_stage_boss` 在入树前缩放 max_hp；`EnemyChaser._ready` 在入树后用该 max_hp 初始化 Health。Boss 重写接触处理，避免普通追击敌机接触即死亡。Probe 已覆盖 1.4 倍 HP 计算，但未运行。
 - `SpaceHangarScreen` 的 `_render_view_model` 从 owned inventory 填充选项，飞船/解析器/工作台/设备/技能的选择回调会把对应 `instanceId`（工作台为 Master/Slave 两个 instance ID）传给 SelectionController；因此 UI 已接入 Owned Instance draft，并非单纯 Definition picker。控件文案仍有“定义”旧称，后续可统一。
+- Core 模板入口审计：`WorldV2Options` 原先无 `orderTemplates`；`WorldV2ApplicationService.AddJarDemand` 直接从请求需求数组构造 `JarOrderSpecification`；Space `WorldV2ShipHost.MaterializeSelectedOrders` 将 `jarOrder.requirements` 原样转发。现已在 Jar Core PR #60 添加 Core-owned 模板库入口。
 - 当前分支没有可见的正式 `data/industrial` catalog 资源目录；只有 sandbox/invalid World V2 JSON。Stage catalog 已单独存在。
 
 ## 6. 当前阶段的禁止事项
@@ -167,4 +168,6 @@
 - `replace_instance_progression` 禁止通过成长更新篡改 acquisition provenance；普通无 provenance 个体不输出空字段，保持既有 frozen snapshot fingerprint 形状。
 - `SpaceRoguelikeIndividualLibraryProbe` 新增：奖励实例增长属性隔离、Skill composer 可用性、provenance round-trip、旧存档迁移和 provenance 篡改拒绝。Probe authored，未运行。
 - 相关实现提交：`481088c`、`eeae256`、`ae49248`、`693126b`、`500e21d`、`d76e315`、`70229b0`。
-- 待完成：继续审计 Protected Target identity / resume；检查 MainMenu launch route；随后推进 Core order template 唯一资源来源与真实子系统 power metric 契约。
+- Jar Core 新增 Draft PR #60：`world-v2/phase-4.11c-order-template-demand-ingress`，base 为 PR #59 head `a52f9465ad4febdcfb821227f7b2e03b2ddc012c`。改动包括 WorldV2Options 可选模板配置（null 时不序列化以保持旧配置指纹）、Core OrderTemplateLibrary vocabulary validation、WorldV2Context 持有不可变模板库、ApplicationService/Bridge 的 `AddJarDemandFromTemplate`，以及模板深拷贝、未知模板拒绝、词表错误和 null entry 测试。PR #60 尚未执行 CI；仍为 Draft，不合并。
+- Core 模板入口的职责：Core 校验并实例化模板；Space 只提供模板键、控制区域、冷却和不透明 orderDefinitionKey，不再传递需求数组。接下来需要在 Space 增加独立模板 catalog，技能 Definition 只引用 exact template key，并将模板配置注入冻结的 WorldV2Options。
+- 待完成：继续审计 Protected Target identity / resume；检查 MainMenu launch route；然后完成 Space 对 Core 模板 API 的接线，再进入真实子系统 power metric 契约。
