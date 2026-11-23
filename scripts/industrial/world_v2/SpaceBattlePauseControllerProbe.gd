@@ -6,6 +6,11 @@ func _ready() -> void:
 	if not GameFlow.begin_battle_preparation() or not GameFlow.mark_battle_running():
 		push_error("[SpaceBattlePauseControllerProbe] could not establish a running battle state")
 		return
+	if GameFlow.begin_battle_preparation() or String(GameFlow.snapshot().get("battlePhase", "")) != "RUNNING":
+		push_error("[SpaceBattlePauseControllerProbe] a second launch must not replace a running battle")
+		GameFlow.end_battle()
+		GameFlow.enter_screen(GameFlow.Screen.MENU)
+		return
 	var controller := SpaceBattlePauseController.new()
 	add_child(controller)
 	if controller.process_mode != Node.PROCESS_MODE_ALWAYS:
