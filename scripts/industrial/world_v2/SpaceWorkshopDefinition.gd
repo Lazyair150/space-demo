@@ -18,6 +18,11 @@ class_name SpaceWorkshopDefinition
 
 func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
+	for contribution in rule_contributions:
+		if contribution == null:
+			errors.append("workshop rule contribution cannot be null")
+		else:
+			errors.append_array(contribution.get_validation_errors())
 	if workshop_id == &"" or definition_version <= 0:
 		errors.append("workshop identity/version is invalid")
 	if display_name.strip_edges().is_empty():
