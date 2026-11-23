@@ -99,7 +99,11 @@ func _refresh_snapshot() -> void:
 		var raw_presentation: Variant = game.call("get_order_presentation_metadata")
 		if raw_presentation is Dictionary:
 			order_presentation = raw_presentation
-	var signature := JSON.stringify({"snapshot": snapshot, "orderPresentation": order_presentation})
+	_status.text = "世界时间 %d ms  ·  逻辑时间 %d ms" % [int(snapshot.get("worldTimeMilli", 0)), int(snapshot.get("logicalTimeMilli", 0))]
+	var visual_snapshot: Dictionary = snapshot.duplicate(true)
+	visual_snapshot.erase("worldTimeMilli")
+	visual_snapshot.erase("logicalTimeMilli")
+	var signature := JSON.stringify({"snapshot": visual_snapshot, "orderPresentation": order_presentation})
 	if signature == _last_signature:
 		return
 	_emit_snapshot_feedback(snapshot)
@@ -116,7 +120,6 @@ func _refresh_snapshot() -> void:
 			liquid_total += int(value)
 	var lifecycle := String(snapshot.get("lifecycleState", ""))
 	_toggle.text = "JAR  ·  %d 罐  ·  %d 份液体  ·  %s" % [jar_count, liquid_total, _lifecycle_text(lifecycle)]
-	_status.text = "世界时间 %d ms  ·  逻辑时间 %d ms" % [int(snapshot.get("worldTimeMilli", 0)), int(snapshot.get("logicalTimeMilli", 0))]
 	_render_resource_jars(jars)
 	_render_resource_liquids(liquids)
 	_render_workshop(_master_box, "主台", master)
@@ -318,7 +321,10 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 		var liquid_line := UiKit.hbox(6)
 		liquid_row.add_child(liquid_line)
 		var amount := int(liquids[liquid])
-		var liquid_label := UiKit.label("%s %d / %d" % [String(liquid), amount, liquid_capacity], UiKit.FONT_SMALL, UiKit.TEXT)
+		var fill_ratio := float(amount) / float(liquid_capacity) if liquid_capacity > 0 else 0.0
+		var capacity_tint := UiKit.WARN if fill_ratio >= 0.8 else ShapeVisuals.liquid_color_for(String(liquid))
+		var capacity_suffix := " · 满" if fill_ratio >= 1.0 else (" · 接近上限" if fill_ratio >= 0.8 else "")
+		var liquid_label := UiKit.label("%s %d / %d%s" % [String(liquid), amount, liquid_capacity, capacity_suffix], UiKit.FONT_SMALL, capacity_tint)
 		liquid_label.custom_minimum_size.x = 130
 		liquid_line.add_child(liquid_label)
 		if liquid_capacity > 0:
@@ -329,7 +335,7 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 			meter.show_percentage = false
 			meter.custom_minimum_size = Vector2(150, 9)
 			meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			ShapeVisuals.apply_meter_style(meter, ShapeVisuals.liquid_color_for(String(liquid)))
+			ShapeVisuals.apply_meter_style(meter, capacity_tint)
 			liquid_line.add_child(meter)
 	var bans: Array = workshop.get("ban", [])
 	if not bans.is_empty():
