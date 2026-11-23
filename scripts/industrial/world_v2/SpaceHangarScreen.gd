@@ -39,6 +39,7 @@ var _primary_icons: Dictionary = {}
 var _suppress_picker_events: bool = false
 
 func _ready() -> void:
+	GameFlow.enter_screen(GameFlow.Screen.HANGAR)
 	_preparation = get_node_or_null("Preparation") as SpaceHangarPreparation
 	_controller = SpaceHangarSelectionController.new()
 	_build_interface()
