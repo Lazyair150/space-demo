@@ -294,14 +294,17 @@ static func run() -> bool:
 		return false # An instance cannot be acquired before its exact definition is unlocked.
 	if not progression.unlock_definition("ore_parser", "probe.parser", 1):
 		return false
+	if progression.unlock_definition("ore_parser", "probe.parser", 1):
+		return false
 	if not progression.acquire_instance(parser_instance):
 		return false
 	var second_parser_instance := parser_instance.duplicate(true) as SpaceOwnedProgressionInstance
 	second_parser_instance.instance_id = &"probe.parser.instance.b"
 	if not progression.acquire_instance(second_parser_instance):
 		return false
+	var stale_parser_copy := progression.resolve_instance("probe.parser.instance.a")
 	var upgraded_parser := progression.resolve_instance("probe.parser.instance.a")
-	if upgraded_parser == null:
+	if upgraded_parser == null or stale_parser_copy == null:
 		return false
 	if not upgraded_parser.apply_progression(250, 2, {"productionRateMultiplier": 1.25}):
 		return false
@@ -318,8 +321,7 @@ static func run() -> bool:
 	upgraded_parser.growth_attributes.productionRateMultiplier = 9.0
 	if float(progression.build_owned_instance_snapshot("probe.parser.instance.a").growthAttributes.productionRateMultiplier) != 1.25:
 		return false # Resolved instances and frozen snapshots are detached copies.
-	var stale_upgrade := progression.resolve_instance("probe.parser.instance.a")
-	if progression.replace_instance_progression(stale_upgrade):
+	if progression.replace_instance_progression(stale_parser_copy):
 		return false # Progression revisions prevent stale overwrites.
 	if not progression.get_validation_errors().is_empty():
 		return false
