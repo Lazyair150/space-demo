@@ -25,6 +25,16 @@ static func run() -> Dictionary:
 	if versions.size() != 1 or versions[0] != 3:
 		return _failure("catalog did not expose the registered exact version")
 
+	# A Resource loaded from an editor-authored definitions array lazily rebuilds
+	# the exact-version index without inventing or substituting any entries.
+	var authored_catalog := SpaceOreParserCatalog.new()
+	authored_catalog.definitions = [SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())]
+	var authored_selection := authored_catalog.create_device_selection(
+		"probe-universal-parser", 3, "authored-parser-slot", ["圆罐", "方罐"]
+	)
+	if authored_selection.is_empty():
+		return _failure("editor-authored parser catalog definitions were not indexed")
+
 	# Mutating the authoring Resource after registration must not mutate catalog data.
 	definition.production_percentage = 1
 	definition.shape_processing_rate_per_second["圆罐"] = 999.0
