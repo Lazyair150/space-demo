@@ -22,8 +22,8 @@ func get_validation_errors() -> PackedStringArray:
 		errors.append("display anchor position must be finite")
 	elif normalized_position.x < 0.0 or normalized_position.x > 1.0 or normalized_position.y < 0.0 or normalized_position.y > 1.0:
 		errors.append("display anchor position must be normalized to [0, 1]")
-	if not is_finite(rotation_degrees) or not is_finite(icon_scale) or icon_scale <= 0.0:
-		errors.append("display anchor transform is invalid")
+	if not is_finite(rotation_degrees) or rotation_degrees < -360.0 or rotation_degrees > 360.0 or not is_finite(icon_scale) or icon_scale < 0.1 or icon_scale > 4.0:
+		errors.append("display anchor transform is outside its authored range")
 	return errors
 
 func duplicate_anchor() -> SpaceShipDisplayAnchor:
