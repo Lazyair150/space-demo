@@ -67,6 +67,8 @@ func restore_state(stage: SpaceStageDefinition, frozen_loadout_data: Dictionary,
 	var saved_profile: Variant = source.get("difficultyProfile", null)
 	if not bool(expected.get("valid", false)) or not (saved_profile is Dictionary) or saved_profile != expected:
 		return false
+	if int(saved_state) == State.READY and int(beat_index) != 0:
+		return false
 	if int(saved_state) == State.COMPLETE and int(beat_index) != stage.wave_count():
 		return false
 	if int(saved_state) != State.COMPLETE and int(beat_index) >= stage.wave_count() and int(saved_state) != State.READY:
