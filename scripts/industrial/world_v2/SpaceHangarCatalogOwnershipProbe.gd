@@ -120,4 +120,7 @@ static func run() -> bool:
 	empty_authored_bundle.balance_profile = SpaceSkillBalanceProfile.new()
 	if empty_authored_bundle.create_runtime_bundle() != null:
 		return false
+	var empty_inventory := empty_authored_bundle.build_selection_inventory()
+	if bool(empty_inventory.get("isReady", true)) or not empty_inventory.get("shipChoices", []).is_empty():
+		return false
 	return true
