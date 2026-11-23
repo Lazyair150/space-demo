@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceHangarPreparation.gd" id="2_preparation"]
 [ext_resource type="Resource" path="res://data/stages/campaign_01/catalog.tres" id="3_stage_catalog"]
 [ext_resource type="Resource" path="res://data/hangar/demo_catalog_bundle.tres" id="4_demo_bundle"]
+[ext_resource type="Resource" path="res://data/hangar/demo_board.tres" id="5_demo_board"]
 
 [node name="SpaceHangar" type="Control"]
 layout_mode = 3
@@ -14,8 +15,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_screen")
 loadout_identity = {"shipWorldId": "demo.ship_world", "loadoutId": "starter.loadout", "loadoutVersion": 1}
-parser_slot_id = "decomposition.parser.primary"
-skill_order_bindings = Array[Dictionary]([{"orderDefinitionKey": "orders.active.primary", "label": "主动订单槽位"}])
+board_definition = ExtResource("5_demo_board")
 stage_catalog = ExtResource("3_stage_catalog")
 
 [node name="Preparation" type="Node" parent="."]
