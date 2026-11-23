@@ -45,6 +45,17 @@ func build_loadout_from_selection(
 		selection.expected_battle_duration_logical_milli, bundle.effect_catalog
 	)
 
+func build_loadout_from_draft(
+	identity: Dictionary,
+	draft: SpaceHangarSelectionDraft
+) -> SpaceBattleLoadoutSnapshot:
+	if draft == null or not draft.is_ready():
+		return _failure_snapshot("Hangar selection draft is unavailable or its catalog inventory is not ready")
+	var selection := draft.build_selection()
+	if selection == null:
+		return _failure_snapshot("Hangar selection draft is incomplete or invalid")
+	return build_loadout_from_selection(identity, selection)
+
 func _failure_snapshot(reason: String) -> SpaceBattleLoadoutSnapshot:
 	push_error("Space Hangar preparation failed: " + reason)
 	return null
