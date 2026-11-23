@@ -33,6 +33,8 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 @export var effect_parameters: Dictionary = {}
 ## Explicit effect-parameter -> benefit-dimension mapping used when growth changes balance-relevant values.
 @export var effect_parameter_benefit_dimensions: Dictionary = {}
+## Optional Jar Core rule contributions; Space effect bindings remain a separate concern.
+@export var rule_contributions: Array[SpaceRuleContributionDefinition] = []
 
 func is_valid() -> bool:
 	if skill_id == &"" or definition_version <= 0 or display_name.strip_edges().is_empty():
