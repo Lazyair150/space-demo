@@ -100,9 +100,16 @@ func _start_finite_stage() -> void:
 	if _stage_director == null:
 		_fault_stage("finite stage director is missing")
 		return
-	var beat := _stage_director.begin()
+	var beat: Dictionary
+	if _stage_director.state() == SpaceStageEncounterDirector.State.READY:
+		beat = _stage_director.begin()
+	elif _stage_director.state() == SpaceStageEncounterDirector.State.ACTIVE:
+		beat = _stage_director.current_beat()
+	else:
+		_fault_stage("finite stage director is not resumable")
+		return
 	if beat.is_empty():
-		_fault_stage("finite stage director could not begin")
+		_fault_stage("finite stage director could not provide a beat")
 		return
 	_stage_active = true
 	_stage_mode = true
@@ -202,19 +209,19 @@ func _complete_stage_beat() -> void:
 	if not _stage_active or _stage_faulted or _stage_break_pending:
 		return
 	_stage_break_pending = true
-	var beat := _stage_director.current_beat()
-	var break_seconds := maxf(0.0, float(beat.get("break_seconds", wave_break_seconds)))
-	await get_tree().create_timer(break_seconds, false).timeout
-	if not is_inside_tree() or _stage_faulted:
-		return
 	var result := _stage_director.complete_current_beat()
 	if not bool(result.get("success", false)):
 		_fault_stage("stage director rejected beat completion")
 		return
+	var break_seconds := maxf(0.0, float(_stage_director.current_beat().get("break_seconds", wave_break_seconds))) if not bool(result.get("complete", false)) else wave_break_seconds
+	await get_tree().create_timer(break_seconds, false).timeout
+	if not is_inside_tree() or _stage_faulted:
+		return
 	if bool(result.get("complete", false)):
 		_stage_active = false
+		_stage_break_pending = false
 		encounters_completed.emit({
-			"stageIdentity": result,
+			"stageIdentity": _stage_director.stage_identity(),
 			"completedBeatCount": _current_wave,
 			"status": "encounters_complete"
 		})
@@ -226,6 +233,9 @@ func _complete_stage_beat() -> void:
 		return
 	_start_stage_beat(next_beat)
 
+## Finite-stage checkpoints are safe only in the enemy-free inter-beat window.
+func can_capture_finite_stage_checkpoint() -> bool:
+	return _stage_mode and _stage_active and _stage_break_pending and not _spawning and _alive_enemies == 0 and not _stage_faulted
 func _fault_stage(reason: String) -> void:
 	if _stage_faulted:
 		return
