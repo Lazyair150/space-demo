@@ -80,10 +80,10 @@ func _build() -> void:
 	_active_dock = PanelContainer.new()
 	_active_dock.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	_active_dock.offset_left = -620
-	_active_dock.offset_top = -104
+	_active_dock.offset_top = -120
 	_active_dock.offset_right = -20
-	_active_dock.offset_bottom = -24
-	_active_dock.custom_minimum_size = Vector2(600, 80)
+	_active_dock.offset_bottom = -20
+	_active_dock.custom_minimum_size = Vector2(600, 100)
 	var active_style := StyleBoxFlat.new()
 	active_style.bg_color = Color("101923", 0.92)
 	active_style.border_color = Color("3b86a8")
@@ -106,8 +106,8 @@ func _build() -> void:
 	_passive_dock.offset_left = -270
 	_passive_dock.offset_top = 66
 	_passive_dock.offset_right = -20
-	_passive_dock.offset_bottom = 126
-	_passive_dock.custom_minimum_size = Vector2(250, 60)
+	_passive_dock.offset_bottom = 156
+	_passive_dock.custom_minimum_size = Vector2(250, 90)
 	_passive_dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var passive_style := StyleBoxFlat.new()
 	passive_style.bg_color = Color("101923", 0.88)
