@@ -395,7 +395,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - SpaceEnergyStonePickup 只把稳定 ID、原石类型和体积交给当前战斗 Game；解析器接受（包括同载荷重复确认）后才销毁拾取物，冲突或无解析器时保留拾取物。
 - 下一个拾取 ID 序号与解析器检查点一起捕获/恢复，避免恢复后重用已经分配的 ID。
 
-当前 EnemyChaser / EnemyShooter 场景没有被填入任何生产掉落 profile，因此不会改变现有掉落平衡。尚未完成的是正式敌机/遭遇 profile 内容、将保存/恢复能力接入真实 Hangar 与战斗生命周期、恢复 StatusEffectManager 的 effectState、敌人/波次等完整战斗状态，以及 Hangar 将真实 ship/device/workshop/parser catalog 构筑物化为 frozen loadout。Game 级 parser envelope 已捕获并恢复未拾取实体和 Spawner 掉落 RNG；SpaceBattleEffectStateStore/SpaceOrderEffectCommitter 已提供 Jar/Space/效果/dispatcher/score-wave-segment 联合快照与事件提交路径；恢复时不会把继续中的 run 重置为新局。
+当前 EnemyChaser / EnemyShooter 场景没有被填入任何生产掉落 profile，因此不会改变现有掉落平衡。尚未完成的是正式敌机/遭遇 profile 内容、将保存/恢复能力接入真实 Hangar 与战斗生命周期、敌人/波次等完整战斗状态，以及 Hangar 将真实 ship/device/workshop/parser catalog 构筑物化为 frozen loadout。Game 的 checkpoint bootstrap 现在接收精确 SpaceEffectCatalog 与 target resolver，并在首个战斗步前恢复 StatusEffectManager effectState。Game 级 parser envelope 已捕获并恢复未拾取实体和 Spawner 掉落 RNG；SpaceBattleEffectStateStore/SpaceOrderEffectCommitter 已提供 Jar/Space/效果/dispatcher/score-wave-segment 联合快照与事件提交路径；恢复时不会把继续中的 run 重置为新局。
 
 ### 4.14e 战前解析器精确版本目录与存档连续性
 
