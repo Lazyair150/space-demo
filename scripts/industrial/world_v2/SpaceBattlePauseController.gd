@@ -118,13 +118,8 @@ func _sync_overlay() -> void:
 func _exit_tree() -> void:
 	if not _paused:
 		return
-	var tree := get_tree()
-	var host := tree.root.get_node_or_null("WorldV2ShipHost")
-	tree.paused = false
-	if host != null:
-		host.call("ResumeShipWorld")
-	if _reason == "resume_ready":
-		GameFlow.end_battle()
-	else:
-		GameFlow.resume_battle()
+	# Scene teardown is not a resume command. Release only the engine-wide
+	# pause latch; the owning Game node disposes the Host synchronously.
+	get_tree().paused = false
 	_paused = false
+	_reason = ""
