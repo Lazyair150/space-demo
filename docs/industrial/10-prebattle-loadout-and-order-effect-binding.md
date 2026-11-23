@@ -421,3 +421,12 @@ This establishes the editor-authored data-loading seam. It does not create a pro
 - The selection-based builder rejects a failed bundle materialization before attempting to access its registries.
 - Resume launch now resolves the effect catalog from the same bundle dependency source used by the Hangar, instead of accidentally depending on a separately assigned legacy export. This keeps restored effect definition versions aligned with the authored bundle.
 - The ownership probe covers empty authored bundle rejection. No production catalog entries are supplied by the probe or runtime.
+
+
+### Hangar selection inventory adapter
+
+- `SpaceHangarCatalogBundleResource.build_selection_inventory()` exposes the exact-version choices present in the authored Resource bundle: ships, non-parser devices, universal parsers, workshop combinations, skills/control areas, and effects.
+- Each choice carries stable definition identity/version; the UI must preserve these exact values and must not silently upgrade to a newer version.
+- The inventory reports `isReady=false` when the runtime bundle cannot be materialized. Empty catalog data remains visible as empty choices rather than being replaced by placeholder gameplay definitions.
+- This is a read-only UI adapter, not a second registry or compatibility authority. The assembler and catalog bundle remain authoritative at final build time.
+- The probe now checks that an empty authored bundle reports unavailable readiness and an empty ship list.
