@@ -297,6 +297,31 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 				if not (effect.get("effectParameters", {}) is Dictionary):
 					errors.append("effectParameters must be a dictionary")
 
+	if source.has("progressionOwnerPlayerId") or source.has("ownedInstanceSnapshots"):
+		if _required_text(source, "progressionOwnerPlayerId").is_empty() or int(source.get("progressionStateRevision", 0)) <= 0:
+			errors.append("owned loadout must identify its progression owner and state revision")
+		var owned: Variant = source.get("ownedInstanceSnapshots", null)
+		if not (owned is Array) or owned.is_empty():
+			errors.append("owned loadout must freeze at least one owned instance snapshot")
+		else:
+			var owned_ids := {}
+			for raw_instance in owned:
+				if not (raw_instance is Dictionary):
+					errors.append("owned instance snapshot must be a dictionary")
+					continue
+				var instance_id := _required_text(raw_instance, "instanceId")
+				var kind := _required_text(raw_instance, "itemKind")
+				if instance_id.is_empty() or owned_ids.has(instance_id):
+					errors.append("owned instance snapshot IDs must be non-empty and unique")
+				owned_ids[instance_id] = true
+				if not SpaceOwnedProgressionInstance.ITEM_KINDS.has(kind):
+					errors.append("owned instance snapshot has an unsupported item kind")
+				if _required_text(raw_instance, "definitionId").is_empty() or int(raw_instance.get("definitionVersion", 0)) <= 0:
+					errors.append("owned instance snapshot must identify an exact definition version")
+				if int(raw_instance.get("level", 0)) <= 0 or int(raw_instance.get("experience", -1)) < 0 or int(raw_instance.get("progressionRevision", 0)) <= 0:
+					errors.append("owned instance snapshot progression counters are invalid")
+				if not (raw_instance.get("growthAttributes", null) is Dictionary):
+					errors.append("owned instance snapshot growthAttributes must be a dictionary")
 	return errors
 
 func ship_world_id() -> String:
