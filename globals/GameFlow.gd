@@ -23,7 +23,7 @@ func snapshot() -> Dictionary:
 	}
 
 func enter_screen(next_screen: int) -> bool:
-	if next_screen < 0 or next_screen >= Screen.size():
+	if next_screen < 0 or next_screen >= Screen.keys().size():
 		return false
 	if _battle_phase in [BattlePhase.PREPARING, BattlePhase.RUNNING, BattlePhase.PAUSED, BattlePhase.RESUMING] and next_screen != Screen.BATTLE:
 		push_error("[GameFlow] Cannot leave an active battle before it is ended")
@@ -47,7 +47,7 @@ func begin_battle_preparation() -> bool:
 	return true
 
 func mark_battle_running() -> bool:
-	if not _battle_phase in [BattlePhase.PREPARING, BattlePhase.RESUMING]:
+	if not (_battle_phase in [BattlePhase.PREPARING, BattlePhase.RESUMING]):
 		return false
 	_battle_phase = BattlePhase.RUNNING
 	_pause_reason = PauseReason.NONE
