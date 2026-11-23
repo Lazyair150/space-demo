@@ -25,6 +25,19 @@ static func run() -> Dictionary:
         return _failure("enabled drop profile did not produce a deterministic result")
     if first != second:
         return _failure("same seed and profile produced different drop payloads")
+
+    # RNG state, not just the initial seed, is the continuation point saved by the
+    # battle checkpoint. A resumed stream must emit the same next drop.
+    var checkpoint_rng := RandomNumberGenerator.new()
+    checkpoint_rng.seed = 991827
+    var saved_rng_state := checkpoint_rng.state
+    var before_checkpoint := profile.roll_drop(checkpoint_rng, shapes)
+    var resumed_rng := RandomNumberGenerator.new()
+    resumed_rng.state = saved_rng_state
+    var after_restore := profile.roll_drop(resumed_rng, shapes)
+    if before_checkpoint != after_restore:
+        return _failure("restored RNG state did not continue the same enemy drop stream")
+
     if not shapes.has(String(first.get("stoneType", ""))) or float(first.get("volume", 0.0)) <= 0.0:
         return _failure("weighted drop emitted an invalid type or volume")
     if String(first.get("profileId", "")) != "probe-enemy-drop" or int(first.get("profileVersion", 0)) != 1:
