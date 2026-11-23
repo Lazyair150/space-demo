@@ -54,7 +54,7 @@ func get_validation_errors() -> PackedStringArray:
 				errors.append("pool entry %d power score does not match its subsystem model metrics" % index)
 		if not power_bands.has(rarity):
 			errors.append("pool entry %d references an undefined rarity band" % index)
-		elif not _valid_number(power) or float(power) < float(power_bands[rarity].minimum) or float(power) > float(power_bands[rarity].maximum):
+		elif not (power_bands[rarity] is Dictionary) or not _valid_number(power) or float(power) < float(power_bands[rarity].get("minimum", INF)) or float(power) > float(power_bands[rarity].get("maximum", -INF)):
 			errors.append("pool entry %d is under/over its rarity power band" % index)
 		if not _valid_number(weight) or float(weight) <= 0.0:
 			errors.append("pool entry %d requires a positive finite weight" % index)
