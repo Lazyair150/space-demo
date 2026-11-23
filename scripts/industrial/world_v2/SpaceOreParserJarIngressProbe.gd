@@ -15,6 +15,16 @@ func _ready() -> void:
     var world_json := FileAccess.get_file_as_string("res://data/industrial/world_v2_sandbox.json")
     assert(not world_json.is_empty(), "sandbox World V2 fixture must be readable")
     assert(jar_host.BeginShipWorldFromJson(world_json), "Jar host must accept the test world")
+
+    # The Host is the sole fractional-millisecond accumulator. Two 0.75ms deltas
+    # must forward 0ms then 1ms, and each prepared delta must be consumed exactly once.
+    var first_half_milli: int = jar_host.AccumulateSpaceSimulationDelta(0.00075)
+    assert(first_half_milli == 0, "first fractional step must not advance a whole millisecond")
+    assert(jar_host.AdvanceSpaceSimulationMilliseconds(first_half_milli), "zero whole-ms step must still close its prepared boundary")
+    var second_half_milli: int = jar_host.AccumulateSpaceSimulationDelta(0.00075)
+    assert(second_half_milli == 1, "fractional remainder must combine into one whole millisecond")
+    assert(jar_host.AdvanceSpaceSimulationMilliseconds(second_half_milli), "prepared one-ms step must advance Jar")
+
     var before: Dictionary = jar_host.GetWorldSnapshot()
     var initial_warehouse_count := before.get("resourceJars", []).size()
     var initial_master_count := before.get("master", {}).get("jars", []).size()
