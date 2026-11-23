@@ -102,6 +102,51 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 			if not jar_options.has(required_key):
 				errors.append("jarWorldOptions is missing " + required_key)
 
+	# The selected ore parser is part of the frozen pre-battle production-device build.
+	# Its percentage is a parser attribute and scales that parser's own throughput;
+	# it is not a per-shape output allocation.
+	var ore_parser_count := 0
+	var shape_set := {}
+	if jar_options is Dictionary and jar_options.get("shapes", null) is Array:
+		for raw_shape in jar_options.shapes:
+			shape_set[String(raw_shape)] = true
+	if devices is Array:
+		for raw_device in devices:
+			if not (raw_device is Dictionary) or String(raw_device.get("deviceKind", "")) != "ore_parser":
+				continue
+			ore_parser_count += 1
+			var device: Dictionary = raw_device
+			var parser: Variant = device.get("oreParserProfile", null)
+			if not (parser is Dictionary):
+				errors.append("selected ore parser must include oreParserProfile")
+				continue
+			if _required_text(parser, "parserId").is_empty() or int(parser.get("definitionVersion", 0)) <= 0:
+				errors.append("oreParserProfile must identify a versioned parser definition")
+			if _required_text(device, "definitionId") != _required_text(parser, "parserId") or int(device.get("definitionVersion", 0)) != int(parser.get("definitionVersion", 0)):
+				errors.append("production device identity must match its oreParserProfile")
+			var percentage: Variant = parser.get("productionPercentage", null)
+			if typeof(percentage) != TYPE_INT or int(percentage) < 0 or int(percentage) > 100:
+				errors.append("ore parser productionPercentage must be an integer from 0 to 100")
+			var rates: Variant = parser.get("shapeProcessingRatePerSecond", null)
+			var progress: Variant = parser.get("progressPerJarByShape", null)
+			if not (rates is Dictionary) or not (progress is Dictionary):
+				errors.append("ore parser must provide per-shape processing rates and progress thresholds")
+				continue
+			if rates.size() != shape_set.size() or progress.size() != shape_set.size():
+				errors.append("ore parser must define every configured Jar shape exactly once")
+			for shape in shape_set:
+				if not rates.has(shape) or not progress.has(shape):
+					errors.append("ore parser is missing shape configuration: " + String(shape))
+					continue
+				var rate: Variant = rates[shape]
+				var threshold: Variant = progress[shape]
+				if (typeof(rate) != TYPE_INT and typeof(rate) != TYPE_FLOAT) or not is_finite(float(rate)) or float(rate) < 0.0:
+					errors.append("ore parser shape rate must be finite and non-negative: " + String(shape))
+				if (typeof(threshold) != TYPE_INT and typeof(threshold) != TYPE_FLOAT) or not is_finite(float(threshold)) or float(threshold) <= 0.0:
+					errors.append("ore parser progress-per-Jar must be finite and positive: " + String(shape))
+	if ore_parser_count != 1:
+		errors.append("battle loadout must select exactly one universal ore parser")
+
 	var orders: Variant = source.get("selectedOrderBindings", null)
 	if not (orders is Array):
 		errors.append("selectedOrderBindings must be an array")
