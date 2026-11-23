@@ -10,7 +10,7 @@ var _elapsed := 0.0
 var _expanded := false
 var _toggle: Button
 var _panel: PanelContainer
-var _resource_jars: HBoxContainer
+var _resource_jars: FlowContainer
 var _resource_liquids: HBoxContainer
 var _master_box: VBoxContainer
 var _slave_box: VBoxContainer
@@ -61,7 +61,9 @@ func _build() -> void:
 	column.add_child(_status)
 
 	column.add_child(UiKit.title("飞船资源"))
-	_resource_jars = UiKit.hbox(8)
+	_resource_jars = FlowContainer.new()
+	_resource_jars.add_theme_constant_override("h_separation", 6)
+	_resource_jars.add_theme_constant_override("v_separation", 6)
 	column.add_child(_resource_jars)
 	_resource_liquids = UiKit.hbox(8)
 	column.add_child(_resource_liquids)
@@ -264,17 +266,49 @@ func _render_resource_jars(raw_jars: Variant) -> void:
 	if not (raw_jars is Array) or raw_jars.is_empty():
 		_resource_jars.add_child(UiKit.label("舱段库存：0", UiKit.FONT_SMALL, UiKit.MUTED))
 		return
-	var counts := {}
-	var filled_by_shape := {}
-	for jar in raw_jars:
+	var visible_limit := 24
+	for i in mini(raw_jars.size(), visible_limit):
+		var jar: Variant = raw_jars[i]
 		if jar is Dictionary:
-			var shape := String(jar.get("shape", ""))
-			counts[shape] = int(counts.get(shape, 0)) + 1
-			if not String(jar.get("liquid", "")).is_empty():
-				filled_by_shape[shape] = int(filled_by_shape.get(shape, 0)) + 1
-	for shape in counts:
-		var filled := int(filled_by_shape.get(shape, 0))
-		_resource_jars.add_child(_shape_token(String(shape), "×%d · 装液%d" % [int(counts[shape]), filled]))
+			_resource_jars.add_child(_jar_tile(jar))
+	if raw_jars.size() > visible_limit:
+		_resource_jars.add_child(UiKit.label("+%d 只未展开" % (raw_jars.size() - visible_limit), UiKit.FONT_SMALL, UiKit.MUTED))
+
+func _jar_tile(jar: Dictionary) -> PanelContainer:
+	var shape := String(jar.get("shape", "未知形状"))
+	var liquid := String(jar.get("liquid", ""))
+	var jar_id: Variant = jar.get("id", null)
+	var tint := ShapeVisuals.color_for(shape)
+	var tile := PanelContainer.new()
+	tile.custom_minimum_size = Vector2(78, 82)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("1c2633")
+	style.border_color = tint
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(5)
+	tile.add_theme_stylebox_override("panel", style)
+	var content := UiKit.vbox(2)
+	tile.add_child(content)
+	var head := UiKit.hbox(3)
+	var glyph := UiKit.label(ShapeVisuals.glyph_for(shape), 18, tint)
+	head.add_child(glyph)
+	head.add_child(UiKit.label("Jar", UiKit.FONT_SMALL, UiKit.TEXT))
+	if bool(jar.get("isMarked", false)):
+		head.add_child(UiKit.label("◆", UiKit.FONT_SMALL, UiKit.WARN))
+	content.add_child(head)
+	var id_text := "#" + str(jar_id) if jar_id != null else "无编号"
+	content.add_child(UiKit.label(id_text, 10, UiKit.MUTED))
+	var fill := PanelContainer.new()
+	fill.custom_minimum_size = Vector2(0, 7)
+	var fill_style := StyleBoxFlat.new()
+	fill_style.bg_color = ShapeVisuals.liquid_color_for(liquid) if not liquid.is_empty() else Color("354252")
+	fill_style.set_corner_radius_all(3)
+	fill.add_theme_stylebox_override("panel", fill_style)
+	content.add_child(fill)
+	content.add_child(UiKit.label(liquid if not liquid.is_empty() else "空罐", 10, ShapeVisuals.liquid_color_for(liquid) if not liquid.is_empty() else UiKit.MUTED))
+	tile.tooltip_text = "%s · %s · %s%s" % [id_text, shape, liquid if not liquid.is_empty() else "空罐", " · 已标记" if bool(jar.get("isMarked", false)) else ""]
+	return tile
 
 func _render_resource_liquids(raw_liquids: Variant) -> void:
 	UiKit.clear_children(_resource_liquids)
@@ -312,12 +346,19 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 			if not String(jar.get("liquid", "")).is_empty():
 				filled_by_shape[shape] = int(filled_by_shape.get(shape, 0)) + 1
 	if not by_shape.is_empty():
-		var jar_row := UiKit.hbox(6)
+		var jar_row := FlowContainer.new()
+		jar_row.add_theme_constant_override("h_separation", 5)
+		jar_row.add_theme_constant_override("v_separation", 5)
 		parent.add_child(jar_row)
-		for shape in by_shape:
-			var filled := int(filled_by_shape.get(shape, 0))
-			var detail := "×%d · 装液%d" % [int(by_shape[shape]), filled]
-			jar_row.add_child(_shape_token(String(shape), detail))
+		var shown := 0
+		for jar in jars:
+			if shown >= 12:
+				break
+			if jar is Dictionary:
+				jar_row.add_child(_jar_tile(jar))
+				shown += 1
+		if jars.size() > shown:
+			jar_row.add_child(UiKit.label("+%d 只" % (jars.size() - shown), UiKit.FONT_SMALL, UiKit.MUTED))
 	var liquid_row := UiKit.vbox(3)
 	parent.add_child(liquid_row)
 	var liquid_capacity := int(workshop.get("maxLiquids", 0))
