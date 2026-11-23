@@ -104,17 +104,58 @@ func _save_high_score() -> void:
 func set_space_progression_state(state: SpacePlayerProgressionState) -> bool:
 	if state == null or not state.get_validation_errors().is_empty():
 		return false
+	var candidate := SpacePlayerProgressionState.from_data(state.to_data())
+	if candidate == null or not _save_progression_candidate(candidate):
+		return false
 	if space_progression_state != null and space_progression_state.progression_changed.is_connected(_on_space_progression_changed):
 		space_progression_state.progression_changed.disconnect(_on_space_progression_changed)
-	space_progression_state = state
+	space_progression_state = candidate
 	space_progression_state.progression_changed.connect(_on_space_progression_changed)
 	space_progression_state_changed.emit(space_progression_state)
-	return _save_space_progression_state()
+	return true
+
+## Reward acquisition is committed on a detached aggregate and persisted before publication.
+func acquire_space_reward_instance(
+	expected_state: SpacePlayerProgressionState,
+	instance: SpaceOwnedProgressionInstance,
+	reward_id: String
+) -> bool:
+	if expected_state == null or expected_state != space_progression_state or instance == null or reward_id.strip_edges().is_empty():
+		return false
+	var candidate := SpacePlayerProgressionState.from_data(space_progression_state.to_data())
+	if candidate == null or not candidate.unlock_and_acquire_instance(instance, reward_id):
+		return false
+	if not _save_progression_candidate(candidate):
+		push_error("Roguelike reward acquisition was rejected because the progression save failed")
+		return false
+	if space_progression_state.progression_changed.is_connected(_on_space_progression_changed):
+		space_progression_state.progression_changed.disconnect(_on_space_progression_changed)
+	space_progression_state = candidate
+	space_progression_state.progression_changed.connect(_on_space_progression_changed)
+	space_progression_state_changed.emit(space_progression_state)
+	return true
 
 func _load_space_progression_state() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(SPACE_PROGRESSION_SAVE_PATH) != OK:
+	var load_result := cfg.load(SPACE_PROGRESSION_SAVE_PATH)
+	var backup_path := SPACE_PROGRESSION_SAVE_PATH + ".previous"
+	if load_result != OK and FileAccess.file_exists(backup_path):
+		var backup_cfg := ConfigFile.new()
+		if backup_cfg.load(backup_path) == OK:
+			var absolute_target := ProjectSettings.globalize_path(SPACE_PROGRESSION_SAVE_PATH)
+			var absolute_backup := ProjectSettings.globalize_path(backup_path)
+			if FileAccess.file_exists(SPACE_PROGRESSION_SAVE_PATH):
+				DirAccess.remove_absolute(absolute_target)
+			if DirAccess.rename_absolute(absolute_backup, absolute_target) == OK:
+				cfg = backup_cfg
+				load_result = OK
+	if load_result != OK:
 		return
+	if FileAccess.file_exists(backup_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(backup_path))
+	var pending_path := SPACE_PROGRESSION_SAVE_PATH + ".pending"
+	if FileAccess.file_exists(pending_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(pending_path))
 	var raw: Variant = cfg.get_value("progression", "state", null)
 	if not (raw is Dictionary):
 		push_warning("Space progression save is missing or malformed; no owned Hangar inventory is available")
@@ -223,8 +264,36 @@ func _save_campaign_progress_candidate(candidate: SpaceCampaignProgressState) ->
 	return true
 
 func _save_space_progression_state() -> bool:
-	if space_progression_state == null or not space_progression_state.get_validation_errors().is_empty():
+	return _save_progression_candidate(space_progression_state)
+
+func _save_progression_candidate(candidate: SpacePlayerProgressionState) -> bool:
+	if candidate == null or not candidate.get_validation_errors().is_empty():
+		return false
+	var payload := candidate.to_data()
+	if payload.is_empty():
 		return false
 	var cfg := ConfigFile.new()
-	cfg.set_value("progression", "state", space_progression_state.to_data())
-	return cfg.save(SPACE_PROGRESSION_SAVE_PATH) == OK
+	cfg.set_value("progression", "state", payload)
+	var pending_path := SPACE_PROGRESSION_SAVE_PATH + ".pending"
+	if cfg.save(pending_path) != OK:
+		return false
+	var absolute_pending := ProjectSettings.globalize_path(pending_path)
+	var absolute_target := ProjectSettings.globalize_path(SPACE_PROGRESSION_SAVE_PATH)
+	var backup_path := SPACE_PROGRESSION_SAVE_PATH + ".previous"
+	var absolute_backup := ProjectSettings.globalize_path(backup_path)
+	if FileAccess.file_exists(SPACE_PROGRESSION_SAVE_PATH):
+		if FileAccess.file_exists(backup_path):
+			DirAccess.remove_absolute(absolute_backup)
+		if DirAccess.rename_absolute(absolute_target, absolute_backup) != OK:
+			DirAccess.remove_absolute(absolute_pending)
+			return false
+		if DirAccess.rename_absolute(absolute_pending, absolute_target) != OK:
+			DirAccess.rename_absolute(absolute_backup, absolute_target)
+			DirAccess.remove_absolute(absolute_pending)
+			return false
+		DirAccess.remove_absolute(absolute_backup)
+		return true
+	if DirAccess.rename_absolute(absolute_pending, absolute_target) != OK:
+		DirAccess.remove_absolute(absolute_pending)
+		return false
+	return true
