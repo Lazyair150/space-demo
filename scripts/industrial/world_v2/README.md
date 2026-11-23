@@ -395,7 +395,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - SpaceEnergyStonePickup 只把稳定 ID、原石类型和体积交给当前战斗 Game；解析器接受（包括同载荷重复确认）后才销毁拾取物，冲突或无解析器时保留拾取物。
 - 下一个拾取 ID 序号与解析器检查点一起捕获/恢复，避免恢复后重用已经分配的 ID。
 
-当前 EnemyChaser / EnemyShooter 场景没有被填入任何生产掉落 profile，因此不会改变现有掉落平衡。尚未完成的是正式敌机/遭遇 profile 内容、外层保存协调器将 Game 的 Jar/Space checkpoint 与玩家/效果/敌人状态作为单一事务持久化，以及 Hangar 将真实 ship/device/workshop/parser catalog 构筑物化为 frozen loadout。Game 级 parser envelope 已捕获并恢复未拾取实体和 Spawner 掉落 RNG。
+当前 EnemyChaser / EnemyShooter 场景没有被填入任何生产掉落 profile，因此不会改变现有掉落平衡。尚未完成的是正式敌机/遭遇 profile 内容、将保存/恢复能力接入真实 Hangar 与战斗生命周期、恢复 StatusEffectManager 的 effectState、敌人/波次等完整战斗状态，以及 Hangar 将真实 ship/device/workshop/parser catalog 构筑物化为 frozen loadout。Game 级 parser envelope 已捕获并恢复未拾取实体和 Spawner 掉落 RNG；SpaceBattleEffectStateStore/SpaceOrderEffectCommitter 已提供 Jar/Space/效果/dispatcher 联合快照与事件提交路径。
 
 ### 4.14e 战前解析器精确版本目录与存档连续性
 
@@ -406,7 +406,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - Space parser envelope schema v2 在原有 parser 状态、pickup ID 序号和未拾取实体列表之外，加入 Spawner 的 `RandomNumberGenerator.state`。恢复时必须同时恢复该 RNG 状态，避免同一战斗检查点之后重新抽取出不同掉落序列。
 - `capture_jar_space_runtime_checkpoint` 仍把 Jar execution checkpoint、Host 时钟余数、Space parser envelope 和订单事件 dispatcher 状态放入同一个 checkpoint 对象；调用方必须把它作为一次保存事务持久化。
 
-### 4.14e Jar/Space 跨域检查点与一次性事件提交
+### 4.14f Jar/Space 跨域检查点与一次性事件提交
 
 - `WorldV2RuntimeNode` 通过 Bridge 捕获/恢复 Jar execution checkpoint JSON；恢复时使用初始化该世界的同一份 `WorldV2Options`，由 Core 校验配置指纹。
 - `WorldV2ShipHost` 只允许在完整 Space 步边界捕获检查点；恢复必须发生在首次时间推进、订单物化或其他 Host 操作之前。Jar 检查点中的订单/会话已存在时，不会再次物化 loadout orders。
