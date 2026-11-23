@@ -352,6 +352,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `SpaceOreParserJarIngress.gd` 通过 `WorldV2ShipHost.ImportProducedJars` 提交批次；Jar 的资源账本持久去重，中央仓库容量溢出按 Jar Core 规则丢弃。解析器先在本地 staged state 中完成整步计算，只有所有算术和单批 Int32 数量限制通过后才提交消费/进度，失败不会吞掉原石。
 - `WorldV2ShipHost.AccumulateSpaceSimulationDelta` 是唯一的毫秒余数持有者，并记录唯一待提交的 prepared step。Game 先取出本步精确整数毫秒，让 Space 解析器处理并提交 Jar，再且仅一次把同一整数毫秒交给 Jar Core 推进；Host 拒绝重复累计、错值推进或重复消费 prepared step。
 - `Game.gd` 暴露 `ingest_energy_stone`、`capture_ore_parser_state`，并在战斗步进前推进解析器、提交待产 Jar。解析器检查点包括拾取身份、待解析体积、独立进度、速率余数和未确认输出批次。
+- `SpaceEnergyStonePickup.gd` / `SpaceEnergyStonePickup.tscn` 提供玩家碰撞拾取适配器；生成方必须在入树前提供稳定 ID、类型和体积，只有解析器接受（含重复 ID 幂等确认）后拾取物才消失。旧 `Asteroid.gd` 的 `GameState.add_ore(ore_value)` 是旧钱包资源，不被当成 typed energy stone。
 - `SpaceOreParserRuntimeProbe.gd` 覆盖百分比吞吐、并行独立进度、重复拾取去重、身份冲突、固定点分步一致性、输出批次检查点和单次确认。
 - `SpaceSkillBuildContextEvaluatorProbe.gd` 验证 50% / 100% 是解析器自身吞吐修正，不会把一个形状的产量份额分给另一个形状。
 - `SpaceOreParserJarIngressProbe.gd` 与 `scenes/industrial/SpaceOreParserJarIngressProbe.tscn` 验证 Host 毫秒余数和 prepared-step 单次消费、Space 原石解析、Jar 离散导入、模拟丢失回执后的幂等重试，以及不会直接注入主台。
