@@ -58,7 +58,7 @@ func configure_battle_loadout_from_checkpoint(
 	saved_snapshot: Dictionary,
 	commit_callback: Callable = Callable()
 ) -> bool:
-	if loadout == null or int(saved_snapshot.get("schemaVersion", 0)) != 2:
+	if loadout == null or int(saved_snapshot.get("schemaVersion", 0)) != 3:
 		return false
 	if not loadout.order_definition_keys().is_empty() and not commit_callback.is_valid():
 		return false
@@ -73,7 +73,7 @@ func configure_battle_loadout_from_checkpoint(
 	var runtime_checkpoint: Variant = saved_snapshot.get("runtimeCheckpoint", null)
 	var dispatcher_state: Variant = saved_snapshot.get("dispatcherState", null)
 	var effect_state: Variant = saved_snapshot.get("effectState", null)
-	if not (runtime_checkpoint is Dictionary) or int(runtime_checkpoint.get("schemaVersion", 0)) != 1 or not (dispatcher_state is Dictionary) or not (effect_state is Dictionary):
+	if not (runtime_checkpoint is Dictionary) or int(runtime_checkpoint.get("schemaVersion", 0)) != 2 or not (dispatcher_state is Dictionary) or not (effect_state is Dictionary):
 		return false
 	if runtime_checkpoint.get("loadoutIdentity", {}) != expected_identity:
 		return false
@@ -123,6 +123,9 @@ func _ready() -> void:
 			player.damaged.connect(_on_player_damaged)
 
 func _begin_ship_world() -> bool:
+	if not _persisted_jar_execution_checkpoint_json.is_empty() and _persisted_run_state.is_empty():
+		push_error("[Game] Resuming Jar execution requires the matching transient GameState checkpoint")
+		return false
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if jar_host == null:
 		push_error("[Game] WorldV2ShipHost autoload is unavailable")
@@ -441,7 +444,7 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 		"loadoutFingerprint": _battle_loadout.loadout_fingerprint()
 	}
 	return {
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"loadoutIdentity": identity,
 		"jarExecutionCheckpointJson": jar_host.CaptureExecutionCheckpointJson(),
 		"spaceClockRemainderMilli": jar_host.CaptureSpaceClockRemainderMilli(),
