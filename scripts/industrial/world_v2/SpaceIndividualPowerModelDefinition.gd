@@ -7,6 +7,8 @@ const SUPPORTED_KINDS := ["ore_parser", "workshop", "skill"]
 @export var model_id: StringName = &""
 @export var definition_version: int = 1
 @export_enum("ore_parser", "workshop", "skill") var item_kind: String = "skill"
+## Unconfigured models may be evaluated in isolated tuning probes, but never referenced by production pools.
+@export_enum("unconfigured", "configured") var configuration_status: String = "unconfigured"
 ## metric -> {minimum, maximum, weight, higherIsBetter}
 @export var metric_dimensions: Dictionary = {}
 
@@ -51,6 +53,8 @@ func get_validation_errors() -> PackedStringArray:
 ## This gate is intentionally stricter than structural validation used by tuning Probes.
 func get_production_validation_errors() -> PackedStringArray:
 	var errors := get_validation_errors()
+	if not errors.is_empty():
+		return errors
 	if configuration_status != "configured":
 		errors.append("power model is unconfigured and cannot be referenced by a production pool")
 	for metric in metric_dimensions:
