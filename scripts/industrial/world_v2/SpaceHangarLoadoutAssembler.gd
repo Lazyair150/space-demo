@@ -38,9 +38,10 @@ static func assemble(
 	var workshop_profile := workshop_catalog.create_balance_profile(workshop_id, workshop_version)
 	if workshop_selection.is_empty() or jar_options.is_empty() or workshop_profile.is_empty():
 		return _reject("selected exact workshop combination version cannot be materialized")
-	var shapes: Variant = jar_options.get("shapes", null)
-	if not (shapes is Array) or shapes.is_empty():
+	var shapes_value: Variant = jar_options.get("shapes", null)
+	if not (shapes_value is Array) or shapes_value.is_empty():
 		return _reject("selected workshop combination has no configured Jar shapes")
+	var shapes: Array = shapes_value
 
 	var ship_selection := ship_catalog.create_selection(ship_id, ship_version, shapes)
 	if ship_selection.is_empty():
