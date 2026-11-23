@@ -203,3 +203,5 @@
 - 注意：这还不是生产 power model。没有擅自确定 Parser / Workshop / Skill 的正式指标权重、边界、目标工作负载或稀有度区间；所有真实模型仍需在有真实设计数据后从 `unconfigured` 变为 `configured`。
 - 本轮 power contract 新增提交：`0b07db6`、`c14562b`、`aa69080`、`96e3110`、`4623252`、`e1da0bd`、`611f930`、`d223cfa`、`d9f087c`、`8f84725`、`ca112f8`、`bf80d28`。
 - 当前剩余：在真实 WorkshopCombination 配置中录入 versioned Core orderTemplates，并迁移生产 skill definitions；继续核对 MainMenu / Hangar launch route、Protected Target identity 和真实子系统 power metric 契约。
+
+- 最新续接核对（文档提交前）：Space Demo PR #2 head `235e3a88e5ef778dc55d5959d058363e0003de4f`，ahead 597 / behind 0，Draft/Open/未合并；文档本次提交将继续更新 head。Jar Core PR #60 head `063e2b7151ea43e92cf6ba1d627b9c7d50819b5b`，verify run `45197432477` completed/success。Space Demo 仍无 Godot/.NET/GDScript 运行验证。
