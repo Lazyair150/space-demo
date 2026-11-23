@@ -826,7 +826,15 @@ func _slot_configuration_is_valid() -> bool:
 		var order_key := String(binding.get("orderDefinitionKey", "")).strip_edges()
 		if order_key.is_empty() or seen_order_keys.has(order_key):
 			return false
-		seen_order_keys[order_key] = true
+		seen_order_keys[order_key] = bool(binding.get("required", false))
+	var selection: Dictionary = _controller.get_view_model().get("selection", {})
+	var selected_order_keys := {}
+	for selected in selection.get("skillSelections", []):
+		if selected is Dictionary:
+			selected_order_keys[String(selected.get("orderDefinitionKey", ""))] = true
+	for order_key in seen_order_keys:
+		if bool(seen_order_keys[order_key]) and not selected_order_keys.has(order_key):
+			return false
 	return true
 
 func _identity_is_supplied() -> bool:
