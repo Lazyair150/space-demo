@@ -27,6 +27,15 @@ static func launch_new_battle(
 		if not stage.is_valid() or not game.has_method("configure_battle_stage") or not bool(game.call("configure_battle_stage", stage, protected_target)):
 			push_error("Combat scene rejected the exact finite-stage configuration")
 			return false
+		if not game.has_method("configure_stage_settlement_callback"):
+			push_error("Combat scene does not expose durable finite-stage settlement")
+			return false
+		var settlement_id := "stage-clear:%s@%d:%d:%d" % [String(stage.stage_id), stage.definition_version, Time.get_ticks_usec(), randi()]
+		var settlement_callback := func(result: Dictionary) -> bool:
+			return GameState.record_space_stage_clear(stage, result, settlement_id)
+		if not bool(game.call("configure_stage_settlement_callback", settlement_callback)):
+			push_error("Combat scene rejected the durable finite-stage settlement callback")
+			return false
 	elif protected_target != null:
 		return false
 	if not GameFlow.begin_battle_preparation():
