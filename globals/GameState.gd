@@ -4,17 +4,21 @@ signal score_changed(new_score: int)
 signal wave_changed(new_wave: int)
 signal player_hp_changed(hp: int)
 signal game_over_requested
+signal space_progression_state_changed(state: SpacePlayerProgressionState)
 signal segment_changed(label: String, wave: int)
 
 const SAVE_PATH := "user://highscore.cfg"
+const SPACE_PROGRESSION_SAVE_PATH := "user://space_progression.cfg"
 
 var score: int = 0
 var wave: int = 0
 var segment: String = ""
 var high_score: int = 0
+var space_progression_state: SpacePlayerProgressionState
 
 func _ready() -> void:
 	_load_high_score()
+	_load_space_progression_state()
 
 func _load_high_score() -> void:
 	var cfg := ConfigFile.new()
@@ -92,3 +96,39 @@ func _save_high_score() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("score", "high", high_score)
 	cfg.save(SAVE_PATH)
+
+func set_space_progression_state(state: SpacePlayerProgressionState) -> bool:
+	if state == null or not state.get_validation_errors().is_empty():
+		return false
+	if space_progression_state != null and space_progression_state.progression_changed.is_connected(_on_space_progression_changed):
+		space_progression_state.progression_changed.disconnect(_on_space_progression_changed)
+	space_progression_state = state
+	space_progression_state.progression_changed.connect(_on_space_progression_changed)
+	space_progression_state_changed.emit(space_progression_state)
+	return _save_space_progression_state()
+
+func _load_space_progression_state() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SPACE_PROGRESSION_SAVE_PATH) != OK:
+		return
+	var raw: Variant = cfg.get_value("progression", "state", null)
+	if not (raw is Dictionary):
+		push_warning("Space progression save is missing or malformed; no owned Hangar inventory is available")
+		return
+	var restored := SpacePlayerProgressionState.from_data(raw)
+	if restored == null:
+		push_error("Space progression save failed schema/ownership validation")
+		return
+	space_progression_state = restored
+	space_progression_state.progression_changed.connect(_on_space_progression_changed)
+	space_progression_state_changed.emit(space_progression_state)
+
+func _on_space_progression_changed(_revision: int) -> void:
+	_save_space_progression_state()
+
+func _save_space_progression_state() -> bool:
+	if space_progression_state == null or not space_progression_state.get_validation_errors().is_empty():
+		return false
+	var cfg := ConfigFile.new()
+	cfg.set_value("progression", "state", space_progression_state.to_data())
+	return cfg.save(SPACE_PROGRESSION_SAVE_PATH) == OK
