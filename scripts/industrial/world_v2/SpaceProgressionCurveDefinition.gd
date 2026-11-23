@@ -5,7 +5,7 @@ class_name SpaceProgressionCurveDefinition
 ## the item subsystem (ship, parser, workshop, skill, or production device).
 
 const ITEM_KINDS := ["ship", "ore_parser", "production_device", "workshop", "skill"]
-const INTERPOLATIONS := ["linear", "step"]
+const INTERPOLATIONS := ["linear", "step", "ease_in", "ease_out", "smoothstep"]
 
 @export var curve_id: StringName = &""
 @export var definition_version: int = 1
@@ -110,6 +110,13 @@ func _sample_attribute(points: Array, target_level: int) -> float:
 				return float(previous.value)
 			var span := float(next_level - int(previous.level))
 			var weight := float(target_level - int(previous.level)) / span
+			match interpolation:
+				"ease_in":
+					weight = weight * weight
+				"ease_out":
+					weight = 1.0 - (1.0 - weight) * (1.0 - weight)
+				"smoothstep":
+					weight = weight * weight * (3.0 - 2.0 * weight)
 			return lerpf(float(previous.value), float(next_point.value), weight)
 		previous = next_point
 	return float(previous.value)
