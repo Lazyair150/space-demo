@@ -96,6 +96,7 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 		ship_catalog, production_device_catalog, ore_parser_catalog,
 		runtime_world_catalog, skill_catalog, balance_profile, effect_catalog
 	)
+	bundle.workshop_catalog = resolved_workshop_catalog
 	if not bundle.validate_and_prepare().is_empty():
 		return null
 	return bundle
