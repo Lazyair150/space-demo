@@ -33,6 +33,7 @@ var _device_section: VBoxContainer
 var _skill_section: VBoxContainer
 var _effect_section: VBoxContainer
 var _device_pickers: Dictionary = {}
+var _primary_icons: Dictionary = {}
 var _suppress_picker_events: bool = false
 
 func _ready() -> void:
@@ -162,6 +163,7 @@ func _add_picker(parent: VBoxContainer, caption: String, category: String) -> Op
 	parent.add_child(row)
 	var icon := _make_icon(category, 58)
 	row.add_child(icon)
+	_primary_icons[category] = icon
 	var label := Label.new()
 	label.text = caption
 	label.custom_minimum_size.x = 205
@@ -177,7 +179,6 @@ func _add_picker(parent: VBoxContainer, caption: String, category: String) -> Op
 func _make_icon(category: String, dimension: int = 52) -> TextureRect:
 	var icon := TextureRect.new()
 	icon.custom_minimum_size = Vector2(dimension, dimension)
-	icon.customize_minimum_size = true
 	icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture = load(String(FALLBACK_ICONS.get(category, FALLBACK_ICONS.effect)))
@@ -206,6 +207,9 @@ func _render_view_model(view_model: Dictionary) -> void:
 	_select_exact(_ship_picker, String(selection.get("shipId", "")), int(selection.get("shipVersion", 0)))
 	_select_exact(_parser_picker, String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)))
 	_select_exact(_workshop_picker, String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)))
+	_set_icon_for_selection(_primary_icons.ship, _ship_picker, "ship")
+	_set_icon_for_selection(_primary_icons.parser, _parser_picker, "parser")
+	_set_icon_for_selection(_primary_icons.workshop, _workshop_picker, "workshop")
 	_suppress_picker_events = false
 
 	_rebuild_device_section(selectable_inventory.get("deviceChoices", []), selection.get("deviceSelections", []))
@@ -259,6 +263,10 @@ func _select_exact(picker: OptionButton, definition_id: String, version: int) ->
 			picker.select(index)
 			return
 
+func _set_icon_for_selection(icon: TextureRect, picker: OptionButton, category: String) -> void:
+	var choice := _selected_choice(picker)
+	_set_icon_texture(icon, choice.get("iconTexture"), category)
+
 func _selected_choice(picker: OptionButton) -> Dictionary:
 	if picker.selected <= 0 or picker.selected >= picker.item_count:
 		return {}
@@ -270,6 +278,7 @@ func _on_ship_selected(index: int) -> void:
 		return
 	var choice := _selected_choice(_ship_picker)
 	if not choice.is_empty():
+		_set_icon_texture(_primary_icons.ship, choice.get("iconTexture"), "ship")
 		_controller.set_ship(String(choice.get("id", "")), int(choice.get("version", 0)))
 
 func _on_parser_selected(index: int) -> void:
@@ -277,6 +286,7 @@ func _on_parser_selected(index: int) -> void:
 		return
 	var choice := _selected_choice(_parser_picker)
 	if not choice.is_empty():
+		_set_icon_texture(_primary_icons.parser, choice.get("iconTexture"), "parser")
 		_controller.set_parser(String(choice.get("id", "")), int(choice.get("version", 0)), parser_slot_id)
 
 func _on_workshop_selected(index: int) -> void:
@@ -284,6 +294,7 @@ func _on_workshop_selected(index: int) -> void:
 		return
 	var choice := _selected_choice(_workshop_picker)
 	if not choice.is_empty():
+		_set_icon_texture(_primary_icons.workshop, choice.get("iconTexture"), "workshop")
 		_controller.set_workshop(String(choice.get("id", "")), int(choice.get("version", 0)))
 
 func _rebuild_device_section(device_choices: Variant, selected_devices: Variant) -> void:
