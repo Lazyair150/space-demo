@@ -175,7 +175,7 @@ static func compose_skill_binding(binding: Dictionary, definition: SpaceSkillDef
 	var evaluated_order: Dictionary = jar_order
 	if jar_order.has("templateName"):
 		var template_identity: Variant = result.get("jarOrderTemplate", null)
-		if not (template_identity is Dictionary) or String(template_identity.get("templateName", "")) != String(jar_order.get("templateName", "")):
+		if not (template_identity is Dictionary) or String(template_identity.get("templateName", "")) != String(jar_order.get("templateName", "")) or ("%s@%d" % [String(template_identity.get("templateId", "")), int(template_identity.get("templateVersion", 0))]) != String(jar_order.get("templateName", "")):
 			return {}
 		var templates: Variant = jar_world_options.get("orderTemplates", null)
 		if not (templates is Array):
