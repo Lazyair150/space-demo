@@ -229,6 +229,18 @@ public partial class WorldV2ShipHost : Node
         _runtime.UpdateProducerRates(producerName, rates);
         return true;
     }
+    /// <summary>
+    /// Imports a completed batch of empty Jars from the Space-owned energy-stone parser.
+    /// This is a discrete resource handoff, not a time-based Producer rate update.
+    /// </summary>
+    public GDictionary ImportProducedJars(string operationId, GDictionary jarCounts)
+    {
+        if (_state != HostState.Active || _runtime == null ||
+            !_runtime.IsInitialized || _runtime.IsDisposed)
+            return new GDictionary { ["success"] = false, ["error"] = "Ship world is not active" };
+
+        return _runtime.ImportProducedJars(operationId, jarCounts);
+    }
 
     public GArray GetPendingOrderCycleEvents()
     {
