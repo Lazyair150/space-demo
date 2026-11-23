@@ -182,4 +182,14 @@
 - Core PR #60 verify workflow run `45197432477` 已成功，且 run head 与 PR head 完全一致：`063e2b7151ea43e92cf6ba1d627b9c7d50819b5b`。
 - Space Demo 当前 head `d23d1cb061c3eaccac162cd485cb1794be210cc3`；compare `main...world-v2/phase-4.10b-hangar-ui` 为 ahead 555 / behind 0。当前 head 没有关联 workflow run；Godot/.NET/GDScript 验证未执行。
 - 本轮 Space 模板接线后续提交：`f4b19f3`、`04d93cc`、`1e2dfa7`、`c008590`、`00872a4`、`de58577`、`baf41ef`、`8274f9c`、`685442e`、`d23d1cb`。
+- 本次续接后发现：Skill template resolver 原本从 `combination.jar_world_options` 读取模板，但真正的 Core options 是 `build_jar_world_options()` 生成；这会使 typed catalog 与技能 resolver 脱节。已修复 `SpaceHangarCatalogBundleResource`：每个可选世界先通过组合定义完整校验，再物化 World V2 options，之后才解析技能 exact template。
+- 新增 `SpaceCoreOrderTemplateDefinition.gd`：用独立 Resource 表达 `template_id + version + A/B type + requirements`；模板名固定为 `id@version`。需求列表逐项映射 Core 的 shape/liquid，不允许自造 count 语义。
+- `SpaceWorkshopCombinationDefinition` 新增 typed `core_order_templates`，由 `build_jar_world_options()` 生成 Core `orderTemplates`；原始 `jar_world_options` 禁止再塞入非类型化的 `orderTemplates`，避免双重来源。
+- `SpaceWorkshopCombinationCatalog` 对模板资源做深拷贝；变更原始模板或解析副本不会污染已注册的 catalog。
+- Space authoring 校验与 Core 保持一致：模板 exact name 唯一、A/B 类型、shape/liquid 属于当前 World vocab、需求不超过 Core 上限 10、空罐需求必须排在满罐需求之前，且只允许 shape/liquid 字段。
+- 扩展 `SpaceHangarCatalogOwnershipProbe`：模板深拷贝、World options 物化、skill exact template resolve、运行时 `jarOrder` 只携带 templateName、不重复携带 type/requirements、无效 shape、空罐/满罐顺序错误和超 10 条需求均有断言；另验证生产 Hangar bundle 使用物化后的 Core template catalog。
+- 上述 Probe 仅已编写，未在 Godot 执行；Space Demo 没有对应 CI run，不能标为通过。
+- 本次新增提交：`d8829bb`、`325be82`、`0fdcd38`、`0bea5f3`、`804ac33`、`270972d`、`66756fc`、`a348227`、`455e418`、`6eb3741`、`671b94b`。
+- 当前 Space PR #2 head：`671b94b18c440e3f6b24c23a95ebdccf17bf3126`；compare main...branch ahead 581 / behind 0。PR 仍 Draft/Open/未合并。
+- 仍未录入真实生产 workshop combination / skill resources；本轮建立的是可验证的类型化 authoring contract，不创建虚构技能配方或平衡数值。
 - 当前剩余：在真实 WorkshopCombination 配置中录入 versioned Core orderTemplates，并迁移生产 skill definitions；继续核对 MainMenu / Hangar launch route、Protected Target identity 和真实子系统 power metric 契约。
