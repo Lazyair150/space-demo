@@ -141,6 +141,22 @@ static func run() -> bool:
 	var assembled := SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, selection, progression)
 	if assembled == null:
 		return false
+	# A Parser contribution must not leak into the Core workshop Rule Profile.
+	var parser_definition := runtime_catalog.ore_parser_catalog.resolve_definition("demo.parser.precision", 1)
+	if parser_definition == null:
+		return false
+	var original_parser_rules: Array = parser_definition.rule_contributions.duplicate()
+	var unsupported_parser_rule := SpaceRuleContributionDefinition.new()
+	unsupported_parser_rule.rule_id = &"probe.parser.local-rule"
+	unsupported_parser_rule.rule_version = 1
+	unsupported_parser_rule.effect = "ModifyIntensity"
+	unsupported_parser_rule.target = "parser.throughput"
+	unsupported_parser_rule.scope = "parser"
+	parser_definition.rule_contributions = [unsupported_parser_rule]
+	var leaked_profile := SpaceRuleContributionResolver.resolve(generic_assignment_snapshot, runtime_catalog, progression)
+	parser_definition.rule_contributions = original_parser_rules
+	if not leaked_profile.is_empty():
+		return false
 	var frozen_data := assembled.to_dictionary()
 	var frozen := SpaceBattleLoadoutSnapshot.create(frozen_data)
 	if frozen == null or frozen.order_definition_keys().size() != 2:
