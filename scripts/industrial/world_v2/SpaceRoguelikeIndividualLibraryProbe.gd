@@ -25,15 +25,19 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 		return false
 	if skill_pool.validate_effective_power(String(first.definitionId), int(first.definitionVersion), String(first.rarity), 5.5).is_empty():
 		return false
+	if skill_pool.validate_effective_metrics(String(first.definitionId), int(first.definitionVersion), String(first.rarity), {"normalized_strength": 1.1}).is_empty():
+		return false
 	var excluded := library.roll_candidate("skill", rng_a, PackedStringArray(), PackedStringArray(), PackedStringArray(["skill:probe.skills.item@1"]))
 	if bool(excluded.get("success", false)):
 		return false
 	var underpowered := _pool("probe.invalid-low", "skill")
 	underpowered.entries[0].powerScore = 0.1
+	underpowered.entries[0].powerMetrics.normalized_strength = 0.01
 	if underpowered.is_valid():
 		return false
 	var overpowered := _pool("probe.invalid-high", "skill")
 	overpowered.entries[0].powerScore = 9.0
+	overpowered.entries[0].powerMetrics.normalized_strength = 0.9
 	if overpowered.is_valid():
 		return false
 	if bundle != null or state != null:
