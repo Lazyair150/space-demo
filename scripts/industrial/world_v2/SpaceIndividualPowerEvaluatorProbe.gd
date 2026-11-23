@@ -73,9 +73,10 @@ static func _probe_workshop() -> bool:
 		"max_liquids": 8.0,
 		"liquid_staging_capacity": 0.0,
 		"uses_core_staging_fallback": 1.0,
-		"base_mark_count": 1.0,
-		"additional_mark_count": 0.0,
-		"banned_liquid_count": 0.0
+		"base_mark.round": 1.0,
+		"additional_mark.round": 0.0,
+		"ban.water": 0.0,
+		"ban.fuel": 0.0
 	}
 	var model := _model("probe.workshop.power", "workshop", metrics)
 	var result := SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, ["round"], ["water", "fuel"], model)
@@ -103,7 +104,7 @@ static func _probe_workshop() -> bool:
 	var effective_metrics: Dictionary = effective.powerMetrics
 	return float(effective_metrics["max_jars"]) == 6.0 \
 		and float(effective_metrics["max_liquids"]) == 9.0 \
-		and float(effective_metrics["additional_mark_count"]) == 1.0 \
+		and float(effective_metrics["additional_mark.square"]) == 1.0 \
 		and float(effective_metrics["uses_core_staging_fallback"]) == 1.0
 
 static func _probe_skill() -> bool:
@@ -234,7 +235,7 @@ static func _model(id: String, kind: String, metrics: Dictionary) -> SpaceIndivi
 			"maximum": 100000.0,
 			"weight": 1.0
 		}
-		if kind == "workshop" and ["max_jars", "max_liquids", "liquid_staging_capacity"].has(String(key)):
+		if kind == "workshop":
 			dimension["scoringMode"] = "target_value"
 			dimension["targetValue"] = float(metrics[key])
 		else:
