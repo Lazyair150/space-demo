@@ -21,7 +21,8 @@ static func create_entry(slot: SpaceHangarBoardSlotDefinition, choice: Dictionar
 	if slot.component_kind == "workshop":
 		entry["roleId"] = slot.role_id
 	if slot.component_kind == "skill":
-		entry["controlArea"] = String(choice.get("controlArea", ""))
+		# Control area is a property of the Board Slot, not an arbitrary picker choice.
+		entry["controlArea"] = slot.control_area
 	return entry
 
 static func validate(board: SpaceHangarBoardDefinition, assignments: Dictionary, inventory: Dictionary, require_complete: bool = true) -> PackedStringArray:
