@@ -46,11 +46,14 @@ static func append_skill(
 	balance_profile: SpaceSkillBalanceProfile,
 	rarity: String,
 	weight: float,
-	tags: Array = []
+	tags: Array = [],
+	jar_world_options: Dictionary = {}
 ) -> Dictionary:
 	if pool == null or pool.item_kind != "skill":
 		return _failure("skill entry requires a skill pool")
-	var evaluated := SpaceIndividualPowerEvaluator.evaluate_skill(definition, benefit_metrics, balance_context, balance_profile, pool.power_model)
+	var evaluated := SpaceIndividualPowerEvaluator.evaluate_skill(
+		definition, benefit_metrics, balance_context, balance_profile, pool.power_model, jar_world_options
+	)
 	if not bool(evaluated.get("success", false)):
 		return evaluated
 	return _append(pool, definition.skill_id, definition.definition_version, rarity, weight, tags, evaluated, {
