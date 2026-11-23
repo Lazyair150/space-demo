@@ -541,7 +541,7 @@ func _on_restart_pressed() -> void:
 	if not _restart_armed:
 		_restart_armed = true
 		_restart_button.text = "再点一次确认"
-		await get_tree().create_timer(3.0).timeout
+		await get_tree().create_timer(3.0, false).timeout
 		_restart_armed = false
 		_restart_button.text = "重开本关"
 		return
