@@ -7,13 +7,11 @@ static func compose_ship(definition: SpaceShipDefinition, instance: SpaceOwnedPr
 	if not _matches(definition, instance, "ship", String(definition.ship_id if definition != null else &""), definition.definition_version if definition != null else 0):
 		return {}
 	var growth := instance.growth_attributes
-	if not _only_keys(growth, ["stoneProgressRateMultiplierByShape"]):
+	if not _only_keys(growth, ["stoneProgressRateMultiplier"]):
 		return {}
 	var rates := definition.expected_stone_progress_per_second_by_shape.duplicate(true)
-	var multipliers: Variant = growth.get("stoneProgressRateMultiplierByShape", {})
-	if not (multipliers is Dictionary):
-		return {}
-	if not _apply_shape_multipliers(rates, multipliers):
+	var multiplier: Variant = growth.get("stoneProgressRateMultiplier", 1.0)
+	if not _multiply_all(rates, multiplier):
 		return {}
 	return {
 		"definitionId": String(definition.ship_id),
@@ -28,14 +26,14 @@ static func compose_parser(definition: SpaceOreParserDefinition, instance: Space
 	if not definition.is_valid_for_shapes(shapes):
 		return {}
 	var growth := instance.growth_attributes
-	if not _only_keys(growth, ["shapeProcessingRateMultiplierByShape", "progressPerJarMultiplierByShape", "productionPercentageBonus"]):
+	if not _only_keys(growth, ["shapeProcessingRateMultiplier", "progressPerJarMultiplier", "productionPercentageBonus"]):
 		return {}
 	var profile := definition.build_runtime_profile()
 	var rates: Dictionary = profile.shapeProcessingRatePerSecond
 	var progress: Dictionary = profile.progressPerJarByShape
-	if not _apply_shape_multipliers(rates, growth.get("shapeProcessingRateMultiplierByShape", {})):
+	if not _multiply_all(rates, growth.get("shapeProcessingRateMultiplier", 1.0)):
 		return {}
-	if not _apply_shape_multipliers(progress, growth.get("progressPerJarMultiplierByShape", {})):
+	if not _multiply_all(progress, growth.get("progressPerJarMultiplier", 1.0)):
 		return {}
 	var bonus: Variant = growth.get("productionPercentageBonus", 0)
 	if typeof(bonus) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(bonus)):
@@ -53,10 +51,8 @@ static func compose_device(definition: SpaceProductionDeviceDefinition, instance
 	if not _matches(definition, instance, "production_device", String(definition.device_id if definition != null else &""), definition.definition_version if definition != null else 0):
 		return {}
 	var growth := instance.growth_attributes
-	if not _only_keys(growth, ["runtimeNumericAdditions", "runtimeNumericMultipliers"]):
-		return {}
 	var profile := definition.runtime_profile.duplicate(true)
-	if not _apply_numeric_overlay(profile, growth.get("runtimeNumericAdditions", {}), growth.get("runtimeNumericMultipliers", {})):
+	if not _apply_flat_numeric_overlay(profile, growth, "runtimeAdd.", "runtimeMul."):
 		return {}
 	return {
 		"slotId": slot_id,
@@ -108,11 +104,11 @@ static func compose_skill(definition: SpaceSkillDefinition, instance: SpaceOwned
 	if not _matches(definition, instance, "skill", String(definition.skill_id if definition != null else &""), definition.definition_version if definition != null else 0):
 		return null
 	var growth := instance.growth_attributes
-	if not _only_keys(growth, ["effectParameterAdditions", "effectParameterMultipliers"]):
+	if not _only_keys(growth, []):
 		return null
 	var result := definition.duplicate(true) as SpaceSkillDefinition
 	var parameters := result.effect_parameters.duplicate(true)
-	if not _apply_numeric_overlay(parameters, growth.get("effectParameterAdditions", {}), growth.get("effectParameterMultipliers", {})):
+	if not _apply_flat_numeric_overlay(parameters, growth, "effectAdd.", "effectMul."):
 		return null
 	result.effect_parameters = parameters
 	return result
@@ -124,6 +120,16 @@ static func _only_keys(source: Dictionary, allowed: Array) -> bool:
 	for key in source:
 		if not allowed.has(String(key)):
 			return false
+	return true
+
+static func _multiply_all(values: Dictionary, raw_factor: Variant) -> bool:
+	if typeof(raw_factor) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(raw_factor)) or float(raw_factor) < 0.0:
+		return false
+	for key in values:
+		var adjusted := float(values[key]) * float(raw_factor)
+		if not is_finite(adjusted) or adjusted < 0.0 or adjusted > 1000000000.0:
+			return false
+		values[key] = adjusted
 	return true
 
 static func _apply_shape_multipliers(values: Dictionary, multipliers: Variant) -> bool:
@@ -156,5 +162,20 @@ static func _apply_numeric_overlay(target: Dictionary, additions: Variant, multi
 			return false
 		target[key] = float(target[key]) * float(factor)
 		if not is_finite(float(target[key])):
+			return false
+	return true
+
+static func _apply_flat_numeric_overlay(target: Dictionary, growth: Dictionary, addition_prefix: String, multiplier_prefix: String) -> bool:
+	for raw_key in growth:
+		var key := String(raw_key)
+		var prefix := addition_prefix if key.begins_with(addition_prefix) else multiplier_prefix if key.begins_with(multiplier_prefix) else ""
+		if prefix.is_empty():
+			return false
+		var field := key.trim_prefix(prefix)
+		var value: Variant = growth[raw_key]
+		if field.is_empty() or not target.has(field) or typeof(target[field]) not in [TYPE_INT, TYPE_FLOAT] or typeof(value) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(value)):
+			return false
+		target[field] = float(target[field]) + float(value) if prefix == addition_prefix else float(target[field]) * float(value)
+		if not is_finite(float(target[field])):
 			return false
 	return true
