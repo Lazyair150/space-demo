@@ -15,6 +15,9 @@ func _ready() -> void:
     var save_store_probe := SpaceBattleEffectStateStoreProbe.run()
     assert(bool(save_store_probe.get("passed", false)),
         "unified battle checkpoint store probe must pass: " + String(save_store_probe.get("reason", "")))
+    var run_state_probe := SpaceBattleRunStateProbe.run()
+    assert(bool(run_state_probe.get("passed", false)),
+        "transient GameState checkpoint probe must pass: " + String(run_state_probe.get("reason", "")))
     var catalog_probe := SpaceOreParserCatalogProbe.run()
     assert(bool(catalog_probe.get("passed", false)),
         "pre-battle ore parser catalog probe must pass: " + String(catalog_probe.get("reason", "")))
