@@ -203,6 +203,37 @@ public partial class WorldV2RuntimeNode : Node
         return demandId;
     }
 
+    /// <summary>
+    /// Imports completed empty Jars produced by a Space-owned parser. The batch ID is
+    /// idempotent in Jar Core and survives its execution checkpoint.
+    /// </summary>
+    public GDictionary ImportProducedJars(string operationId, GDictionary jarCounts)
+    {
+        if (string.IsNullOrWhiteSpace(operationId))
+            throw new ArgumentException("Production batch ID cannot be empty", nameof(operationId));
+        if (jarCounts == null)
+            throw new ArgumentNullException(nameof(jarCounts));
+
+        var copiedCounts = new System.Collections.Generic.Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var key in jarCounts.Keys)
+        {
+            var shape = key.AsString();
+            if (string.IsNullOrWhiteSpace(shape) || copiedCounts.ContainsKey(shape))
+                throw new ArgumentException("Produced Jar shape keys must be unique non-empty names", nameof(jarCounts));
+            copiedCounts.Add(shape, checked((int)jarCounts[key].AsInt64()));
+        }
+
+        var result = RequireOperationalSession().ImportProducedJars(operationId, copiedCounts);
+        EmitSignal(SignalName.SnapshotChanged);
+        return new GDictionary
+        {
+            ["wasDuplicate"] = result.WasDuplicate,
+            ["submittedJarCount"] = result.SubmittedJarCount,
+            ["storedJarCount"] = result.StoredJarCount,
+            ["discardedJarCount"] = result.DiscardedJarCount
+        };
+    }
+
     public void PauseWorld()
     {
         RequireOperationalSession().PauseWorld();
