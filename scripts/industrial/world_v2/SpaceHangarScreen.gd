@@ -331,7 +331,7 @@ func _render_view_model(view_model: Dictionary) -> void:
 	var devices: Array = inventory.get("deviceChoices", [])
 	var skills: Array = inventory.get("skillChoices", [])
 	var effects: Array = inventory.get("effectChoices", [])
-	_inventory_label.text = "飞船：%d    解析器：%d    工作台组合：%d\n生产设备：%d    技能：%d    效果定义：%d" % [
+	_inventory_label.text = "飞船：%d    解析器：%d    工作区规则：%d\n生产设备：%d    技能：%d    效果定义：%d" % [
 		_array_size(inventory.get("shipChoices", [])),
 		_array_size(inventory.get("parserChoices", [])),
 		_array_size(inventory.get("workshopWorldChoices", inventory.get("workshopChoices", []))),
