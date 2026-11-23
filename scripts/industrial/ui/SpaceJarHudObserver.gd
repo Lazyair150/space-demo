@@ -10,7 +10,7 @@ var _elapsed := 0.0
 var _expanded := false
 var _toggle: Button
 var _panel: PanelContainer
-var _resource_jars: FlowContainer
+var _resource_jars: HFlowContainer
 var _resource_liquids: HBoxContainer
 var _master_box: VBoxContainer
 var _slave_box: VBoxContainer
@@ -61,7 +61,7 @@ func _build() -> void:
 	column.add_child(_status)
 
 	column.add_child(UiKit.title("飞船资源"))
-	_resource_jars = FlowContainer.new()
+	_resource_jars = HFlowContainer.new()
 	_resource_jars.add_theme_constant_override("h_separation", 6)
 	_resource_jars.add_theme_constant_override("v_separation", 6)
 	column.add_child(_resource_jars)
@@ -337,16 +337,8 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 		marks.add_child(_shape_token(String(shape), "基础"))
 	for shape in extra:
 		marks.add_child(_shape_token(String(shape), "附加"))
-	var by_shape := {}
-	var filled_by_shape := {}
-	for jar in jars:
-		if jar is Dictionary:
-			var shape := String(jar.get("shape", ""))
-			by_shape[shape] = int(by_shape.get(shape, 0)) + 1
-			if not String(jar.get("liquid", "")).is_empty():
-				filled_by_shape[shape] = int(filled_by_shape.get(shape, 0)) + 1
-	if not by_shape.is_empty():
-		var jar_row := FlowContainer.new()
+	if not jars.is_empty():
+		var jar_row := HFlowContainer.new()
 		jar_row.add_theme_constant_override("h_separation", 5)
 		jar_row.add_theme_constant_override("v_separation", 5)
 		parent.add_child(jar_row)
@@ -359,6 +351,7 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 				shown += 1
 		if jars.size() > shown:
 			jar_row.add_child(UiKit.label("+%d 只" % (jars.size() - shown), UiKit.FONT_SMALL, UiKit.MUTED))
+
 	var liquid_row := UiKit.vbox(3)
 	parent.add_child(liquid_row)
 	var liquid_capacity := int(workshop.get("maxLiquids", 0))
