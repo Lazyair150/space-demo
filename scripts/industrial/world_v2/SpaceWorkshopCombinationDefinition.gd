@@ -7,7 +7,7 @@ class_name SpaceWorkshopCombinationDefinition
 @export var definition_version: int = 1
 @export var display_name: String = ""
 @export var display_icon: Texture2D
-## World-level options only: shapes, liquids, producers, initial stock and world rates.
+## World-level options only: shapes, liquids, producers, initial stock and world rates. Templates are authored in core_order_templates.
 ## Do not put workshops/masterWorkshopName/slaveWorkshopName in this dictionary.
 @export var jar_world_options: Dictionary = {}
 ## Exact-version Core-owned Jar order templates available in this World V2 vocabulary.
@@ -26,7 +26,7 @@ func get_validation_errors() -> PackedStringArray:
 	for key in ["shapes", "liquids", "producers"]:
 		if not jar_world_options.has(key):
 			errors.append("workshop combination world options are missing " + key)
-	for forbidden_key in ["workshops", "masterWorkshopName", "slaveWorkshopName"]:
+	for forbidden_key in ["workshops", "masterWorkshopName", "slaveWorkshopName", "orderTemplates"]:
 		if jar_world_options.has(forbidden_key):
 			errors.append("workshop combination must author " + forbidden_key + " through the scoped workshop resources")
 	var shapes: Variant = jar_world_options.get("shapes", null)
