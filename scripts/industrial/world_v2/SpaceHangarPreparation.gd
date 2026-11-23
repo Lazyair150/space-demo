@@ -44,6 +44,31 @@ func _failure_snapshot(reason: String) -> SpaceBattleLoadoutSnapshot:
 	push_error("Space Hangar preparation failed: " + reason)
 	return null
 
+func launch_new_battle_from_selection(
+	parent: Node,
+	game_scene: PackedScene,
+	identity: Dictionary,
+	selection: SpaceHangarSelection,
+	commit_callback: Callable
+) -> Dictionary:
+	if parent == null or not parent.is_inside_tree() or game_scene == null:
+		return _failure("Hangar launch parent or combat scene is unavailable")
+	var loadout := build_loadout_from_selection(identity, selection)
+	if loadout == null:
+		return _failure("selected build could not be frozen into a valid battle loadout")
+	var game := game_scene.instantiate()
+	if game == null:
+		return _failure("combat scene could not be instantiated")
+	if not SpaceHangarBattleLauncher.launch_new_battle(parent, game, loadout, commit_callback):
+		if not game.is_inside_tree():
+			game.free()
+		return _failure("combat scene rejected the frozen loadout launch contract")
+	return {
+		"success": true,
+		"loadout": loadout,
+		"loadoutFingerprint": loadout.loadout_fingerprint()
+	}
+
 func build_loadout(
 	identity: Dictionary,
 	ship_id: String,
