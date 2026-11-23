@@ -20,8 +20,7 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 ## Space-side visual identity for the order's principal Jar shape; never sent inside jarOrder.
 @export var primary_shape: StringName = &""
 
-## Space-owned player control assignment and trigger policy.
-## The player chooses one allowed area when equipping this skill.
+## Player-facing control assignment. Passive scheduling is owned by Jar Core.
 @export var allowed_control_areas: Array[String] = ["Active", "Passive"]
 
 ## Space-owned benefit/effect binding. Buff is the first executor, not the only future type.

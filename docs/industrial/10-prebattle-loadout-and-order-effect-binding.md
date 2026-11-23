@@ -11,10 +11,10 @@ A skill definition is versioned and separates these concerns:
 - **Benefit/effect**: Space-owned effect definition, exact version, parameters, target policy, duration, stacking/refresh behavior, and any tick behavior.
 - **Cost**: a Jar order specification: required jar shapes/counts and other supported resource requirements. This is the actual execution cost, not a second manually maintained cost number.
 - **Cooldown**: Jar order cooldown controls when the skill can execute again. It is distinct from an effect's active duration in Space.
-- **Activation control**: player-manual or automatic policy. This decides who requests execution, not how Jar consumes resources.
+- **Activation control**: Active requests are player-manual; Passive admission attempts are scheduled by Jar Core. This decides who initiates execution, not how Jar consumes resources.
 - **Loadout area**: Active or Passive. Active skills are placed in the player's manual-control region; Passive skills are placed in the automatic/AI-controlled region. The region is an equipment/control assignment, not a different Jar order type.
 
-Active and Passive are not synonyms for one-shot and continuous effects. A passive skill may execute discrete Jar cycles when its trigger policy is satisfied; an active skill may apply a timed Buff. A skill's trigger policy must not bypass Jar feasibility, resource consumption, or cooldown.
+Active and Passive are not synonyms for one-shot and continuous effects. A passive skill may execute discrete Jar cycles through Core's Passive scheduler; an active skill may apply a timed effect. Any future battlefield-context trigger policy belongs to Space, but it can only decide whether to submit a request and must not bypass or duplicate Jar feasibility, resource consumption, or cooldown.
 
 ## 2. Battle resource loop
 
@@ -25,7 +25,7 @@ The conceptual loop is:
 1. Player equips skills and assigns Active/Passive control areas before battle.
 2. Ship fights and acquires resources.
 3. Production devices process those resources into Jar resources.
-4. Manual input or passive trigger policy requests a skill execution.
+4. Manual input requests Active demands; Jar Core schedules Passive demands.
 5. Jar checks requirements, reserves/consumes resources, executes the order, and enforces its cooldown.
 6. On successful completion, Space resolves the exact versioned skill effect and applies its benefit.
 7. Effect duration/ticks and Jar cooldown both advance only with Space simulation time.
@@ -39,9 +39,10 @@ Before entering combat, the player configures four connected dimensions:
 1. Ship selection.
 2. Production-device selection.
 3. Workshop-combination selection.
-4. Order selection.
+4. Workshop-local profile roster and Master/Slave pair selection.
+5. Skill selection and Active/Passive assignment.
 
-These are not four unrelated menus. They form one immutable battle build. A ship may constrain compatible devices/workshops/orders; devices determine which Jar shapes can be produced efficiently from battle pickups; workshop combinations determine the processing/reshaping capabilities available to orders; selected orders determine the capabilities/effects the ship can trigger.
+These are not unrelated menus. They form one immutable battle build. A ship may constrain compatible devices, workshop profiles and skills; devices determine which Jar shapes can be produced efficiently from battle pickups; each workshop profile defines its own local marks, Ban and capacities; the Master/Slave pair selects roles while Core enforces their relationship rules; selected skills bind Jar costs to Space combat effects.
 
 The exact compatibility matrix and balance values remain game-design data. The integration must not hardcode one default combination as the universal build.
 
@@ -355,7 +356,9 @@ The Hangar domain layer now has the first exact-version catalog set:
 
 - `SpaceShipDefinition/Catalog`: a ship definition owns its author-authored expected stone-progress rate by Jar shape. Selection fails unless the map covers the selected workshop's exact Jar shape vocabulary. The catalog stores and returns detached definitions.
 - `SpaceProductionDeviceDefinition/Catalog`: versioned non-parser device identity, slot selection, and an opaque device-owned runtime profile. It deliberately does not invent device execution semantics; device-specific behavior and compatibility rules remain owned by the corresponding subsystem. The universal ore parser remains exclusively resolved through `SpaceOreParserCatalog`.
-- `SpaceWorkshopCombinationDefinition/Catalog`: versioned complete Jar World options plus the workshop operation-cost profile used by the skill difficulty evaluator. It requires the core World V2 option keys, a non-empty shape vocabulary and workshop roster, and authored A/B plus liquid-handling costs. It does not supply a default roster or balance values.
+- `SpaceWorkshopDefinition`: exact-version local workshop marks, Ban, Jar capacity, per-liquid capacity and optional aggregate staging capacity.
+- `SpaceWorkshopPairDefinition`: exact-version Master/Slave role assignment only; relationship rules remain Core-owned.
+- `SpaceWorkshopCombinationDefinition/Catalog`: composes world-level Jar options, a roster of local workshop profiles, one Master/Slave pair selection, and the separate operation-cost forecast profile. It validates local marks/Ban against the configured shape/liquid vocabulary and compiles the Core options dictionary.
 - `SpaceHangarLoadoutAssembler`: resolves the exact ship, non-parser device, parser, workshop, skill, balance-profile, and effect versions; derives each skill binding from the selected ship/device/workshop/parser data; then delegates to `SpaceBattleLoadoutSnapshot.create_with_ore_parser` for the single immutable fingerprinted snapshot.
 
 The assembler accepts the stable battle/loadout identity from its caller and does not generate IDs, select defaults, or silently substitute newer catalog versions. Any unresolved dependency, unsupported shape, duplicate slot/order key, or failed skill balance binding rejects the whole build before a battle Runtime is created.
