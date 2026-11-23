@@ -21,6 +21,10 @@ static func run() -> bool:
 		return false
 	if float(first.powerScore) < float(first.powerBand.minimum) or float(first.powerScore) > float(first.powerBand.maximum):
 		return false
+	if not skill_pool.validate_effective_power(String(first.definitionId), int(first.definitionVersion), String(first.rarity), 2.5).is_empty():
+		return false
+	if skill_pool.validate_effective_power(String(first.definitionId), int(first.definitionVersion), String(first.rarity), 5.5).is_empty():
+		return false
 	var excluded := library.roll_candidate("skill", rng_a, PackedStringArray(), PackedStringArray(), PackedStringArray(["skill:probe.skills.item@1"]))
 	if bool(excluded.get("success", false)):
 		return false
