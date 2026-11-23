@@ -89,7 +89,8 @@ static func assemble(
 			ship_resource_profile,
 			parser_profile.progressPerJarByShape,
 			expected_battle_duration_logical_milli,
-			effect_catalog
+			effect_catalog,
+			jar_options
 		)
 		if binding.is_empty():
 			return _reject("skill could not be bound against the selected build: " + order_key)
