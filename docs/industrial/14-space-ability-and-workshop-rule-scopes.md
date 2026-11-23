@@ -139,3 +139,38 @@ Space ownership metadata is deliberately kept outside Jar Core's workshop dictio
 Skill growth can change effect parameters and benefit dimensions independently. The resulting benefit profile is re-evaluated by `SpaceSkillBalanceModel` against the exact Jar order and build context. If the grown effect becomes undercosted relative to its authored Jar requirements, loadout assembly rejects it. The progression layer does not fabricate extra Jar requirements: those must come from the skill's authored Jar order/template contract.
 
 No production curve values, XP rewards, level caps, or final balance progression have been invented in code. The engine supports exact-version curves and subsystem adapters, but production content still needs authored curve Resources and progression rewards chosen by game design. This is a deliberate separation between executable mechanics and balance data.
+
+
+## Parser runtime ownership and exact instance identity (2026-11-24)
+
+The ore parser is already a Space-owned finite-input production runtime; it is not a missing Core time-driven Producer. Its established pipeline is:
+
+- Energy-stone pickups carry stable pickup IDs, configured Jar-shape identity, and finite volume.
+- Space's `SpaceOreParserRuntime` maintains independent per-shape FIFO input, fixed-point rate remainders, and sub-Jar progress.
+- The parser consumes only acquired finite volume. A complete threshold creates a pending batch with a stable operation ID.
+- `SpaceOreParserJarIngress` submits the batch through `WorldV2ShipHost.ImportProducedJars`.
+- Jar Core admits produced empty Jars into its central warehouse and owns warehouse capacity, overflow discard, operation-ID deduplication, and all downstream Jar/workshop rules.
+- Space acknowledges a batch only after Core confirms import. A lost receipt is retried with the same operation ID.
+- Parser and Jar consume the same Host-authorized whole-millisecond delta; parser processing/import occurs before Jar advances by that exact delta.
+- The coordinated checkpoint keeps parser queues/progress/outbox, pickup identities and RNG, Jar resource-ledger receipts, Host clock remainder, and Space run state aligned.
+
+### Exact Owned Instance identity correction
+
+The battle initializer previously constructed the parser runtime ID from `shipWorldId + parser Definition ID`. That made two copies of one Definition indistinguishable at the runtime identity boundary, even though their progression snapshots were independent.
+
+The initializer now derives the runtime identity from `shipWorldId + exact Owned Instance ID` when the frozen parser profile contains `ownedInstance`. It validates item kind and exact Definition ID/version before accepting that identity. Definition-only development fixtures retain an explicit stable fallback identity; production Hangar still requires Owned Instances.
+
+The parser runtime probe now covers:
+- two copies of the same exact Definition resolve to different runtime identities;
+- a mismatched Owned Instance Definition is rejected;
+- Definition-only development identity remains explicit and stable.
+
+This identity is stored in parser checkpoint state and seeds the parser operation-ID namespace, so restore and Core import deduplication remain bound to the installed parser copy.
+
+### Core scope boundary and multi-parser restriction
+
+- Parser execution remains Space-owned. Core receives only completed Jar batches through the discrete warehouse import API; it does not receive stone queues or parser progress.
+- Core's current Board Rule Profile consumer remains workshop-only. Parser/Skill/Production Device contributions must not be passed into a workshop RuleContext or silently ignored. The current Space resolver still produces a single Core-facing profile, so non-workshop contributions remain rejected until consumer-specific profiles are split.
+- The Board may describe additional decomposition slots, but the current runtime adapter and battle Game own exactly one parser runtime. Multi-parser requires deterministic pickup routing, independent per-instance queues/progress/outboxes/checkpoints, update ordering, and central-warehouse settlement before the count gate can be relaxed.
+
+The matching Core contract is documented in `docs/world-v2/parser-board-slot-runtime-boundary.md` in the Jar Core repository. The identity code and Probe are authored; Godot execution is not claimed.
