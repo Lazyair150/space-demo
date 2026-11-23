@@ -43,7 +43,9 @@ func build_selection_inventory() -> Dictionary:
 					"id": String(definition.ship_id),
 					"version": definition.definition_version,
 					"label": definition.display_name,
-					"iconTexture": definition.display_icon
+					"iconTexture": definition.display_icon,
+					"hullTexture": definition.display_hull_texture,
+					"displayAnchors": _build_display_anchor_inventory(definition.display_anchors)
 				})
 	if production_device_catalog != null:
 		for definition in production_device_catalog.definitions:
@@ -101,3 +103,19 @@ func build_selection_inventory() -> Dictionary:
 		"skillChoices": skills,
 		"effectChoices": effects
 	}
+
+
+func _build_display_anchor_inventory(anchors: Array[SpaceShipDisplayAnchor]) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for anchor in anchors:
+		if anchor == null:
+			continue
+		result.append({
+			"anchorId": String(anchor.anchor_id),
+			"logicalSlotId": anchor.logical_slot_id,
+			"componentKind": anchor.component_kind,
+			"normalizedPosition": anchor.normalized_position,
+			"rotationDegrees": anchor.rotation_degrees,
+			"iconScale": anchor.icon_scale
+		})
+	return result
