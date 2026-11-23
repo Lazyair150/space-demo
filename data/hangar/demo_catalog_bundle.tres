@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="SpaceHangarCatalogBundleResource" load_steps=36 format=3]
+[gd_resource type="Resource" script_class="SpaceHangarCatalogBundleResource" load_steps=37 format=3]
 
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceHangarCatalogBundleResource.gd" id="1_bundle"]
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceShipCatalog.gd" id="2_ship_catalog"]
@@ -111,13 +111,32 @@ core_order_templates = Array[ExtResource("11_order_template")]([SubResource("Off
 operation_cost_by_order_type = {"A": 1.0, "B": 2.0}
 liquid_handling_operation_cost = 0.5
 
+[sub_resource type="Resource" script_class="SpaceWorkshopCombinationDefinition" id="DeepFieldWorld"]
+script = ExtResource("9_workshop_world")
+combination_id = &"demo.world.deep_field"
+definition_version = 1
+display_name = "深空采集规则板"
+jar_world_options = {
+"shapes": ["圆罐", "方罐", "三角罐", "长条罐", "六边罐"],
+"liquids": ["冷却液", "燃料"],
+"producers": [{"name": "深空压缩阵列", "rates": {"圆罐": 0.7, "方罐": 0.9, "三角罐": 1.0, "长条罐": 0.8, "六边罐": 0.6}}],
+"liquidProductionRates": {"冷却液": 0.1, "燃料": 0.2},
+"initialLiquidStock": {"冷却液": 8, "燃料": 12},
+"jarFlowRatePerLogicalTime": 0.9,
+"liquidFlowRatePerLogicalTime": 1.1,
+"executionLogicalTimePerUnit": 1000
+}
+core_order_templates = Array[ExtResource("11_order_template")]([SubResource("OffenseOrderTemplate"), SubResource("ReconOrderTemplate")])
+operation_cost_by_order_type = {"A": 1.25, "B": 2.5}
+liquid_handling_operation_cost = 0.75
+
 [sub_resource type="Resource" script_class="SpaceWorkshopCatalog" id="GlobalWorkshopCatalog"]
 script = ExtResource("16_global_workshop_catalog")
 definitions = Array[ExtResource("10_workshop_definition")]([SubResource("WorkshopAlpha"), SubResource("WorkshopBeta")])
 
 [sub_resource type="Resource" script_class="SpaceWorkshopCombinationCatalog" id="WorkshopCatalog"]
 script = ExtResource("8_workshop_catalog")
-definitions = Array[ExtResource("9_workshop_world")]([SubResource("DemoWorld")])
+definitions = Array[ExtResource("9_workshop_world")]([SubResource("DemoWorld"), SubResource("DeepFieldWorld")])
 
 [sub_resource type="Resource" script_class="SpaceSkillDefinition" id="StarterSkill"]
 script = ExtResource("12_skill_definition")
