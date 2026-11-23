@@ -39,7 +39,8 @@ func _build() -> void:
 
 	_panel = UiKit.panel("JarObserverPanel", UiKit.PANEL)
 	_panel.position = Vector2(20, 106)
-	_panel.custom_minimum_size = Vector2(420, 0)
+	_panel.custom_minimum_size = Vector2(460, 360)
+	_panel.size = Vector2(460, 360)
 	_panel.visible = false
 	add_child(_panel)
 
@@ -154,22 +155,30 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 	for shape in extra:
 		marks.add_child(_shape_token(String(shape), "附加"))
 	var by_shape := {}
+	var filled_by_shape := {}
 	for jar in jars:
 		if jar is Dictionary:
 			var shape := String(jar.get("shape", ""))
 			by_shape[shape] = int(by_shape.get(shape, 0)) + 1
+			if not String(jar.get("liquid", "")).is_empty():
+				filled_by_shape[shape] = int(filled_by_shape.get(shape, 0)) + 1
 	if not by_shape.is_empty():
 		var jar_row := UiKit.hbox(6)
 		parent.add_child(jar_row)
 		for shape in by_shape:
-			jar_row.add_child(_shape_token(String(shape), "×%d" % int(by_shape[shape])))
+			var filled := int(filled_by_shape.get(shape, 0))
+			var detail := "×%d · 装液%d" % [int(by_shape[shape]), filled]
+			jar_row.add_child(_shape_token(String(shape), detail))
 	var liquid_row := UiKit.hbox(8)
 	parent.add_child(liquid_row)
 	for liquid in liquids:
 		liquid_row.add_child(UiKit.label("%s %d / %d" % [String(liquid), int(liquids[liquid]), int(workshop.get("maxLiquids", 0))], UiKit.FONT_SMALL, UiKit.TEXT))
 	var bans: Array = workshop.get("ban", [])
 	if not bans.is_empty():
-		parent.add_child(UiKit.label("禁令：%s" % "、".join(PackedStringArray(bans)), UiKit.FONT_SMALL, UiKit.WARN))
+		var ban_names: Array[String] = []
+		for ban in bans:
+			ban_names.append(String(ban))
+		parent.add_child(UiKit.label("禁令：%s" % "、".join(ban_names), UiKit.FONT_SMALL, UiKit.WARN))
 
 func _render_demands(raw_demands: Variant, raw_sessions: Variant) -> void:
 	UiKit.clear_children(_demands_box)
