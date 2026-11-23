@@ -12,6 +12,9 @@ const ITEM_KINDS := ["ship", "ore_parser", "production_device", "workshop", "ski
 @export var level: int = 1
 @export var experience: int = 0
 @export var progression_revision: int = 1
+## Exact curve asset used for the latest calculated growth snapshot; empty/0 means not curve-calculated yet.
+@export var growth_curve_id: StringName = &""
+@export var growth_curve_version: int = 0
 ## Space-owned additive/multiplicative growth data. Interpretation is defined by the owning item subsystem.
 @export var growth_attributes: Dictionary = {}
 
@@ -25,6 +28,8 @@ func get_validation_errors() -> PackedStringArray:
 		errors.append("owned instance requires an exact definition identity/version")
 	if level <= 0 or experience < 0 or progression_revision <= 0:
 		errors.append("owned instance progression counters are invalid")
+	if (growth_curve_id == &"" and growth_curve_version != 0) or (growth_curve_id != &"" and growth_curve_version <= 0):
+		errors.append("growth curve identity/version must be both absent or exact and positive")
 	if not _is_finite_tree(growth_attributes):
 		errors.append("owned instance growth_attributes must contain only finite numeric values, strings, booleans, arrays, or dictionaries")
 	return errors
@@ -40,6 +45,8 @@ func build_frozen_snapshot() -> Dictionary:
 		"level": level,
 		"experience": experience,
 		"progressionRevision": progression_revision,
+		"growthCurveId": String(growth_curve_id),
+		"growthCurveVersion": growth_curve_version,
 		"growthAttributes": growth_attributes.duplicate(true)
 	}
 
