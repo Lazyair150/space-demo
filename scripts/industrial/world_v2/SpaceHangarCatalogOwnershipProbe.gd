@@ -168,7 +168,7 @@ static func run() -> bool:
 	)
 	if resolved_template_order.is_empty() or String(resolved_template_order.type) != "B" or resolved_template_order.requirements.size() != 3:
 		return false
-	if int(resolved_template_order.requirements.count({"shape": "round"})) < 0:
+	if String(resolved_template_order.requirements[0].shape) != "round" or String(resolved_template_order.requirements[1].liquid) != "other-liquid" or String(resolved_template_order.requirements[2].shape) != "square":
 		return false
 	var template_runtime_order := template_skill.build_jar_order("Active")
 	if template_runtime_order.has("type") or template_runtime_order.has("requirements") or String(template_runtime_order.templateName) != "probe.offense@1":
@@ -571,6 +571,18 @@ static func run() -> bool:
 	owned_hangar_bundle.effect_definitions = [effect]
 	if owned_hangar_bundle.create_runtime_bundle() == null:
 		return false
+
+	var template_hangar_bundle := SpaceHangarCatalogBundleResource.new()
+	template_hangar_bundle.ship_catalog = ships
+	template_hangar_bundle.production_device_catalog = devices
+	template_hangar_bundle.ore_parser_catalog = parsers
+	template_hangar_bundle.workshop_combination_catalog = workshops
+	template_hangar_bundle.skill_definitions = [template_skill]
+	template_hangar_bundle.ability_shape_profile = ability_shapes
+	template_hangar_bundle.balance_profile = SpaceSkillBalanceProfile.new()
+	template_hangar_bundle.effect_definitions = [effect]
+	if template_hangar_bundle.create_runtime_bundle() == null:
+		return false # Production bundle must resolve the materialized per-world Core template catalog.
 	var hangar_owned_state := SpacePlayerProgressionState.new()
 	hangar_owned_state.player_id = &"probe.hangar-player"
 	var owned_ship := SpaceOwnedProgressionInstance.new()
