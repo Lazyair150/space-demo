@@ -4,7 +4,7 @@
 
 ## 依赖
 
-当前依赖 jar-system-dotnet 的 World v2 Bridge，生产率入口正在 PR #57（Draft，尚未合并）；PR #57 以 PR #55 为基础，PR #55 又依赖 PR #54。三个 PR 均未合并。
+当前依赖 jar-system-dotnet 的 World v2 Bridge：PR #58 提供离散原石解析产出导入，基于 PR #57；PR #57 基于 PR #55，PR #55 又依赖 PR #54。PR #54/#55/#57/#58 均保持 Draft，尚未合并。
 
 本阶段使用两个并列仓库的本地工作副本：
 
@@ -13,7 +13,7 @@
     └── jar-system-dotnet/
         └── hosts/godot/WorldV2Bridge/
 
-jar-system-dotnet 工作副本需要包含 PR #57 的 world-v2/phase-4.11a-space-production-ingress-v2 分支内容。space-demo 的 space-demo.csproj 通过相对路径引用 Bridge，不引用旧 Core 项目路径。
+jar-system-dotnet 工作副本需要包含 PR #58 的 world-v2/phase-4.11b-space-produced-jar-import 分支内容（该分支已包含 PR #57 的生产率入口及其上游依赖）。space-demo 的 space-demo.csproj 通过相对路径引用 Bridge，不引用旧 Core 项目路径。
 
 ## 4.10a 职责
 
@@ -355,3 +355,26 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `SpaceOreParserRuntimeProbe.gd` 覆盖百分比吞吐、并行独立进度、重复拾取去重、身份冲突、输出批次检查点和单次确认。
 
 当前仍缺少实际 Hangar/敌机掉落资产对解析器配置与拾取入口的连接；没有填写任何正式生产百分比、速率、体积或进度阈值。Godot 4.7.1 .NET 对本轮最新 C#/GDScript 的实际编译和运行尚未完成，不能把静态提交视为已通过本机验收。
+
+
+### 4.14c Space 原石解析器到 Jar 仓库端到端探针
+
+新增场景：`scenes/industrial/SpaceOreParserJarIngressProbe.tscn`。
+
+运行方式：Godot 4.7.1 .NET 打开该场景，运行当前场景（F6）。
+
+该探针使用纯合成数据，不代表正式掉落或平衡数值。它会：
+
+1. 从 sandbox WorldV2Options 初始化独立 `WorldV2ShipHost`。
+2. 初始化一个版本化通用解析器，接收一颗圆罐类型原石。
+3. 推进 1000 个逻辑毫秒，生成一只完整空圆罐的待交付批次。
+4. 首次调用 Jar `ImportProducedJars`，模拟“Jar 已提交，但 Space 未收到/未保存回执”的不确定响应。
+5. 保留解析器 outbox 中的同一 operationId，再次 flush；Jar 应返回持久化重复回执，Space 随后确认并清除待交付批次。
+6. 验证中央仓库只增加一只 Jar，主台库存没有被直接注入。
+
+预期输出：
+```text
+[SpaceOreParserJarIngressProbe] passed parsed=1 stored=1 retry_duplicate=1 workshop_bypass=0
+```
+
+该探针覆盖跨域的“有限原石输入 → Space 进度 → 整 Jar 批次 → Jar 中央仓库”链路及不确定响应重试。它不替代实际 Godot 4.7.1 .NET 编译/运行，也不构成正式 Hangar、敌机掉落资产或战斗存档接线验收。
