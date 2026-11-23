@@ -352,7 +352,9 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `SpaceOreParserJarIngress.gd` 通过 `WorldV2ShipHost.ImportProducedJars` 提交批次；Jar 的资源账本持久去重，中央仓库容量溢出按 Jar Core 规则丢弃。
 - `WorldV2ShipHost.AccumulateSpaceSimulationDelta` 是唯一的毫秒余数持有者。Game 先取出本步精确整数毫秒，让 Space 解析器处理并提交 Jar，再把同一整数毫秒交给 Jar Core 推进；避免两套时间余数逐步漂移。
 - `Game.gd` 暴露 `ingest_energy_stone`、`capture_ore_parser_state`，并在战斗步进前推进解析器、提交待产 Jar。解析器检查点包括拾取身份、待解析体积、独立进度、速率余数和未确认输出批次。
-- `SpaceOreParserRuntimeProbe.gd` 覆盖百分比吞吐、并行独立进度、重复拾取去重、身份冲突、输出批次检查点和单次确认。
+- `SpaceOreParserRuntimeProbe.gd` 覆盖百分比吞吐、并行独立进度、重复拾取去重、身份冲突、固定点分步一致性、输出批次检查点和单次确认。
+- `SpaceSkillBuildContextEvaluatorProbe.gd` 验证 50% / 100% 是解析器自身吞吐修正，不会把一个形状的产量份额分给另一个形状。
+- `SpaceOreParserJarIngressProbe.gd` 与 `scenes/industrial/SpaceOreParserJarIngressProbe.tscn` 验证 Space 原石解析、Jar 离散导入、模拟丢失回执后的幂等重试，以及不会直接注入主台。
 
 当前仍缺少实际 Hangar/敌机掉落资产对解析器配置与拾取入口的连接；没有填写任何正式生产百分比、速率、体积或进度阈值。Godot 4.7.1 .NET 对本轮最新 C#/GDScript 的实际编译和运行尚未完成，不能把静态提交视为已通过本机验收。
 
