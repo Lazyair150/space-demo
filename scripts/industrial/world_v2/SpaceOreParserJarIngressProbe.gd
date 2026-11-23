@@ -24,6 +24,8 @@ func _ready() -> void:
     var drop_profile_probe := SpaceEnergyStoneDropProfileProbe.run()
     assert(bool(drop_profile_probe.get("passed", false)),
         "energy-stone drop profile probe must pass: " + String(drop_profile_probe.get("reason", "")))
+    var hangar_catalog_probe := SpaceHangarCatalogOwnershipProbe.run()
+    assert(hangar_catalog_probe, "Hangar exact-version catalogs must isolate authoring and resolved definitions")
     var skill_catalog_probe := SpaceSkillCatalogProbe.run()
     assert(skill_catalog_probe, "versioned skill catalog must isolate registered and resolved Resources")
     var build_context_probe := SpaceSkillBuildContextEvaluatorProbe.run()
