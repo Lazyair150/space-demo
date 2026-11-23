@@ -15,6 +15,11 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 	if ability_shape_profile == null or not ability_shape_profile.is_valid():
 		push_error("Hangar bundle requires a valid ability category to Jar shape profile")
 		return null
+	if workshop_combination_catalog != null:
+		for combination in workshop_combination_catalog.definitions:
+			if combination == null or not ability_shape_profile.validate_shape_vocabulary(combination.jar_world_options.get("shapes", [])).is_empty():
+				push_error("Ability category shape mapping must exist in every selectable Jar world vocabulary")
+				return null
 	var skill_catalog := SpaceSkillCatalog.new()
 	for definition in skill_definitions:
 		if definition == null or not ability_shape_profile.validate_skill(definition).is_empty():
