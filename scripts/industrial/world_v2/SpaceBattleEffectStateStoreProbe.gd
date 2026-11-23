@@ -17,6 +17,7 @@ static func run() -> Dictionary:
         "loadoutIdentity": identity.duplicate(true),
         "jarExecutionCheckpointJson": "{\"schemaVersion\":2,\"kind\":\"world-v2-execution-checkpoint\"}",
         "spaceClockRemainderMilli": 0.375,
+        "runState": {"schemaVersion": 1, "score": 250, "wave": 3, "segment": "精英"},
         "oreParserState": {
             "schemaVersion": 2,
             "parserRuntime": {"schemaVersion": 2},
