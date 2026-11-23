@@ -27,6 +27,8 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 @export var effect_definition_id: StringName = &""
 @export var effect_definition_version: int = 1
 @export var effect_parameters: Dictionary = {}
+## Explicit effect-parameter -> benefit-dimension mapping used when growth changes balance-relevant values.
+@export var effect_parameter_benefit_dimensions: Dictionary = {}
 
 func is_valid() -> bool:
 	if skill_id == &"" or definition_version <= 0 or display_name.strip_edges().is_empty():
@@ -44,6 +46,9 @@ func is_valid() -> bool:
 			return false
 	if effect_definition_id == &"" or effect_definition_version <= 0:
 		return false
+	for parameter_key in effect_parameter_benefit_dimensions:
+		if not effect_parameters.has(parameter_key) or String(parameter_key).strip_edges().is_empty() or String(effect_parameter_benefit_dimensions[parameter_key]).strip_edges().is_empty():
+			return false
 	if primary_shape == &"":
 		return false
 	var primary_shape_found := false
