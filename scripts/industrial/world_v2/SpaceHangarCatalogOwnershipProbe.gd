@@ -306,20 +306,20 @@ static func run() -> bool:
 	var upgraded_parser := progression.resolve_instance("probe.parser.instance.a")
 	if upgraded_parser == null or stale_parser_copy == null:
 		return false
-	if not upgraded_parser.apply_progression(250, 2, {"productionRateMultiplier": 1.25}):
+	if not upgraded_parser.apply_progression(250, 2, {"shapeProcessingRateMultiplier": 1.25}):
 		return false
 	if not progression.replace_instance_progression(upgraded_parser):
 		return false
 	var frozen_parser := progression.build_owned_instance_snapshot("probe.parser.instance.a")
 	if int(frozen_parser.get("level", 0)) != 2 or int(frozen_parser.get("progressionRevision", 0)) != 2:
 		return false
-	if float(frozen_parser.growthAttributes.get("productionRateMultiplier", 0.0)) != 1.25:
+	if float(frozen_parser.growthAttributes.get("shapeProcessingRateMultiplier", 0.0)) != 1.25:
 		return false
 	var untouched_parser := progression.resolve_instance("probe.parser.instance.b")
 	if untouched_parser == null or untouched_parser.level != 1 or not untouched_parser.growth_attributes.is_empty():
 		return false # Two copies of one definition progress independently.
-	upgraded_parser.growth_attributes.productionRateMultiplier = 9.0
-	if float(progression.build_owned_instance_snapshot("probe.parser.instance.a").growthAttributes.productionRateMultiplier) != 1.25:
+	upgraded_parser.growth_attributes.shapeProcessingRateMultiplier = 9.0
+	if float(progression.build_owned_instance_snapshot("probe.parser.instance.a").growthAttributes.shapeProcessingRateMultiplier) != 1.25:
 		return false # Resolved instances and frozen snapshots are detached copies.
 	if progression.replace_instance_progression(stale_parser_copy):
 		return false # Progression revisions prevent stale overwrites.
@@ -350,12 +350,12 @@ static func run() -> bool:
 	parser_curve.max_level = 3
 	parser_curve.experience_threshold_by_level = {"2": 100, "3": 300}
 	parser_curve.attribute_keyframes = {
-		"productionRateMultiplier": [
+		"shapeProcessingRateMultiplier": [
 			{"level": 1, "value": 1.0},
 			{"level": 2, "value": 1.25},
 			{"level": 3, "value": 1.6}
 		],
-		"batchCapacityBonus": [
+		"progressPerJarMultiplier": [
 			{"level": 1, "value": 0.0},
 			{"level": 3, "value": 4.0}
 		]
@@ -368,22 +368,22 @@ static func run() -> bool:
 	var resolved_curve := curve_catalog.resolve_definition("ore_parser", "probe.parser-growth", 2)
 	if resolved_curve == null or not curve_catalog.contains_definition("ore_parser", "probe.parser-growth", 2):
 		return false
-	resolved_curve.attribute_keyframes.productionRateMultiplier[1].value = 99.0
-	if absf(float(curve_catalog.resolve_definition("ore_parser", "probe.parser-growth", 2).attribute_keyframes.productionRateMultiplier[1].value) - 1.25) > 0.000001:
+	resolved_curve.attribute_keyframes.shapeProcessingRateMultiplier[1].value = 99.0
+	if absf(float(curve_catalog.resolve_definition("ore_parser", "probe.parser-growth", 2).attribute_keyframes.shapeProcessingRateMultiplier[1].value) - 1.25) > 0.000001:
 		return false # Curve catalog returns detached immutable-by-interface copies.
 	if parser_curve.level_for_experience(99) != 1 or parser_curve.level_for_experience(100) != 2 or parser_curve.level_for_experience(300) != 3:
 		return false
 	var level_two_growth := parser_curve.build_growth_attributes(2)
-	if absf(float(level_two_growth.productionRateMultiplier) - 1.25) > 0.000001:
+	if absf(float(level_two_growth.shapeProcessingRateMultiplier) - 1.25) > 0.000001:
 		return false
-	if absf(float(level_two_growth.batchCapacityBonus) - 2.0) > 0.000001:
+	if absf(float(level_two_growth.progressPerJarMultiplier) - 2.0) > 0.000001:
 		return false # Linear interpolation between authored keyframes.
 	if not SpaceProgressionGrowthService.apply_to_player_state(progression, "probe.parser.instance.b", parser_curve, 260):
 		return false
 	var curve_upgraded := progression.resolve_instance("probe.parser.instance.b")
 	if curve_upgraded == null or curve_upgraded.level != 2 or curve_upgraded.experience != 260:
 		return false
-	if absf(float(curve_upgraded.growth_attributes.productionRateMultiplier) - 1.25) > 0.000001:
+	if absf(float(curve_upgraded.growth_attributes.shapeProcessingRateMultiplier) - 1.25) > 0.000001:
 		return false
 	if curve_upgraded.growth_curve_id != parser_curve.curve_id or curve_upgraded.growth_curve_version != parser_curve.definition_version:
 		return false # The exact curve version is persisted with the calculated result.
@@ -402,4 +402,63 @@ static func run() -> bool:
 	invalid_curve.experience_threshold_by_level["3"] = 90
 	if invalid_curve.get_validation_errors().is_empty():
 		return false # Cumulative XP thresholds must strictly increase.
+
+	# Each subsystem interprets only its own growth attribute contract.
+	var ship_growth_instance := SpaceOwnedProgressionInstance.new()
+	ship_growth_instance.instance_id = &"probe.ship.growth"
+	ship_growth_instance.item_kind = "ship"
+	ship_growth_instance.definition_id = ship.ship_id
+	ship_growth_instance.definition_version = ship.definition_version
+	ship_growth_instance.growth_attributes = {"stoneProgressRateMultiplier": 1.5}
+	var composed_ship := SpaceProgressionRuntimeProfileComposer.compose_ship(ships.resolve_definition("probe.ship", 2), ship_growth_instance)
+	if composed_ship.is_empty() or absf(float(composed_ship.shipResourceProfile.expectedStoneProgressPerSecondByShape.round) - 3.0) > 0.000001:
+		return false
+
+	var composed_parser := SpaceProgressionRuntimeProfileComposer.compose_parser(
+		parsers.resolve_definition("probe.parser", 1), curve_upgraded, ["round"]
+	)
+	if composed_parser.is_empty() or absf(float(composed_parser.shapeProcessingRatePerSecond.round) - 1.25) > 0.000001:
+		return false
+	if absf(float(composed_parser.progressPerJarByShape.round) - 2.0) > 0.000001:
+		return false
+
+	var workshop_growth_instance := SpaceOwnedProgressionInstance.new()
+	workshop_growth_instance.instance_id = &"probe.workshop.growth"
+	workshop_growth_instance.item_kind = "workshop"
+	workshop_growth_instance.definition_id = local_master.workshop_id
+	workshop_growth_instance.definition_version = local_master.definition_version
+	workshop_growth_instance.growth_attributes = {"maxJarsBonus": 2, "additionalMark.square": 1}
+	var composed_workshop := SpaceProgressionRuntimeProfileComposer.compose_workshop(local_master, workshop_growth_instance, ["round", "square"])
+	if composed_workshop.is_empty() or int(composed_workshop.maxJars) != 10 or not composed_workshop.additionalMarks.has("square"):
+		return false
+	if not composed_workshop.ban.has("blocked-liquid") or int(composed_workshop.maxLiquids) != 5:
+		return false
+
+	var device_growth_instance := SpaceOwnedProgressionInstance.new()
+	device_growth_instance.instance_id = &"probe.device.growth"
+	device_growth_instance.item_kind = "production_device"
+	device_growth_instance.definition_id = device.device_id
+	device_growth_instance.definition_version = device.definition_version
+	device_growth_instance.growth_attributes = {"runtimeMul.throughput": 1.5}
+	var device_for_growth := device.duplicate(true) as SpaceProductionDeviceDefinition
+	device_for_growth.runtime_profile = {"throughput": 2.0}
+	var composed_device := SpaceProgressionRuntimeProfileComposer.compose_device(device_for_growth, device_growth_instance, "slot-growth")
+	if composed_device.is_empty() or absf(float(composed_device.deviceRuntimeProfile.throughput) - 3.0) > 0.000001:
+		return false
+
+	var skill_for_growth := skill.duplicate(true) as SpaceSkillDefinition
+	skill_for_growth.effect_parameters = {"damage": 10.0}
+	var skill_growth_instance := SpaceOwnedProgressionInstance.new()
+	skill_growth_instance.instance_id = &"probe.skill.growth"
+	skill_growth_instance.item_kind = "skill"
+	skill_growth_instance.definition_id = skill.skill_id
+	skill_growth_instance.definition_version = skill.definition_version
+	skill_growth_instance.growth_attributes = {"effectMul.damage": 1.2}
+	var composed_skill := SpaceProgressionRuntimeProfileComposer.compose_skill(skill_for_growth, skill_growth_instance)
+	if composed_skill == null or absf(float(composed_skill.effect_parameters.damage) - 12.0) > 0.000001:
+		return false
+	var cross_subsystem_growth := skill_growth_instance.duplicate(true) as SpaceOwnedProgressionInstance
+	cross_subsystem_growth.growth_attributes = {"maxJarsBonus": 2}
+	if SpaceProgressionRuntimeProfileComposer.compose_skill(skill_for_growth, cross_subsystem_growth) != null:
+		return false
 	return true
