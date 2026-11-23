@@ -45,21 +45,31 @@ func set_workshop(definition_id: String, version: int, master_instance_id: Strin
 	if _find_choice_in(world_choices, definition_id, version).is_empty():
 		return false
 	var world_key := definition_id + "@" + str(version)
-	var master := _find_workshop_instance(master_instance_id, world_key)
-	var slave := _find_workshop_instance(slave_instance_id, world_key)
-	if master.is_empty() or slave.is_empty() or master_instance_id == slave_instance_id:
+	var master := _find_workshop_instance(master_instance_id, world_key) if not master_instance_id.is_empty() else {}
+	var slave := _find_workshop_instance(slave_instance_id, world_key) if not slave_instance_id.is_empty() else {}
+	if not master_instance_id.is_empty() and master.is_empty():
+		master_instance_id = ""
+	if not slave_instance_id.is_empty() and slave.is_empty():
+		slave_instance_id = ""
+	if not master_instance_id.is_empty() and master_instance_id == slave_instance_id:
 		return false
 	var master_slot := _slot_for_role("master")
 	var slave_slot := _slot_for_role("slave")
-	if master_slot.is_empty() or slave_slot.is_empty():
+	if master_slot == null or slave_slot == null:
 		return false
 	var next := _assignments.duplicate(true)
-	var master_entry := SpaceHangarBoardAssignment.create_entry(master_slot, master)
-	var slave_entry := SpaceHangarBoardAssignment.create_entry(slave_slot, slave)
-	if master_entry.is_empty() or slave_entry.is_empty():
-		return false
-	next[String(master_slot.slot_id)] = master_entry
-	next[String(slave_slot.slot_id)] = slave_entry
+	next.erase(String(master_slot.slot_id))
+	next.erase(String(slave_slot.slot_id))
+	if not master_instance_id.is_empty():
+		var master_entry := SpaceHangarBoardAssignment.create_entry(master_slot, master)
+		if master_entry.is_empty():
+			return false
+		next[String(master_slot.slot_id)] = master_entry
+	if not slave_instance_id.is_empty():
+		var slave_entry := SpaceHangarBoardAssignment.create_entry(slave_slot, slave)
+		if slave_entry.is_empty():
+			return false
+		next[String(slave_slot.slot_id)] = slave_entry
 	if not _validate_assignment_map(next).is_empty():
 		return false
 	_assignments = next
