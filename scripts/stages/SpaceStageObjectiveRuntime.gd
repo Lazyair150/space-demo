@@ -35,6 +35,7 @@ func advance(delta_seconds: float) -> bool:
 	elif _objective == "protect_target":
 		if not is_instance_valid(_protected_target) or _read_target_health(_protected_target) <= 0.0:
 			return false
+		_complete = _encounters_completed
 	return true
 
 func record_resource(resource_type: String, amount: float) -> bool:
