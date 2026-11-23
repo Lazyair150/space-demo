@@ -201,9 +201,9 @@ func _render_view_model(view_model: Dictionary) -> void:
 	var selectable_inventory: Dictionary = inventory if ready else {}
 	var selection: Dictionary = view_model.get("selection", {})
 	_suppress_picker_events = true
-	_fill_picker(_ship_picker, selectable_inventory.get("shipChoices", []), "没有可用飞船定义")
-	_fill_picker(_parser_picker, selectable_inventory.get("parserChoices", []), "没有可用解析器定义")
-	_fill_picker(_workshop_picker, selectable_inventory.get("workshopChoices", []), "没有可用工作台组合")
+	_fill_picker(_ship_picker, selectable_inventory.get("shipChoices", []), "没有可用飞船定义", "ship")
+	_fill_picker(_parser_picker, selectable_inventory.get("parserChoices", []), "没有可用解析器定义", "parser")
+	_fill_picker(_workshop_picker, selectable_inventory.get("workshopChoices", []), "没有可用工作台组合", "workshop")
 	_select_exact(_ship_picker, String(selection.get("shipId", "")), int(selection.get("shipVersion", 0)))
 	_select_exact(_parser_picker, String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)))
 	_select_exact(_workshop_picker, String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)))
@@ -239,7 +239,7 @@ func _render_view_model(view_model: Dictionary) -> void:
 		_status_label.text = "目录已就绪。选择项目时会保留定义版本；最终兼容性由装配器裁定。"
 	_update_build_enabled(view_model)
 
-func _fill_picker(picker: OptionButton, raw_choices: Variant, empty_text: String) -> void:
+func _fill_picker(picker: OptionButton, raw_choices: Variant, empty_text: String, category: String) -> void:
 	picker.clear()
 	picker.add_item(empty_text)
 	picker.set_item_disabled(0, true)
@@ -253,7 +253,10 @@ func _fill_picker(picker: OptionButton, raw_choices: Variant, empty_text: String
 		if definition_id.is_empty() or version <= 0:
 			continue
 		var label := String(choice.get("label", definition_id))
-		picker.add_item("%s  [v%d]" % [label, version])
+		var icon_texture: Variant = choice.get("iconTexture")
+		if not (icon_texture is Texture2D):
+			icon_texture = load(String(FALLBACK_ICONS.get(category, FALLBACK_ICONS.effect)))
+		picker.add_icon_item(icon_texture, "%s  [v%d]" % [label, version])
 		picker.set_item_metadata(picker.item_count - 1, choice.duplicate())
 
 func _select_exact(picker: OptionButton, definition_id: String, version: int) -> void:
@@ -327,7 +330,10 @@ func _rebuild_device_section(device_choices: Variant, selected_devices: Variant)
 		picker.add_item("空槽位")
 		for choice in device_choices:
 			if choice is Dictionary:
-				picker.add_item("%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))])
+				var item_icon: Variant = choice.get("iconTexture")
+				if not (item_icon is Texture2D):
+					item_icon = load(FALLBACK_ICONS.device)
+				picker.add_icon_item(item_icon, "%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))])
 				picker.set_item_metadata(picker.item_count - 1, choice.duplicate())
 		row.add_child(picker)
 		var existing := _find_device_selection(selected_devices, slot_id)
@@ -389,7 +395,10 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 		skill_picker.add_item("不装备技能")
 		for choice in skill_choices:
 			if choice is Dictionary:
-				skill_picker.add_item("%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))])
+				var item_icon: Variant = choice.get("iconTexture")
+				if not (item_icon is Texture2D):
+					item_icon = load(FALLBACK_ICONS.skill)
+				skill_picker.add_icon_item(item_icon, "%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))])
 				skill_picker.set_item_metadata(skill_picker.item_count - 1, choice.duplicate())
 				skill_picker.set_item_tooltip(skill_picker.item_count - 1, String(choice.get("description", "")))
 		controls.add_child(skill_picker)
