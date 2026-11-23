@@ -284,3 +284,34 @@
 - 不要声称多 Parser 已支持；当前 adapter 明确限制为一个 Parser。
 - 不要恢复 WorkshopPair 作为固定玩家选择配方。
 - 不要因为“垃圾文件清理”而删除尚被 Probe、Resource 或 scene 引用的 Definition-only 路径。
+
+
+
+## 11. Jar World 电路板式规则世界审查与修正指导（2026-11-24）
+
+### 领域模型重新定锚
+- Jar World 是由规则构成、可安装和替换零件的规则电路板；Board Slot 是安装位置，Board Assignment 是玩家当前安装关系。
+- 零件实例通过 exact Definition/version 与 Owned Instance 成长快照解析出 Rule Contributions；安装后的贡献组合成不可变 Effective Rule Profile。
+- Jar 与液体是规则世界中的流动资源状态，不是规则本身；Jar 内液体、工作台游离液体、订单暂存、主台预置液、自机液库等必须独立记账。
+- 订单只提供最终 Jar 目标与业务阶段语义；不得预先指定主从台、物理 Jar、操作步骤或液体路径。
+- 求解器读取 Effective Rule Profile + 订单目标 + 世界事实，推导结构解；当前资源状态只负责绑定和 Readiness，随后进入原子 Admission、Execution 与 Settlement。
+
+### 跨仓库审查结论
+- Jar Core 当前已有 WorkshopCapability、RuleContext、WorkshopRulebook、符号候选、A/B 分支、资源模拟、物理 Jar 绑定、Manifest、Lease、Execution Session 等重要基础；不是需要推倒重写的状态。
+- 当前 WorkshopRulebook 已统一四种基础 Jar 算子与 MATCH 的判定/纯转换入口，但规则目录仍以 Core 固定 enum/switch 为中心，不是玩家安装零件动态贡献规则的完整插件/组合系统。
+- WorldOrderRuleCandidateProfile 已从订单目标和工作台规则上下文构造候选，但候选构造仍围绕固定基础算子/词表；A/B 分支是明确领域策略，不是通用任意规则贡献搜索器。
+- Core WorkshopRoster 支持工作台实例集合与 Master/Slave 岗位分离；WorkshopReplacementProcess 仍是主从岗位专用替换过程，不等于任意 Board Slot Assignment 替换。
+- Space Board 目前仍主要投影为 Parser/Master/Slave/Device/Skill 专用 selection 字段；统一 Board Assignment 尚未完成，也未将完整安装贡献装配成 Jar Core Effective Rule Profile。
+- 因此整体判定为“部分符合，尚未达到电路板式可组合规则世界”。不能仅凭存在 Board、Rulebook、Owned Instance 和 Solver 类就宣称完整模型已经实现。
+
+### 正式修正指导
+- Jar Core 已新增正式文档：[`circuit-board-rule-world-audit-and-correction-guide.md`](https://github.com/Lazyair150/jar-system-dotnet/blob/world-v2/phase-4.11c-order-template-demand-ingress/docs/world-v2/circuit-board-rule-world-audit-and-correction-guide.md)。
+- 该文档定义 Rule Contribution、Effective Rule Profile、SolveProblem、SymbolicSolutionSet、ResourceBinding/Readiness、Admission/Execution/Settlement 的契约；列出当前偏差、迁移顺序和 16 项验收场景。
+- 下一步顺序固定为：统一 Space Board Assignment → Core Rule Contribution Contract → Effective Rule Profile 装配 → Solver 消费统一规则接口 → 资源 Readiness/Admission/Execution 对齐 → 通用槽位替换与岗位投影 → 依赖图清理。
+- 先保留现有规则评估、资源分账、符号求解、物理绑定、Lease/Checkpoint/Journal 等真实边界；以旧实现作差分 oracle，分阶段迁移，不做无证据的大规模推倒重写。
+- 任何新零件不应要求 Solver 新增专属 if/switch 才能贡献规则语义；订单模板不得携带预制生产路径；临时规则必须版本化并有明确安装/卸载/到期边界。
+
+### 状态与验证
+- Jar Core 文档已提交至 PR #60 分支 `world-v2/phase-4.11c-order-template-demand-ingress`，提交：`4bf7ba67662b4e214c81b85063bb3da6d28cc2e7`。
+- Space Demo 本节只记录跨仓库审查结论与执行约束，不表示 Rule Contribution 或统一 Board Assignment 已经实现。
+- 本次为源码静态审查；没有运行 .NET/Godot/GDScript/Probe。PR #2 仍保持 Draft/Open，不合并。
