@@ -4,7 +4,9 @@ extends RefCounted
 const NEUTRAL := Color("9aa8b8")
 const SHAPES := {
 	"圆形舱段": {"color": Color("59b9e8"), "glyph": "●"},
+	"圆罐": {"color": Color("59b9e8"), "glyph": "●"},
 	"方形舱段": {"color": Color("e5b85f"), "glyph": "■"},
+	"方罐": {"color": Color("e5b85f"), "glyph": "■"},
 	"三棱舱段": {"color": Color("b69af7"), "glyph": "▲"},
 	"长条舱段": {"color": Color("6fd1ae"), "glyph": "▬"},
 }
