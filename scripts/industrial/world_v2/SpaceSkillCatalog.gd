@@ -42,7 +42,7 @@ func create_order_binding_for_build(
 	if definition == null:
 		return {}
 	if balance_profile == null or not balance_profile.is_valid() or effect_catalog == null:
-	return {}
+		return {}
 	var effect_id := String(definition.effect_definition_id)
 	var benefit_metrics := effect_catalog.resolve_balance_metrics(effect_id, definition.effect_definition_version)
 	if benefit_metrics.is_empty():
