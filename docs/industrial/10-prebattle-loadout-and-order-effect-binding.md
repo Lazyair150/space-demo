@@ -339,3 +339,11 @@ SpaceBattleEffectStateStore schema v3 writes effect state, the next dispatcher s
 The integration probe now simulates a process restart after Jar accepted an import but before Space acknowledged it. It restores Jar's resource-ledger operation IDs, Space's pending parser batch, and the Host's fractional clock remainder, retries the same operation ID, and verifies one physical Jar only. The store probe verifies the combined schema-v3 persistence contract, including rejection of missing run state and missing drop RNG state.
 
 Remaining save integration is the outer Hangar/menu orchestration: load the stored frozen loadout and effect state, configure the committer with Game.capture_jar_space_runtime_checkpoint as its provider, pass the stored snapshot to Game.configure_battle_loadout_from_checkpoint, restore player effect state, and only then add the combat scene to the SceneTree. No complete combat save (player HP/position, wave scheduler, enemy state) is claimed by this resource-runtime checkpoint.
+
+### Wave progression restore boundary (2026-11-23)
+
+The transient run checkpoint stores score, wave number, and segment label, but it does not store the live Spawner coroutine/timer, spawn cursor, alive-enemy set, enemy HP/positions, bullets, or player state. Therefore this is **not an exact mid-wave combat resume**.
+
+On loading such a checkpoint, Spawner now restarts the saved wave from its beginning without incrementing or rewriting the saved wave/segment. A new run (wave 0) still starts at wave 1. This prevents the previous bug where Spawner unconditionally started wave 1 and overwrote the restored progression. It is an explicit wave-restart policy, not a claim that already-killed enemies or elapsed spawn delays are restored. `GameState.restore_run_state` also rejects a segment label inconsistent with its wave number before mutating live state. `SpaceBattleRunStateProbe` covers mismatched wave/segment rejection and the pure initial-wave selection policy.
+
+Exact battle continuation remains blocked on a separate encounter checkpoint contract for spawn phase/timers, enemy identities and runtime state, player state, and projectiles. Until that exists, callers/UI must describe this path as **restart current wave from checkpoint**, not seamless combat resume.
