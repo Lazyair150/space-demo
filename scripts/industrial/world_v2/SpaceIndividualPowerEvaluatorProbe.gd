@@ -188,8 +188,11 @@ static func _probe_target_value_and_production_gate() -> bool:
 	}
 	var ideal := model.calculate_power_score({"max_jars": 5.0, "max_liquids": 4.0, "liquid_staging_capacity": 3.0})
 	var excessive := model.calculate_power_score({"max_jars": 10.0, "max_liquids": 10.0, "liquid_staging_capacity": 10.0})
-	if not bool(ideal.get("success", false)) or not bool(excessive.get("success", false)):
+	var undersized := model.calculate_power_score({"max_jars": 1.0, "max_liquids": 1.0, "liquid_staging_capacity": 0.0})
+	if not bool(ideal.get("success", false)) or not bool(excessive.get("success", false)) or not bool(undersized.get("success", false)):
 		return false
+	if float(excessive.powerScore) > 0.000001 or float(undersized.powerScore) > 0.000001:
+		return false # Both ends of an asymmetric target range score zero.
 	if float(ideal.powerScore) <= float(excessive.powerScore):
 		return false # More capacity is not automatically stronger; score peaks at an authored workload target.
 	if not model.get_production_validation_errors().is_empty():
