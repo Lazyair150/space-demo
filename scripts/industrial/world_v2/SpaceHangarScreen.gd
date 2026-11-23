@@ -1,9 +1,23 @@
 extends Control
 class_name SpaceHangarScreen
-## Standalone Hangar UI. It presents only authored inventory and delegates all domain
-## validation/build decisions to SpaceHangarSelectionController + Preparation.
+## Standalone visual Hangar. Authored definitions own their optional sprites;
+## this screen supplies category SVG fallbacks and delegates all domain decisions.
 
 @export var loadout_identity: Dictionary = {}
+@export var parser_slot_id: String = "ore-parser"
+## Slot identifiers are supplied by the owning ship/loadout flow, never inferred from device types.
+@export var device_slot_ids: PackedStringArray = PackedStringArray()
+## Each entry is authored by the owning order flow: { "orderDefinitionKey": "...", "label": "..." }.
+@export var skill_order_bindings: Array[Dictionary] = []
+
+const FALLBACK_ICONS := {
+	"ship": "res://assets/hangar/ship.svg",
+	"parser": "res://assets/hangar/parser.svg",
+	"workshop": "res://assets/hangar/workshop.svg",
+	"device": "res://assets/hangar/device.svg",
+	"skill": "res://assets/hangar/skill.svg",
+	"effect": "res://assets/hangar/effect.svg"
+}
 
 var _preparation: SpaceHangarPreparation
 var _controller: SpaceHangarSelectionController
@@ -14,8 +28,11 @@ var _duration_picker: SpinBox
 var _build_button: Button
 var _status_label: Label
 var _inventory_label: Label
-var _refresh_button: Button
 var _refresh_confirmation: ConfirmationDialog
+var _device_section: VBoxContainer
+var _skill_section: VBoxContainer
+var _effect_section: VBoxContainer
+var _device_pickers: Dictionary = {}
 var _suppress_picker_events: bool = false
 
 func _ready() -> void:
@@ -31,20 +48,26 @@ func _ready() -> void:
 func _build_interface() -> void:
 	var background := ColorRect.new()
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.color = Color(0.055, 0.075, 0.12, 1.0)
+	background.color = Color(0.035, 0.055, 0.09, 1.0)
 	add_child(background)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 42)
-	margin.add_theme_constant_override("margin_right", 42)
-	margin.add_theme_constant_override("margin_top", 30)
-	margin.add_theme_constant_override("margin_bottom", 30)
+	margin.add_theme_constant_override("margin_left", 34)
+	margin.add_theme_constant_override("margin_right", 34)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
 	add_child(margin)
 
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.add_child(scroll)
+
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", 16)
-	margin.add_child(root)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.add_theme_constant_override("separation", 14)
+	scroll.add_child(root)
 
 	var title := Label.new()
 	title.text = "SPACE HANGAR  /  战前装配"
@@ -52,7 +75,7 @@ func _build_interface() -> void:
 	root.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "选择只引用目录中真实存在的定义版本；最终兼容性与冻结由装配器负责。"
+	subtitle.text = "每项定义可配置独立精灵贴图；未配置时使用类别 SVG 图标。所有选项均来自真实目录。"
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(subtitle)
 
@@ -64,13 +87,19 @@ func _build_interface() -> void:
 	var selection_panel := PanelContainer.new()
 	root.add_child(selection_panel)
 	var selection_box := VBoxContainer.new()
-	selection_box.add_theme_constant_override("separation", 10)
+	selection_box.add_theme_constant_override("separation", 12)
 	selection_panel.add_child(selection_box)
-
 	_add_section_title(selection_box, "核心配置")
-	_ship_picker = _add_picker(selection_box, "飞船定义")
-	_parser_picker = _add_picker(selection_box, "原石解析器")
-	_workshop_picker = _add_picker(selection_box, "工作台组合")
+	_ship_picker = _add_picker(selection_box, "飞船定义", "ship")
+	_parser_picker = _add_picker(selection_box, "原石解析器", "parser")
+	_workshop_picker = _add_picker(selection_box, "工作台组合", "workshop")
+
+	_device_section = VBoxContainer.new()
+	_device_section.add_theme_constant_override("separation", 8)
+	selection_box.add_child(_device_section)
+	_skill_section = VBoxContainer.new()
+	_skill_section.add_theme_constant_override("separation", 8)
+	selection_box.add_child(_skill_section)
 
 	var duration_row := HBoxContainer.new()
 	selection_box.add_child(duration_row)
@@ -90,19 +119,23 @@ func _build_interface() -> void:
 	var inventory_panel := PanelContainer.new()
 	root.add_child(inventory_panel)
 	var inventory_box := VBoxContainer.new()
+	inventory_box.add_theme_constant_override("separation", 10)
 	inventory_panel.add_child(inventory_box)
 	_add_section_title(inventory_box, "目录库存")
 	_inventory_label = Label.new()
 	_inventory_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	inventory_box.add_child(_inventory_label)
+	_effect_section = VBoxContainer.new()
+	_effect_section.add_theme_constant_override("separation", 6)
+	inventory_box.add_child(_effect_section)
 
 	var footer := HBoxContainer.new()
 	footer.add_theme_constant_override("separation", 12)
 	root.add_child(footer)
-	_refresh_button = Button.new()
-	_refresh_button.text = "重新读取目录"
-	footer.add_child(_refresh_button)
-	_refresh_button.pressed.connect(_on_refresh_pressed)
+	var refresh_button := Button.new()
+	refresh_button.text = "重新读取目录"
+	footer.add_child(refresh_button)
+	refresh_button.pressed.connect(_on_refresh_pressed)
 	_refresh_confirmation = ConfirmationDialog.new()
 	_refresh_confirmation.dialog_text = "重新读取目录会丢弃当前未冻结的选择草稿。是否继续？"
 	add_child(_refresh_confirmation)
@@ -120,15 +153,19 @@ func _build_interface() -> void:
 func _add_section_title(parent: VBoxContainer, text_value: String) -> void:
 	var label := Label.new()
 	label.text = text_value
-	label.add_theme_font_size_override("font_size", 20)
+	label.add_theme_font_size_override("font_size", 19)
 	parent.add_child(label)
 
-func _add_picker(parent: VBoxContainer, caption: String) -> OptionButton:
+func _add_picker(parent: VBoxContainer, caption: String, category: String) -> OptionButton:
 	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
 	parent.add_child(row)
+	var icon := _make_icon(category, 58)
+	row.add_child(icon)
 	var label := Label.new()
 	label.text = caption
-	label.custom_minimum_size.x = 250
+	label.custom_minimum_size.x = 205
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(label)
 	var picker := OptionButton.new()
 	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -136,6 +173,21 @@ func _add_picker(parent: VBoxContainer, caption: String) -> OptionButton:
 	picker.set_item_disabled(0, true)
 	row.add_child(picker)
 	return picker
+
+func _make_icon(category: String, dimension: int = 52) -> TextureRect:
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(dimension, dimension)
+	icon.customize_minimum_size = true
+	icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture = load(String(FALLBACK_ICONS.get(category, FALLBACK_ICONS.effect)))
+	return icon
+
+func _set_icon_texture(icon: TextureRect, raw_texture: Variant, category: String) -> void:
+	if raw_texture is Texture2D:
+		icon.texture = raw_texture
+	else:
+		icon.texture = load(String(FALLBACK_ICONS.get(category, FALLBACK_ICONS.effect)))
 
 func _on_view_model_changed(view_model: Dictionary) -> void:
 	_render_view_model(view_model)
@@ -145,16 +197,20 @@ func _render_view_model(view_model: Dictionary) -> void:
 		return
 	var inventory: Dictionary = view_model.get("inventory", {})
 	var ready := bool(view_model.get("isReady", false))
-	_suppress_picker_events = true
 	var selectable_inventory: Dictionary = inventory if ready else {}
+	var selection: Dictionary = view_model.get("selection", {})
+	_suppress_picker_events = true
 	_fill_picker(_ship_picker, selectable_inventory.get("shipChoices", []), "没有可用飞船定义")
 	_fill_picker(_parser_picker, selectable_inventory.get("parserChoices", []), "没有可用解析器定义")
 	_fill_picker(_workshop_picker, selectable_inventory.get("workshopChoices", []), "没有可用工作台组合")
-	var selection: Dictionary = view_model.get("selection", {})
 	_select_exact(_ship_picker, String(selection.get("shipId", "")), int(selection.get("shipVersion", 0)))
 	_select_exact(_parser_picker, String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)))
 	_select_exact(_workshop_picker, String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)))
 	_suppress_picker_events = false
+
+	_rebuild_device_section(selectable_inventory.get("deviceChoices", []), selection.get("deviceSelections", []))
+	_rebuild_skill_section(selectable_inventory.get("skillChoices", []), selection.get("skillSelections", []))
+	_rebuild_effect_section(selectable_inventory.get("effectChoices", []))
 
 	var devices: Array = inventory.get("deviceChoices", [])
 	var skills: Array = inventory.get("skillChoices", [])
@@ -169,10 +225,12 @@ func _render_view_model(view_model: Dictionary) -> void:
 		_status_label.text = String(inventory.get("unavailableReason", view_model.get("lastError", "目录不可用")))
 	elif not _identity_is_supplied():
 		_status_label.text = "目录已加载。等待所属游戏流程提供 shipWorldId / loadoutId / loadoutVersion。"
-	elif not devices.is_empty() or not skills.is_empty():
-		_status_label.text = "目录包含生产设备或技能定义；当前界面尚未提供这些槽位的完整绑定控件，因此冻结操作保持关闭。"
+	elif not devices.is_empty() and device_slot_ids.is_empty():
+		_status_label.text = "目录含生产设备，但游戏流程尚未提供 device_slot_ids；请先配置真实设备槽位。"
+	elif not skills.is_empty() and skill_order_bindings.is_empty():
+		_status_label.text = "目录含技能，但游戏流程尚未提供 skill_order_bindings；请先配置真实订单绑定键。"
 	else:
-		_status_label.text = "目录已就绪。选择飞船、解析器、工作台组合并填写预计战斗时长。"
+		_status_label.text = "目录已就绪。选择项目时会保留定义版本；最终兼容性由装配器裁定。"
 	_update_build_enabled(view_model)
 
 func _fill_picker(picker: OptionButton, raw_choices: Variant, empty_text: String) -> void:
@@ -190,10 +248,7 @@ func _fill_picker(picker: OptionButton, raw_choices: Variant, empty_text: String
 			continue
 		var label := String(choice.get("label", definition_id))
 		picker.add_item("%s  [v%d]" % [label, version])
-		picker.set_item_metadata(picker.item_count - 1, {
-			"id": definition_id,
-			"version": version
-		})
+		picker.set_item_metadata(picker.item_count - 1, choice.duplicate())
 
 func _select_exact(picker: OptionButton, definition_id: String, version: int) -> void:
 	if definition_id.is_empty() or version <= 0:
@@ -204,23 +259,205 @@ func _select_exact(picker: OptionButton, definition_id: String, version: int) ->
 			picker.select(index)
 			return
 
+func _selected_choice(picker: OptionButton) -> Dictionary:
+	if picker.selected <= 0 or picker.selected >= picker.item_count:
+		return {}
+	var value: Variant = picker.get_item_metadata(picker.selected)
+	return value if value is Dictionary else {}
+
 func _on_ship_selected(index: int) -> void:
 	if _suppress_picker_events:
 		return
-	var choice: Dictionary = _ship_picker.get_item_metadata(index)
-	_controller.set_ship(String(choice.get("id", "")), int(choice.get("version", 0)))
+	var choice := _selected_choice(_ship_picker)
+	if not choice.is_empty():
+		_controller.set_ship(String(choice.get("id", "")), int(choice.get("version", 0)))
 
 func _on_parser_selected(index: int) -> void:
 	if _suppress_picker_events:
 		return
-	var choice: Dictionary = _parser_picker.get_item_metadata(index)
-	_controller.set_parser(String(choice.get("id", "")), int(choice.get("version", 0)), "ore-parser")
+	var choice := _selected_choice(_parser_picker)
+	if not choice.is_empty():
+		_controller.set_parser(String(choice.get("id", "")), int(choice.get("version", 0)), parser_slot_id)
 
 func _on_workshop_selected(index: int) -> void:
 	if _suppress_picker_events:
 		return
-	var choice: Dictionary = _workshop_picker.get_item_metadata(index)
-	_controller.set_workshop(String(choice.get("id", "")), int(choice.get("version", 0)))
+	var choice := _selected_choice(_workshop_picker)
+	if not choice.is_empty():
+		_controller.set_workshop(String(choice.get("id", "")), int(choice.get("version", 0)))
+
+func _rebuild_device_section(device_choices: Variant, selected_devices: Variant) -> void:
+	for child in _device_section.get_children():
+		child.queue_free()
+	_device_pickers.clear()
+	if device_slot_ids.is_empty():
+		if _array_size(device_choices) > 0:
+			_add_section_title(_device_section, "生产设备（等待游戏流程提供槽位）")
+		return
+	_add_section_title(_device_section, "生产设备槽位")
+	for raw_slot in device_slot_ids:
+		var slot_id := String(raw_slot).strip_edges()
+		if slot_id.is_empty() or _device_pickers.has(slot_id):
+			continue
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		_device_section.add_child(row)
+		var icon := _make_icon("device", 48)
+		row.add_child(icon)
+		var label := Label.new()
+		label.text = slot_id
+		label.custom_minimum_size.x = 150
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(label)
+		var picker := OptionButton.new()
+		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		picker.add_item("空槽位")
+		for choice in device_choices:
+			if choice is Dictionary:
+				picker.add_item("%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))])
+				picker.set_item_metadata(picker.item_count - 1, choice.duplicate())
+		row.add_child(picker)
+		var existing := _find_device_selection(selected_devices, slot_id)
+		if not existing.is_empty():
+			for item_index in range(1, picker.item_count):
+				var candidate: Dictionary = picker.get_item_metadata(item_index)
+				if String(candidate.get("id", "")) == String(existing.get("definitionId", "")) and int(candidate.get("version", 0)) == int(existing.get("definitionVersion", 0)):
+					picker.select(item_index)
+					_set_icon_texture(icon, candidate.get("iconTexture"), "device")
+					break
+		picker.item_selected.connect(_on_device_selected.bind(slot_id, picker, icon))
+		_device_pickers[slot_id] = picker
+
+func _find_device_selection(raw_selections: Variant, slot_id: String) -> Dictionary:
+	if raw_selections is Array:
+		for value in raw_selections:
+			if value is Dictionary and String(value.get("slotId", "")) == slot_id:
+				return value
+	return {}
+
+func _on_device_selected(index: int, slot_id: String, picker: OptionButton, icon: TextureRect) -> void:
+	if _suppress_picker_events:
+		return
+	if index <= 0:
+		_controller.remove_device(slot_id)
+		_set_icon_texture(icon, null, "device")
+		return
+	var choice: Dictionary = picker.get_item_metadata(index)
+	if _controller.set_device(slot_id, String(choice.get("id", "")), int(choice.get("version", 0))):
+		_set_icon_texture(icon, choice.get("iconTexture"), "device")
+
+func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) -> void:
+	for child in _skill_section.get_children():
+		child.queue_free()
+	if skill_order_bindings.is_empty():
+		if _array_size(skill_choices) > 0:
+			_add_section_title(_skill_section, "技能绑定（等待游戏流程提供订单键）")
+		return
+	_add_section_title(_skill_section, "技能 / 订单绑定")
+	for binding in skill_order_bindings:
+		if not (binding is Dictionary):
+			continue
+		var order_key := String(binding.get("orderDefinitionKey", "")).strip_edges()
+		if order_key.is_empty():
+			continue
+		var row := VBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		_skill_section.add_child(row)
+		var row_title := Label.new()
+		row_title.text = String(binding.get("label", order_key))
+		row.add_child(row_title)
+		var controls := HBoxContainer.new()
+		controls.add_theme_constant_override("separation", 8)
+		row.add_child(controls)
+		var icon := _make_icon("skill", 48)
+		controls.add_child(icon)
+		var skill_picker := OptionButton.new()
+		skill_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		skill_picker.add_item("不装备技能")
+		for choice in skill_choices:
+			if choice is Dictionary:
+				skill_picker.add_item("%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))])
+				skill_picker.set_item_metadata(skill_picker.item_count - 1, choice.duplicate())
+		controls.add_child(skill_picker)
+		var area_picker := OptionButton.new()
+		area_picker.custom_minimum_size.x = 145
+		area_picker.add_item("控制区域")
+		controls.add_child(area_picker)
+		var existing := _find_skill_selection(selected_skills, order_key)
+		if not existing.is_empty():
+			for item_index in range(1, skill_picker.item_count):
+				var candidate: Dictionary = skill_picker.get_item_metadata(item_index)
+				if String(candidate.get("id", "")) == String(existing.get("skillId", "")) and int(candidate.get("version", 0)) == int(existing.get("definitionVersion", 0)):
+					skill_picker.select(item_index)
+					_set_icon_texture(icon, candidate.get("iconTexture"), "skill")
+					_populate_control_areas(area_picker, candidate.get("allowedControlAreas", []), String(existing.get("controlArea", "")))
+					break
+		skill_picker.item_selected.connect(_on_skill_selected.bind(order_key, skill_picker, area_picker, icon))
+		area_picker.item_selected.connect(_on_skill_area_selected.bind(order_key, skill_picker, area_picker))
+		if skill_picker.selected == 0:
+			area_picker.disabled = true
+
+func _find_skill_selection(raw_selections: Variant, order_key: String) -> Dictionary:
+	if raw_selections is Array:
+		for value in raw_selections:
+			if value is Dictionary and String(value.get("orderDefinitionKey", "")) == order_key:
+				return value
+	return {}
+
+func _populate_control_areas(area_picker: OptionButton, raw_areas: Variant, selected_area: String = "") -> void:
+	area_picker.clear()
+	area_picker.add_item("控制区域")
+	if raw_areas is Array:
+		for area in raw_areas:
+			area_picker.add_item(String(area))
+			if String(area) == selected_area:
+				area_picker.select(area_picker.item_count - 1)
+	area_picker.disabled = area_picker.item_count <= 1
+
+func _on_skill_selected(index: int, order_key: String, skill_picker: OptionButton, area_picker: OptionButton, icon: TextureRect) -> void:
+	if index <= 0:
+		_controller.remove_skill(order_key)
+		_populate_control_areas(area_picker, [])
+		_set_icon_texture(icon, null, "skill")
+		return
+	var choice: Dictionary = skill_picker.get_item_metadata(index)
+	_populate_control_areas(area_picker, choice.get("allowedControlAreas", []))
+	area_picker.disabled = false
+	_set_icon_texture(icon, choice.get("iconTexture"), "skill")
+
+func _on_skill_area_selected(index: int, order_key: String, skill_picker: OptionButton, area_picker: OptionButton) -> void:
+	if index > 0:
+		_apply_skill_binding(order_key, skill_picker, area_picker)
+
+func _apply_skill_binding(order_key: String, skill_picker: OptionButton, area_picker: OptionButton) -> void:
+	var skill := _selected_choice(skill_picker)
+	if skill.is_empty() or area_picker.selected <= 0:
+		return
+	_controller.set_skill(order_key, String(skill.get("id", "")), int(skill.get("version", 0)), area_picker.get_item_text(area_picker.selected))
+
+func _rebuild_effect_section(effect_choices: Variant) -> void:
+	for child in _effect_section.get_children():
+		child.queue_free()
+	if _array_size(effect_choices) == 0:
+		var empty_label := Label.new()
+		empty_label.text = "尚无效果定义"
+		_effect_section.add_child(empty_label)
+		return
+	var heading := Label.new()
+	heading.text = "效果定义（由技能引用）"
+	_effect_section.add_child(heading)
+	for choice in effect_choices:
+		if not (choice is Dictionary):
+			continue
+		var row := HBoxContainer.new()
+		_effect_section.add_child(row)
+		var icon := _make_icon("effect", 34)
+		_set_icon_texture(icon, choice.get("iconTexture"), "effect")
+		row.add_child(icon)
+		var label := Label.new()
+		label.text = "%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))]
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(label)
 
 func _on_duration_changed(value: float) -> void:
 	if value > 0.0:
@@ -245,14 +482,13 @@ func _update_build_enabled(view_model: Dictionary) -> void:
 	if not is_instance_valid(_build_button):
 		return
 	var inventory: Dictionary = view_model.get("inventory", {})
-	var advanced_choices_exist := (
-		_array_size(inventory.get("deviceChoices", [])) > 0
-		or _array_size(inventory.get("skillChoices", [])) > 0
-	)
+	var devices_exist := _array_size(inventory.get("deviceChoices", [])) > 0
+	var skills_exist := _array_size(inventory.get("skillChoices", [])) > 0
+	var binding_configuration_complete := (not devices_exist or not device_slot_ids.is_empty()) and (not skills_exist or not skill_order_bindings.is_empty())
 	_build_button.disabled = (
 		not bool(view_model.get("canBuild", false))
 		or _duration_picker.value <= 0.0
-		or advanced_choices_exist
+		or not binding_configuration_complete
 	)
 
 func _identity_is_supplied() -> bool:
