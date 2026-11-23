@@ -11,6 +11,8 @@ class_name SpaceHangarPreparation
 @export var balance_profile: SpaceSkillBalanceProfile
 @export var effect_catalog: SpaceEffectCatalog
 @export var catalog_bundle_resource: SpaceHangarCatalogBundleResource
+## Injected from the player save/session owner; never authored into a shared catalog Resource.
+var player_progression_state: SpacePlayerProgressionState
 
 func create_catalog_bundle() -> SpaceHangarCatalogBundle:
 	if catalog_bundle_resource != null:
@@ -44,6 +46,25 @@ func build_loadout_from_selection(
 		selection.skill_selections, bundle.balance_profile,
 		selection.expected_battle_duration_logical_milli, bundle.effect_catalog
 	)
+
+func build_owned_selection_inventory() -> Dictionary:
+	if catalog_bundle_resource == null or player_progression_state == null:
+		return {"isReady": false, "unavailableReason": "Player progression state or authored catalog bundle is missing"}
+	return SpaceHangarOwnedInventoryBuilder.build(catalog_bundle_resource, player_progression_state)
+
+func build_owned_loadout_from_selection(identity: Dictionary, selection_data: Dictionary) -> SpaceBattleLoadoutSnapshot:
+	if player_progression_state == null:
+		return _failure_snapshot("Player progression state is not attached to Hangar preparation")
+	var errors := player_progression_state.get_validation_errors()
+	if not errors.is_empty():
+		return _failure_snapshot("Player progression state rejected: " + "; ".join(errors))
+	var selection := SpaceHangarSelection.from_data(selection_data)
+	if selection == null or not selection.has_owned_instance_selection() or not selection.validate().is_empty():
+		return _failure_snapshot("Owned Hangar selection is incomplete or invalid")
+	var bundle := create_catalog_bundle()
+	if bundle == null or not bundle.validate_and_prepare().is_empty():
+		return _failure_snapshot("Hangar catalog bundle could not be prepared")
+	return SpaceHangarOwnedLoadoutAssembler.assemble(identity, selection_data, bundle, player_progression_state)
 
 func build_loadout_from_draft(
 	identity: Dictionary,
