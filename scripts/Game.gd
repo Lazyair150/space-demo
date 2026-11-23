@@ -28,6 +28,8 @@ var _persisted_effect_state: Dictionary = {}
 var _effect_catalog: SpaceEffectCatalog
 var _effect_target_resolver: Callable
 var _battle_shutdown_started: bool = false
+var _last_completed_world_time_milli: int = -1
+var _last_completed_logical_time_milli: int = -1
 
 @export var allow_sandbox_world_for_development: bool = true
 
@@ -150,6 +152,7 @@ func _ready() -> void:
 	var active_jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if active_jar_host != null and not active_jar_host.ShipWorldFaulted.is_connected(_on_ship_world_faulted):
 		active_jar_host.ShipWorldFaulted.connect(_on_ship_world_faulted)
+	_refresh_last_completed_simulation_position(active_jar_host)
 	if not _persisted_jar_execution_checkpoint_json.is_empty():
 		if not GameFlow.mark_battle_resume_ready():
 			push_error("[Game] Application flow could not enter resume-ready state")
@@ -515,6 +518,18 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 		"runState": GameState.capture_run_state()
 	}
 
+func _refresh_last_completed_simulation_position(jar_host: Node) -> void:
+	if jar_host == null or not jar_host.has_method("GetWorldSnapshot"):
+		return
+	var snapshot: Variant = jar_host.call("GetWorldSnapshot")
+	if not (snapshot is Dictionary) or not bool(snapshot.get("available", false)):
+		return
+	var world_time: Variant = snapshot.get("worldTimeMilli", null)
+	var logical_time: Variant = snapshot.get("logicalTimeMilli", null)
+	if typeof(world_time) == TYPE_INT and int(world_time) >= 0 and typeof(logical_time) == TYPE_INT and int(logical_time) >= 0:
+		_last_completed_world_time_milli = int(world_time)
+		_last_completed_logical_time_milli = int(logical_time)
+
 func _fail_ore_parser(jar_host: WorldV2ShipHost, reason: String) -> void:
 	push_error("[Game] Ore parser/ingress failed closed: " + reason)
 	_shutdown_battle(true, "ore parser/ingress failure")
@@ -534,7 +549,7 @@ func _shutdown_battle(faulted: bool, reason: String) -> void:
 	if jar_host != null:
 		jar_host.EndShipWorld()
 	if faulted:
-		GameFlow.fault_battle(reason)
+		GameFlow.fault_battle(reason, _last_completed_world_time_milli, _last_completed_logical_time_milli)
 		var pause_controller := get_node_or_null("PauseController")
 		if pause_controller != null and pause_controller.has_method("show_fault"):
 			pause_controller.call("show_fault", reason)
@@ -571,6 +586,8 @@ func _physics_process(delta: float) -> void:
 		if jar_host.IsFaulted:
 			_on_ship_world_faulted(String(jar_host.FaultReason))
 			return
+	if jar_step_advanced:
+		_refresh_last_completed_simulation_position(jar_host)
 	if jar_step_advanced and delta > 0.0 and _order_effect_dispatcher != null and _order_effect_commit_callback.is_valid():
 		_order_effect_dispatcher.drain_pending(jar_host, _order_effect_commit_callback)
 	if _shake_time > 0.0:
