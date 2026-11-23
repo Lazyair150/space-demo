@@ -10,7 +10,7 @@ static func run() -> bool:
 	if not DEMO_BOARD.get_runtime_projection_errors().is_empty():
 		return false
 	var frozen_board := DEMO_BOARD.build_frozen_snapshot()
-	if String(frozen_board.get("boardId", "")) != "demo.circuit_board" or frozen_board.get("slots", []).size() != 4:
+	if String(frozen_board.get("boardId", "")) != "demo.circuit_board" or frozen_board.get("slots", []).size() != 5:
 		return false
 	var config := DEMO_BOARD.build_hangar_configuration()
 	if String(config.get("parserSlotId", "")) != "decomposition.parser.primary":
@@ -20,9 +20,12 @@ static func run() -> bool:
 	if String(config.get("slaveWorkshopSlotId", "")) != "workshop.slave":
 		return false
 	var orders: Array = config.get("skillOrderBindings", [])
-	if orders.size() != 1:
+	if orders.size() != 2:
 		return false
-	if String(orders[0].get("orderDefinitionKey", "")) != "orders.active.primary" or String(orders[0].get("controlArea", "")) != "Active" or bool(orders[0].get("required", true)):
+	var order_areas := {}
+	for order in orders:
+		order_areas[String(order.get("orderDefinitionKey", ""))] = String(order.get("controlArea", ""))
+	if order_areas.get("orders.active.primary", "") != "Active" or order_areas.get("orders.passive.recon", "") != "Passive":
 		return false
 	var slot_index := DEMO_BOARD.build_slot_index()
 	if slot_index.size() != 4 or DEMO_BOARD.get_slots_for_area("workshop").size() != 2:
