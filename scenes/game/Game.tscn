@@ -76,8 +76,8 @@ pickup_scene = ExtResource("9_pickup")
 pickup_chance = 0.3
 pickup_effects = [ExtResource("10_haste"), ExtResource("11_boost"), ExtResource("12_poison"), ExtResource("13_aim"), ExtResource("14_lifesteal")]
 
-[editable path="Arena/Player"]
-
 [node name="PauseController" type="CanvasLayer" parent="."]
 process_mode = 3
 script = ExtResource("15_pause")
+
+[editable path="Arena/Player"]
