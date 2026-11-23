@@ -63,7 +63,9 @@ func _copy_definition(source: SpaceWorkshopCombinationDefinition) -> SpaceWorksh
 	copy.display_name = source.display_name
 	copy.display_icon = source.display_icon
 	copy.jar_world_options = source.jar_world_options.duplicate(true)
-	copy.workshop_definitions = source.workshop_definitions.duplicate(true)
+	copy.workshop_definitions.clear()
+	for workshop in source.workshop_definitions:
+		copy.workshop_definitions.append(workshop.duplicate(true) as SpaceWorkshopDefinition if workshop != null else null)
 	if source.workshop_pair != null:
 		copy.workshop_pair = source.workshop_pair.duplicate(true) as SpaceWorkshopPairDefinition
 	copy.operation_cost_by_order_type = source.operation_cost_by_order_type.duplicate(true)
