@@ -14,6 +14,10 @@ const FALLBACK_ICONS := {
 var _root: VBoxContainer
 var _status: Label
 var _ship_icon: TextureRect
+var _ship_stage: Control
+var _ship_hull: TextureRect
+var _anchor_layer: Control
+var _anchor_icons: Array[Dictionary] = []
 var _ship_name: Label
 var _parser_row: HBoxContainer
 var _workshop_row: HBoxContainer
@@ -52,9 +56,21 @@ func _build_view() -> void:
 	ship_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	ship_box.add_theme_constant_override("separation", 8)
 	ship_panel.add_child(ship_box)
-	_ship_icon = _make_icon("ship", 116)
-	_ship_icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	ship_box.add_child(_ship_icon)
+	_ship_stage = Control.new()
+	_ship_stage.custom_minimum_size = Vector2(150, 122)
+	_ship_stage.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	ship_box.add_child(_ship_stage)
+	_ship_hull = TextureRect.new()
+	_ship_hull.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ship_hull.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_ship_hull.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_ship_hull.texture = load(String(FALLBACK_ICONS.ship))
+	_ship_stage.add_child(_ship_hull)
+	_anchor_layer = Control.new()
+	_anchor_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_anchor_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ship_stage.add_child(_anchor_layer)
+	_ship_stage.resized.connect(_layout_anchor_icons)
 	_ship_name = Label.new()
 	_ship_name.text = "尚未选择飞船"
 	_ship_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -128,8 +144,13 @@ func render(view_model: Dictionary) -> void:
 	var parser := _find_choice(inventory.get("parserChoices", []), String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)))
 	var workshop := _find_choice(inventory.get("workshopChoices", []), String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)))
 
-	_set_icon(_ship_icon, ship.get("iconTexture"), "ship")
+	var hull: Variant = ship.get("hullTexture", ship.get("iconTexture"))
+	if hull is Texture2D:
+		_ship_hull.texture = hull
+	else:
+		_ship_hull.texture = load(String(FALLBACK_ICONS.ship))
 	_ship_name.text = _choice_label(ship, "尚未选择飞船")
+	_render_ship_anchors(ship, selection, inventory)
 	_set_component_row(_parser_row, parser, "parser", "原石解析器未选择")
 	_set_component_row(_workshop_row, workshop, "workshop", "工作台组合未选择")
 	_render_devices(inventory.get("deviceChoices", []), selection.get("deviceSelections", []))
@@ -160,6 +181,55 @@ func render(view_model: Dictionary) -> void:
 		str(selection.get("expectedBattleDurationLogicalMilli", 0.0))
 	]
 
+func _render_ship_anchors(ship: Dictionary, selection: Dictionary, inventory: Dictionary) -> void:
+	for child in _anchor_layer.get_children():
+		child.queue_free()
+	_anchor_icons.clear()
+	if ship.is_empty():
+		return
+	var anchors: Variant = ship.get("displayAnchors", [])
+	if not (anchors is Array):
+		return
+	var devices: Variant = selection.get("deviceSelections", [])
+	for raw_anchor in anchors:
+		if not (raw_anchor is Dictionary):
+			continue
+		var kind := String(raw_anchor.get("componentKind", ""))
+		var slot_id := String(raw_anchor.get("logicalSlotId", ""))
+		var choice: Dictionary = {}
+		if kind == "parser" and slot_id == String(selection.get("parserSlotId", "")):
+			choice = _find_choice(inventory.get("parserChoices", []), String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)))
+		elif kind == "device" and devices is Array:
+			for raw_device in devices:
+				if raw_device is Dictionary and String(raw_device.get("slotId", "")) == slot_id:
+					choice = _find_choice(inventory.get("deviceChoices", []), String(raw_device.get("definitionId", "")), int(raw_device.get("definitionVersion", 0)))
+					break
+		if choice.is_empty():
+			continue
+		var icon := TextureRect.new()
+		var base_size := 34.0 * float(raw_anchor.get("iconScale", 1.0))
+		icon.custom_minimum_size = Vector2(base_size, base_size)
+		icon.size = icon.custom_minimum_size
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		_set_icon(icon, choice.get("iconTexture"), kind)
+		icon.tooltip_text = "%s · %s" % [slot_id, _choice_label(choice, "")]
+		_anchor_layer.add_child(icon)
+		_anchor_icons.append({"control": icon, "position": raw_anchor.get("normalizedPosition", Vector2(0.5, 0.5)), "rotation": float(raw_anchor.get("rotationDegrees", 0.0))})
+	_layout_anchor_icons()
+
+func _layout_anchor_icons() -> void:
+	if not is_instance_valid(_anchor_layer):
+		return
+	for entry in _anchor_icons:
+		var icon: TextureRect = entry.get("control")
+		if not is_instance_valid(icon):
+			continue
+		var normalized: Variant = entry.get("position", Vector2(0.5, 0.5))
+		if not (normalized is Vector2):
+			continue
+		icon.position = Vector2(normalized.x * _ship_stage.size.x - icon.size.x * 0.5, normalized.y * _ship_stage.size.y - icon.size.y * 0.5)
+		icon.rotation_degrees = float(entry.get("rotation", 0.0))
 func _set_component_row(row: HBoxContainer, choice: Dictionary, category: String, empty_text: String) -> void:
 	var icon := row.get_child(0) as TextureRect
 	var label := row.get_child(1) as Label
