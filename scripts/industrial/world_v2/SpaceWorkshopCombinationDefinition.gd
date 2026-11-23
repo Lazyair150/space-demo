@@ -28,8 +28,19 @@ func get_validation_errors() -> PackedStringArray:
 		if jar_world_options.has(forbidden_key):
 			errors.append("workshop combination must author " + forbidden_key + " through the scoped workshop resources")
 	var shapes: Variant = jar_world_options.get("shapes", null)
+	var shape_set := {}
 	if not (shapes is Array) or shapes.is_empty():
 		errors.append("workshop combination must provide a non-empty Jar shape vocabulary")
+	elif shapes is Array:
+		for shape in shapes:
+			shape_set[String(shape)] = true
+	var liquids: Variant = jar_world_options.get("liquids", null)
+	var liquid_set := {}
+	if not (liquids is Array):
+		errors.append("workshop combination must provide a liquid vocabulary")
+	elif liquids is Array:
+		for liquid in liquids:
+			liquid_set[String(liquid)] = true
 	if workshop_definitions.size() < 2:
 		errors.append("workshop combination must provide at least two individual workshop definitions")
 	var ids := {}
@@ -40,6 +51,12 @@ func get_validation_errors() -> PackedStringArray:
 			continue
 		for error in workshop.get_validation_errors():
 			errors.append("workshop %s: %s" % [String(workshop.workshop_id), error])
+		for mark in workshop.base_marks + workshop.additional_marks:
+			if not shape_set.has(mark):
+				errors.append("workshop %s references unknown shape %s" % [String(workshop.workshop_id), mark])
+		for liquid in workshop.banned_liquids:
+			if not liquid_set.has(liquid):
+				errors.append("workshop %s bans unknown liquid %s" % [String(workshop.workshop_id), liquid])
 		var id := String(workshop.workshop_id)
 		var name := workshop.display_name.strip_edges()
 		if ids.has(id) or names.has(name):

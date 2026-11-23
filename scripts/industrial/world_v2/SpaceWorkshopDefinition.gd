@@ -26,6 +26,9 @@ func get_validation_errors() -> PackedStringArray:
 		errors.append("workshop capacities are invalid")
 	if _has_duplicates(base_marks) or _has_duplicates(additional_marks) or _has_duplicates(banned_liquids):
 		errors.append("workshop local rule lists must not contain duplicates")
+	for shape in base_marks:
+		if additional_marks.has(shape):
+			errors.append("workshop base and additional marks must not overlap")
 	return errors
 
 func build_core_definition() -> Dictionary:
