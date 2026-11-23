@@ -409,3 +409,12 @@
 - 本轮仅提交 GDScript 与 Probe 代码；未运行 Godot、GDScript parser 或 Probe。Space PR #2 最新 head 为 `0fa247b49d5fb53b84af647084eef01542013cb4`，仍 Draft/Open。
 - Core PR #60 最新 head `fda4a40` 的 Actions run `45224859217` 已通过；不代表 Space GDScript 已验证。
 - 多 Parser、额外组件 kind 的 Core runtime 执行器、Skill/Parser/Device scope 的 Rule Contribution 消费仍未完成。
+
+
+### 14.3 安装替换与 World 兼容性保护补充（2026-11-24）
+
+- Board 模式下动态槽位 OptionButton 的首项代表未安装；选择已有 Owned Instance 即替换该槽位，选择首项即卸下。所有操作仍走 `assign_instance` / `unassign_slot`，不在 UI 侧直接改 Assignment Map。
+- World Profile 改变时，如果当前 Master/Slave Owned Instance 不兼容，新 World 选择现在会被拒绝，不再把不兼容实例静默清空。原 Assignment 保留。
+- Probe 增加 World A 安装两个工作台、切换到不兼容 World B 必须失败且两份 Owned Instance 仍保留的场景。
+- Probe 还增加完整 Board 上通过通用 `assign_instance` 安装工作台、Parser、Active/Passive Skill 的路径，并校验冻结 Assignment Snapshot 的五个槽位。
+- 上述 Probe 仍未在 Godot 中执行；属于已写入的自动验收代码，不代表运行通过。
