@@ -38,7 +38,10 @@ static func build(
 				if runtime_profile.is_empty():
 					return {}
 				var core_rules: Dictionary = jar_world_options.get("boardRuleProfile", {})
-				runtime_profile["coreRuleProfileFingerprint"] = String(core_rules.get("fingerprint", ""))
+				var core_fingerprint := String(core_rules.get("fingerprint", ""))
+				if core_fingerprint.is_empty():
+					return {}
+				runtime_profile["coreRuleProfileFingerprint"] = core_fingerprint
 			"ore_parser":
 				consumer = "space.parser"
 				for device in device_selections:
@@ -96,10 +99,13 @@ static func build(
 			source["roleId"] = String(assignment.get("roleId", ""))
 		if assignment.has("controlArea"):
 			source["controlArea"] = String(assignment.get("controlArea", ""))
+		var profile_fingerprint := _fingerprint(runtime_profile)
+		if profile_fingerprint.is_empty():
+			return {}
 		entries.append({
 			"consumer": consumer,
 			"source": source,
-			"profileFingerprint": _fingerprint(runtime_profile)
+			"profileFingerprint": profile_fingerprint
 		})
 	entries.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return String(a.get("source", {}).get("slotId", "")) < String(b.get("source", {}).get("slotId", ""))
