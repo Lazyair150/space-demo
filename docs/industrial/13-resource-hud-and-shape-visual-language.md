@@ -43,7 +43,7 @@ This blend is not a new workshop stat and must never be consumed by compatibilit
 
 ## Order presentation
 
-Each order demand displays its exact required shape as a colored glyph token; a liquid-bearing requirement adds the exact liquid name. If an explicit `primaryShape` is present in a future snapshot, it may accent the order heading. The current Host DTO exposes requirement shapes but does not expose a separate primary-shape field, so the UI must not fabricate one or silently treat the first requirement as a domain-defined primary shape.
+Each order demand displays its exact required shape as a colored glyph token; a liquid-bearing requirement adds the exact liquid name. The Space-owned skill/order binding may author a `presentation.primaryShape` independently of the nested Jar order contract. The frozen loadout validates that this primary shape is one of the Jar order's required shapes. The HUD resolves this metadata through the frozen loadout and accents the order heading/primary-shape token; Jar still receives only its unchanged `jarOrder` data.
 
 ## Data ownership and update policy
 
@@ -64,7 +64,8 @@ Unavailable, disposed, or not-yet-started worlds show an explicit unavailable st
 
 Implemented on the branch:
 - shared shape glyph/color palette;
-- color-coded shape tokens in the legacy industrial presentation components;
+- color-coded shape tokens in the industrial presentation components;
+- optional Space-owned `primary_shape` metadata on skill/order definitions, frozen outside the Jar order payload and validated against its requirement shapes;
 - workshop tendency accent and per-liquid staging meters where capacity is explicit;
 - combat HUD observer for the active World V2 Host snapshot;
 - order requirement shape tokens and read-only demand/cooldown/session summary.
@@ -72,7 +73,7 @@ Implemented on the branch:
 Not yet authored:
 - final production art/icons and sound;
 - editor-configurable palette Resource;
-- dedicated visual treatment for a future explicit primary-shape field;
+- authoring primary shapes on production skill Resources and reviewing their visual hierarchy;
 - responsive art review against real combat captures and a manual Godot play pass.
 
 Godot compile/runtime verification has not been run for this increment.
