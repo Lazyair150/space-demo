@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="SpaceHangarCatalogBundleResource" load_steps=35 format=3]
+[gd_resource type="Resource" script_class="SpaceHangarCatalogBundleResource" load_steps=36 format=3]
 
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceHangarCatalogBundleResource.gd" id="1_bundle"]
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceShipCatalog.gd" id="2_ship_catalog"]
@@ -37,9 +37,18 @@ production_percentage = 100
 shape_processing_rate_per_second = {"圆罐": 1.0, "方罐": 1.0, "三角罐": 1.0, "长条罐": 1.0, "六边罐": 1.0}
 progress_per_jar_by_shape = {"圆罐": 1.0, "方罐": 1.0, "三角罐": 1.0, "长条罐": 1.0, "六边罐": 1.0}
 
+[sub_resource type="Resource" script_class="SpaceOreParserDefinition" id="PrecisionParserDefinition"]
+script = ExtResource("5_parser_definition")
+parser_id = &"demo.parser.precision"
+definition_version = 1
+display_name = "精密能量石解析器"
+production_percentage = 90
+shape_processing_rate_per_second = {"圆罐": 1.4, "方罐": 1.2, "三角罐": 1.0, "长条罐": 0.8, "六边罐": 0.7}
+progress_per_jar_by_shape = {"圆罐": 0.8, "方罐": 0.9, "三角罐": 1.0, "长条罐": 1.1, "六边罐": 1.2}
+
 [sub_resource type="Resource" script_class="SpaceOreParserCatalog" id="ParserCatalog"]
 script = ExtResource("4_parser_catalog")
-definitions = Array[ExtResource("5_parser_definition")]([SubResource("ParserDefinition")])
+definitions = Array[ExtResource("5_parser_definition")]([SubResource("ParserDefinition"), SubResource("PrecisionParserDefinition")])
 
 [sub_resource type="Resource" script_class="SpaceProductionDeviceCatalog" id="DeviceCatalog"]
 script = ExtResource("6_device_catalog")
