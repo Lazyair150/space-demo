@@ -200,6 +200,11 @@ static func _probe_target_value_and_production_gate() -> bool:
 		return false # More capacity is not automatically stronger; score peaks at an authored workload target.
 	if not model.get_production_validation_errors().is_empty():
 		return false # Configured state is a separate production gate, not a scoring shortcut.
+	var invalid_capacity_direction := model.duplicate(true) as SpaceIndividualPowerModelDefinition
+	invalid_capacity_direction.configuration_status = "configured"
+	invalid_capacity_direction.metric_dimensions.max_jars.scoringMode = "higher_is_better"
+	if invalid_capacity_direction.get_production_validation_errors().is_empty():
+		return false # A production workshop model cannot reward unbounded capacity growth.
 	var pool := SpaceRoguelikeIndividualPool.new()
 	pool.pool_id = &"probe.unconfigured-workshop-pool"
 	pool.definition_version = 1
