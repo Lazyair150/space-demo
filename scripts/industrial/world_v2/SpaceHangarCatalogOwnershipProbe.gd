@@ -391,6 +391,10 @@ static func run() -> bool:
 	wrong_kind_curve.item_kind = "ship"
 	if SpaceProgressionGrowthService.calculate_update(curve_upgraded, wrong_kind_curve, 300) != null:
 		return false # A parser curve cannot be applied to a ship instance.
+	var changed_curve_version := parser_curve.duplicate(true) as SpaceProgressionCurveDefinition
+	changed_curve_version.definition_version = 3
+	if SpaceProgressionGrowthService.calculate_update(curve_upgraded, changed_curve_version, 300) != null:
+		return false # Existing growth provenance cannot be silently switched to a new curve version.
 	var regressing_xp := SpaceProgressionGrowthService.calculate_update(curve_upgraded, parser_curve, 200)
 	if regressing_xp != null:
 		return false
