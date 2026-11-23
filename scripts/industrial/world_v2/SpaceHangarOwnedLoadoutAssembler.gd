@@ -23,8 +23,8 @@ static func assemble(
 	var combination := bundle.workshop_combination_catalog.resolve_definition(String(selection.workshopId), int(selection.workshopVersion))
 	if combination == null:
 		return _reject("exact workshop combination definition is missing")
-	var master_definition := _find_workshop(combination, String(master_instance.definition_id), master_instance.definition_version)
-	var slave_definition := _find_workshop(combination, String(slave_instance.definition_id), slave_instance.definition_version)
+	var master_definition := bundle.workshop_catalog.resolve_definition(String(master_instance.definition_id), master_instance.definition_version)
+	var slave_definition := bundle.workshop_catalog.resolve_definition(String(slave_instance.definition_id), slave_instance.definition_version)
 	if master_definition == null or slave_definition == null:
 		return _reject("both selected workshop instances must resolve to definitions in the selected component roster")
 	var used_instance_ids := {
@@ -167,12 +167,6 @@ static func _resolve(state: SpacePlayerProgressionState, instance_id: String, ki
 	if not definition_id.is_empty() and (String(instance.definition_id) != definition_id or instance.definition_version != version):
 		return null
 	return instance
-
-static func _find_workshop(combination: SpaceWorkshopCombinationDefinition, definition_id: String, version: int) -> SpaceWorkshopDefinition:
-	for definition in combination.workshop_definitions:
-		if definition != null and String(definition.workshop_id) == definition_id and definition.definition_version == version:
-			return definition.duplicate(true) as SpaceWorkshopDefinition
-	return null
 
 static func _reject(reason: String) -> SpaceBattleLoadoutSnapshot:
 	push_error("Owned Hangar loadout rejected: " + reason)
