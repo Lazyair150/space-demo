@@ -179,3 +179,21 @@ The matching Core contract is documented in `docs/world-v2/parser-board-slot-run
 ### Checkpoint migration safety
 
 The identity correction also preserves the old `shipWorldId:parserDefinitionId` identity when restoring a checkpoint that already contains that exact legacy parser runtime ID. This is necessary because a pending batch may already have been committed by Jar Core while its receipt was lost by Space; changing the operation-ID namespace during restore would defeat Core's deduplication and could create a second Jar. The legacy identity is retained only for that restored battle. New battles use the exact Owned Instance namespace. The parser restore path still validates the frozen parser profile and checkpoint contents before accepting state.
+
+
+## Consumer-routed Board Runtime Profile Set (2026-11-24)
+
+The frozen Board Assignment now has a second, explicit projection: `boardRuntimeProfileSet`. It is not a new rule interpreter and does not broaden Core ingress. It binds each exact installed slot to the already-composed runtime profile consumed by its real subsystem:
+
+| Board component | Consumer | Frozen profile bound |
+|---|---|---|
+| Workshop | `jar_core.workshop` | Selected workshop runtime data plus Core Board Rule Profile fingerprint |
+| Ore Parser | `space.parser` | Exact parser runtime profile, including the frozen Owned Instance |
+| Skill | `space.skill` | Jar order request, control area, benefit profile, and Space effect binding |
+| Production Device | `space.production_device` | Device runtime profile |
+
+Each manifest entry carries exact slot, component kind, Owned Instance ID, Definition/version, progression revision, and the relevant profile fingerprint. The set is bound to the Board Definition and Assignment fingerprint and has its own canonical SHA-256 fingerprint.
+
+The manifest is assembled only after the parser, workshop, device, and skill runtime profiles have been composed. `SpaceBattleLoadoutSnapshot` rebuilds and validates it against those actual frozen profiles; a missing consumer profile or altered profile fingerprint rejects the loadout.
+
+This is a routing/identity contract, not permission to silently ignore authored Rule Contributions. The Core-facing Rule Profile remains workshop-only. Parser, Skill, and Production Device Rule Contributions still require explicit subsystem semantics and executors before they can be accepted. The manifest makes the consumer boundary explicit so future profile extensions cannot accidentally share the Core workshop execution context.
