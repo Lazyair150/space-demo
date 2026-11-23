@@ -126,7 +126,7 @@ static func compose_skill(definition: SpaceSkillDefinition, instance: SpaceOwned
 	result.effect_parameters = parameters
 	return result
 
-static func compose_skill_binding(binding: Dictionary, definition: SpaceSkillDefinition, instance: SpaceOwnedProgressionInstance, balance_profile: SpaceSkillBalanceProfile) -> Dictionary:
+static func compose_skill_binding(binding: Dictionary, definition: SpaceSkillDefinition, instance: SpaceOwnedProgressionInstance, balance_profile: SpaceSkillBalanceProfile, jar_world_options: Dictionary = {}) -> Dictionary:
 	var skill := compose_skill(definition, instance)
 	if skill == null or balance_profile == null or not balance_profile.is_valid():
 		return {}
@@ -172,7 +172,28 @@ static func compose_skill_binding(binding: Dictionary, definition: SpaceSkillDef
 	for dimension in additive_benefits:
 		if not is_finite(float(adjusted_benefit[dimension])) or float(adjusted_benefit[dimension]) < 0.0:
 			return {}
-	var report := SpaceSkillBalanceModel.evaluate(adjusted_benefit, jar_order, context, balance_profile)
+	var evaluated_order: Dictionary = jar_order
+	if jar_order.has("templateName"):
+		var template_identity: Variant = result.get("jarOrderTemplate", null)
+		if not (template_identity is Dictionary) or String(template_identity.get("templateName", "")) != String(jar_order.get("templateName", "")):
+			return {}
+		var templates: Variant = jar_world_options.get("orderTemplates", null)
+		if not (templates is Array):
+			return {}
+		var matched: Dictionary = {}
+		for raw_template in templates:
+			if raw_template is Dictionary and String(raw_template.get("name", "")) == String(jar_order.get("templateName", "")):
+				matched = raw_template
+				break
+		if matched.is_empty() or not (matched.get("requirements", null) is Array):
+			return {}
+		evaluated_order = {
+			"type": String(matched.get("type", "")),
+			"area": String(jar_order.get("area", "")),
+			"cooldownDurationLogicalMilli": int(jar_order.get("cooldownDurationLogicalMilli", -1)),
+			"requirements": matched.requirements.duplicate(true)
+		}
+	var report := SpaceSkillBalanceModel.evaluate(adjusted_benefit, evaluated_order, context, balance_profile)
 	if not bool(report.get("valid", false)) or String(report.get("balanceStatus", "")) == "undercosted":
 		return {} # Growth may not increase skill benefit beyond its authored Jar cost curve.
 	result["benefitProfile"] = adjusted_benefit
