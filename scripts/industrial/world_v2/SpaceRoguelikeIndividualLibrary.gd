@@ -35,7 +35,7 @@ func is_valid() -> bool:
 	return get_validation_errors().is_empty()
 
 func roll_candidate(item_kind: String, rng: RandomNumberGenerator, allowed_rarities: PackedStringArray = PackedStringArray(), required_tags: PackedStringArray = PackedStringArray(), excluded_definition_keys: PackedStringArray = PackedStringArray()) -> Dictionary:
-	if not is_valid() or not SpaceRoguelikeIndividualPool.SUPPORTED_KINDS.has(item_kind):
+	if rng == null or not is_valid() or not SpaceRoguelikeIndividualPool.SUPPORTED_KINDS.has(item_kind):
 		return {"success": false, "reason": "individual library is invalid or item kind is unsupported"}
 	var candidates: Array[SpaceRoguelikeIndividualPool] = []
 	for pool in pools:
@@ -47,3 +47,11 @@ func roll_candidate(item_kind: String, rng: RandomNumberGenerator, allowed_rarit
 	# A future run reward policy may supply a pool selector without changing entry semantics.
 	var selected_pool := candidates[rng.randi_range(0, candidates.size() - 1)]
 	return selected_pool.roll_candidate(rng, allowed_rarities, required_tags, excluded_definition_keys)
+
+func resolve_pool(item_kind: String, pool_id: String, pool_version: int) -> SpaceRoguelikeIndividualPool:
+	if not is_valid():
+		return null
+	for pool in pools:
+		if pool != null and pool.item_kind == item_kind and String(pool.pool_id) == pool_id and pool.definition_version == pool_version:
+			return pool.duplicate(true) as SpaceRoguelikeIndividualPool
+	return null
