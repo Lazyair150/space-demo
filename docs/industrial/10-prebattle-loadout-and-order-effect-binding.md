@@ -134,7 +134,7 @@ The branch now contains:
 - `WorldV2RuntimeNode.AddJarDemand` and `WorldV2ShipHost.MaterializeSelectedOrders`: materialize all selected Jar demands before the first Space simulation step. A partial failure disposes the not-yet-started ship world; demand creation is not allowed after time begins.
 - `Game.gd`: accepts a frozen loadout and a durable effect-commit callback before entering the SceneTree; starts the Jar world from loadout JSON, materializes selected orders, then drains pending events after each Jar advance. Sandbox startup remains an explicit development-only fallback.
 
-The dispatcher is an integration boundary, not yet a complete live combat feature: no Hangar currently constructs the snapshot, and no concrete durable commit callback/save implementation is wired. If a loadout selects orders without a valid callback, Game.gd fails closed and does not enter combat.
+The dispatcher is an integration boundary, not yet a complete live combat feature: no Hangar currently constructs the snapshot or wires the catalog/effect manager/store/committer instances into Game. The concrete `SpaceOrderEffectCommitter` and `SpaceBattleEffectStateStore` now implement Buff resolution, durable effect+dispatcher+Jar/Space checkpoint replacement, and restore payload validation, but normal gameplay does not yet construct/configure them. If a loadout selects orders without a valid callback, Game.gd fails closed and does not enter combat.
 
 ## 9. Shared time
 
@@ -160,8 +160,9 @@ It does not yet have:
 - live Hangar selection/materialization of the Space-owned ore parser definition and actual enemy/pickup wiring;
 - Hangar/pre-battle UI and construction of the immutable snapshot from actual ship/device/workshop/order catalog selections;
 - binding the selected orders' orderDefinitionKey values to the actual Jar demand creation calls;
-- production-grade battle save/load orchestration and platform-tested durable replacement semantics for the combined effect/dispatcher snapshot;
-- restoring the dispatcher and effect state during battle save/load;
+- wiring `SpaceBattleEffectStateStore` and `SpaceOrderEffectCommitter` into the real Hangar/battle save lifecycle;
+- restoring the saved `effectState` into `StatusEffectManager` before combat resumes (Game restores Jar, clock, parser, pickup, and dispatcher state after the caller supplies the snapshot);
+- platform-tested durability/atomic replacement behavior on the supported save targets;
 - making the frozen-loadout path the normal Hangar-to-combat path and disabling the sandbox development fallback in production.
 
 Implement in that dependency order. Do not wire an order to a BuffDefinition until the Jar event identity and durable delivery contract exist.
