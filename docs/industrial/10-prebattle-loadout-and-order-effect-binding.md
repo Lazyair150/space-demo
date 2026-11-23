@@ -244,6 +244,8 @@ Added:
 - `SpaceSkillBuildContextEvaluator.gd`: derives shape output pressure from expected ship stone-progress input, the selected parser's percentage-scaled per-shape throughput, and progress-per-Jar; derives workshop and liquid-handling operation pressure from the selected workshop combination.
 - `SpaceOreParserDefinition.gd` and `SpaceOreParserRuntime.gd`: version the pre-battle parser percentage/rates/thresholds, ingest all configured stone types, preserve independent fixed-point progress, and emit idempotent whole-Jar batches.
 - `SpaceOreParserJarIngress.gd`: retries pending parser output batches through Jar's discrete `ImportProducedJars` boundary and acknowledges only after Jar confirms success.
+- `SpaceSkillBuildContextEvaluatorProbe.gd`: verifies that parser percentage scales its own shape throughput and does not redistribute production between shapes.
+- `SpaceOreParserJarIngressProbe.gd` / `SpaceOreParserJarIngressProbe.tscn`: end-to-end synthetic probe for parsing, central-warehouse import, lost-receipt retry, and no direct Master injection.
 - `SpaceSkillBalanceProfile.gd`: versioned tunable weights, scales, curve parameters, cooldown frequency bounds, resource multipliers, and difficulty bands.
 - `SpaceSkillBalanceModel.gd`: deterministic evaluator and cost breakdown.
 - `SpaceSkillBalanceModelProbe.gd`: checks that liquid Jars increase difficulty, stronger benefits raise target difficulty, shorter cooldown raises sustained target value, and more complex resource requirements increase actual difficulty.
