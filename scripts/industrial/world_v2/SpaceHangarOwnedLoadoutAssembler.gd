@@ -126,12 +126,11 @@ static func assemble(
 		var order_key := String(binding.get("orderDefinitionKey", ""))
 		var skill_instance: SpaceOwnedProgressionInstance = skill_instances.get(order_key, null)
 		var skill_definition := bundle.skill_catalog.resolve_skill(String(binding.get("skillDefinitionId", "")), int(binding.get("skillDefinitionVersion", 0)))
-		var composed_skill := SpaceProgressionRuntimeProfileComposer.compose_skill(skill_definition, skill_instance)
-		if composed_skill == null:
-			return _reject("skill growth attributes do not satisfy the skill subsystem contract")
-		binding.effectBinding.effectParameters = composed_skill.effect_parameters.duplicate(true)
-		binding.ownedInstance = skill_instance.build_frozen_snapshot()
-		frozen.selectedOrderBindings[index] = binding
+		var composed_binding := SpaceProgressionRuntimeProfileComposer.compose_skill_binding(binding, skill_definition, skill_instance, bundle.balance_profile)
+		if composed_binding.is_empty():
+			return _reject("skill growth attributes do not satisfy effect parameters and benefit-to-Jar balance contracts")
+		composed_binding.ownedInstance = skill_instance.build_frozen_snapshot()
+		frozen.selectedOrderBindings[index] = composed_binding
 	frozen["progressionOwnerPlayerId"] = String(progression.player_id)
 	frozen["progressionStateRevision"] = progression.state_revision
 	var owned_snapshots: Array[Dictionary] = [
