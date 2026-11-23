@@ -109,16 +109,17 @@ static func run() -> bool:
 		],
 		"expectedBattleDurationLogicalMilli": 60000.0
 	}
+	selection["boardAssignments"] = SpaceHangarBoardAssignment.build_from_selection(DEMO_BOARD, selection, inventory)
+	if selection.boardAssignments.is_empty():
+		return false
 	var assembled := SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, selection, progression)
 	if assembled == null:
 		return false
 	var frozen_data := assembled.to_dictionary()
-	frozen_data["assemblyBoard"] = DEMO_BOARD.build_frozen_snapshot()
-	frozen_data.erase("loadoutFingerprint")
 	var frozen := SpaceBattleLoadoutSnapshot.create(frozen_data)
 	if frozen == null or frozen.order_definition_keys().size() != 2:
 		return false
-	if frozen.to_dictionary().get("ownedInstanceSnapshots", []).size() != 6:
+	if frozen.to_dictionary().get("ownedInstanceSnapshots", []).size() != 6 or not frozen_data.has("boardAssignmentSnapshot"):
 		return false
 	if not _probe_assignments():
 		return false
