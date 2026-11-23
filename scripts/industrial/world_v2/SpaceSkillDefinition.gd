@@ -16,6 +16,9 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 @export_range(0, 2147483647, 1) var jar_cooldown_logical_milli: int = 0
 @export var jar_requirements: Array[Dictionary] = []
 
+## Space-side visual identity for the order's principal Jar shape; never sent inside jarOrder.
+@export var primary_shape: StringName = &""
+
 ## Space-owned player control assignment and trigger policy.
 ## The player chooses one allowed area when equipping this skill.
 @export var allowed_control_areas: Array[String] = ["Active", "Passive"]
@@ -39,11 +42,17 @@ func is_valid() -> bool:
 			return false
 	if effect_definition_id == &"" or effect_definition_version <= 0:
 		return false
+	var primary_shape_found := primary_shape == &""
 	for requirement in jar_requirements:
-		if String(requirement.get("shape", "")).strip_edges().is_empty():
+		var requirement_shape := String(requirement.get("shape", "")).strip_edges()
+		if requirement_shape == String(primary_shape):
+			primary_shape_found = true
+		if requirement_shape.is_empty():
 			return false
 		if int(requirement.get("count", 1)) <= 0:
 			return false
+	if not primary_shape_found:
+		return false
 	return true
 
 func build_jar_order(selected_control_area: String) -> Dictionary:
@@ -84,6 +93,7 @@ func create_order_binding(order_definition_key: String, selected_control_area: S
 		return {}
 	return {
 		"orderDefinitionKey": order_definition_key,
+		"presentation": {"primaryShape": String(primary_shape)} if primary_shape != &"" else {},
 		"skillDefinitionId": String(skill_id),
 		"skillDefinitionVersion": definition_version,
 		"jarOrder": jar_order,
