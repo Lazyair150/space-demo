@@ -30,6 +30,8 @@ func build_loadout_from_selection(
 	if not selection_errors.is_empty():
 		return _failure_snapshot("Hangar selection rejected: " + "; ".join(selection_errors))
 	var bundle := create_catalog_bundle()
+	if bundle == null:
+		return _failure_snapshot("Hangar catalog bundle resource could not be materialized")
 	var dependency_errors := bundle.validate_and_prepare()
 	if not dependency_errors.is_empty():
 		return _failure_snapshot("Hangar catalog bundle rejected: " + "; ".join(dependency_errors))
@@ -153,14 +155,18 @@ func launch_resumed_battle(
 	commit_callback: Callable,
 	effect_target_resolver: Callable
 ) -> bool:
-	if parent == null or not parent.is_inside_tree() or game_scene == null or effect_catalog == null:
+	if parent == null or not parent.is_inside_tree() or game_scene == null:
 		return false
+	var bundle := create_catalog_bundle()
+	if bundle == null or not bundle.validate_and_prepare().is_empty():
+		return false
+	var resolved_effect_catalog := bundle.effect_catalog
 	var game := game_scene.instantiate()
 	if game == null:
 		return false
 	if not SpaceHangarBattleLauncher.launch_resumed_battle(
 		parent, game, loadout, saved_snapshot, commit_callback,
-		effect_catalog, effect_target_resolver
+		resolved_effect_catalog, effect_target_resolver
 	):
 		if not game.is_inside_tree():
 			game.free()
