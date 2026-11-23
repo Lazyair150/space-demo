@@ -42,7 +42,7 @@ func _ready() -> void:
 		return
 	controller.show_fault("probe fault reason")
 	var fault_snapshot := GameFlow.snapshot()
-	if String(fault_snapshot.get("battlePhase", "")) != "FAULTED" or String(fault_snapshot.get("faultReason", "")) != "probe fault reason" or controller._paused or not controller._faulted or not controller._overlay.visible:
+	if String(fault_snapshot.get("battlePhase", "")) != "FAULTED" or String(fault_snapshot.get("faultReason", "")) != "probe fault reason" or int(fault_snapshot.get("lastCompletedWorldTimeMilli", -2)) != -1 or int(fault_snapshot.get("lastCompletedLogicalTimeMilli", -2)) != -1 or controller._paused or not controller._faulted or not controller._overlay.visible:
 		_fail_probe(controller, "fault must be distinct from player death/pause and remain visible")
 		return
 	if controller._primary_button.text != "返回主菜单  /  Main Menu":
