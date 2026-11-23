@@ -14,7 +14,7 @@ func _ready() -> void:
 
 func _on_start()->void:
 	GameState.reset_run()
-	GameFlow.request_scene_transition(GameFlow.Screen.BATTLE, "res://scenes/game/Game.tscn")
+	GameFlow.request_scene_transition(GameFlow.Screen.HANGAR, "res://scenes/industrial/SpaceHangar.tscn")
 	
 func _on_quit()->void:
 	get_tree().quit()
