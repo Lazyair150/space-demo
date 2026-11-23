@@ -47,6 +47,9 @@ public partial class WorldV2DisposedCommandsProbe : Node
                     ["圆罐"] = 1.0,
                     ["方罐"] = 0.0
                 }));
+            ExpectDisposed("ImportProducedJars", () => runtime.ImportProducedJars(
+                "disposed-probe-batch",
+                new Godot.Collections.Dictionary { ["圆罐"] = 1 }));
             ExpectDisposed("AddSingleRequirementDemand",
                 () => runtime.AddSingleRequirementDemand("圆罐", "酒", "A", "Passive", 0));
             ExpectDisposed("MoveDemand", () => runtime.MoveDemand(1, "Active"));
@@ -64,7 +67,7 @@ public partial class WorldV2DisposedCommandsProbe : Node
 
             GD.Print(
                 "[WorldV2DisposedCommandsProbe] all post-disposal operations rejected",
-                " operation_count=8 disposed=true reinitialize_rejected=true fault_signal_count=0");
+                " operation_count=9 disposed=true reinitialize_rejected=true fault_signal_count=0");
             GD.Print("[WorldV2DisposedCommandsProbe] passed");
         }
         catch (Exception ex)
