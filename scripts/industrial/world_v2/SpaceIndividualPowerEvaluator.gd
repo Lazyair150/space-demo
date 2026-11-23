@@ -84,11 +84,13 @@ static func evaluate_skill(
 	if not bool(report.get("valid", false)):
 		return _failure(String(report.get("reason", "skill balance model rejected the definition")))
 	var cost: Dictionary = report.get("costBreakdown", {})
+	var difficulty_ratio := float(report.get("difficultyRatio", 0.0))
 	var metrics := {
 		"benefit_score": float(report.get("benefitScore", 0.0)),
 		"target_difficulty": float(report.get("targetDifficulty", 0.0)),
 		"actual_difficulty": float(report.get("actualDifficulty", 0.0)),
-		"difficulty_ratio": float(report.get("difficultyRatio", 0.0)),
+		"difficulty_overcost_deviation": maxf(difficulty_ratio - 1.0, 0.0),
+		"difficulty_undercost_deviation": maxf(1.0 - difficulty_ratio, 0.0),
 		"activation_frequency_multiplier": float(report.get("activationFrequencyMultiplier", 0.0)),
 		"expected_activations": float(report.get("expectedActivations", 0.0)),
 		"jar_count": float(cost.get("jarCount", 0)),
