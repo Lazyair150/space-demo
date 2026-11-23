@@ -15,7 +15,7 @@ func _ready() -> void:
 
 func _on_retry()->void:
 	GameState.reset_run()
-	GameFlow.request_scene_transition(GameFlow.Screen.BATTLE, "res://scenes/game/Game.tscn")
+	GameFlow.request_scene_transition(GameFlow.Screen.HANGAR, "res://scenes/industrial/SpaceHangar.tscn")
 
 func _on_menu()->void:
 	GameFlow.request_scene_transition(GameFlow.Screen.MENU, "res://scenes/menus/MainMenu.tscn")
