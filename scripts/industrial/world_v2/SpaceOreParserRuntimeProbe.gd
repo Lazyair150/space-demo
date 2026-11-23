@@ -55,6 +55,19 @@ static func run() -> Dictionary:
 	if int(third_counts.get("方罐", 0)) != 1:
 		return _failure("square Jar was not produced at its independent threshold")
 
+	# Splitting the same logical interval must preserve fixed-point production and remainder.
+	var whole_step_runtime := SpaceOreParserRuntime.new()
+	whole_step_runtime.initialize(definition, "chunk-invariance-parser", ["圆罐", "方罐"])
+	whole_step_runtime.ingest_stone("chunk-circle", "圆罐", 10.0)
+	whole_step_runtime.advance(1000)
+	var split_step_runtime := SpaceOreParserRuntime.new()
+	split_step_runtime.initialize(definition, "chunk-invariance-parser", ["圆罐", "方罐"])
+	split_step_runtime.ingest_stone("chunk-circle", "圆罐", 10.0)
+	for _i in range(100):
+		split_step_runtime.advance(10)
+	if whole_step_runtime.capture_state() != split_step_runtime.capture_state():
+		return _failure("fixed-point parser output changed when logical time was split into smaller steps")
+
 	var checkpoint := runtime.capture_state()
 	var restored := SpaceOreParserRuntime.new()
 	var restored_init := restored.initialize(definition, "probe-ship-world-parser", ["圆罐", "方罐"])
