@@ -577,6 +577,7 @@ static func run() -> bool:
 	owned_hangar_bundle.workshop_combination_catalog = workshops
 	owned_hangar_bundle.skill_definitions = [skill]
 	owned_hangar_bundle.allow_legacy_inline_skill_orders_for_probes = true
+	owned_hangar_bundle.allow_legacy_embedded_workshops_for_probes = true
 	owned_hangar_bundle.ability_shape_profile = ability_shapes
 	owned_hangar_bundle.balance_profile = SpaceSkillBalanceProfile.new()
 	owned_hangar_bundle.effect_definitions = [effect]
@@ -589,6 +590,7 @@ static func run() -> bool:
 	template_hangar_bundle.ore_parser_catalog = parsers
 	template_hangar_bundle.workshop_combination_catalog = workshops
 	template_hangar_bundle.skill_definitions = [template_skill]
+	template_hangar_bundle.allow_legacy_embedded_workshops_for_probes = true
 	template_hangar_bundle.ability_shape_profile = ability_shapes
 	template_hangar_bundle.balance_profile = SpaceSkillBalanceProfile.new()
 	template_hangar_bundle.effect_definitions = [effect]
