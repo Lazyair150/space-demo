@@ -33,6 +33,24 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 		if not skill_catalog.register_skill(definition):
 			push_error("Hangar bundle resource contains an invalid or duplicate skill definition")
 			return null
+	# A production skill's Core template must exist in every selectable world version.
+	# This keeps the template key resolvable regardless of the player's workshop choice.
+	for definition in skill_definitions:
+		if definition == null or definition.jar_order_template_id == &"":
+			continue # Inline requirements remain available only for isolated development probes.
+		for combination in workshop_combination_catalog.definitions:
+			var resolved := skill_catalog.resolve_order_template(
+				definition, combination.jar_world_options, "Active"
+			)
+			if resolved.is_empty():
+				push_error("Skill Core order template is missing or incompatible with workshop world: " + String(definition.skill_id))
+				return null
+			# Passive is separately checked only when the skill permits that control area.
+			if definition.allowed_control_areas.has("Passive") and skill_catalog.resolve_order_template(
+				definition, combination.jar_world_options, "Passive"
+			).is_empty():
+				push_error("Skill Core order template cannot be bound to Passive area: " + String(definition.skill_id))
+				return null
 	var effect_catalog := SpaceEffectCatalog.new()
 	for definition in effect_definitions:
 		if not effect_catalog.register_buff(definition):
