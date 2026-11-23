@@ -54,8 +54,8 @@ func get_validation_errors(shape_names: Array) -> Array[String]:
 			errors.append("parser is missing progress-per-Jar for shape: " + shape)
 			continue
 		var threshold: Variant = progress_per_jar_by_shape[shape]
-		if (typeof(threshold) != TYPE_INT and typeof(threshold) != TYPE_FLOAT) or not is_finite(float(threshold)) or float(threshold) <= 0.0 or float(threshold) > MAX_FIXED_POINT_UNITS:
-			errors.append("progress-per-Jar is outside the supported fixed-point range: " + shape)
+		if (typeof(threshold) != TYPE_INT and typeof(threshold) != TYPE_FLOAT) or not is_finite(float(threshold)) or float(threshold) <= 0.0 or float(threshold) > MAX_FIXED_POINT_UNITS or round(float(threshold) * 1000000.0) < 1.0:
+			errors.append("progress-per-Jar must be positive and representable in the supported fixed-point range: " + shape)
 
 	for shape in shape_processing_rate_per_second:
 		if not known_shapes.has(String(shape)):
