@@ -1,7 +1,7 @@
 extends Resource
 class_name SpaceWorkshopCombinationDefinition
 ## Versioned world-level workshop configuration.
-## Individual workshop rules and Master/Slave role assignment are authored separately.
+## World profile and an independent workshop component roster. Runtime positions choose any two owned instances.
 
 @export var combination_id: StringName = &""
 @export var definition_version: int = 1
@@ -13,6 +13,7 @@ class_name SpaceWorkshopCombinationDefinition
 ## Exact-version Core-owned Jar order templates available in this World V2 vocabulary.
 @export var core_order_templates: Array[SpaceCoreOrderTemplateDefinition] = []
 @export var workshop_definitions: Array[SpaceWorkshopDefinition] = []
+## Deprecated authoring hint for definition-only development fixtures; production owned selection ignores it.
 @export var workshop_pair: SpaceWorkshopPairDefinition
 @export var operation_cost_by_order_type: Dictionary = {}
 @export var liquid_handling_operation_cost: float = 0.0
@@ -58,8 +59,8 @@ func get_validation_errors() -> PackedStringArray:
 		var template_shapes: Array = shapes if shapes is Array else []
 		var template_liquids: Array = liquids if liquids is Array else []
 		errors.append_array(template.get_validation_errors(template_shapes, template_liquids))
-	if workshop_definitions.size() != 2:
-		errors.append("workshop combination must provide exactly two individual workshop definitions for its Master/Slave pair")
+	if workshop_definitions.is_empty():
+		errors.append("workshop combination must provide at least one workshop component definition")
 	var ids := {}
 	var names := {}
 	for workshop in workshop_definitions:
@@ -80,9 +81,7 @@ func get_validation_errors() -> PackedStringArray:
 			errors.append("workshop roster identities and names must be unique")
 		ids[id] = true
 		names[name] = true
-	if workshop_pair == null:
-		errors.append("Master/Slave pair definition is missing")
-	else:
+	if workshop_pair != null:
 		errors.append_array(workshop_pair.get_validation_errors(workshop_definitions))
 	if not operation_cost_by_order_type.has("A") or not operation_cost_by_order_type.has("B"):
 		errors.append("workshop combination must author operation costs for both A and B")
@@ -94,23 +93,46 @@ func get_validation_errors() -> PackedStringArray:
 		errors.append("liquid handling operation cost must be finite and non-negative")
 	return errors
 
-func build_jar_world_options() -> Dictionary:
+func build_jar_world_options(master_workshop_id: String = "", slave_workshop_id: String = "") -> Dictionary:
 	if not get_validation_errors().is_empty():
 		return {}
-	var result := jar_world_options.duplicate(true)
-	var workshop_entries: Array[Dictionary] = []
-	for definition in workshop_definitions:
-		workshop_entries.append(definition.build_core_definition())
-	var role_assignment := workshop_pair.build_core_role_assignment(workshop_definitions)
-	if role_assignment.is_empty():
+	var selected_master_id := master_workshop_id
+	var selected_slave_id := slave_workshop_id
+	# Legacy development fixtures may still use their authored default pair.
+	if selected_master_id.is_empty() and selected_slave_id.is_empty() and workshop_pair != null:
+		selected_master_id = String(workshop_pair.master_workshop_id)
+		selected_slave_id = String(workshop_pair.slave_workshop_id)
+	if selected_master_id.is_empty() and selected_slave_id.is_empty() and workshop_definitions.size() >= 2:
+		selected_master_id = String(workshop_definitions[0].workshop_id)
+		selected_slave_id = String(workshop_definitions[1].workshop_id)
+	if selected_master_id.is_empty() or selected_slave_id.is_empty():
 		return {}
-	result["workshops"] = workshop_entries
+	var master_definition := find_workshop_definition(selected_master_id)
+	var slave_definition := find_workshop_definition(selected_slave_id)
+	if master_definition == null or slave_definition == null:
+		return {}
+	var result := jar_world_options.duplicate(true)
+	var master_entry := master_definition.build_core_definition()
+	var slave_entry := slave_definition.build_core_definition()
+	if master_entry.is_empty() or slave_entry.is_empty():
+		return {}
+	# Core requires distinct role names even when two owned copies share one Definition.
+	master_entry["name"] = master_definition.display_name + "（主台）"
+	slave_entry["name"] = slave_definition.display_name + "（从台）"
+	result["workshops"] = [master_entry, slave_entry]
+	result["masterWorkshopName"] = String(master_entry["name"])
+	result["slaveWorkshopName"] = String(slave_entry["name"])
 	var core_templates: Array[Dictionary] = []
 	for template in core_order_templates:
 		core_templates.append(template.build_core_option())
 	result["orderTemplates"] = core_templates
-	result.merge(role_assignment, true)
 	return result
+
+func find_workshop_definition(definition_id: String) -> SpaceWorkshopDefinition:
+	for definition in workshop_definitions:
+		if definition != null and String(definition.workshop_id) == definition_id:
+			return definition.duplicate(true) as SpaceWorkshopDefinition
+	return null
 
 func build_selection() -> Dictionary:
 	if not get_validation_errors().is_empty():
@@ -126,12 +148,6 @@ func build_selection() -> Dictionary:
 		"definitionId": String(combination_id),
 		"definitionVersion": definition_version,
 		"workshopRoster": roster,
-		"workshopPair": {
-			"definitionId": String(workshop_pair.pair_id),
-			"definitionVersion": workshop_pair.definition_version,
-			"masterWorkshopId": String(workshop_pair.master_workshop_id),
-			"slaveWorkshopId": String(workshop_pair.slave_workshop_id)
-		},
 		"workshopCombinationProfile": {
 			"operationCostByOrderType": operation_cost_by_order_type.duplicate(true),
 			"liquidHandlingOperationCost": liquid_handling_operation_cost
