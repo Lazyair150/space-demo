@@ -20,6 +20,9 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 	if ability_shape_profile == null or not ability_shape_profile.is_valid():
 		push_error("Hangar bundle requires a valid ability category to Jar shape profile")
 		return null
+	if workshop_combination_catalog == null:
+		push_error("Hangar bundle requires a workshop combination catalog")
+		return null
 	if workshop_combination_catalog != null:
 		for combination in workshop_combination_catalog.definitions:
 			if combination == null or not ability_shape_profile.validate_shape_vocabulary(combination.jar_world_options.get("shapes", [])).is_empty():
@@ -36,8 +39,11 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 	# A production skill's Core template must exist in every selectable world version.
 	# This keeps the template key resolvable regardless of the player's workshop choice.
 	for definition in skill_definitions:
-		if definition == null or definition.jar_order_template_id == &"":
-			continue # Inline requirements remain available only for isolated development probes.
+		if definition == null:
+			return null
+		if definition.jar_order_template_id == &"":
+			push_error("Production Hangar skills must reference an exact Core order template; inline requirements are probe-only")
+			return null
 		for combination in workshop_combination_catalog.definitions:
 			for control_area in definition.allowed_control_areas:
 				if skill_catalog.resolve_order_template(
