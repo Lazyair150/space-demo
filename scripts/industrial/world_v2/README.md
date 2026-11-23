@@ -355,7 +355,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `SpaceEnergyStonePickup.gd` / `SpaceEnergyStonePickup.tscn` 提供玩家碰撞拾取适配器；生成方必须在入树前提供稳定 ID、类型和体积，只有解析器接受（含重复 ID 幂等确认）后拾取物才消失。旧 `Asteroid.gd` 的 `GameState.add_ore(ore_value)` 是旧钱包资源，不被当成 typed energy stone。
 - `SpaceOreParserRuntimeProbe.gd` 覆盖百分比吞吐、并行独立进度、重复拾取去重、身份冲突、固定点分步一致性、输出批次检查点和单次确认。
 - `SpaceSkillBuildContextEvaluatorProbe.gd` 验证 50% / 100% 是解析器自身吞吐修正，不会把一个形状的产量份额分给另一个形状。
-- `SpaceOreParserJarIngressProbe.gd` 与 `scenes/industrial/SpaceOreParserJarIngressProbe.tscn` 验证 Host 毫秒余数和 prepared-step 单次消费、Space 原石解析、Jar 离散导入、模拟丢失回执后的幂等重试，以及不会直接注入主台。
+- `SpaceOreParserJarIngressProbe.gd` 与 `scenes/industrial/SpaceOreParserJarIngressProbe.tscn` 验证 Host 毫秒余数和 prepared-step 单次消费、typed pickup 场景与稳定 ID、Space 原石解析、Jar 离散导入、模拟丢失回执后的幂等重试，以及不会直接注入主台。
 
 当前仍缺少实际 Hangar/敌机掉落资产对解析器配置与拾取入口的连接；没有填写任何正式生产百分比、速率、体积或进度阈值。Godot 4.7.1 .NET 对本轮最新 C#/GDScript 的实际编译和运行尚未完成，不能把静态提交视为已通过本机验收。
 
