@@ -55,7 +55,9 @@ static func evaluate_workshop(
 	var metrics := {
 		"max_jars": float(definition.max_jars),
 		"max_liquids": float(definition.max_liquids),
-		"liquid_staging_capacity": float(definition.liquid_staging_capacity),
+		# -1 is a Core fallback sentinel, not a physical capacity. Encode the absence
+		# of an explicit limit as zero and preserve the fallback choice separately.
+		"liquid_staging_capacity": maxf(0.0, float(definition.liquid_staging_capacity)),
 		"uses_core_staging_fallback": 1.0 if definition.liquid_staging_capacity < 0 else 0.0,
 		"base_mark_count": float(definition.base_marks.size()),
 		"additional_mark_count": float(definition.additional_marks.size()),
