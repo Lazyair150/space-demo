@@ -59,6 +59,8 @@ func configure_battle_loadout_from_checkpoint(
 ) -> bool:
 	if loadout == null or int(saved_snapshot.get("schemaVersion", 0)) != 2:
 		return false
+	if not loadout.order_definition_keys().is_empty() and not commit_callback.is_valid():
+		return false
 	var expected_identity := {
 		"shipWorldId": loadout.ship_world_id(),
 		"loadoutId": loadout.loadout_id(),
