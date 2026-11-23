@@ -64,6 +64,29 @@ static func run() -> Dictionary:
 		return _failure("100% parser profile was rejected")
 	if absf(float(full.effectiveShapeJarOutputRatesPerSecond.get("圆罐", 0.0)) - 2.0) > 0.000001:
 		return _failure("100% parser attribute did not restore full configured throughput")
+
+	# The ship's expected stone profile and the universal parser must use the exact
+	# same shape vocabulary; silent zero-rate fallbacks hide broken pre-battle builds.
+	var incomplete_ship_resources := ship_resources.duplicate(true)
+	incomplete_ship_resources.expectedStoneProgressPerSecondByShape.erase("方罐")
+	var incomplete := SpaceSkillBuildContextEvaluator.evaluate(
+		order, devices, workshop, incomplete_ship_resources,
+		parser_profile.progressPerJarByShape, 10000.0, profile
+	)
+	if bool(incomplete.get("valid", false)):
+		return _failure("build context accepted incomplete ship/parser shape coverage")
+
+	var sub_precision_parser := parser_profile.duplicate(true)
+	sub_precision_parser.progressPerJarByShape["圆罐"] = 0.0000001
+	var sub_precision_devices := devices.duplicate(true)
+	sub_precision_devices[0].oreParserProfile = sub_precision_parser
+	var sub_precision := SpaceSkillBuildContextEvaluator.evaluate(
+		order, sub_precision_devices, workshop, ship_resources,
+		sub_precision_parser.progressPerJarByShape, 10000.0, profile
+	)
+	if bool(sub_precision.get("valid", false)):
+		return _failure("build context accepted a progress threshold below fixed-point precision")
+
 	return {
 		"passed": true,
 		"halfPercentShapeRate": fifty_rate,
