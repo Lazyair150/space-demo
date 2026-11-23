@@ -13,7 +13,6 @@ const FALLBACK_ICONS := {
 
 var _root: VBoxContainer
 var _status: Label
-var _ship_icon: TextureRect
 var _ship_stage: Control
 var _ship_hull: TextureRect
 var _anchor_layer: Control
