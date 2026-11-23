@@ -110,7 +110,7 @@ static func _model(id: String, kind: String, metrics: Dictionary) -> SpaceIndivi
 			"minimum": minimum,
 			"maximum": 100000.0,
 			"weight": 1.0,
-			"higherIsBetter": true
+			"higherIsBetter": not ["difficulty_overcost_deviation", "difficulty_undercost_deviation"].has(String(key))
 		}
 	return model
 
