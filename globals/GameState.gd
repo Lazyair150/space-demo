@@ -5,20 +5,24 @@ signal wave_changed(new_wave: int)
 signal player_hp_changed(hp: int)
 signal game_over_requested
 signal space_progression_state_changed(state: SpacePlayerProgressionState)
+signal space_campaign_progress_changed(state: SpaceCampaignProgressState)
 signal segment_changed(label: String, wave: int)
 
 const SAVE_PATH := "user://highscore.cfg"
 const SPACE_PROGRESSION_SAVE_PATH := "user://space_progression.cfg"
+const SPACE_CAMPAIGN_SAVE_PATH := "user://space_campaign_progress.cfg"
 
 var score: int = 0
 var wave: int = 0
 var segment: String = ""
 var high_score: int = 0
 var space_progression_state: SpacePlayerProgressionState
+var space_campaign_progress_state: SpaceCampaignProgressState
 
 func _ready() -> void:
 	_load_high_score()
 	_load_space_progression_state()
+	_load_space_campaign_progress_state()
 
 func _load_high_score() -> void:
 	var cfg := ConfigFile.new()
@@ -125,6 +129,41 @@ func _load_space_progression_state() -> void:
 
 func _on_space_progression_changed(_revision: int) -> void:
 	_save_space_progression_state()
+
+func record_space_stage_clear(stage: SpaceStageDefinition, result: Dictionary, settlement_id: String) -> bool:
+	if space_campaign_progress_state == null:
+		space_campaign_progress_state = SpaceCampaignProgressState.new()
+		space_campaign_progress_state.changed.connect(_on_space_campaign_progress_changed)
+	if not space_campaign_progress_state.record_stage_clear(stage, result, settlement_id):
+		return false
+	return _save_space_campaign_progress_state()
+
+func _load_space_campaign_progress_state() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SPACE_CAMPAIGN_SAVE_PATH) != OK:
+		space_campaign_progress_state = SpaceCampaignProgressState.new()
+	else:
+		var raw: Variant = cfg.get_value("campaign", "state", null)
+		if not (raw is Dictionary):
+			push_warning("Space campaign progress save is missing or malformed; campaign clears start empty")
+			space_campaign_progress_state = SpaceCampaignProgressState.new()
+		else:
+			space_campaign_progress_state = SpaceCampaignProgressState.from_data(raw)
+			if space_campaign_progress_state == null:
+				push_error("Space campaign progress save failed schema validation")
+				space_campaign_progress_state = SpaceCampaignProgressState.new()
+	space_campaign_progress_state.changed.connect(_on_space_campaign_progress_changed)
+	space_campaign_progress_changed.emit(space_campaign_progress_state)
+
+func _on_space_campaign_progress_changed(_revision: int) -> void:
+	_save_space_campaign_progress_state()
+
+func _save_space_campaign_progress_state() -> bool:
+	if space_campaign_progress_state == null or not space_campaign_progress_state.get_validation_errors().is_empty():
+		return false
+	var cfg := ConfigFile.new()
+	cfg.set_value("campaign", "state", space_campaign_progress_state.to_data())
+	return cfg.save(SPACE_CAMPAIGN_SAVE_PATH) == OK
 
 func _save_space_progression_state() -> bool:
 	if space_progression_state == null or not space_progression_state.get_validation_errors().is_empty():
