@@ -4,15 +4,24 @@
 
 Every player-configurable combat capability belongs to the same Space Skill model. This includes projectile weapons, rapid fire, lasers, missiles, shields, drones, reconnaissance, support actions, and combat modifiers. The visible/mechanical form is an effect category, not a separate progression or resource system.
 
-A skill is the immutable binding of:
+A skill is the immutable semantic binding of:
 - Space identity and category (Offense, Defense, Support, Reconnaissance, Utility);
-- a Jar order contract (requirements, order type, Active/Passive lane and cooldown);
+- the category-specific Jar shape affinity supplied by a versioned `SpaceAbilityShapeProfile`;
+- a generated Jar order/template identity and its concrete order contract (requirements, order type, Active/Passive lane and cooldown);
 - a Space effect definition/version and parameters;
 - the selected ship/loadout context.
 
 A skill may execute an instantaneous action, spawn an entity, enable a sustained beam, apply a timed shield, or create a persistent support actor. The Jar order cycle is the resource/admission unit; it is not necessarily one bullet, one laser frame, or one second of a sustained effect. The Space effect executor defines what a successful cycle means.
 
-Jar must never branch on effect category. It sees an opaque order key and its own order contract. Space resolves the successful cycle against the frozen effect binding.
+Jar must never branch on ability category. It sees an opaque order key and its own generated order contract. Space resolves the successful cycle against the frozen skill/effect binding. The order template remains the generator of the order structure; the Space skill gives that generated order a combat meaning. Do not create a parallel Space recipe generator or allow a skill-side cost preview to silently diverge from the exact generated order requirements.
+
+## Ability category ↔ Jar shape semantics
+
+`SpaceAbilityShapeProfile` is a versioned Space-side semantic map from each ability category to one distinct shape in the selected Jar vocabulary. The shape names are authored from the world's actual shape vocabulary; neither category names nor combat semantics are sent into Jar Core.
+
+A skill declares its category and principal shape. Its order requirements must contain a strict majority of that category's mapped shape (more than half of all required Jars), while secondary shapes and liquid-bearing Jars remain valid for mixed-purpose skills. This is a structural affinity, not an exclusive restriction: a shield skill may still require some support-shaped Jars, for example, but its defense-shaped Jar must remain dominant.
+
+The mapping is checked when the Hangar catalog bundle is prepared, before a skill enters the selectable inventory. Changing the mapping or the shape vocabulary requires a new profile version and a compatible skill/order-template revision. The category-to-shape map is Space authoring metadata only; the materialized Jar order still contains ordinary shape/liquid requirements.
 
 The current Space effect registry is Buff-first. It must be generalized into typed Space effect definitions and executors before non-Buff skill content is authored. Do not encode projectiles, beams, drones or reconnaissance as fake BuffDefinitions.
 
