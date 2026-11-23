@@ -227,3 +227,16 @@
 - 计算修正：Encounter evaluator 先在临时 intrinsic-only model 上验证基础 Parser 指标，再将 supply-context 维度并入完整模型评分，避免模型包含供给维度时被提前的精确维度数量检查拒绝。
 - 边界修正：drop chance 为 0 且无 weighted stone entries 是合法的“无掉落遭遇”，所有供给量/维持时间输出 0；若 drop chance 大于 0 却无正权重供给则拒绝。Probe 已加入零掉落和无效击杀速率覆盖，仍未运行。
 - 本轮最新 GitHub 核对（执行文档更新前）：PR #2 head `197d6ec3ee7d35dce1592841a909cb5eba529abb`；执行文档更新后 head 为 `5df294dc9001ab82f9eef69a21da93255eb4b859`，compare main...branch ahead 613 / behind 0。PR 仍 Draft/Open/未合并。Space Demo Godot 4.7.1 .NET、GDScript parse 与 runtime Probe 均未执行。
+
+
+## 9. 修正工作区装配语义 — 独立元件与可配置位置（2026-11-23）
+
+- 纠正旧的固定配对设计：SpaceWorkshopCombinationDefinition 现在是 World V2 规则配置 + 可用工作台 Definition roster；workshop_pair 降为仅供旧 definition-only 开发 fixture 兼容的可选提示，不再是生产 Owned Instance 选择约束。
+- World roster 不再要求恰好两个 Definition；允许一个或多个工作台元件定义。每次生产装配必须从玩家拥有的工作台实例中选出两个不同 instance ID，分别放入 Master / Slave 位置。两个实例可以来自同一个 Definition（例如同一元件的两份独立个体），成长数据仍各自独立。
+- Core World V2 options 只物化当前选中的两个位置，并用角色后缀生成唯一工作台名；角色属于位置，不写回 Definition，不修改 Owned Instance 身份。Master / Slave 的实际资源方向与执行规则仍完全由 Jar Core 执行。
+- Owned inventory 不再只暴露预先配好的 Master/Slave 组合：分别输出 World profile choices 和独立 workshop instance choices。Hangar UI 改为独立选择 World 规则配置、主台位置元件、从台位置元件；重复选择同一 instance 被拒绝。
+- SpaceHangarOwnedLoadoutAssembler 依据两个精确 Owned Instance 的 definition ID/version 查找各自规则，分别合成其成长属性，再按所处位置写入 Core World options，并冻结两个独立 instance snapshots。不会把角色绑定到 Definition。
+- SpaceWorkshopSlotSelectionProbe 覆盖角色交换、同一 Definition 的两个不同 Owned copies 可分别占据两个位置、无固定 pair 的 roster，以及 Core role name uniqueness。SpaceHangarCatalogOwnershipProbe 已改为检查独立 World / instance inventory 与角色交换。
+- 为模板和目录验证场景，只有一个 workshop Definition 的 World 也可使用该 Definition 临时物化两个空白验证位置；生产 Owned assembler 仍必须显式提供两个真实且不同的 Owned Instance IDs。
+- 本轮不再建立 Workshop role power model；角色是工作区位置，不是个体属性。订单区和分解区将按相同的 Definition / Owned Instance / Board Slot 分离原则继续统一。
+- Space Demo Godot/GDScript/.NET 验证仍未执行；本轮所有 Probe 均为 authored-only。
