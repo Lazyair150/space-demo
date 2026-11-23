@@ -67,7 +67,8 @@ Implemented on the branch:
 - color-coded shape tokens in the industrial presentation components;
 - optional Space-owned `primary_shape` metadata on skill/order definitions, shown in Hangar selection, frozen outside the Jar order payload and validated against its requirement shapes;
 - workshop tendency accent and per-liquid staging meters where capacity is explicit;
-- combat HUD observer for the active World V2 Host snapshot;\n- individual responsive Jar tiles in ship inventory and each workshop, with a bounded visible count and an explicit overflow count;
+- combat HUD observer for the active World V2 Host snapshot;
+- individual responsive Jar tiles in ship inventory and each workshop, with a bounded visible count and an explicit overflow count;
 - snapshot-delta feedback for Jar acquisition/consumption, fill changes, ship/workshop liquid changes, lifecycle transitions, order cooldown transitions, and active-session progress;
 - clock-only snapshot updates no longer rebuild inventory controls; workshop meters add a presentation-only 80% caution state and explicit full-capacity label;
 - pure aggregation and shape-vocabulary checks in `tests/space_jar_hud_feedback.gd`;
