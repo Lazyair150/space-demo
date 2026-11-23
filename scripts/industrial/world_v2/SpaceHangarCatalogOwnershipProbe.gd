@@ -394,6 +394,11 @@ static func run() -> bool:
 		return false
 	if curve_upgraded.growth_curve_id != parser_curve.curve_id or curve_upgraded.growth_curve_version != parser_curve.definition_version:
 		return false # The exact curve version is persisted with the calculated result.
+	var curve_provenance_tamper := progression.resolve_instance("probe.parser.instance.b")
+	curve_provenance_tamper.growth_curve_version += 1
+	curve_provenance_tamper.progression_revision += 1
+	if progression.replace_instance_progression(curve_provenance_tamper):
+		return false # The aggregate itself also prevents bypassing curve provenance.
 	var curve_restored_state := SpacePlayerProgressionState.from_data(progression.to_data())
 	if curve_restored_state == null:
 		return false
