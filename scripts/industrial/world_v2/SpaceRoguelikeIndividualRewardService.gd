@@ -40,6 +40,12 @@ static func acquire_candidate(
 		return {"success": false, "reason": "candidate data was modified after the pool roll"}
 	if candidate.get("powerBand", {}) != pool.power_bands.get(rarity, {}):
 		return {"success": false, "reason": "candidate rarity power band does not match the exact pool"}
+	if pool.require_definition_evaluation:
+		var definition_evaluation := _evaluate_exact_definition(bundle, pool, exact_entry, definition_id, definition_version)
+		if not bool(definition_evaluation.get("success", false)):
+			return {"success": false, "reason": String(definition_evaluation.get("reason", "exact definition evaluation failed"))}
+		if definition_evaluation.get("powerMetrics", {}) != power_metrics or absf(float(definition_evaluation.get("powerScore", -1.0)) - power_score) > 0.000001:
+			return {"success": false, "reason": "candidate power data cannot be reproduced from its exact catalog definition"}
 	var calculated_power := pool.power_model.calculate_power_score(power_metrics)
 	if not bool(calculated_power.get("success", false)) or absf(float(calculated_power.get("powerScore", -1.0)) - power_score) > 0.000001 or not pool.validate_effective_metrics(definition_id, definition_version, rarity, power_metrics).is_empty() or not pool.validate_effective_power(definition_id, definition_version, rarity, power_score).is_empty():
 		return {"success": false, "reason": "candidate power metrics/score are outside the exact subsystem model and rarity budget"}
@@ -77,3 +83,34 @@ static func acquire_candidate(
 		"powerScore": power_score,
 		"progressionRevision": state.state_revision
 	}
+
+static func _evaluate_exact_definition(
+	bundle: SpaceHangarCatalogBundle,
+	pool: SpaceRoguelikeIndividualPool,
+	entry: Dictionary,
+	definition_id: String,
+	definition_version: int
+) -> Dictionary:
+	match pool.item_kind:
+		"ore_parser":
+			var parser := bundle.ore_parser_catalog.resolve_definition(definition_id, definition_version)
+			var shapes: Variant = entry.get("shapeVocabulary", null)
+			if parser == null or not (shapes is Array) or shapes.is_empty():
+				return {"success": false, "reason": "parser entry cannot resolve its exact definition/shape vocabulary"}
+			return SpaceIndividualPowerEvaluator.evaluate_parser(parser, shapes, pool.power_model)
+		"workshop":
+			for combination in bundle.workshop_combination_catalog.definitions:
+				if combination == null:
+					continue
+				for workshop in combination.workshop_definitions:
+					if workshop != null and String(workshop.workshop_id) == definition_id and workshop.definition_version == definition_version:
+						return SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, pool.power_model)
+			return {"success": false, "reason": "workshop exact definition is absent from the prepared catalog"}
+		"skill":
+			var skill := bundle.skill_catalog.resolve_skill(definition_id, definition_version)
+			var benefits: Variant = entry.get("benefitMetrics", null)
+			var context: Variant = entry.get("balanceContext", null)
+			if skill == null or not (benefits is Dictionary) or not (context is Dictionary):
+				return {"success": false, "reason": "skill entry is missing its exact definition, benefit metrics or evaluation context"}
+			return SpaceIndividualPowerEvaluator.evaluate_skill(skill, benefits, context, bundle.balance_profile, pool.power_model)
+	return {"success": false, "reason": "unsupported individual item kind"}
