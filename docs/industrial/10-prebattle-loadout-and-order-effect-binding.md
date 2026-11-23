@@ -303,7 +303,7 @@ The parser is a Space-owned runtime, not a Jar time-driven Producer:
 
 The Godot end-to-end probe covers a synthetic stone becoming a Jar, a simulated lost import receipt, retry through the same operation ID, and the invariant that imported Jars enter the central warehouse rather than a workshop.
 
-Remaining integration work is production data/ownership, not the parser kernel: Hangar must freeze a real versioned parser profile into the loadout; enemy/asteroid drop definitions must instantiate SpaceEnergyStonePickup with stable source-derived pickup IDs, actual stone types, and actual volumes; the battle save coordinator must persist parser state together with the Jar execution checkpoint. The pickup adapter now forwards successful player collection to Game.ingest_energy_stone and only removes the pickup after parser acceptance. No production rates, drop volumes, or parser percentages are fabricated here.
+Remaining integration work is production data/ownership, not the parser kernel: Hangar must freeze a real versioned parser profile into the loadout; enemy/asteroid death/drop handlers must call Game.spawn_energy_stone_drop with a versioned SpaceEnergyStoneDropProfile, a stable source RNG, and world position; Game freezes the profile, validates types against the frozen Jar shape vocabulary, allocates a persisted stable pickup ID, and instantiates SpaceEnergyStonePickup; the battle save coordinator must persist parser state together with the Jar execution checkpoint. The pickup adapter now forwards successful player collection to Game.ingest_energy_stone and only removes the pickup after parser acceptance. No production rates, drop volumes, or parser percentages are fabricated here.
 
 ### Parser runtime integrity follow-up
 
