@@ -5,7 +5,7 @@ extends Node
 signal state_changed(snapshot: Dictionary)
 signal transition_failed(target_screen: int, scene_path: String, error_code: int)
 
-enum Screen { MENU, HANGAR, INDUSTRIAL, BATTLE, GAME_OVER }
+enum Screen { MENU, HANGAR, BATTLE, GAME_OVER }
 enum BattlePhase { INACTIVE, PREPARING, RUNNING, PAUSED, RESUMING, RESUME_READY, ENDED, FAULTED }
 enum PauseReason { NONE, PLAYER, WINDOW_FOCUS_LOST, SYSTEM }
 
