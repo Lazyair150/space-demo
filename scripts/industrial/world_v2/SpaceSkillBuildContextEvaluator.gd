@@ -3,7 +3,7 @@ class_name SpaceSkillBuildContextEvaluator
 ## Converts the selected production-device/workshop build into measurable per-skill pressure.
 ## Expected schema:
 ## ship_resource_profile.expectedStoneProgressPerSecondByShape: { shape_id: non-negative progress/second }
-## device.shapeProcessingRatePerSecond: { shape_id: positive progress/second }
+## device.oreParserProfile: { productionPercentage: 0..100, shapeProcessingRatePerSecond: { shape_id: progress/second } }
 ## shape_progress_per_jar: { shape_id: positive progress units required for one Jar }
 ## workshop.operationCostByOrderType: { A|B: non-negative operations per cycle }
 ## workshop.liquidHandlingOperationCost: non-negative operations per liquid-bearing jar.
@@ -30,14 +30,21 @@ static func evaluate(
 	for raw_device in production_devices:
 		if not (raw_device is Dictionary):
 			return _failure("production device selection must be a dictionary")
-		var rates: Variant = raw_device.get("shapeProcessingRatePerSecond", null)
+		var parser_profile: Variant = raw_device.get("oreParserProfile", raw_device)
+		if not (parser_profile is Dictionary):
+			return _failure("production device oreParserProfile must be a dictionary")
+		var raw_percentage: Variant = parser_profile.get("productionPercentage", null)
+		if typeof(raw_percentage) != TYPE_INT or int(raw_percentage) < 0 or int(raw_percentage) > 100:
+			return _failure("ore parser productionPercentage must be an integer from 0 to 100")
+		var rates: Variant = parser_profile.get("shapeProcessingRatePerSecond", null)
 		if not (rates is Dictionary) or rates.is_empty():
-			return _failure("production device must provide shapeProcessingRatePerSecond")
+			return _failure("ore parser must provide shapeProcessingRatePerSecond")
 		for shape in rates:
-			var rate := float(rates[shape])
-			if rate < 0.0:
-				return _failure("shape production rates cannot be negative")
-			aggregate_rates[String(shape)] = float(aggregate_rates.get(String(shape), 0.0)) + rate
+			var raw_rate: Variant = rates[shape]
+			if (typeof(raw_rate) != TYPE_INT and typeof(raw_rate) != TYPE_FLOAT) or not is_finite(float(raw_rate)) or float(raw_rate) < 0.0:
+				return _failure("shape processing rates must be finite and non-negative")
+			var effective_rate := float(raw_rate) * float(raw_percentage) / 100.0
+			aggregate_rates[String(shape)] = float(aggregate_rates.get(String(shape), 0.0)) + effective_rate
 
 	var stone_rates: Variant = ship_resource_profile.get("expectedStoneProgressPerSecondByShape", null)
 	if not (stone_rates is Dictionary) or stone_rates.is_empty():
