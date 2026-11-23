@@ -82,6 +82,11 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 		var acquired := SpaceRoguelikeIndividualOfferService.acquire_selected(reward_offer, 0, state, bundle, reward_library, "probe.roguelike-owned-copy")
 		if not bool(acquired.get("success", false)) or state.resolve_instance("probe.roguelike-owned-copy") == null:
 			return false
+		if not state.reward_acquisition_ids.has(String(reward_offer.offerId)):
+			return false
+		var restored_reward_state := SpacePlayerProgressionState.from_data(state.to_data())
+		if restored_reward_state == null or not restored_reward_state.reward_acquisition_ids.has(String(reward_offer.offerId)):
+			return false
 		var owned_count_after_reward := state.owned_instances.size()
 		var duplicate_acquire := SpaceRoguelikeIndividualOfferService.acquire_selected(reward_offer, 0, state, bundle, reward_library, "probe.roguelike-owned-copy-duplicate")
 		if bool(duplicate_acquire.get("success", false)) or state.owned_instances.size() != owned_count_after_reward:
