@@ -303,6 +303,11 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 
 	if source.has("boardAssignmentSnapshot"):
 		errors.append_array(_validate_board_assignment_snapshot(source))
+	if source.has("assemblyBoard") and source.has("boardAssignmentSnapshot"):
+		var assembly_board: Dictionary = source.get("assemblyBoard", {})
+		var assignment_board: Dictionary = source.get("boardAssignmentSnapshot", {}).get("boardDefinition", {})
+		if _required_text(assembly_board, "boardId") != _required_text(assignment_board, "boardId") or int(assembly_board.get("definitionVersion", 0)) != int(assignment_board.get("definitionVersion", 0)):
+			errors.append("assemblyBoard and Board Assignment snapshot must freeze the same Board Definition version")
 
 	if source.has("progressionOwnerPlayerId") or source.has("ownedInstanceSnapshots"):
 		var referenced_ids := {}
