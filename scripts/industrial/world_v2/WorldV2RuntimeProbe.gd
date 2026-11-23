@@ -174,6 +174,42 @@ func _run_clock_control_probe() -> void:
         " 0x_logical_delta=", stopped_logical_delta
     )
 
+    await _run_ship_host_active_demand_probe()
+
+func _run_ship_host_active_demand_probe() -> void:
+    var host := ClassDB.instantiate("WorldV2ShipHost") as Node
+    assert(host != null, "WorldV2ShipHost class must be registered")
+    host.name = "ActiveDemandHostProbe"
+    add_child(host)
+    var initialized: bool = host.call("BeginShipWorld")
+    assert(initialized, "isolated ShipHost should initialize its sandbox world")
+
+    var selected_orders: Array = [{
+        "orderDefinitionKey": "probe.order.host-active",
+        "jarOrder": {
+            "type": "A",
+            "area": "Active",
+            "cooldownDurationLogicalMilli": 0,
+            "requirements": [{"shape": "圆罐", "liquid": ""}]
+        }
+    }]
+    var materialized: Dictionary = host.call("MaterializeSelectedOrders", selected_orders)
+    assert(bool(materialized.get("success", false)), "Host should materialize the probe Active order")
+    var demand_ids: Array = materialized.get("demandIds", [])
+    assert(demand_ids.size() == 1, "Host should return the exact materialized demand identity")
+
+    var start_result: Dictionary = host.call("StartActiveDemand", int(demand_ids[0]))
+    assert(start_result.has("success"), "Host active trigger must return a success field")
+    assert(start_result.has("reason"), "Host active trigger must return a Core reason field")
+    var snapshot: Dictionary = host.call("GetWorldSnapshot")
+    assert(snapshot.get("available", false), "Host snapshot must remain available after active trigger")
+    assert(not snapshot.get("runtimeFaulted", true), "normal active-demand rejection must not fault the Host")
+    print("[WorldV2Probe] Host active-demand boundary passed demand_id=", int(demand_ids[0]),
+        " success=", start_result.get("success", false), " reason=", start_result.get("reason", ""))
+
+    host.call("EndShipWorld")
+    host.queue_free()
+
 func _print_snapshot() -> void:
     var state: Dictionary = runtime.GetWorldSnapshot()
     print(
