@@ -7,7 +7,9 @@ static func launch_new_battle(
 	parent: Node,
 	game: Node,
 	loadout: SpaceBattleLoadoutSnapshot,
-	commit_callback: Callable
+	commit_callback: Callable,
+	stage: SpaceStageDefinition = null,
+	protected_target: Node = null
 ) -> bool:
 	if not _can_attach(parent, game) or loadout == null:
 		return false
@@ -20,6 +22,12 @@ static func launch_new_battle(
 	if commit_callback.is_valid() and not bool(game.call("configure_order_effect_commit_callback", commit_callback)):
 		return false
 	if not bool(game.call("configure_battle_loadout", loadout)):
+		return false
+	if stage != null:
+		if not stage.is_valid() or not game.has_method("configure_battle_stage") or not bool(game.call("configure_battle_stage", stage, protected_target)):
+			push_error("Combat scene rejected the exact finite-stage configuration")
+			return false
+	elif protected_target != null:
 		return false
 	if not GameFlow.begin_battle_preparation():
 		push_error("GameFlow rejected the Hangar-to-Battle launch")
