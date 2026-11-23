@@ -40,4 +40,12 @@ Build the first campaign as a short onboarding arc:
 4. **Broken Relay** — elite encounter and controlled rest window.
 5. **Warden of the Rift** — boss capstone, unlocks the next sector.
 
-The current commit introduces stage data contracts and progression comparison. It does not yet replace the live Spawner loop or claim campaign gameplay is playable; that integration is the next implementation increment.
+The current implementation now includes `SpaceStageDefinition`, `SpaceStageCatalog`, a five-stage `Rift Frontier` catalog, `SpaceStageProgressionProfile`, and `SpaceCampaignProgressState` persistence in `GameState`. `SpaceStageModelProbe` covers catalog validation, linear unlock progression, idempotent clear recording, save/restore, and loadout-level comparison. The live Spawner still runs its existing endless four-beat loop; the authored campaign is data-complete as a first slice but is not yet playable until stage selection, finite encounter execution, objective tracking, checkpoint identity, and reward settlement are wired.
+
+## First SVG concept batch
+
+The editable SVG concept library is under `assets/sprites/`: player frigate, scout, bomber, elite warden, iron asteroid, small/large energy stones, rift gate, relay station and support drone. These are concept assets, not yet gameplay scene replacements. See `assets/sprites/README.md` for roles and art direction.
+
+## Persistent campaign state
+
+`SpaceCampaignProgressState` stores exact stage ID/version, clear result and reward settlement identity. `GameState` saves it separately at `user://space_campaign_progress.cfg`, not inside transient wave state or the Jar checkpoint. A stage clear is idempotent per exact stage version. The reward settlement ID is recorded as a durable identity; actual reward application is deliberately not implemented until the campaign result boundary can atomically coordinate XP, resources and unlocks.
