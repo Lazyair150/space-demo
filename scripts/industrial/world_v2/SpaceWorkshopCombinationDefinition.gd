@@ -44,8 +44,8 @@ func get_validation_errors() -> PackedStringArray:
 			if liquid_name.is_empty() or liquid_set.has(liquid_name):
 				errors.append("workshop combination liquid vocabulary contains an empty or duplicate name")
 			liquid_set[liquid_name] = true
-	if workshop_definitions.size() < 2:
-		errors.append("workshop combination must provide at least two individual workshop definitions")
+	if workshop_definitions.size() != 2:
+		errors.append("workshop combination must provide exactly two individual workshop definitions for its Master/Slave pair")
 	var ids := {}
 	var names := {}
 	for workshop in workshop_definitions:
