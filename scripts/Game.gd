@@ -85,6 +85,9 @@ func configure_battle_loadout_from_checkpoint(
 		return false
 	if int(effect_state.get("schemaVersion", 0)) != 1 or not (effect_state.get("instances", null) is Array) or not (effect_state.get("processedOrderEventIds", null) is Array):
 		return false
+	if not _checkpoint_event_ledgers_match(effect_state, dispatcher_state):
+		push_error("[Game] Saved effect and dispatcher event ledgers do not match")
+		return false
 	if effect_catalog == null or not effect_target_resolver.is_valid():
 		push_error("[Game] Resuming a battle requires the exact effect catalog and target resolver")
 		return false
@@ -113,6 +116,27 @@ func configure_battle_loadout_from_checkpoint(
 	if commit_callback.is_valid() and not configure_order_effect_commit_callback(commit_callback):
 		return false
 	return true
+
+func _checkpoint_event_ledgers_match(effect_state: Dictionary, dispatcher_state: Dictionary) -> bool:
+	if int(dispatcher_state.get("schemaVersion", 0)) != 1:
+		return false
+	if String(dispatcher_state.get("shipWorldId", "")) != String(_battle_loadout.ship_world_id()) or String(dispatcher_state.get("loadoutId", "")) != String(_battle_loadout.loadout_id()) or int(dispatcher_state.get("loadoutVersion", 0)) != _battle_loadout.loadout_version() or String(dispatcher_state.get("loadoutFingerprint", "")) != String(_battle_loadout.loadout_fingerprint()):
+		return false
+	var effect_ids: Variant = effect_state.get("processedOrderEventIds", null)
+	var dispatcher_ids: Variant = dispatcher_state.get("processedEventIds", null)
+	if not (effect_ids is Array) or not (dispatcher_ids is Array) or effect_ids.size() != dispatcher_ids.size():
+		return false
+	var expected := {}
+	for raw_id in effect_ids:
+		if typeof(raw_id) != TYPE_STRING or String(raw_id).is_empty() or expected.has(String(raw_id)):
+			return false
+		expected[String(raw_id)] = true
+	var actual := {}
+	for raw_id in dispatcher_ids:
+		if typeof(raw_id) != TYPE_STRING or String(raw_id).is_empty() or actual.has(String(raw_id)):
+			return false
+		actual[String(raw_id)] = true
+	return expected == actual
 
 func _ready() -> void:
 	if not GameFlow.begin_battle_preparation():
