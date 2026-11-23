@@ -33,6 +33,7 @@ var _device_section: VBoxContainer
 var _skill_section: VBoxContainer
 var _effect_section: VBoxContainer
 var _device_pickers: Dictionary = {}
+var _pending_skill_choices: Dictionary = {}
 var _primary_icons: Dictionary = {}
 var _suppress_picker_events: bool = false
 
@@ -409,14 +410,17 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 		area_picker.add_item("控制区域")
 		controls.add_child(area_picker)
 		var existing := _find_skill_selection(selected_skills, order_key)
-		if not existing.is_empty():
-			for item_index in range(1, skill_picker.item_count):
-				var candidate: Dictionary = skill_picker.get_item_metadata(item_index)
-				if String(candidate.get("id", "")) == String(existing.get("skillId", "")) and int(candidate.get("version", 0)) == int(existing.get("definitionVersion", 0)):
-					skill_picker.select(item_index)
-					_set_icon_texture(icon, candidate.get("iconTexture"), "skill")
-					_populate_control_areas(area_picker, candidate.get("allowedControlAreas", []), String(existing.get("controlArea", "")))
-					break
+		var pending: Dictionary = _pending_skill_choices.get(order_key, {})
+		var wanted_id := String(pending.get("id", existing.get("skillId", "")))
+		var wanted_version := int(pending.get("version", existing.get("definitionVersion", 0)))
+		for item_index in range(1, skill_picker.item_count):
+			var candidate: Dictionary = skill_picker.get_item_metadata(item_index)
+			if String(candidate.get("id", "")) == wanted_id and int(candidate.get("version", 0)) == wanted_version:
+				skill_picker.select(item_index)
+				_set_icon_texture(icon, candidate.get("iconTexture"), "skill")
+				var selected_area := String(pending.get("controlArea", existing.get("controlArea", "")))
+				_populate_control_areas(area_picker, candidate.get("allowedControlAreas", []), selected_area)
+				break
 		skill_picker.item_selected.connect(_on_skill_selected.bind(order_key, skill_picker, area_picker, icon))
 		area_picker.item_selected.connect(_on_skill_area_selected.bind(order_key, skill_picker, area_picker))
 		if skill_picker.selected == 0:
@@ -441,11 +445,13 @@ func _populate_control_areas(area_picker: OptionButton, raw_areas: Variant, sele
 
 func _on_skill_selected(index: int, order_key: String, skill_picker: OptionButton, area_picker: OptionButton, icon: TextureRect) -> void:
 	if index <= 0:
+		_pending_skill_choices.erase(order_key)
 		_controller.remove_skill(order_key)
 		_populate_control_areas(area_picker, [])
 		_set_icon_texture(icon, null, "skill")
 		return
 	var choice: Dictionary = skill_picker.get_item_metadata(index)
+	_pending_skill_choices[order_key] = choice.duplicate(true)
 	_populate_control_areas(area_picker, choice.get("allowedControlAreas", []))
 	area_picker.disabled = false
 	_set_icon_texture(icon, choice.get("iconTexture"), "skill")
@@ -458,7 +464,12 @@ func _apply_skill_binding(order_key: String, skill_picker: OptionButton, area_pi
 	var skill := _selected_choice(skill_picker)
 	if skill.is_empty() or area_picker.selected <= 0:
 		return
-	_controller.set_skill(order_key, String(skill.get("id", "")), int(skill.get("version", 0)), area_picker.get_item_text(area_picker.selected))
+	var selected_area := area_picker.get_item_text(area_picker.selected)
+	var pending: Dictionary = _pending_skill_choices.get(order_key, skill.duplicate(true))
+	pending["controlArea"] = selected_area
+	_pending_skill_choices[order_key] = pending
+	if _controller.set_skill(order_key, String(skill.get("id", "")), int(skill.get("version", 0)), selected_area):
+		_pending_skill_choices.erase(order_key)
 
 func _rebuild_effect_section(effect_choices: Variant) -> void:
 	for child in _effect_section.get_children():
