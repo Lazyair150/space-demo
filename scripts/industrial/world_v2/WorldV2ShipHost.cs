@@ -229,17 +229,34 @@ public partial class WorldV2ShipHost : Node
                 if (string.IsNullOrWhiteSpace(orderKey) || !orderKeys.Add(orderKey))
                     throw new InvalidOperationException("Selected orderDefinitionKey is empty or duplicated");
                 var jarOrder = order["jarOrder"].AsGodotDictionary();
-                var requirements = jarOrder.ContainsKey("requirements")
-                    ? jarOrder["requirements"].AsGodotArray()
-                    : new GArray();
-                var demandId = _runtime.AddJarDemand(
-                    jarOrder.ContainsKey("type") ? jarOrder["type"].AsString() : "",
-                    jarOrder.ContainsKey("area") ? jarOrder["area"].AsString() : "",
-                    jarOrder.ContainsKey("cooldownDurationLogicalMilli")
-                        ? jarOrder["cooldownDurationLogicalMilli"].AsInt64()
-                        : -1,
-                    orderKey,
-                    requirements);
+                var area = jarOrder.ContainsKey("area") ? jarOrder["area"].AsString() : "";
+                var cooldown = jarOrder.ContainsKey("cooldownDurationLogicalMilli")
+                    ? jarOrder["cooldownDurationLogicalMilli"].AsInt64()
+                    : -1;
+                int demandId;
+                if (jarOrder.ContainsKey("templateName"))
+                {
+                    var templateName = jarOrder["templateName"].AsString();
+                    if (jarOrder.ContainsKey("requirements") || jarOrder.ContainsKey("type"))
+                        throw new InvalidOperationException(
+                            "Template-backed Jar orders must not duplicate Core-owned type or requirements");
+                    demandId = _runtime.AddJarDemandFromTemplate(
+                        templateName, area, cooldown, orderKey);
+                }
+                else
+                {
+                    // Temporary compatibility path for legacy development bindings.
+                    // Production skill definitions must migrate to templateName and remove this branch.
+                    var requirements = jarOrder.ContainsKey("requirements")
+                        ? jarOrder["requirements"].AsGodotArray()
+                        : new GArray();
+                    demandId = _runtime.AddJarDemand(
+                        jarOrder.ContainsKey("type") ? jarOrder["type"].AsString() : "",
+                        area,
+                        cooldown,
+                        orderKey,
+                        requirements);
+                }
                 demandIds.Add(demandId);
             }
 
