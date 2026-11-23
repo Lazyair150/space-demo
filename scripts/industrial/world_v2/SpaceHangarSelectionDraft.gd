@@ -51,12 +51,8 @@ func set_parser(definition_id: String, version: int, slot_id: String, instance_i
 	return true
 
 func set_workshop(definition_id: String, version: int, master_instance_id: String = "", slave_instance_id: String = "") -> bool:
-	var choice := _find_exact_choice("workshopChoices", definition_id, version)
+	var choice := _find_workshop_choice(definition_id, version, master_instance_id, slave_instance_id)
 	if choice.is_empty():
-		return false
-	if not master_instance_id.is_empty() and String(choice.get("masterInstanceId", "")) != master_instance_id:
-		return false
-	if not slave_instance_id.is_empty() and String(choice.get("slaveInstanceId", "")) != slave_instance_id:
 		return false
 	_selection.masterWorkshopInstanceId = String(choice.get("masterInstanceId", ""))
 	_selection.slaveWorkshopInstanceId = String(choice.get("slaveInstanceId", ""))
@@ -76,7 +72,7 @@ func set_device(slot_id: String, definition_id: String, version: int, instance_i
 			devices[index] = _device_choice(slot_id, definition_id, version, String(choice.get("instanceId", "")))
 			_selection.deviceSelections = devices
 			return true
-	devices.append(_device_choice(slot_id, definition_id, version))
+	devices.append(_device_choice(slot_id, definition_id, version, String(choice.get("instanceId", ""))))
 	_selection.deviceSelections = devices
 	return true
 
@@ -154,7 +150,8 @@ func _find_exact_choice(collection_key: String, definition_id: String, version: 
 		if not (raw_choice is Dictionary):
 			continue
 		if String(raw_choice.get("id", "")) == definition_id and int(raw_choice.get("version", 0)) == version:
-			if not instance_id.is_empty() and String(raw_choice.get("instanceId", "")) != instance_id:
+			var choice_instance_id := String(raw_choice.get("instanceId", ""))
+			if (not instance_id.is_empty() and choice_instance_id != instance_id) or (instance_id.is_empty() and not choice_instance_id.is_empty()):
 				continue
 			return raw_choice
 	return {}
@@ -175,3 +172,19 @@ func _device_choice(slot_id: String, definition_id: String, version: int, instan
 		"definitionVersion": version,
 		"instanceId": instance_id
 	}
+
+func _find_workshop_choice(definition_id: String, version: int, master_instance_id: String, slave_instance_id: String) -> Dictionary:
+	if not _inventory_ready:
+		return {}
+	var choices: Variant = _inventory.get("workshopChoices", [])
+	if not (choices is Array):
+		return {}
+	for choice in choices:
+		if not (choice is Dictionary) or String(choice.get("id", "")) != definition_id or int(choice.get("version", 0)) != version:
+			continue
+		if not master_instance_id.is_empty() and String(choice.get("masterInstanceId", "")) != master_instance_id:
+			continue
+		if not slave_instance_id.is_empty() and String(choice.get("slaveInstanceId", "")) != slave_instance_id:
+			continue
+		return choice
+	return {}
