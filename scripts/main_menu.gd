@@ -7,6 +7,7 @@ extends Control
 @onready var industrial_button: Button = $ColorRect/VBoxContainer/IndustrialButton
 
 func _ready() -> void:
+	GameFlow.enter_screen(GameFlow.Screen.MENU)
 	high_score.text ="High Score: %d" % GameState.high_score
 	start_button.pressed.connect(_on_start)
 	quit_button.pressed.connect(_on_quit)
@@ -14,11 +15,15 @@ func _ready() -> void:
 	start_button.grab_focus()
 
 func _on_start()->void:
+	if not GameFlow.begin_battle_preparation():
+		return
 	GameState.reset_run()
 	get_tree().change_scene_to_file("res://scenes/game/Game.tscn")
 	
 ## 直接进工业舱：工业世界在 autoload 的 IndustrialRuntime 里，不进战斗也能开一局。
 func _on_industrial()->void:
+	if not GameFlow.enter_screen(GameFlow.Screen.INDUSTRIAL):
+		return
 	get_tree().change_scene_to_file("res://scenes/industrial/IndustrialMain.tscn")
 
 func _on_quit()->void:
