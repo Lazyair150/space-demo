@@ -400,3 +400,15 @@ The next increment introduces two explicit domain objects:
 - `SpaceHangarPreparation.build_loadout_from_selection` is the new compact entry point: validate the selection, validate the bundle, then pass the exact values into the existing assembler. The lower-level assembler remains the sole authority for cross-definition compatibility and immutable snapshot creation.
 
 The prior positional build API remains temporarily available for existing callers; new Hangar UI code should use the selection-object entry point. The probe now covers detached selection data, duplicate slot/order rejection, and incomplete-bundle rejection in addition to catalog copy isolation. These are committed checks, not a claim that Godot/CL has executed them.
+
+
+### Authored Hangar catalog bundle resource
+
+`SpaceHangarCatalogBundleResource` is the editor-facing Resource boundary for assembling a playable Hangar configuration without hard-coded content:
+
+- It references the authored ship, production-device, universal parser, and workshop-combination catalog Resources.
+- It stores skill and effect definitions as typed Resource arrays because their runtime exact-version registries are RefCounted services rather than serializable Resource assets.
+- `create_runtime_bundle()` rebuilds detached skill/effect registries from those authored definitions, rejects duplicate/invalid entries, creates the coherent runtime bundle, and validates all dependencies before returning it.
+- `SpaceHangarPreparation` can now consume this single Resource through its exported `catalog_bundle_resource`; the previous individual dependency exports remain as a compatibility path.
+
+This establishes the editor-authored data-loading seam. It does not create a production `.tres` asset, invent a ship/device/parser/workshop roster, or fabricate skill/effect balance. The next UI increment can load one bundle Resource and expose only definitions actually present in it.
