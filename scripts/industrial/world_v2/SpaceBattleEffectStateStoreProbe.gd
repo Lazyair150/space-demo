@@ -18,9 +18,10 @@ static func run() -> Dictionary:
         "jarExecutionCheckpointJson": "{\"schemaVersion\":2,\"kind\":\"world-v2-execution-checkpoint\"}",
         "spaceClockRemainderMilli": 0.375,
         "oreParserState": {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "parserRuntime": {"schemaVersion": 2},
             "nextPickupSequence": 7,
+            "dropRngState": 88172645463393265,
             "pendingPickups": [
                 {"pickupId": "probe-pickup-6", "stoneType": "圆罐", "volume": 2.0, "positionX": 10.0, "positionY": 20.0}
             ]
