@@ -112,4 +112,12 @@ static func run() -> bool:
 	)
 	if incomplete_bundle.validate_and_prepare().is_empty():
 		return false
+	var empty_authored_bundle := SpaceHangarCatalogBundleResource.new()
+	empty_authored_bundle.ship_catalog = SpaceShipCatalog.new()
+	empty_authored_bundle.production_device_catalog = SpaceProductionDeviceCatalog.new()
+	empty_authored_bundle.ore_parser_catalog = SpaceOreParserCatalog.new()
+	empty_authored_bundle.workshop_combination_catalog = SpaceWorkshopCombinationCatalog.new()
+	empty_authored_bundle.balance_profile = SpaceSkillBalanceProfile.new()
+	if empty_authored_bundle.create_runtime_bundle() != null:
+		return false
 	return true
