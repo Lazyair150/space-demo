@@ -40,6 +40,10 @@ static func run() -> bool:
 	var runtime_order := definition.build_jar_order("Active")
 	if String(runtime_order.get("templateName", "")) != "skill.offense@2":
 		return false
+	var legacy_mixture := definition.duplicate(true) as SpaceSkillDefinition
+	legacy_mixture.jar_requirements = [{"shape": "triangle"}]
+	if legacy_mixture.is_valid():
+		return false
 	if runtime_order.has("type") or runtime_order.has("requirements"):
 		return false
 	if definition.allowed_control_areas.has("Passive") and catalog.resolve_order_template(
