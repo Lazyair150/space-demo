@@ -314,6 +314,29 @@ func restore_state(state: Dictionary) -> Dictionary:
 	_next_batch_sequence = int(raw_next_sequence)
 	return {"success": true}
 
+
+## Runtime identity is scoped to this battle and the exact installed parser copy.
+## Definition-only identity is retained solely for isolated development fixtures.
+static func build_runtime_instance_id(ship_world_id: String, parser_profile: Dictionary) -> String:
+	if ship_world_id.strip_edges().is_empty():
+		return ""
+	var parser_id := String(parser_profile.get("parserId", "")).strip_edges()
+	var definition_version := int(parser_profile.get("definitionVersion", 0))
+	if parser_id.is_empty() or definition_version <= 0:
+		return ""
+	var identity_part := ""
+	var raw_owned: Variant = parser_profile.get("ownedInstance", null)
+	if raw_owned != null:
+		if not (raw_owned is Dictionary):
+			return ""
+		var owned_id := String(raw_owned.get("instanceId", "")).strip_edges()
+		if owned_id.is_empty() or String(raw_owned.get("itemKind", "")) != "ore_parser" or String(raw_owned.get("definitionId", "")) != parser_id or int(raw_owned.get("definitionVersion", 0)) != definition_version:
+			return ""
+		identity_part = "owned:" + owned_id
+	else:
+		identity_part = "definition:" + parser_id + "@" + str(definition_version)
+	return ship_world_id + ":" + identity_part
+
 func _has_exact_shape_keys(values: Dictionary, expected_shapes: Array) -> bool:
 	if values.size() != expected_shapes.size():
 		return false
