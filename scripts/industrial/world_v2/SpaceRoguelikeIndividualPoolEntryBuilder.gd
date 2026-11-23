@@ -61,8 +61,7 @@ static func append_skill(
 		"balanceContext": balance_context.duplicate(true)
 	}
 	if definition.jar_order_template_id != &"":
-		if String(jar_world_options.get("orderTemplates", []).size()) == "0":
-			return _failure("template-backed skill pool entry requires the exact Core world orderTemplates")
+		# evaluate_skill has already resolved this exact key from jar_world_options.
 		provenance["orderTemplateName"] = definition.core_order_template_name()
 	return _append(pool, definition.skill_id, definition.definition_version, rarity, weight, tags, evaluated, provenance)
 
