@@ -7,12 +7,19 @@ class_name SpaceHangarCatalogBundleResource
 @export var ore_parser_catalog: SpaceOreParserCatalog
 @export var workshop_combination_catalog: SpaceWorkshopCombinationCatalog
 @export var skill_definitions: Array[SpaceSkillDefinition] = []
+@export var ability_shape_profile: SpaceAbilityShapeProfile
 @export var balance_profile: SpaceSkillBalanceProfile
 @export var effect_definitions: Array[BuffDefinition] = []
 
 func create_runtime_bundle() -> SpaceHangarCatalogBundle:
+	if ability_shape_profile == null or not ability_shape_profile.is_valid():
+		push_error("Hangar bundle requires a valid ability category to Jar shape profile")
+		return null
 	var skill_catalog := SpaceSkillCatalog.new()
 	for definition in skill_definitions:
+		if definition == null or not ability_shape_profile.validate_skill(definition).is_empty():
+			push_error("Hangar skill category/shape affinity or dominant Jar shape is invalid")
+			return null
 		if not skill_catalog.register_skill(definition):
 			push_error("Hangar bundle resource contains an invalid or duplicate skill definition")
 			return null
@@ -84,6 +91,7 @@ func build_selection_inventory() -> Dictionary:
 				"description": definition.description,
 				"category": definition.ability_category,
 				"primaryShape": String(definition.primary_shape),
+				"categoryShape": ability_shape_profile.shape_for_category(definition.ability_category),
 				"allowedControlAreas": definition.allowed_control_areas.duplicate(),
 				"iconTexture": definition.display_icon
 			})
