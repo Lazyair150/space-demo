@@ -114,7 +114,7 @@ Ownership rules:
 
 ## 6. Industrial simulation is a separate clock domain
 
-The legacy `IndustrialRuntime` intentionally has its own `running`, `user_paused`, `freeze_when_unfocused`, wall-clock accumulator, backlog cap, and explicit tick API. Its focus freeze drops no elapsed time into the accumulator; its user pause calls the Core bridge pause/resume API. This is not interchangeable with combat's SceneTree pause.
+The legacy `IndustrialRuntime` intentionally has its own `running`, `user_paused`, `freeze_when_unfocused`, wall-clock accumulator, backlog cap, and explicit tick API. Its focus freeze drops no elapsed time into the accumulator; its user pause calls the Core bridge pause/resume API. This is not interchangeable with combat's SceneTree pause. The current combat pause is tree-wide, so a pausable IndustrialRuntime autoload is also engine-suspended while that pause is active; its own running/user-paused state is preserved and resumes under its own policy when the tree unpauses.
 
 When the Industrial UI is open, the application flow must decide whether the combat scene exists at all. Do not leave an active combat scene behind the industrial scene and assume that hiding it pauses it. Scene replacement/removal is the preferred ownership boundary until an explicit multi-scene simulation coordinator is introduced.
 
@@ -144,11 +144,11 @@ Still requiring a later systematic migration/audit:
 - MainMenu/Hangar/Industrial/GameOver navigation should eventually be driven by one application-flow coordinator, not unrelated direct scene changes.
 - The resumed-battle launch path should show a paused restore-ready state before authorizing simulation.
 - Industrial UI focus, application-level pause, and save/exit behavior need a unified policy without collapsing the separate IndustrialRuntime clock.
-- Add automated Godot probes for pause/resume, focus-loss behavior, gameplay timer freezing, Host lifecycle state, and no post-exit pause leakage.
+- `SpaceBattlePauseControllerProbe` now checks the synchronous SceneTree pause/overlay/resume contract, but has not been executed. Add automated Godot probes for focus-loss behavior, gameplay timer freezing, Host lifecycle state, and no post-exit pause leakage.
 
 ## 9. Non-goals
 
-- Do not globally pause every autoload when only the combat scene is paused.
+- `SceneTree.paused` is tree-wide, not scoped to the combat subtree: autoloads using an inherited/pausable process mode are also suspended. The current application does not run an independent background simulation behind the combat screen. If that product requirement changes, the background owner must explicitly use an always-process mode and enforce its own independent pause/visibility policy; do not silently rely on scene visibility.
 - Do not set `Engine.time_scale = 0` as a substitute for `SceneTree.paused`.
 - Do not use Jar logical speed ratio to pause Space actors.
 - Do not allow UI visibility, node visibility, or scene-tree presence to become a time authority.
