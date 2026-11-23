@@ -281,4 +281,49 @@ static func run() -> bool:
 		return false
 	if not unavailable_view.get("inventory", {}).get("shipChoices", []).is_empty():
 		return false
+
+	# Player progression is separate from immutable catalog definitions.
+	var progression := SpacePlayerProgressionState.new()
+	progression.player_id = &"probe.player"
+	var parser_instance := SpaceOwnedProgressionInstance.new()
+	parser_instance.instance_id = &"probe.parser.instance.a"
+	parser_instance.item_kind = "ore_parser"
+	parser_instance.definition_id = &"probe.parser"
+	parser_instance.definition_version = 1
+	if progression.acquire_instance(parser_instance):
+		return false # An instance cannot be acquired before its exact definition is unlocked.
+	if not progression.unlock_definition("ore_parser", "probe.parser", 1):
+		return false
+	if not progression.acquire_instance(parser_instance):
+		return false
+	var second_parser_instance := parser_instance.duplicate(true) as SpaceOwnedProgressionInstance
+	second_parser_instance.instance_id = &"probe.parser.instance.b"
+	if not progression.acquire_instance(second_parser_instance):
+		return false
+	var upgraded_parser := progression.resolve_instance("probe.parser.instance.a")
+	if upgraded_parser == null:
+		return false
+	if not upgraded_parser.apply_progression(250, 2, {"productionRateMultiplier": 1.25}):
+		return false
+	if not progression.replace_instance_progression(upgraded_parser):
+		return false
+	var frozen_parser := progression.build_owned_instance_snapshot("probe.parser.instance.a")
+	if int(frozen_parser.get("level", 0)) != 2 or int(frozen_parser.get("progressionRevision", 0)) != 2:
+		return false
+	if float(frozen_parser.growthAttributes.get("productionRateMultiplier", 0.0)) != 1.25:
+		return false
+	var untouched_parser := progression.resolve_instance("probe.parser.instance.b")
+	if untouched_parser == null or untouched_parser.level != 1 or not untouched_parser.growth_attributes.is_empty():
+		return false # Two copies of one definition progress independently.
+	upgraded_parser.growth_attributes.productionRateMultiplier = 9.0
+	if float(progression.build_owned_instance_snapshot("probe.parser.instance.a").growthAttributes.productionRateMultiplier) != 1.25:
+		return false # Resolved instances and frozen snapshots are detached copies.
+	var stale_upgrade := progression.resolve_instance("probe.parser.instance.a")
+	if progression.replace_instance_progression(stale_upgrade):
+		return false # Progression revisions prevent stale overwrites.
+	if not progression.get_validation_errors().is_empty():
+		return false
+	var progression_data := progression.to_data()
+	if progression_data.ownedInstances.size() != 2 or progression_data.unlockedDefinitionKeys.size() != 1:
+		return false
 	return true
