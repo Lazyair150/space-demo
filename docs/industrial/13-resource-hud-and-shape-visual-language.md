@@ -12,11 +12,11 @@ The combat HUD keeps survival information (health, wave, score) in its existing 
 - selected demand identity, required Jar shapes/liquid-bearing requirements, cooldown state, and active session step counts.
 
 Two skill-like order docks remain visible without opening the detail panel:
-- **Active orders / active skills** occupy the bottom-center skill-bar position. Each slot shows its authored primary-shape accent, required-shape glyphs, cooldown or live execution progress, and an explicit Start button. The button forwards only `StartActiveDemand(demandId)` through `WorldV2ShipHost`; Core remains the sole authority for feasibility, admission, and execution. A rejected start is shown as a reason, not reinterpreted by the HUD.
+- **Active orders / active skills** occupy the bottom-right skill-bar position, leaving bottom-left objective text unobstructed. Each slot shows its authored primary-shape accent, required-shape glyphs, cooldown or live execution progress, and an explicit Start button. The button forwards only `StartActiveDemand(demandId)` through `WorldV2ShipHost`; Core remains the sole authority for feasibility, admission, and execution. A rejected start is shown as a reason, not reinterpreted by the HUD.
 - **Passive orders / passive skills** occupy a separate upper-right badge rail below the survival HUD. They show their own shape identity and cooldown state, but do not display an activation button: the Passive area remains scheduler-owned.
 - The detailed order section repeats the Active/Passive separation. Neither dock derives the primary shape from the first requirement; it uses only the Space-owned `primaryShape` presentation metadata.
 
-The compact state remains visible without opening a menu; the detail panel is on-demand so it does not permanently cover the combat play area. The panel is an observer, not a control surface for mutating the Jar world.
+The compact state remains visible without opening a menu; the detail panel is on-demand so it does not permanently cover the combat play area. The observer does not mutate resources or own simulation time; its sole command is the explicit Active-order trigger.
 
 ## Shared shape language
 
@@ -85,4 +85,4 @@ Not yet authored:
 - authoring primary shapes on production skill Resources and reviewing their visual hierarchy;
 - responsive art review against real combat captures and a manual Godot play pass.
 
-The Core's latest Space-ingress branch verification is tracked separately in `jar-system-dotnet` PR #59. Godot 4.7.1 .NET compilation and the updated WorldV2RuntimeProbe have not yet been executed in this environment.
+The Core's latest Space-ingress branch verification is tracked separately in `jar-system-dotnet` PR #59. Core verification record: the latest Space produced-Jar ingress integration commit `a52f9465ad4febdcfb821227f7b2e03b2ddc012c` on `jar-system-dotnet` PR #59 completed the repository's `verify` GitHub Actions workflow successfully (run `45129087505`, including the build and full verification loop). PR #59 is still open and is not the Core `main` branch. The Space demo's Godot 4.7.1 .NET compile and updated `WorldV2RuntimeProbe` have not yet been executed in this environment.
