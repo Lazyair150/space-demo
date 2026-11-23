@@ -41,7 +41,7 @@ func get_validation_errors() -> PackedStringArray:
 func build_frozen_snapshot() -> Dictionary:
 	if not get_validation_errors().is_empty():
 		return {}
-	return {
+	var snapshot := {
 		"instanceId": String(instance_id),
 		"itemKind": item_kind,
 		"definitionId": String(definition_id),
@@ -51,9 +51,13 @@ func build_frozen_snapshot() -> Dictionary:
 		"progressionRevision": progression_revision,
 		"growthCurveId": String(growth_curve_id),
 		"growthCurveVersion": growth_curve_version,
-		"growthAttributes": growth_attributes.duplicate(true),
-		"acquisitionProvenance": acquisition_provenance.duplicate(true)
+		"growthAttributes": growth_attributes.duplicate(true)
 	}
+	# Preserve the pre-provenance snapshot shape for ordinary instances so existing
+	# frozen loadout fingerprints remain stable; emit the optional field when present.
+	if not acquisition_provenance.is_empty():
+		snapshot["acquisitionProvenance"] = acquisition_provenance.duplicate(true)
+	return snapshot
 
 func apply_progression(experience_delta: int, target_level: int, new_growth_attributes: Dictionary) -> bool:
 	if experience_delta < 0 or target_level < level or not _is_finite_tree(new_growth_attributes):
