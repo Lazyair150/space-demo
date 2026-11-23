@@ -23,6 +23,7 @@ public partial class WorldV2RuntimeNode : Node
     [Export] public bool InitializeOnReady { get; set; } = true;
 
     private WorldV2BridgeSession? _session;
+    private WorldV2Options? _worldOptions;
     private double _worldTimeRemainderMilli;
     private bool _faulted;
     private string? _faultReason;
@@ -85,6 +86,7 @@ public partial class WorldV2RuntimeNode : Node
             {
                 session.CreateOrReplaceWorld(options);
                 _session = session;
+                _worldOptions = options;
             }
             catch
             {
@@ -273,6 +275,38 @@ public partial class WorldV2RuntimeNode : Node
 
         RequireOperationalSession().UpdateProducerRates(producerName, copiedRates);
         EmitSignal(SignalName.SnapshotChanged);
+    }
+
+    /// <summary>
+    /// Capture the complete Jar execution/resource checkpoint at a Space step boundary.
+    /// This excludes Space parser state and the Host's fractional-millisecond remainder.
+    /// </summary>
+    internal string CaptureExecutionCheckpointJson() =>
+        RequireOperationalSession().CaptureExecutionCheckpointJson();
+
+    /// <summary>
+    /// Restore a Jar checkpoint into the already initialized, not-yet-mutated world.
+    /// The Bridge validates the checkpoint against the exact options used at initialization.
+    /// </summary>
+    internal bool RestoreExecutionCheckpointJson(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            throw new ArgumentException("Execution checkpoint JSON cannot be empty", nameof(json));
+        if (_worldOptions == null)
+            throw new InvalidOperationException("World V2 configuration is unavailable for checkpoint restore");
+
+        try
+        {
+            RequireOperationalSession().RestoreExecutionCheckpointJson(_worldOptions, json);
+            EmitSignal(SignalName.SnapshotChanged);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LatchFault(ex.Message, "checkpoint restore");
+            EmitSignal(SignalName.SnapshotChanged);
+            return false;
+        }
     }
 
     public GDictionary GetWorldSnapshot()
