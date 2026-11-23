@@ -23,6 +23,7 @@ var _persisted_ore_parser_state: Dictionary = {}
 var _next_energy_stone_pickup_sequence: int = 1
 var _persisted_jar_execution_checkpoint_json: String = ""
 var _persisted_space_clock_remainder_milli: float = -1.0
+var _persisted_run_state: Dictionary = {}
 
 @export var allow_sandbox_world_for_development: bool = true
 
@@ -79,7 +80,10 @@ func configure_battle_loadout_from_checkpoint(
 	var jar_checkpoint: Variant = runtime_checkpoint.get("jarExecutionCheckpointJson", null)
 	var clock_remainder: Variant = runtime_checkpoint.get("spaceClockRemainderMilli", null)
 	var parser_state: Variant = runtime_checkpoint.get("oreParserState", null)
-	if typeof(jar_checkpoint) != TYPE_STRING or String(jar_checkpoint).is_empty() or (typeof(clock_remainder) != TYPE_INT and typeof(clock_remainder) != TYPE_FLOAT) or not is_finite(float(clock_remainder)) or float(clock_remainder) < 0.0 or float(clock_remainder) >= 1.0 or not (parser_state is Dictionary):
+	var run_state: Variant = runtime_checkpoint.get("runState", null)
+	if typeof(jar_checkpoint) != TYPE_STRING or String(jar_checkpoint).is_empty() or (typeof(clock_remainder) != TYPE_INT and typeof(clock_remainder) != TYPE_FLOAT) or not is_finite(float(clock_remainder)) or float(clock_remainder) < 0.0 or float(clock_remainder) >= 1.0 or not (parser_state is Dictionary) or not (run_state is Dictionary):
+		return false
+	if int(run_state.get("schemaVersion", 0)) != 1 or typeof(run_state.get("score", null)) != TYPE_INT or int(run_state.get("score", -1)) < 0 or typeof(run_state.get("wave", null)) != TYPE_INT or int(run_state.get("wave", -1)) < 0 or typeof(run_state.get("segment", null)) != TYPE_STRING:
 		return false
 	if not configure_battle_loadout(
 		loadout,
@@ -89,12 +93,20 @@ func configure_battle_loadout_from_checkpoint(
 		float(clock_remainder)
 	):
 		return false
+	_persisted_run_state = run_state.duplicate(true)
 	if commit_callback.is_valid() and not configure_order_effect_commit_callback(commit_callback):
 		return false
 	return true
 
 func _ready() -> void:
-	GameState.reset_run()
+	if not _persisted_run_state.is_empty():
+		if not GameState.restore_run_state(_persisted_run_state):
+			push_error("[Game] Saved transient run state is invalid")
+			process_mode = Node.PROCESS_MODE_DISABLED
+			return
+	elif _persisted_jar_execution_checkpoint_json.is_empty():
+		GameState.reset_run()
+	# A resumed Jar checkpoint must not reset score/wave/segment before continuing.
 	# Buff durations consume the same combat simulation delta as Jar and actors.
 	if player != null and player.effects != null:
 		player.effects.external_time_authority = true
@@ -433,7 +445,8 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 		"loadoutIdentity": identity,
 		"jarExecutionCheckpointJson": jar_host.CaptureExecutionCheckpointJson(),
 		"spaceClockRemainderMilli": jar_host.CaptureSpaceClockRemainderMilli(),
-		"oreParserState": capture_ore_parser_state()
+		"oreParserState": capture_ore_parser_state(),
+		"runState": GameState.capture_run_state()
 	}
 
 func _fail_ore_parser(jar_host: WorldV2ShipHost, reason: String) -> void:
