@@ -55,10 +55,9 @@ func get_validation_errors() -> PackedStringArray:
 		if template_name.is_empty() or template_names.has(template_name):
 			errors.append("Core order template names must be non-empty and unique within a World")
 		template_names[template_name] = true
-		errors.append_array(template.get_validation_errors(
-			shapes if shapes is Array else [],
-			liquids if liquids is Array else []
-		))
+		var template_shapes: Array = shapes if shapes is Array else []
+		var template_liquids: Array = liquids if liquids is Array else []
+		errors.append_array(template.get_validation_errors(template_shapes, template_liquids))
 	if workshop_definitions.size() != 2:
 		errors.append("workshop combination must provide exactly two individual workshop definitions for its Master/Slave pair")
 	var ids := {}
