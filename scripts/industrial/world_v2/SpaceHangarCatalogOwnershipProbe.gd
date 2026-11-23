@@ -8,6 +8,13 @@ static func run() -> bool:
 	ship.definition_version = 2
 	ship.display_name = "Probe Ship"
 	ship.display_icon = GradientTexture2D.new()
+	ship.display_hull_texture = GradientTexture2D.new()
+	var ship_anchor := SpaceShipDisplayAnchor.new()
+	ship_anchor.anchor_id = &"probe-anchor"
+	ship_anchor.logical_slot_id = "slot-a"
+	ship_anchor.component_kind = "device"
+	ship_anchor.normalized_position = Vector2(0.7, 0.5)
+	ship.display_anchors.append(ship_anchor)
 	ship.expected_stone_progress_per_second_by_shape = {"round": 2.0}
 	var ships := SpaceShipCatalog.new()
 	if not ships.register_definition(ship):
@@ -15,10 +22,15 @@ static func run() -> bool:
 	ship.display_name = "Mutated Ship"
 	ship.expected_stone_progress_per_second_by_shape["round"] = 99.0
 	var resolved_ship := ships.resolve_definition("probe.ship", 2)
-	if resolved_ship == null or resolved_ship.display_name != "Probe Ship" or resolved_ship.display_icon == null:
+	if resolved_ship == null or resolved_ship.display_name != "Probe Ship" or resolved_ship.display_icon == null or resolved_ship.display_hull_texture == null or resolved_ship.display_anchors.size() != 1:
 		return false
 	resolved_ship.expected_stone_progress_per_second_by_shape["round"] = 77.0
 	if float(ships.resolve_definition("probe.ship", 2).expected_stone_progress_per_second_by_shape["round"]) != 2.0:
+		return false
+	if String(ships.resolve_definition("probe.ship", 2).display_anchors[0].logical_slot_id) != "slot-a":
+		return false
+	ship_anchor.logical_slot_id = "mutated-slot"
+	if String(ships.resolve_definition("probe.ship", 2).display_anchors[0].logical_slot_id) != "slot-a":
 		return false
 	if ships.resolve_definition("probe.ship", 1) != null:
 		return false
