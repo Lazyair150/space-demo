@@ -28,3 +28,69 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 	if not bundle.validate_and_prepare().is_empty():
 		return null
 	return bundle
+
+func build_selection_inventory() -> Dictionary:
+	var ships: Array[Dictionary] = []
+	var devices: Array[Dictionary] = []
+	var parsers: Array[Dictionary] = []
+	var workshops: Array[Dictionary] = []
+	var skills: Array[Dictionary] = []
+	var effects: Array[Dictionary] = []
+	if ship_catalog != null:
+		for definition in ship_catalog.definitions:
+			if definition != null:
+				ships.append({
+					"id": String(definition.ship_id),
+					"version": definition.definition_version,
+					"label": definition.display_name
+				})
+	if production_device_catalog != null:
+		for definition in production_device_catalog.definitions:
+			if definition != null:
+				devices.append({
+					"id": String(definition.device_id),
+					"version": definition.definition_version,
+					"kind": definition.device_kind,
+					"label": definition.display_name
+				})
+	if ore_parser_catalog != null:
+		for definition in ore_parser_catalog.definitions:
+			if definition != null:
+				parsers.append({
+					"id": String(definition.parser_id),
+					"version": definition.definition_version,
+					"label": String(definition.parser_id)
+				})
+	if workshop_combination_catalog != null:
+		for definition in workshop_combination_catalog.definitions:
+			if definition != null:
+				workshops.append({
+					"id": String(definition.combination_id),
+					"version": definition.definition_version,
+					"label": definition.display_name
+				})
+	for definition in skill_definitions:
+		if definition != null:
+			skills.append({
+				"id": String(definition.skill_id),
+				"version": definition.definition_version,
+				"label": definition.display_name,
+				"allowedControlAreas": definition.allowed_control_areas.duplicate()
+			})
+	for definition in effect_definitions:
+		if definition != null:
+			effects.append({
+				"id": String(definition.id),
+				"version": definition.definition_version,
+				"label": definition.label
+			})
+	var ready := create_runtime_bundle() != null
+	return {
+		"isReady": ready,
+		"shipChoices": ships,
+		"deviceChoices": devices,
+		"parserChoices": parsers,
+		"workshopChoices": workshops,
+		"skillChoices": skills,
+		"effectChoices": effects
+	}
