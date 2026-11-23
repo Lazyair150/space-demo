@@ -17,6 +17,8 @@ const ITEM_KINDS := ["ship", "ore_parser", "production_device", "workshop", "ski
 @export var growth_curve_version: int = 0
 ## Space-owned additive/multiplicative growth data. Interpretation is defined by the owning item subsystem.
 @export var growth_attributes: Dictionary = {}
+## Acquisition provenance is immutable reward/source metadata, not a subsystem growth attribute.
+@export var acquisition_provenance: Dictionary = {}
 
 func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
@@ -32,6 +34,8 @@ func get_validation_errors() -> PackedStringArray:
 		errors.append("growth curve identity/version must be both absent or exact and positive")
 	if not _is_finite_tree(growth_attributes):
 		errors.append("owned instance growth_attributes must contain only finite numeric values, strings, booleans, arrays, or dictionaries")
+	if not _is_finite_tree(acquisition_provenance):
+		errors.append("owned instance acquisition_provenance must contain only finite serializable values")
 	return errors
 
 func build_frozen_snapshot() -> Dictionary:
@@ -47,7 +51,8 @@ func build_frozen_snapshot() -> Dictionary:
 		"progressionRevision": progression_revision,
 		"growthCurveId": String(growth_curve_id),
 		"growthCurveVersion": growth_curve_version,
-		"growthAttributes": growth_attributes.duplicate(true)
+		"growthAttributes": growth_attributes.duplicate(true),
+		"acquisitionProvenance": acquisition_provenance.duplicate(true)
 	}
 
 func apply_progression(experience_delta: int, target_level: int, new_growth_attributes: Dictionary) -> bool:
