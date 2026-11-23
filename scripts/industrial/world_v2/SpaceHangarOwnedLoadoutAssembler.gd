@@ -143,7 +143,9 @@ static func assemble(
 		var order_key := String(binding.get("orderDefinitionKey", ""))
 		var skill_instance: SpaceOwnedProgressionInstance = skill_instances.get(order_key, null)
 		var skill_definition := bundle.skill_catalog.resolve_skill(String(binding.get("skillDefinitionId", "")), int(binding.get("skillDefinitionVersion", 0)))
-		var composed_binding := SpaceProgressionRuntimeProfileComposer.compose_skill_binding(binding, skill_definition, skill_instance, bundle.balance_profile)
+		var composed_binding := SpaceProgressionRuntimeProfileComposer.compose_skill_binding(
+			binding, skill_definition, skill_instance, bundle.balance_profile, jar_options
+		)
 		if composed_binding.is_empty():
 			return _reject("skill growth attributes do not satisfy effect parameters and benefit-to-Jar balance contracts")
 		composed_binding.ownedInstance = skill_instance.build_frozen_snapshot()
