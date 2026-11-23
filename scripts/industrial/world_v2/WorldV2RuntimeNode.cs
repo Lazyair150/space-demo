@@ -205,6 +205,32 @@ public partial class WorldV2RuntimeNode : Node
         return demandId;
     }
 
+    /// <summary>
+    /// Materialize a demand from the current world's Core-owned immutable order template.
+    /// Space supplies only the template key and scheduling metadata, never Jar requirements.
+    /// </summary>
+    public int AddJarDemandFromTemplate(
+        string templateName,
+        string area,
+        long cooldownDurationLogicalMilli,
+        string orderDefinitionKey)
+    {
+        if (string.IsNullOrWhiteSpace(templateName))
+            throw new ArgumentException("Order template name cannot be empty", nameof(templateName));
+        if (string.IsNullOrWhiteSpace(orderDefinitionKey))
+            throw new ArgumentException("orderDefinitionKey cannot be empty", nameof(orderDefinitionKey));
+        if (cooldownDurationLogicalMilli < 0)
+            throw new ArgumentOutOfRangeException(nameof(cooldownDurationLogicalMilli));
+        if (!Enum.TryParse<DemandAreaKind>(area, ignoreCase: false, out var demandArea) ||
+            !Enum.IsDefined(demandArea))
+            throw new ArgumentException("Order area must be Active or Passive", nameof(area));
+
+        var demandId = RequireOperationalSession().AddJarDemandFromTemplate(
+            templateName, demandArea, cooldownDurationLogicalMilli, orderDefinitionKey);
+        EmitSignal(SignalName.SnapshotChanged);
+        return demandId;
+    }
+
     /// <summary>Move an existing demand between the explicit Active and Passive areas.</summary>
     public bool MoveDemand(int demandId, string targetArea)
     {
