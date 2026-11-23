@@ -49,7 +49,7 @@ The current World V2 integration branch contains the evaluator, skill/effect def
 
 The current branch documentation explicitly records that:
 - Hangar does not yet materialize a production loadout from real catalogs;
-- the energy-stone typed pickup → per-shape processor progress → Jar output path is a required future ingress, not an existing connected production asset pipeline;
+- the Space branch now contains the typed energy-stone pickup → independent per-shape parser progress → whole empty-Jar batch path, and jar-system-dotnet PR #58 provides its idempotent central-warehouse import boundary; actual enemy/drop/ship pickup catalogs and production values are still not connected;
 - production ship/drop, production-device, liquid-stock/rate, and workshop-combination catalog assets have not yet been connected.
 
 Accordingly this audit does not invent enemy drop rates, stone shape distributions, device processing rates, workshop operation costs, or skill recipes. Those values must be read from actual assets or introduced as versioned game-design profiles before numerical calibration.
