@@ -30,6 +30,8 @@ func build_loadout_from_selection(
 ) -> SpaceBattleLoadoutSnapshot:
 	if selection == null:
 		return _failure_snapshot("Hangar selection is missing")
+	if require_owned_instances or player_progression_state != null:
+		return build_owned_loadout_from_selection(identity, selection.to_data())
 	var selection_errors := selection.validate()
 	if not selection_errors.is_empty():
 		return _failure_snapshot("Hangar selection rejected: " + "; ".join(selection_errors))
@@ -88,7 +90,9 @@ func launch_new_battle_from_selection(
 	game_scene: PackedScene,
 	identity: Dictionary,
 	selection: SpaceHangarSelection,
-	commit_callback: Callable
+	commit_callback: Callable,
+	stage: SpaceStageDefinition = null,
+	protected_target: Node = null
 ) -> Dictionary:
 	if parent == null or not parent.is_inside_tree() or game_scene == null:
 		return _failure("Hangar launch parent or combat scene is unavailable")
@@ -98,7 +102,7 @@ func launch_new_battle_from_selection(
 	var game := game_scene.instantiate()
 	if game == null:
 		return _failure("combat scene could not be instantiated")
-	if not SpaceHangarBattleLauncher.launch_new_battle(parent, game, loadout, commit_callback):
+	if not SpaceHangarBattleLauncher.launch_new_battle(parent, game, loadout, commit_callback, stage, protected_target):
 		if not game.is_inside_tree():
 			game.free()
 		return _failure("combat scene rejected the frozen loadout launch contract")
