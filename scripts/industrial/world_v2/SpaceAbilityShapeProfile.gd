@@ -61,6 +61,7 @@ func validate_skill(skill: SpaceSkillDefinition) -> PackedStringArray:
 		return errors
 	if String(skill.primary_shape) != expected_shape:
 		errors.append("skill primary shape does not match its ability category mapping")
-	if not skill.has_majority_shape(expected_shape):
+	if skill.jar_order_template_id == &"" and not skill.has_majority_shape(expected_shape):
 		errors.append("category shape must account for a strict majority of the skill Jar requirements")
+	# Template-backed skills are checked against the exact Core template by SpaceSkillCatalog.
 	return errors
