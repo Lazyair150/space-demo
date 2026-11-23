@@ -164,7 +164,7 @@ Still requiring a later systematic migration/audit:
 
 ## 10. Central state registry
 
-`GameFlow` is registered as an autoload and is the authoritative registry for application screen and battle lifecycle state. It exposes a version 4 snapshot and `state_changed` signal; version 3 adds the externally observable `RESUME_READY` phase. Current tracked values are:
+`GameFlow` is registered as an autoload and is the authoritative registry for application screen and battle lifecycle state. It exposes a version 5 snapshot and `state_changed` signal; version 3 adds the externally observable `RESUME_READY` phase. Current tracked values are:
 
 - Screen: `MENU`, `HANGAR`, `INDUSTRIAL`, `BATTLE`, `GAME_OVER`.
 - Battle phase: `INACTIVE`, `PREPARING`, `RUNNING`, `PAUSED`, `RESUMING`, `RESUME_READY`, `ENDED`, `FAULTED`.
