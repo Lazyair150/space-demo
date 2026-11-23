@@ -156,7 +156,7 @@ The branch currently has:
 
 It does not yet have:
 - hangar/pre-battle loadout data and UI;
-- loadout-to-WorldV2Options materialization;
+- production Hangar construction of the immutable loadout from real ship/device/workshop/order catalogs (the frozen-loadout Runtime path itself is implemented);
 - live Hangar selection/materialization of the Space-owned ore parser definition and actual enemy/pickup wiring;
 - Hangar/pre-battle UI and construction of the immutable snapshot from actual ship/device/workshop/order catalog selections;
 - binding the selected orders' orderDefinitionKey values to the actual Jar demand creation calls;
@@ -285,3 +285,20 @@ The audit is recorded in `docs/industrial/11-real-resource-contract-audit.md`. J
 The battle forecast no longer accepts a fictional `liquidUnits` member inside Jar requirements. It requires a separate `resourceCostForecast` with `liquidUnitsPerActivation` and a non-empty `forecastSource`. This is a Space-side estimate, not a Jar demand field. It may be based on a named initial-Jar scenario or, when available, a resolved Jar execution manifest. The adapter verifies liquid identities against the Jar requirements and does not infer one unit per liquid-bearing Jar.
 
 The same audit confirms that Jar production rates are per logical time unit (1000 logical milliseconds per unit), ship liquid capacity is shared across liquid types and measured in whole units, and the current sandbox file is not a production catalog. Actual enemy drop/acquisition, stone shape distribution, production devices, and workshop combinations remain unconnected; no numeric balance calibration is claimed.
+
+
+## 15. Space-owned ore parser runtime and discrete Jar ingress
+
+The parser is a Space-owned runtime, not a Jar time-driven Producer:
+
+- SpaceOreParserDefinition is a versioned pre-battle device definition. Its productionPercentage scales that parser's own per-shape throughput; it does not allocate output percentages among shapes.
+- The universal parser accepts every configured stone type. Stone type selects the target Jar shape; finite stone volume is parseable progress. Each shape has its own input queue, fractional Jar progress, and rate remainder.
+- Parsing consumes only available stone volume. Unprocessed volume remains queued; incomplete Jar progress remains accumulated independently by shape.
+- A complete Jar creates a stable, pending batch ID. The parser retains that batch until Jar confirms it.
+- ImportProducedJars is a discrete handoff of already-completed empty Jars into the central warehouse. Jar validates shape vocabulary, enforces warehouse capacity, accounts for overflow discard, and persists operation-ID deduplication in its resource-ledger checkpoint.
+- The Game physics step asks WorldV2ShipHost for the exact whole-millisecond delta once. Space parses and imports with that delta before Jar advances by the same delta. There is one fractional-millisecond accumulator, owned by the Host.
+- Parser state capture includes pickup identity/deduplication, queued remaining volume, per-shape fractional progress/rate remainder, pending output batches, and the next batch sequence.
+
+The Godot end-to-end probe covers a synthetic stone becoming a Jar, a simulated lost import receipt, retry through the same operation ID, and the invariant that imported Jars enter the central warehouse rather than a workshop.
+
+Remaining integration work is production data/ownership, not the parser kernel: Hangar must freeze a real versioned parser profile into the loadout; ship/enemy pickup systems must call the Space ingestion entrypoint with stable pickup IDs and actual stone volumes; the battle save coordinator must persist parser state together with the Jar execution checkpoint. No production rates, drop volumes, or parser percentages are fabricated here.
