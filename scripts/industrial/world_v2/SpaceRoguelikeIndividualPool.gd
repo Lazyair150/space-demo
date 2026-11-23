@@ -14,6 +14,9 @@ const SUPPORTED_KINDS := ["ore_parser", "workshop", "skill"]
 @export var power_bands: Dictionary = {}
 ## Entries carry exact catalog identity and an explicit normalized power score.
 @export var entries: Array[Dictionary] = []
+## Production pools require metrics to be reproducible from the exact catalog definition.
+## Synthetic probes may disable this only for isolated weighted-selection fixtures.
+@export var require_definition_evaluation: bool = true
 
 func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
@@ -52,6 +55,16 @@ func get_validation_errors() -> PackedStringArray:
 			var calculated := power_model.calculate_power_score(metrics)
 			if not bool(calculated.get("success", false)) or not _valid_number(power) or absf(float(calculated.get("powerScore", -1.0)) - float(power)) > 0.000001:
 				errors.append("pool entry %d power score does not match its subsystem model metrics" % index)
+		if require_definition_evaluation:
+			match item_kind:
+				"ore_parser":
+					if not (entry.get("shapeVocabulary", null) is Array) or entry.shapeVocabulary.is_empty():
+						errors.append("parser pool entry %d requires its exact evaluation shape vocabulary" % index)
+				"skill":
+					if not (entry.get("benefitMetrics", null) is Dictionary) or not (entry.get("balanceContext", null) is Dictionary):
+						errors.append("skill pool entry %d requires benefit metrics and battle evaluation context" % index)
+				"workshop":
+					pass
 		if not power_bands.has(rarity):
 			errors.append("pool entry %d references an undefined rarity band" % index)
 		elif not (power_bands[rarity] is Dictionary) or not _valid_number(power) or float(power) < float(power_bands[rarity].get("minimum", INF)) or float(power) > float(power_bands[rarity].get("maximum", -INF)):
