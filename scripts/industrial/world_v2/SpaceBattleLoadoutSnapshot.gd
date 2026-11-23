@@ -319,6 +319,21 @@ func order_definition_keys() -> PackedStringArray:
 		result.append(String(order.get("orderDefinitionKey", "")))
 	return result
 
+func order_presentation_metadata() -> Dictionary:
+	var result := {}
+	for order in _data.get("selectedOrderBindings", []):
+		if not (order is Dictionary):
+			continue
+		var order_key := String(order.get("orderDefinitionKey", ""))
+		var presentation: Variant = order.get("presentation", {})
+		if order_key.is_empty() or not (presentation is Dictionary):
+			continue
+		var primary_shape := String(presentation.get("primaryShape", ""))
+		if not primary_shape.is_empty():
+			result[order_key] = {"primaryShape": primary_shape}
+	return result
+
+
 func resolve_order_binding(order_definition_key: String) -> Dictionary:
 	for order in _data.get("selectedOrderBindings", []):
 		if String(order.get("orderDefinitionKey", "")) == order_definition_key:
