@@ -8,6 +8,7 @@ const SUPPORTED_KINDS := ["ore_parser", "workshop", "skill"]
 @export var definition_version: int = 1
 @export var power_model_id: StringName = &""
 @export var power_model_version: int = 1
+@export var power_model: SpaceIndividualPowerModelDefinition
 @export_enum("ore_parser", "workshop", "skill") var item_kind: String = "skill"
 ## rarity -> {"minimum": float, "maximum": float}; bounds are inclusive.
 @export var power_bands: Dictionary = {}
@@ -18,6 +19,8 @@ func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
 	if pool_id == &"" or definition_version <= 0 or power_model_id == &"" or power_model_version <= 0 or not SUPPORTED_KINDS.has(item_kind):
 		errors.append("individual pool requires a stable versioned supported item kind")
+	if power_model == null or not power_model.get_validation_errors().is_empty() or String(power_model.model_id) != String(power_model_id) or power_model.definition_version != power_model_version or power_model.item_kind != item_kind:
+		errors.append("pool must reference its exact matching subsystem power model version")
 	if power_bands.is_empty():
 		errors.append("individual pool requires at least one rarity power band")
 	for rarity in power_bands:
@@ -36,12 +39,19 @@ func get_validation_errors() -> PackedStringArray:
 		var version: Variant = entry.get("definitionVersion", null)
 		var rarity := String(entry.get("rarity", ""))
 		var power: Variant = entry.get("powerScore", null)
+		var metrics: Variant = entry.get("powerMetrics", null)
 		var weight: Variant = entry.get("weight", null)
 		var key := "%s:%s@%d" % [item_kind, definition_id, int(version) if typeof(version) == TYPE_INT else 0]
 		if definition_id.is_empty() or typeof(version) != TYPE_INT or int(version) <= 0 or identities.has(key):
 			errors.append("pool entry %d has missing/duplicate exact definition identity" % index)
 		else:
 			identities[key] = true
+		if not (metrics is Dictionary) or power_model == null:
+			errors.append("pool entry %d requires metrics from its subsystem power model" % index)
+		else:
+			var calculated := power_model.calculate_power_score(metrics)
+			if not bool(calculated.get("success", false)) or not _valid_number(power) or absf(float(calculated.get("powerScore", -1.0)) - float(power)) > 0.000001:
+				errors.append("pool entry %d power score does not match its subsystem model metrics" % index)
 		if not power_bands.has(rarity):
 			errors.append("pool entry %d references an undefined rarity band" % index)
 		elif not _valid_number(power) or float(power) < float(power_bands[rarity].minimum) or float(power) > float(power_bands[rarity].maximum):
@@ -96,6 +106,7 @@ func roll_candidate(rng: RandomNumberGenerator, allowed_rarities: PackedStringAr
 				"rarity": String(entry.rarity),
 				"powerScore": float(entry.powerScore),
 				"powerBand": power_bands[String(entry.rarity)].duplicate(true),
+				"powerMetrics": entry.powerMetrics.duplicate(true),
 				"tags": entry.get("tags", []).duplicate(true)
 			}
 	var last: Dictionary = candidates.back()
@@ -111,6 +122,7 @@ func roll_candidate(rng: RandomNumberGenerator, allowed_rarities: PackedStringAr
 		"rarity": String(last.rarity),
 		"powerScore": float(last.powerScore),
 		"powerBand": power_bands[String(last.rarity)].duplicate(true),
+		"powerMetrics": last.powerMetrics.duplicate(true),
 		"tags": last.get("tags", []).duplicate(true)
 	}
 
