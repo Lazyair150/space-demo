@@ -34,6 +34,7 @@ func _build() -> void:
 	_toggle = UiKit.button("JAR  ·  等待世界", 260)
 	_toggle.position = Vector2(20, 66)
 	_toggle.custom_minimum_size = Vector2(260, 34)
+	_toggle.tooltip_text = "点击展开飞船 Jar、液体、主从工作台与订单的实时只读状态。"
 	_toggle.pressed.connect(_toggle_expanded)
 	add_child(_toggle)
 
