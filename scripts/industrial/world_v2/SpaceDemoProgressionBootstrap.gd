@@ -6,9 +6,15 @@ class_name SpaceDemoProgressionBootstrap
 static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleResource) -> bool:
 	if GameState.space_progression_state != null:
 		return GameState.space_progression_state.get_validation_errors().is_empty()
+	var state := create_starting_inventory(bundle_resource)
+	if state == null:
+		return false
+	return GameState.set_space_progression_state(state)
+
+static func create_starting_inventory(bundle_resource: SpaceHangarCatalogBundleResource) -> SpacePlayerProgressionState:
 	if bundle_resource == null or bundle_resource.create_runtime_bundle() == null:
 		push_error("Demo progression bootstrap requires a valid prototype catalog bundle")
-		return false
+		return null
 	var state := SpacePlayerProgressionState.new()
 	state.player_id = &"space_demo_player"
 	var starting_instances: Array[SpaceOwnedProgressionInstance] = [
@@ -29,8 +35,8 @@ static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleR
 			}
 		if not state.unlock_and_acquire_instance(instance, "demo-start:" + String(instance.instance_id)):
 			push_error("Demo starting inventory could not acquire exact prototype instance: " + String(instance.instance_id))
-			return false
-	return GameState.set_space_progression_state(state)
+			return null
+	return state if state.get_validation_errors().is_empty() else null
 
 static func _instance(instance_id: String, kind: String, definition_id: String, version: int) -> SpaceOwnedProgressionInstance:
 	var instance := SpaceOwnedProgressionInstance.new()
