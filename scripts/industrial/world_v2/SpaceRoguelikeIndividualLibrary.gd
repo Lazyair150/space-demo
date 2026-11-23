@@ -1,7 +1,7 @@
 extends Resource
 class_name SpaceRoguelikeIndividualLibrary
 ## Shared library for obtainable parser, workshop and skill definition instances.
-## It rolls definition candidates only; ownership/acquisition is committed by progression services.
+## Candidate selection is weighted across all eligible entries; pool boundaries retain their own model/budget.
 
 @export var library_id: StringName = &""
 @export var definition_version: int = 1
@@ -34,19 +34,62 @@ func get_validation_errors() -> PackedStringArray:
 func is_valid() -> bool:
 	return get_validation_errors().is_empty()
 
+## One weighted draw across every eligible entry. This avoids selecting an empty pool
+## while another pool of the same item kind still has valid candidates.
 func roll_candidate(item_kind: String, rng: RandomNumberGenerator, allowed_rarities: PackedStringArray = PackedStringArray(), required_tags: PackedStringArray = PackedStringArray(), excluded_definition_keys: PackedStringArray = PackedStringArray()) -> Dictionary:
 	if rng == null or not is_valid() or not SpaceRoguelikeIndividualPool.SUPPORTED_KINDS.has(item_kind):
 		return {"success": false, "reason": "individual library is invalid or item kind is unsupported"}
-	var candidates: Array[SpaceRoguelikeIndividualPool] = []
+	var candidates: Array[Dictionary] = []
+	var total_weight := 0.0
 	for pool in pools:
-		if pool.item_kind == item_kind:
-			candidates.append(pool)
-	if candidates.is_empty():
-		return {"success": false, "reason": "no pool exists for requested item kind"}
-	# Select among pools uniformly, then use each pool's explicit weighted entry distribution.
-	# A future run reward policy may supply a pool selector without changing entry semantics.
-	var selected_pool := candidates[rng.randi_range(0, candidates.size() - 1)]
-	return selected_pool.roll_candidate(rng, allowed_rarities, required_tags, excluded_definition_keys)
+		if pool.item_kind != item_kind:
+			continue
+		for entry in pool.entries:
+			var rarity := String(entry.get("rarity", ""))
+			if not allowed_rarities.is_empty() and not allowed_rarities.has(rarity):
+				continue
+			var definition_key := "%s:%s@%d" % [item_kind, String(entry.get("definitionId", "")), int(entry.get("definitionVersion", 0))]
+			if excluded_definition_keys.has(definition_key):
+				continue
+			var entry_tags: Array = entry.get("tags", [])
+			var matches := true
+			for required_tag in required_tags:
+				if not entry_tags.has(String(required_tag)):
+					matches = false
+					break
+			if not matches:
+				continue
+			var weight := float(entry.get("weight", 0.0))
+			if weight <= 0.0 or not is_finite(weight):
+				continue
+			candidates.append({"pool": pool, "entry": entry, "weight": weight})
+			total_weight += weight
+	if candidates.is_empty() or total_weight <= 0.0:
+		return {"success": false, "reason": "no pool entry matches the requested constraints"}
+	var ticket := rng.randf() * total_weight
+	for candidate in candidates:
+		ticket -= float(candidate.weight)
+		if ticket < 0.0:
+			return _candidate_data(candidate.pool, candidate.entry)
+	var last: Dictionary = candidates.back()
+	return _candidate_data(last.pool, last.entry)
+
+static func _candidate_data(pool: SpaceRoguelikeIndividualPool, entry: Dictionary) -> Dictionary:
+	return {
+		"success": true,
+		"itemKind": pool.item_kind,
+		"poolId": String(pool.pool_id),
+		"poolVersion": pool.definition_version,
+		"powerModelId": String(pool.power_model_id),
+		"powerModelVersion": pool.power_model_version,
+		"definitionId": String(entry.definitionId),
+		"definitionVersion": int(entry.definitionVersion),
+		"rarity": String(entry.rarity),
+		"powerScore": float(entry.powerScore),
+		"powerBand": pool.power_bands[String(entry.rarity)].duplicate(true),
+		"powerMetrics": entry.powerMetrics.duplicate(true),
+		"tags": entry.get("tags", []).duplicate(true)
+	}
 
 func resolve_pool(item_kind: String, pool_id: String, pool_version: int) -> SpaceRoguelikeIndividualPool:
 	if not is_valid():
