@@ -131,26 +131,26 @@ static func run() -> bool:
 static func _probe_assignments() -> bool:
 	var inventory := {
 		"isReady": true,
-		"parserChoices": [{"id": "parser.basic", "version": 1, "instanceId": "owned.parser", "itemKind": "ore_parser"}],
-		"deviceChoices": [{"id": "device.fabricator", "version": 2, "instanceId": "owned.device", "itemKind": "production_device"}],
+		"parserChoices": [{"id": "parser.basic", "version": 1, "instanceId": "owned.parser", "progressionRevision": 2, "itemKind": "ore_parser"}],
+		"deviceChoices": [{"id": "device.fabricator", "version": 2, "instanceId": "owned.device", "progressionRevision": 3, "itemKind": "production_device"}],
 		"workshopInstanceChoices": [
-			{"id": "workshop.alpha", "version": 1, "instanceId": "owned.master", "itemKind": "workshop"},
-			{"id": "workshop.alpha", "version": 1, "instanceId": "owned.slave", "itemKind": "workshop"}
+			{"id": "workshop.alpha", "version": 1, "instanceId": "owned.master", "progressionRevision": 4, "itemKind": "workshop"},
+			{"id": "workshop.alpha", "version": 1, "instanceId": "owned.slave", "progressionRevision": 5, "itemKind": "workshop"}
 		],
-		"skillChoices": [{"id": "skill.beam", "version": 3, "instanceId": "owned.skill", "itemKind": "skill"}]
+		"skillChoices": [{"id": "skill.beam", "version": 3, "instanceId": "owned.skill", "progressionRevision": 6, "itemKind": "skill"}]
 	}
 	var assignments := {
 		"workshop.master": {
 			"slotId": "workshop.master", "componentKind": "workshop",
-			"ownedInstanceId": "owned.master", "definitionId": "workshop.alpha", "definitionVersion": 1
+			"ownedInstanceId": "owned.master", "definitionId": "workshop.alpha", "definitionVersion": 1, "sourceRevision": 4
 		},
 		"workshop.slave": {
 			"slotId": "workshop.slave", "componentKind": "workshop",
-			"ownedInstanceId": "owned.slave", "definitionId": "workshop.alpha", "definitionVersion": 1
+			"ownedInstanceId": "owned.slave", "definitionId": "workshop.alpha", "definitionVersion": 1, "sourceRevision": 4
 		},
 		"decomposition.parser.primary": {
 			"slotId": "decomposition.parser.primary", "componentKind": "ore_parser",
-			"ownedInstanceId": "owned.parser", "definitionId": "parser.basic", "definitionVersion": 1
+			"ownedInstanceId": "owned.parser", "definitionId": "parser.basic", "definitionVersion": 1, "sourceRevision": 2
 		}
 	}
 	if not SpaceHangarBoardAssignment.validate(DEMO_BOARD, assignments, inventory).is_empty():
