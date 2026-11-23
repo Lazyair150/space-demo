@@ -76,14 +76,14 @@ func _build() -> void:
 	_toggle.pressed.connect(_toggle_expanded)
 	strip_row.add_child(_toggle)
 
-	# Active orders occupy the familiar bottom-center skill-bar position.
+	# Active orders occupy the bottom-right skill-bar position, leaving objective text at bottom-left.
 	_active_dock = PanelContainer.new()
-	_active_dock.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	_active_dock.offset_left = -330
+	_active_dock.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_active_dock.offset_left = -620
 	_active_dock.offset_top = -104
-	_active_dock.offset_right = 330
+	_active_dock.offset_right = -20
 	_active_dock.offset_bottom = -24
-	_active_dock.custom_minimum_size = Vector2(660, 80)
+	_active_dock.custom_minimum_size = Vector2(600, 80)
 	var active_style := StyleBoxFlat.new()
 	active_style.bg_color = Color("101923", 0.92)
 	active_style.border_color = Color("3b86a8")
