@@ -1,6 +1,7 @@
 extends Node2D
 
 signal stage_completed(result: Dictionary)
+signal stage_failed(result: Dictionary)
 signal stage_faulted(reason: String)
 
 const ENERGY_STONE_PICKUP_SCENE: PackedScene = preload("res://scenes/industrial/SpaceEnergyStonePickup.tscn")
@@ -23,6 +24,7 @@ var _selected_stage: SpaceStageDefinition
 var _stage_objective_runtime: SpaceStageObjectiveRuntime
 var _stage_encounters_completed: bool = false
 var _stage_completion_emitted: bool = false
+var _stage_failure_emitted: bool = false
 var _stage_protected_target: Node
 var _order_effect_dispatcher: SpaceOrderEffectDispatcher
 var _order_effect_commit_callback: Callable
@@ -74,6 +76,7 @@ func configure_battle_stage(stage: SpaceStageDefinition, protected_target: Node 
 	_stage_director = director
 	_stage_objective_runtime = objective_runtime
 	_stage_protected_target = protected_target
+	_stage_failure_emitted = false
 	return true
 
 ## Read by the child Spawner during its _ready; configuration is pre-tree only.
@@ -711,6 +714,7 @@ func restore_battle_stage_from_checkpoint(stage: SpaceStageDefinition, source: D
 	_stage_protected_target = protected_target
 	_stage_encounters_completed = encounters_completed
 	_stage_completion_emitted = completion_emitted
+	_stage_failure_emitted = false
 	return true
 func _refresh_last_completed_simulation_position(jar_host: Node) -> void:
 	if jar_host == null or not jar_host.has_method("GetWorldSnapshot"):
@@ -769,6 +773,17 @@ func capture_order_dispatcher_state() -> Dictionary:
 func _physics_process(delta: float) -> void:
 	if _stage_objective_runtime != null:
 		_stage_objective_runtime.advance(delta)
+		if _stage_objective_runtime.is_failed() and not _stage_failure_emitted:
+			_stage_failure_emitted = true
+			var failure_result := {
+				"stageIdentity": {"stageId": String(_selected_stage.stage_id), "definitionVersion": _selected_stage.definition_version} if _selected_stage != null else {},
+				"objectiveProgress": _stage_objective_runtime.progress(),
+				"reason": _stage_objective_runtime.failure_reason(),
+				"status": "objective_failed"
+			}
+			stage_failed.emit(failure_result)
+			_shutdown_battle(false, "stage objective failed: " + _stage_objective_runtime.failure_reason())
+			return
 		_try_complete_stage()
 	# Buffs, the Space-owned ore parser, and Jar all consume the same authorized simulation step.
 	if player != null and player.effects != null:
