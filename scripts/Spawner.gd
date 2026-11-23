@@ -170,7 +170,7 @@ func _start_stage_beat(beat: Dictionary) -> void:
 		if boss_scene == null:
 			_fault_stage("boss beat requires an authored boss actor scene")
 			return
-		if not _spawn_stage_boss(boss_id):
+		if not _spawn_stage_boss(boss_id, scale):
 			_fault_stage("failed to spawn the exact authored stage boss")
 			return
 	else:
@@ -205,13 +205,13 @@ func _scaled_stage_count(authored_count: int, scale: float) -> int:
 		return 0
 	return maxi(1, int(ceil(float(authored_count) * scale)))
 
-func _spawn_stage_boss(boss_id: String) -> bool:
+func _spawn_stage_boss(boss_id: String, encounter_scale: float) -> bool:
 	var boss := boss_scene.instantiate() as Node2D
 	if boss == null or not boss.has_method("configure_stage_boss") or not boss.has_signal("died"):
 		if boss != null:
 			boss.free()
 		return false
-	if not bool(boss.call("configure_stage_boss", boss_id)):
+	if not bool(boss.call("configure_stage_boss", boss_id, encounter_scale)):
 		boss.free()
 		return false
 	var arena := get_parent().get_node_or_null("Arena")
