@@ -57,7 +57,7 @@ static func run() -> bool:
 	var collect_objective := SpaceStageObjectiveRuntime.new()
 	if not collect_objective.configure(ore_convoy):
 		return false
-	if not collect_objective.record_resource("wrong_resource", 5.0):
+	if collect_objective.record_resource("wrong_resource", 5.0):
 		return false
 	if collect_objective.record_resource("energy_stone", 2.0) == false or collect_objective.is_complete():
 		return false
