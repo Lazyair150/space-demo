@@ -9,6 +9,20 @@ func _ready() -> void:
     assert(bool(build_context_probe.get("passed", false)),
         "parser percentage build-context probe must pass: " + String(build_context_probe.get("reason", "")))
 
+    var drop_profile := SpaceEnergyStoneDropProfile.new()
+    drop_profile.profile_id = &"probe-energy-stone-drop"
+    drop_profile.profile_version = 1
+    drop_profile.drop_chance = 1.0
+    drop_profile.weighted_stones = [
+        {"stoneType": "圆罐", "volume": 1.5, "weight": 1.0},
+        {"stoneType": "方罐", "volume": 2.5, "weight": 1.0}
+    ]
+    var drop_rng := RandomNumberGenerator.new()
+    drop_rng.seed = 123456
+    var drop_roll: Dictionary = drop_profile.roll_drop(drop_rng, ["圆罐", "方罐"])
+    assert(bool(drop_roll.get("success", false)) and bool(drop_roll.get("dropped", false)),
+        "versioned typed energy-stone drop profile must produce a valid configured type/volume")
+
     var pickup_scene := load("res://scenes/industrial/SpaceEnergyStonePickup.tscn") as PackedScene
     assert(pickup_scene != null, "typed energy-stone pickup scene must load")
     var pickup := pickup_scene.instantiate() as SpaceEnergyStonePickup
