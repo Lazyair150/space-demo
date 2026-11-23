@@ -9,6 +9,7 @@ class_name SpaceProductionDeviceDefinition
 @export var display_name: String = ""
 @export var display_icon: Texture2D
 @export var runtime_profile: Dictionary = {}
+@export var rule_contributions: Array[SpaceRuleContributionDefinition] = []
 
 func is_valid() -> bool:
 	return device_id != &"" and definition_version > 0 and not device_kind.strip_edges().is_empty() and device_kind != "ore_parser" and not display_name.strip_edges().is_empty()
