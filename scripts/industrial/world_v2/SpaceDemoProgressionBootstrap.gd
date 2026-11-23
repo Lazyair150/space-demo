@@ -5,7 +5,7 @@ class_name SpaceDemoProgressionBootstrap
 
 static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleResource) -> bool:
 	if GameState.space_progression_state != null:
-		return not GameState.space_progression_state.get_validation_errors().is_empty() == false
+		return GameState.space_progression_state.get_validation_errors().is_empty()
 	if bundle_resource == null or bundle_resource.create_runtime_bundle() == null:
 		push_error("Demo progression bootstrap requires a valid prototype catalog bundle")
 		return false
