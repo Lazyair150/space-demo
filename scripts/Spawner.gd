@@ -29,16 +29,44 @@ const ELITE_SCORE := 60
 @export var pickup_chance:float=0.25
 ## 可掉的 Buff 定义；留空则不掉
 @export var pickup_effects:Array[BuffDefinition]=[]
+## Optional elite-only profile. Its authored stone volumes can differ from ordinary enemies;
+## null leaves the enemy scene's own optional profile unchanged.
+@export var elite_energy_stone_drop_profile: SpaceEnergyStoneDropProfile
 
 var _current_wave:int=0
 var _spawning:bool=false
 var _alive_enemies:int=0
 var _segment_index:int=SEGMENT_WARMUP
 var _cycle:int=0
+var _energy_stone_rng := RandomNumberGenerator.new()
 
 func _ready()->void:
+	_energy_stone_rng.randomize()
 	await get_tree().process_frame
-	_start_next_wave()
+	# Game restores transient run state in its _ready before this deferred start.
+	# The current wave is restarted from its beginning because enemy/scheduler
+	# instances are not part of the present runtime checkpoint.
+	var saved_wave := int(GameState.wave)
+	if saved_wave > 0:
+		_start_wave(initial_wave_for_checkpoint(saved_wave), false)
+	else:
+		_start_next_wave()
+
+## A resumed run restarts its saved wave; a new run starts at wave one.
+## Kept pure so the resume policy can be regression-tested without spawning actors.
+static func initial_wave_for_checkpoint(saved_wave: int) -> int:
+	return saved_wave if saved_wave > 0 else 1
+
+## Persist the drop RNG stream with the battle state so a restored encounter
+## does not reroll a different sequence from the same point in combat.
+func capture_energy_stone_drop_rng_state() -> int:
+	return int(_energy_stone_rng.state)
+
+func restore_energy_stone_drop_rng_state(state: int) -> bool:
+	if not is_inside_tree():
+		return false
+	_energy_stone_rng.state = state
+	return true
 
 ## 第 1 波热身、第 2 波压力、第 3 波精英、第 4 波喘息，第 5 波回到热身。
 func segment_for_wave(wave:int)->int:
@@ -54,11 +82,18 @@ func current_segment()->int:
 	return _segment_index
 
 func _start_next_wave()->void:
-	_current_wave +=1
-	_segment_index =segment_for_wave(_current_wave)
-	_cycle =cycle_for_wave(_current_wave)
-	GameState.set_wave(_current_wave)
-	GameState.set_segment(current_segment_label())
+	_start_wave(_current_wave + 1, true)
+
+func _start_wave(wave_number: int, publish_progression: bool) -> void:
+	if wave_number <= 0:
+		push_error("[Spawner] Refusing to start an invalid wave number")
+		return
+	_current_wave = wave_number
+	_segment_index = segment_for_wave(_current_wave)
+	_cycle = cycle_for_wave(_current_wave)
+	if publish_progression:
+		GameState.set_wave(_current_wave)
+		GameState.set_segment(current_segment_label())
 	var count :=0
 	var shooter_chance :=0.0
 	var elite :=false
@@ -90,10 +125,12 @@ func _spawn_one(shooter_chance:float, elite:bool)->void:
 		e.set("max_hp", ELITE_BASE_HP + ELITE_HP_PER_CYCLE * _cycle)
 		e.set("speed", ELITE_SPEED)
 		e.set("score_value", ELITE_SCORE)
+		if elite_energy_stone_drop_profile != null:
+			e.set("energy_stone_drop_profile", elite_energy_stone_drop_profile)
 		e.scale =Vector2(ELITE_SCALE, ELITE_SCALE)
 	e.position =_random_edge_position()
 	e.tree_exited.connect(_on_enemy_freed)
-	e.died.connect(_on_enemy_died)
+	e.died.connect(_on_enemy_died_with_source.bind(e))
 	get_parent().get_node("Arena").add_child(e)
 	_alive_enemies+=1
 
@@ -118,6 +155,25 @@ func _on_enemy_died(at:Vector2)->void:
 	pickup.set("tint", _pickup_tint(pickup.get("buff_definition")))
 	pickup.position = at
 	arena.add_child(pickup)
+
+## Enemy death is a single event, but Buff capsules and energy stones are independent
+## resource channels. Absence of one channel must never suppress the other.
+func _on_enemy_died_with_source(at: Vector2, enemy: Node2D) -> void:
+	_on_enemy_died(at)
+	_spawn_energy_stone_pickup(at, enemy)
+
+func _spawn_energy_stone_pickup(at: Vector2, enemy: Node2D) -> void:
+	if enemy == null:
+		return
+	var profile: Variant = enemy.get("energy_stone_drop_profile")
+	if not (profile is SpaceEnergyStoneDropProfile):
+		return
+	var game := get_parent()
+	if game == null or not game.has_method("spawn_energy_stone_drop"):
+		return
+	var result: Dictionary = game.call("spawn_energy_stone_drop", profile, at, _energy_stone_rng)
+	if not bool(result.get("success", false)):
+		push_error("[Spawner] Energy-stone drop failed: " + String(result.get("reason", "")))
 
 ## 胶囊染色：按定义 id 取色，避免每个 Buff 都要一份美术资源
 func _pickup_tint(definition)->Color:

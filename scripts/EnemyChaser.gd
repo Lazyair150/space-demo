@@ -11,6 +11,8 @@ signal died(at:Vector2)
 @export var score_value:int=10
 ## 出生时挂几层通用次数护盾（0 = 不挂）。留给"精英/带盾变体"用，默认不变强。
 @export var starting_shield: int = 0
+## Versioned, optional finite energy-stone drop data. Null means this enemy drops no stone.
+@export var energy_stone_drop_profile: SpaceEnergyStoneDropProfile
 
 @onready var health:Health=$Health
 @onready var receiver:DamageReceiver=$DamageReceiver

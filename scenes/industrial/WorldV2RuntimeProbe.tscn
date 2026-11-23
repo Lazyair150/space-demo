@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/industrial/world_v2/WorldV2RuntimeProbe.gd" id="1_probe"]
+[ext_resource type="Script" path="res://scripts/industrial/world_v2/WorldV2RuntimeNode.cs" id="2_runtime"]
+
+[node name="WorldV2RuntimeProbe" type="Node"]
+script = ExtResource("1_probe")
+
+[node name="WorldV2Runtime" type="Node" parent="."]
+script = ExtResource("2_runtime")

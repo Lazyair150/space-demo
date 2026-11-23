@@ -14,6 +14,8 @@ enum StackPolicy {
 }
 
 @export var id: StringName = &""
+## Increment whenever the gameplay meaning or serialized behavior of this definition changes.
+@export var definition_version: int = 1
 @export var label: String = ""
 @export var duration: float = 5.0
 @export var stack_policy: StackPolicy = StackPolicy.REFRESH
@@ -27,7 +29,17 @@ enum StackPolicy {
 @export var tick_damage: int = 0
 
 # 需要特殊行为的 Buff（例如中毒）指定自己的实例脚本，否则用 BuffInstance
+## Balance annotations belong to this exact effect version, next to its real gameplay values.
+@export var balance_metrics: Dictionary = {}
+
 @export var instance_script: Script
 
 func is_valid() -> bool:
-	return id != &"" and duration > 0.0
+	if id == &"" or definition_version <= 0 or duration <= 0.0 or max_stacks <= 0:
+		return false
+	if tick_interval < 0.0 or tick_damage < 0:
+		return false
+	for value in balance_metrics.values():
+		if float(value) < 0.0:
+			return false
+	return true

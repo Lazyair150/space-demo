@@ -1,0 +1,68 @@
+extends RefCounted
+class_name SpaceSkillCatalog
+## Exact-version registry for player-facing, equipable skills.
+## Registered Resources are detached snapshots; callers never receive the catalog's instance.
+
+var _definitions: Dictionary = {}
+
+func register_skill(definition: SpaceSkillDefinition) -> bool:
+	if definition == null or not definition.is_valid():
+		push_error("Skill Catalog rejected an invalid skill definition")
+		return false
+	var key := _key(String(definition.skill_id), definition.definition_version)
+	if _definitions.has(key):
+		push_error("Duplicate skill definition version: " + key)
+		return false
+	_definitions[key] = definition.duplicate(true) as SpaceSkillDefinition
+	return true
+
+func resolve_skill(skill_id: String, version: int) -> SpaceSkillDefinition:
+	if skill_id.strip_edges().is_empty() or version <= 0:
+		return null
+	var definition := _definitions.get(_key(skill_id, version), null) as SpaceSkillDefinition
+	if definition == null:
+		return null
+	return definition.duplicate(true) as SpaceSkillDefinition
+
+func create_order_binding_for_build(
+	skill_id: String,
+	version: int,
+	order_definition_key: String,
+	selected_control_area: String,
+	balance_profile: SpaceSkillBalanceProfile,
+	production_devices: Array,
+	workshop_combination: Dictionary,
+	ship_resource_profile: Dictionary,
+	shape_progress_per_jar: Dictionary,
+	expected_battle_duration_logical_milli: float,
+	effect_catalog: SpaceEffectCatalog
+) -> Dictionary:
+	var definition := resolve_skill(skill_id, version)
+	if definition == null:
+		return {}
+	if balance_profile == null or not balance_profile.is_valid() or effect_catalog == null:
+		return {}
+	var effect_id := String(definition.effect_definition_id)
+	var benefit_metrics := effect_catalog.resolve_balance_metrics(effect_id, definition.effect_definition_version)
+	if benefit_metrics.is_empty():
+		push_error("Skill effect version has no balance metrics: " + effect_id)
+		return {}
+	var jar_order := definition.build_jar_order(selected_control_area)
+	if jar_order.is_empty():
+		return {}
+	var context := SpaceSkillBuildContextEvaluator.evaluate(
+		jar_order,
+		production_devices,
+		workshop_combination,
+		ship_resource_profile,
+		shape_progress_per_jar,
+		expected_battle_duration_logical_milli,
+		balance_profile
+	)
+	if not context.get("valid", false):
+		push_error("Skill build difficulty context rejected: " + String(context.get("reason", "unknown")))
+		return {}
+	return definition.create_order_binding(order_definition_key, selected_control_area, balance_profile, context, benefit_metrics)
+
+func _key(skill_id: String, version: int) -> String:
+	return "%s@%d" % [skill_id, version]
