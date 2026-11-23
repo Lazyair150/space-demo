@@ -170,6 +170,13 @@ static func assemble(
 		composed_binding.ownedInstance = skill_instance.build_frozen_snapshot()
 		frozen.selectedOrderBindings[index] = composed_binding
 	if not board_assignment_snapshot.is_empty():
+		var runtime_profile_set := SpaceBoardRuntimeProfileSet.build(
+			board_assignment_snapshot, jar_options, devices, frozen.selectedOrderBindings
+		)
+		if runtime_profile_set.is_empty():
+			return _reject("Board Assignment could not be routed to exact subsystem runtime profiles")
+		frozen["boardRuntimeProfileSet"] = runtime_profile_set
+	if not board_assignment_snapshot.is_empty():
 		frozen["boardAssignmentSnapshot"] = board_assignment_snapshot.duplicate(true)
 		frozen["boardRuleProfile"] = board_rule_profile.duplicate(true)
 	frozen["progressionOwnerPlayerId"] = String(progression.player_id)
