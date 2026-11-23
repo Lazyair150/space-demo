@@ -13,6 +13,7 @@ var _screen: int = Screen.MENU
 var _battle_phase: int = BattlePhase.INACTIVE
 var _pause_reason: int = PauseReason.NONE
 var _transition_sequence: int = 0
+var _fault_reason: String = ""
 
 func snapshot() -> Dictionary:
 	return {
@@ -20,7 +21,8 @@ func snapshot() -> Dictionary:
 		"screen": Screen.keys()[_screen],
 		"battlePhase": BattlePhase.keys()[_battle_phase],
 		"pauseReason": PauseReason.keys()[_pause_reason],
-		"transitionSequence": _transition_sequence
+		"transitionSequence": _transition_sequence,
+		"faultReason": _fault_reason
 	}
 
 func request_scene_transition(next_screen: int, scene_path: String) -> bool:
@@ -66,6 +68,7 @@ func begin_battle_preparation() -> bool:
 		return false
 	_battle_phase = BattlePhase.PREPARING
 	_pause_reason = PauseReason.NONE
+	_fault_reason = ""
 	_screen = Screen.BATTLE
 	_emit_state()
 	return true
@@ -126,11 +129,12 @@ func end_battle() -> bool:
 	_emit_state()
 	return true
 
-func fault_battle() -> bool:
+func fault_battle(reason: String = "") -> bool:
 	if _battle_phase in [BattlePhase.INACTIVE, BattlePhase.ENDED, BattlePhase.FAULTED]:
 		return false
 	_battle_phase = BattlePhase.FAULTED
 	_pause_reason = PauseReason.NONE
+	_fault_reason = reason.strip_edges()
 	_emit_state()
 	return true
 
