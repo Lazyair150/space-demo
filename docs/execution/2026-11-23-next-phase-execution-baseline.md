@@ -422,3 +422,26 @@
 - 动态槽位面板现按 Board Slot 的 areaId 分组展示工作区、分解区、订单区和生产区；旧选择投影路径也必须与 Skill Slot 的 controlArea 完全一致，不再覆盖或猜测槽位属性。
 
 - Board 动态面板按 areaId 分组；Hangar 状态栏会直接显示未安装的 required Slot 和被拒绝的选择原因，避免无反馈的静默失败。
+
+
+## 15. Parser Owned Instance identity correction and runtime boundary audit (2026-11-24)
+
+### Implemented in this increment
+- Confirmed the existing parser is a Space-owned finite-input runtime, not a missing Core time-driven Producer. It consumes acquired energy-stone volume per configured shape, retains queues/progress/remainders, emits pending whole-Jar batches, and imports them through Core's discrete central-warehouse API.
+- Fixed the production battle initializer's parser runtime identity. It now derives the battle-scoped identity from the exact frozen parser Owned Instance ID, after checking `itemKind=ore_parser` and exact Definition ID/version. It no longer uses only the shared parser Definition ID.
+- Preserved an explicit Definition-only identity fallback for isolated development fixtures. Production Hangar remains on the Owned Instance path.
+- Extended `SpaceOreParserRuntimeProbe` to cover two copies of one Definition resolving to different runtime IDs, rejection of mismatched Owned Instance provenance, and the stable Definition-only fallback.
+- Added the Core-side contract `docs/world-v2/parser-board-slot-runtime-boundary.md` and updated Space's ability/rule-scope document with the same ownership boundary.
+
+### Confirmed architecture
+- Space owns energy-stone pickups, finite input queues, parser throughput/progress, parser checkpoint state, and pending output batches.
+- Jar Core owns the discrete `ImportProducedJars` admission, central warehouse, warehouse capacity/overflow, durable operation-ID deduplication, and all downstream Jar/workshop/order behavior.
+- Parser processing and Jar advancement use the same Host-authorized whole-millisecond delta. Parser imports before Jar advances that same step.
+- Parser output must never be injected directly into Master/Slave.
+- Core Board Rule Profile currently has a workshop-scope consumer only. Parser/Skill/Production Device contributions remain rejected until Space splits profiles by their actual consumers; they must not be ignored or mixed into workshop scope.
+- Multi-parser runtime remains unimplemented. Deterministic pickup routing, per-instance queues/outboxes/checkpoints, update ordering, and settlement must exist before relaxing the single-parser runtime projection.
+
+### Validation boundary
+- Code and Probe changes are committed to the Space development branch; the Probe is authored, not executed. Godot 4.7.1 is not available in this environment.
+- Core PR #60 latest known verification run `45225916923` completed successfully, including its `verify` job.
+- PR #2 and PR #60 remain Draft/Open and are not merged.
