@@ -1,6 +1,7 @@
 extends Resource
 class_name SpaceHangarBoardDefinition
-## Player-facing circuit-board layout. Slots define positions; owned instances provide components.
+## Configurable circuit-board layout. Slots own positions; player-owned instances are assigned separately.
+## Core's current runtime adapter still has a narrower projection contract, exposed explicitly below.
 
 @export var board_id: StringName = &""
 @export var definition_version: int = 1
@@ -11,10 +12,9 @@ func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
 	if board_id == &"" or definition_version <= 0 or display_name.strip_edges().is_empty():
 		errors.append("Hangar board requires a stable versioned identity and display name")
+	if slots.is_empty():
+		errors.append("Hangar board must define at least one component position")
 	var ids := {}
-	var master_count := 0
-	var slave_count := 0
-	var parser_count := 0
 	for slot in slots:
 		if slot == null:
 			errors.append("Hangar board cannot contain null slots")
@@ -24,20 +24,33 @@ func get_validation_errors() -> PackedStringArray:
 		if ids.has(key):
 			errors.append("Hangar board slot IDs must be unique: " + key)
 		ids[key] = true
+	return errors
+
+## Runtime projection is deliberately separate from board validity. A board may describe
+## more positions than the current World V2 adapters can execute; it must never silently
+## collapse multiple positions into one legacy field.
+func get_runtime_projection_errors() -> PackedStringArray:
+	var errors := PackedStringArray()
+	var master_count := 0
+	var slave_count := 0
+	var parser_count := 0
+	for slot in slots:
+		if slot == null:
+			continue
 		if slot.area_id == "workshop" and slot.role_id == "master":
 			master_count += 1
-		if slot.area_id == "workshop" and slot.role_id == "slave":
+		elif slot.area_id == "workshop" and slot.role_id == "slave":
 			slave_count += 1
 		if slot.component_kind == "ore_parser":
 			parser_count += 1
 	if master_count != 1 or slave_count != 1:
-		errors.append("current World V2 board requires exactly one Master and one Slave workshop position")
+		errors.append("current World V2 adapter requires exactly one Master and one Slave workshop position")
 	if parser_count != 1:
-		errors.append("current parser runtime requires exactly one universal decomposition position")
+		errors.append("current parser runtime supports exactly one decomposition position; multi-parser execution is not implemented")
 	return errors
 
 func build_hangar_configuration() -> Dictionary:
-	if not get_validation_errors().is_empty():
+	if not get_validation_errors().is_empty() or not get_runtime_projection_errors().is_empty():
 		return {}
 	var parser_slot := ""
 	var master_slot := ""
@@ -69,6 +82,29 @@ func build_hangar_configuration() -> Dictionary:
 		"deviceSlotIds": devices,
 		"skillOrderBindings": order_bindings
 	}
+
+func get_slots_for_area(area_id: String) -> Array[SpaceHangarBoardSlotDefinition]:
+	var result: Array[SpaceHangarBoardSlotDefinition] = []
+	for slot in slots:
+		if slot != null and slot.area_id == area_id:
+			result.append(slot.duplicate(true) as SpaceHangarBoardSlotDefinition)
+	return result
+
+func build_slot_index() -> Dictionary:
+	if not get_validation_errors().is_empty():
+		return {}
+	var result := {}
+	for slot in slots:
+		result[String(slot.slot_id)] = {
+			"slotId": String(slot.slot_id),
+			"areaId": slot.area_id,
+			"componentKind": slot.component_kind,
+			"displayName": slot.display_name,
+			"roleId": slot.role_id,
+			"controlArea": slot.control_area,
+			"required": slot.required
+		}
+	return result
 
 func resolve_slot(slot_id: String) -> SpaceHangarBoardSlotDefinition:
 	for slot in slots:
