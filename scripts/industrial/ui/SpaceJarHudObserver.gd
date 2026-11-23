@@ -1,6 +1,6 @@
 extends Control
 ## Live, read-only view of the active World V2 snapshot.
-## This component never issues Jar commands and never infers feasibility.
+## The only command it forwards is an explicit Active-demand trigger; Core owns feasibility and execution.
 
 const UiKit := preload("res://scripts/industrial/ui/UiKit.gd")
 const ShapeVisuals := preload("res://scripts/industrial/ui/ShapeVisuals.gd")
