@@ -9,6 +9,8 @@ class_name SpaceHangarScreen
 @export var device_slot_ids: PackedStringArray = PackedStringArray()
 ## Each entry is authored by the owning order flow: { "orderDefinitionKey": "...", "label": "..." }.
 @export var skill_order_bindings: Array[Dictionary] = []
+@export var stage_catalog: SpaceStageCatalog
+@export var campaign_id: String = "rift_frontier"
 
 const ShapeVisuals := preload("res://scripts/industrial/ui/ShapeVisuals.gd")
 
@@ -35,6 +37,9 @@ var _refresh_confirmation: ConfirmationDialog
 var _device_section: VBoxContainer
 var _skill_section: VBoxContainer
 var _effect_section: VBoxContainer
+var _stage_picker: OptionButton
+var _stage_info_label: Label
+var _selected_stage: SpaceStageDefinition
 var _device_pickers: Dictionary = {}
 var _pending_skill_choices: Dictionary = {}
 var _primary_icons: Dictionary = {}
@@ -47,6 +52,7 @@ func _ready() -> void:
 	if _preparation != null:
 		_preparation.player_progression_state = GameState.space_progression_state
 	GameState.space_progression_state_changed.connect(_on_progression_state_changed)
+	GameState.space_campaign_progress_changed.connect(_on_campaign_progress_changed)
 	_build_interface()
 	_controller.view_model_changed.connect(_on_view_model_changed)
 	var ready := _controller.configure(_preparation, loadout_identity)
@@ -87,6 +93,7 @@ func _build_interface() -> void:
 	subtitle.text = "每项定义可配置独立精灵贴图；未配置时使用类别 SVG 图标。所有选项均来自真实目录。"
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(subtitle)
+	_build_stage_section(root)
 
 	_status_label = Label.new()
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -162,6 +169,88 @@ func _build_interface() -> void:
 	_ship_picker.item_selected.connect(_on_ship_selected)
 	_parser_picker.item_selected.connect(_on_parser_selected)
 	_workshop_picker.item_selected.connect(_on_workshop_selected)
+
+func _build_stage_section(root: VBoxContainer) -> void:
+	var panel := PanelContainer.new()
+	root.add_child(panel)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 8)
+	panel.add_child(content)
+	_add_section_title(content, "战役关卡")
+	_stage_picker = OptionButton.new()
+	_stage_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(_stage_picker)
+	_stage_info_label = Label.new()
+	_stage_info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	content.add_child(_stage_info_label)
+	_stage_picker.item_selected.connect(_on_stage_selected)
+	_refresh_stage_picker()
+
+func _refresh_stage_picker() -> void:
+	if not is_instance_valid(_stage_picker):
+		return
+	_stage_picker.clear()
+	_selected_stage = null
+	if stage_catalog == null or not stage_catalog.get_validation_errors().is_empty():
+		_stage_picker.add_item("战役目录未配置")
+		_stage_picker.set_item_disabled(0, true)
+		_stage_info_label.text = "关卡数据不可用；请为 Hangar 配置版本化的 SpaceStageCatalog。"
+		return
+	var cleared: Array = []
+	if GameState.space_campaign_progress_state != null:
+		cleared = GameState.space_campaign_progress_state.cleared_stage_keys()
+	var stages := stage_catalog.stages_for_campaign(campaign_id)
+	var first_unlocked_index := -1
+	for stage in stages:
+		var unlocked := stage_catalog.is_unlocked(stage, cleared)
+		var prefix := "" if unlocked else "🔒 "
+		_stage_picker.add_item("%s%02d · %s" % [prefix, stage.sequence_index, stage.display_name])
+		var item_index := _stage_picker.item_count - 1
+		_stage_picker.set_item_metadata(item_index, {"stageId": String(stage.stage_id), "version": stage.definition_version})
+		if not unlocked:
+			_stage_picker.set_item_disabled(item_index, true)
+		elif first_unlocked_index < 0:
+			first_unlocked_index = item_index
+	if first_unlocked_index >= 0:
+		_stage_picker.select(first_unlocked_index)
+		_on_stage_selected(first_unlocked_index)
+	else:
+		_stage_picker.add_item("当前战役没有可挑战关卡")
+		_stage_picker.set_item_disabled(_stage_picker.item_count - 1, true)
+		_stage_info_label.text = "请检查战役目录及前置关卡记录。"
+
+func _on_stage_selected(index: int) -> void:
+	_selected_stage = null
+	if stage_catalog == null or index < 0 or index >= _stage_picker.item_count:
+		return
+	var metadata: Variant = _stage_picker.get_item_metadata(index)
+	if not (metadata is Dictionary):
+		return
+	_selected_stage = stage_catalog.resolve_stage(String(metadata.get("stageId", "")), int(metadata.get("version", 0)))
+	if _selected_stage == null:
+		_stage_info_label.text = "所选关卡的精确版本无法解析。"
+		return
+	var objective_labels := {
+		"eliminate_all": "歼灭全部敌机",
+		"survive_duration": "坚持指定时间",
+		"collect_resource": "收集指定资源",
+		"protect_target": "保护目标",
+		"boss": "击败首领"
+	}
+	_stage_info_label.text = "%s\n目标：%s   推荐装配等级：%d   预计时长：%d 分钟\n%s\n奖励预览：%s" % [
+		_selected_stage.display_name,
+		String(objective_labels.get(_selected_stage.objective, _selected_stage.objective)),
+		_selected_stage.recommended_loadout_level,
+		_selected_stage.estimated_minutes,
+		_selected_stage.briefing,
+		JSON.stringify(_selected_stage.completion_rewards)
+	]
+
+func get_selected_stage() -> SpaceStageDefinition:
+	return _selected_stage
+
+func _on_campaign_progress_changed(_state: SpaceCampaignProgressState) -> void:
+	_refresh_stage_picker()
 
 func _add_section_title(parent: VBoxContainer, text_value: String) -> void:
 	var label := Label.new()
