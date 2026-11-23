@@ -4,6 +4,8 @@ extends Node
 ## 每段只回答一个问题——热身教走位，压力考清怪效率，精英考爆发与闪避，喘息留整理窗口。
 
 signal wave_cleared
+signal stage_completed(result: Dictionary)
+signal stage_faulted(reason: String)
 
 const SEGMENT_WARMUP := 0
 const SEGMENT_PRESSURE := 1
@@ -39,6 +41,10 @@ var _alive_enemies:int=0
 var _segment_index:int=SEGMENT_WARMUP
 var _cycle:int=0
 var _energy_stone_rng := RandomNumberGenerator.new()
+var _stage_director: SpaceStageEncounterDirector
+var _stage_active: bool = false
+var _stage_faulted: bool = false
+var _stage_break_pending: bool = false
 
 func _ready()->void:
 	_energy_stone_rng.randomize()
@@ -46,6 +52,12 @@ func _ready()->void:
 	# Game restores transient run state in its _ready before this deferred start.
 	# The current wave is restarted from its beginning because enemy/scheduler
 	# instances are not part of the present runtime checkpoint.
+	var game := get_parent()
+	if game != null and game.has_method("get_stage_director_for_spawner"):
+		_stage_director = game.call("get_stage_director_for_spawner") as SpaceStageEncounterDirector
+	if _stage_director != null:
+		_start_finite_stage()
+		return
 	var saved_wave := int(GameState.wave)
 	if saved_wave > 0:
 		_start_wave(initial_wave_for_checkpoint(saved_wave), false)
@@ -80,6 +92,144 @@ func current_segment_label()->String:
 
 func current_segment()->int:
 	return _segment_index
+
+## Finite stages are injected by Game before this scene enters the SceneTree.
+## With no director, the legacy endless loop below remains unchanged.
+func _start_finite_stage() -> void:
+	if _stage_director == null:
+		_fault_stage("finite stage director is missing")
+		return
+	var beat := _stage_director.begin()
+	if beat.is_empty():
+		_fault_stage("finite stage director could not begin")
+		return
+	_stage_active = true
+	_start_stage_beat(beat)
+
+func _start_stage_beat(beat: Dictionary) -> void:
+	if not _stage_active or _stage_faulted:
+		return
+	var profile: Variant = beat.get("difficultyProfile", {})
+	if not (profile is Dictionary) or not bool(profile.get("valid", false)):
+		_fault_stage("stage difficulty profile is invalid")
+		return
+	var scale := float(profile.get("encounterScale", 1.0))
+	if not is_finite(scale) or scale <= 0.0:
+		_fault_stage("stage encounter scale is invalid")
+		return
+	var chasers := _scaled_stage_count(int(beat.get("chaser_count", -1)), scale)
+	var shooters := _scaled_stage_count(int(beat.get("shooter_count", -1)), scale)
+	var elites := _scaled_stage_count(int(beat.get("elite_count", -1)), scale)
+	if chasers < 0 or shooters < 0 or elites < 0:
+		_fault_stage("authored stage composition is malformed")
+		return
+	if (chasers > 0 or elites > 0) and chaser_scene == null:
+		_fault_stage("stage requires a chaser scene but none is configured")
+		return
+	if shooters > 0 and shooter_scene == null:
+		_fault_stage("stage requires a shooter scene but none is configured")
+		return
+	_current_wave = int(beat.get("beatIndex", 0)) + 1
+	_segment_index = SEGMENT_WARMUP
+	_cycle = 0
+	GameState.set_wave(_current_wave)
+	GameState.set_segment(String(beat.get("segment", "遭遇")))
+	_spawning = true
+	for index in chasers:
+		if not _spawn_stage_enemy(false, false):
+			_fault_stage("failed to spawn an authored chaser")
+			return
+		await get_tree().create_timer(spawn_stagger_seconds, false).timeout
+		if not is_inside_tree() or _stage_faulted:
+			return
+	for index in shooters:
+		if not _spawn_stage_enemy(true, false):
+			_fault_stage("failed to spawn an authored shooter")
+			return
+		await get_tree().create_timer(spawn_stagger_seconds, false).timeout
+		if not is_inside_tree() or _stage_faulted:
+			return
+	for index in elites:
+		if not _spawn_stage_enemy(false, true):
+			_fault_stage("failed to spawn an authored elite")
+			return
+		await get_tree().create_timer(spawn_stagger_seconds, false).timeout
+		if not is_inside_tree() or _stage_faulted:
+			return
+	_spawning = false
+	_check_wave_clear()
+
+func _scaled_stage_count(authored_count: int, scale: float) -> int:
+	if authored_count < 0:
+		return -1
+	if authored_count == 0:
+		return 0
+	return maxi(1, int(ceil(float(authored_count) * scale)))
+
+func _spawn_stage_enemy(use_shooter: bool, elite: bool) -> bool:
+	var scene := shooter_scene if use_shooter else chaser_scene
+	if scene == null:
+		return false
+	var enemy := scene.instantiate() as Node2D
+	if enemy == null:
+		return false
+	if elite:
+		enemy.set("max_hp", ELITE_BASE_HP)
+		enemy.set("speed", ELITE_SPEED)
+		enemy.set("score_value", ELITE_SCORE)
+		if elite_energy_stone_drop_profile != null:
+			enemy.set("energy_stone_drop_profile", elite_energy_stone_drop_profile)
+		enemy.scale = Vector2(ELITE_SCALE, ELITE_SCALE)
+	enemy.position = _random_edge_position()
+	if not enemy.has_signal("died"):
+		enemy.free()
+		return false
+	enemy.tree_exited.connect(_on_enemy_freed)
+	enemy.died.connect(_on_enemy_died_with_source.bind(enemy))
+	var arena := get_parent().get_node_or_null("Arena")
+	if arena == null:
+		enemy.free()
+		return false
+	arena.add_child(enemy)
+	_alive_enemies += 1
+	return true
+
+func _complete_stage_beat() -> void:
+	if not _stage_active or _stage_faulted or _stage_break_pending:
+		return
+	_stage_break_pending = true
+	var beat := _stage_director.current_beat()
+	var break_seconds := maxf(0.0, float(beat.get("break_seconds", wave_break_seconds)))
+	await get_tree().create_timer(break_seconds, false).timeout
+	if not is_inside_tree() or _stage_faulted:
+		return
+	var result := _stage_director.complete_current_beat()
+	if not bool(result.get("success", false)):
+		_fault_stage("stage director rejected beat completion")
+		return
+	if bool(result.get("complete", false)):
+		_stage_active = false
+		stage_completed.emit({
+			"stageIdentity": result,
+			"completedBeatCount": _current_wave,
+			"status": "encounters_complete"
+		})
+		return
+	_stage_break_pending = false
+	var next_beat: Variant = result.get("nextBeat", {})
+	if not (next_beat is Dictionary) or next_beat.is_empty():
+		_fault_stage("stage director returned an invalid next beat")
+		return
+	_start_stage_beat(next_beat)
+
+func _fault_stage(reason: String) -> void:
+	if _stage_faulted:
+		return
+	_stage_faulted = true
+	_stage_active = false
+	_spawning = false
+	push_error("[Spawner] Finite stage fault: " + reason)
+	stage_faulted.emit(reason)
 
 func _start_next_wave()->void:
 	_start_wave(_current_wave + 1, true)
@@ -198,6 +348,9 @@ func _check_wave_clear()->void:
 	if not is_inside_tree():
 		return
 	wave_cleared.emit()
+	if _stage_active:
+		_complete_stage_beat()
+		return
 	await get_tree().create_timer(_break_seconds(), false).timeout
 	if not is_inside_tree():
 		return
