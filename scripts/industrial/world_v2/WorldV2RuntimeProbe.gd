@@ -88,10 +88,24 @@ func _run_command_probe() -> void:
     runtime.UpdateProducerRates("陶工", {"圆罐": 2.0, "方罐": 0.0})
     assert(not runtime.IsFaulted, "a valid producer-rate update must not fault the Runtime")
 
+    # Space submits completed empty Jars as a discrete, idempotent resource batch.
+    var import_result: Dictionary = runtime.ImportProducedJars(
+        "runtime-probe-stone-batch-001",
+        {"方罐": 2, "圆罐": 1}
+    )
+    assert(not bool(import_result.get("wasDuplicate", true)), "first Jar batch import must be new")
+    assert(int(import_result.get("storedJarCount", 0)) == 3, "all probe Jars should enter the empty warehouse")
+    var repeated_import: Dictionary = runtime.ImportProducedJars(
+        "runtime-probe-stone-batch-001",
+        {"圆罐": 1, "方罐": 2}
+    )
+    assert(bool(repeated_import.get("wasDuplicate", false)), "repeated Jar batch import must be idempotent")
+    assert(runtime.GetWorldSnapshot().get("resourceJars", []).size() == 3, "duplicate import must not create extra Jars")
+
     # Missing IDs are a normal negative result for MoveDemand, not a runtime fault.
     var missing_move: bool = runtime.MoveDemand(-1, "Passive")
     assert(not missing_move, "moving a missing demand must return false")
-    assert(_snapshot_changed_count >= 4, "successful commands must emit SnapshotChanged")
+    assert(_snapshot_changed_count >= 6, "successful commands must emit SnapshotChanged")
 
     print(
         "[WorldV2Probe] command probe passed",
