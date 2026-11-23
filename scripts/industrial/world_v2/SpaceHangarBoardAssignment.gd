@@ -109,9 +109,9 @@ static func build_from_selection(board: SpaceHangarBoardDefinition, selection: D
 			"skill":
 				for skill in selection.get("skillSelections", []):
 					if skill is Dictionary and String(skill.get("orderDefinitionKey", "")) == String(slot.slot_id):
+						if String(skill.get("controlArea", "")) != String(slot.control_area):
+							return {}
 						choice = _find_choice(inventory.get("skillChoices", []), String(skill.get("instanceId", "")))
-						if not choice.is_empty():
-							choice["controlArea"] = String(skill.get("controlArea", ""))
 						break
 			"production_device":
 				for device in selection.get("deviceSelections", []):
