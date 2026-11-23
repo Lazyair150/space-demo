@@ -12,6 +12,8 @@ signal died(at:Vector2)
 @export var distance_tolerance:float =40.0
 @export var bullet_scene:PackedScene
 @export var score_value:int=25
+## Versioned, optional finite energy-stone drop data. Null means this enemy drops no stone.
+@export var energy_stone_drop_profile: SpaceEnergyStoneDropProfile
 
 @onready var health:Health=$Health
 @onready var receiver:DamageReceiver=$DamageReceiver
