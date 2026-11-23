@@ -4,11 +4,14 @@ class_name SpaceStageBossActor
 ## the definition identity is explicit and reported to the stage objective runtime.
 
 @export var boss_definition_id: StringName = &""
+var applied_encounter_scale: float = 1.0
 
-func configure_stage_boss(definition_id: String) -> bool:
-	if is_inside_tree() or definition_id.strip_edges().is_empty():
+func configure_stage_boss(definition_id: String, encounter_scale: float = 1.0) -> bool:
+	if is_inside_tree() or definition_id.strip_edges().is_empty() or not is_finite(encounter_scale) or encounter_scale <= 0.0:
 		return false
 	boss_definition_id = StringName(definition_id)
+	applied_encounter_scale = encounter_scale
+	max_hp = maxi(1, int(ceil(float(max_hp) * encounter_scale)))
 	return true
 
 var _contact_damage_cooldown: float = 0.0
