@@ -223,3 +223,7 @@
 - Owned assembler 审计确认：Ship、Parser、Master/Slave 两个不同 Workshop、Device、Skill 均按 Owned Instance ID 解析；各子系统成长 profile 被写回 snapshot；技能成长后重新基于冻结 jarWorldOptions.orderTemplates 计算收益与 Core 成本；快照的 ownedInstanceSnapshots 与槽位引用做集合一致性校验。Workshop pair 角色来自 exact combination pair definition，不从实例成长数据推断。
 - 下一项审计点：Workshop power evaluator 目前只接收单个 Workshop Definition + local rules，没有 role/真实工作负载结果输入；因此不能仅凭容量/Mark/Ban 给 Master 或 Slave 实例打生产强度分。后续需建立角色/工作负载评估上下文，或将组合协同强度独立归属 pair model，不能混入 Workshop 个体固有属性。
 - 本轮未创建正式 Parser/Workshop/Skill power model、权重、范围、rarity band、production pool 或虚构 drop profile。Space Demo Godot/.NET/GDScript 验证仍未执行。
+
+- 计算修正：Encounter evaluator 先在临时 intrinsic-only model 上验证基础 Parser 指标，再将 supply-context 维度并入完整模型评分，避免模型包含供给维度时被提前的精确维度数量检查拒绝。
+- 边界修正：drop chance 为 0 且无 weighted stone entries 是合法的“无掉落遭遇”，所有供给量/维持时间输出 0；若 drop chance 大于 0 却无正权重供给则拒绝。Probe 已加入零掉落和无效击杀速率覆盖，仍未运行。
+- 本轮最新 GitHub 核对：PR #2 head `197d6ec3ee7d35dce1592841a909cb5eba529abb`，Draft/Open/未合并；compare main...branch ahead 612 / behind 0。Space Demo Godot 4.7.1 .NET、GDScript parse 与 runtime Probe 均未执行。
