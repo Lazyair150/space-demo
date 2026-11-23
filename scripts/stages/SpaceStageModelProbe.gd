@@ -23,8 +23,6 @@ static func run() -> bool:
 		return false
 	if not ore_convoy.is_valid() or not boss_stage.is_valid():
 		return false
-	if false:
-		return false
 
 	var progression := SpaceCampaignProgressState.new()
 	if not progression.record_stage_clear(first, {"rank": "bronze", "elapsedSeconds": 120}, "stage-clear:drift-perimeter:v1"):
