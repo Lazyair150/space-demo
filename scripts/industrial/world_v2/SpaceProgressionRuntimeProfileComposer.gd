@@ -116,11 +116,12 @@ static func compose_skill(definition: SpaceSkillDefinition, instance: SpaceOwned
 	var growth := instance.growth_attributes
 	for raw_key in growth:
 		var key := String(raw_key)
-		if not (key.begins_with("effectAdd.") or key.begins_with("effectMul.")):
+		if not (key.begins_with("effectAdd.") or key.begins_with("effectMul.") or key.begins_with("benefitAdd.") or key.begins_with("benefitMul.")):
 			return null
 	var result := definition.duplicate(true) as SpaceSkillDefinition
 	var parameters := result.effect_parameters.duplicate(true)
-	if not _apply_flat_numeric_overlay(parameters, _filter_prefixes(growth, ["effectAdd.", "effectMul."]), "effectAdd.", "effectMul."):
+	var effect_growth := _filter_prefixes(growth, ["effectAdd.", "effectMul."])
+	if not _apply_flat_numeric_overlay(parameters, effect_growth, "effectAdd.", "effectMul."):
 		return null
 	result.effect_parameters = parameters
 	return result
@@ -136,22 +137,40 @@ static func compose_skill_binding(binding: Dictionary, definition: SpaceSkillDef
 	if not (benefit is Dictionary) or not (jar_order is Dictionary) or not (context is Dictionary):
 		return {}
 	var adjusted_benefit: Dictionary = benefit.duplicate(true)
+	var additive_benefits := {}
+	var multiplicative_benefits := {}
 	for raw_key in instance.growth_attributes:
 		var growth_key := String(raw_key)
-		var prefix := "effectAdd." if growth_key.begins_with("effectAdd.") else "effectMul." if growth_key.begins_with("effectMul.") else ""
-		if prefix.is_empty():
+		var prefix := ""
+		var dimension := ""
+		if growth_key.begins_with("effectAdd.") or growth_key.begins_with("effectMul."):
+			prefix = "effectAdd." if growth_key.begins_with("effectAdd.") else "effectMul."
+			var parameter_name := growth_key.trim_prefix(prefix)
+			if not definition.effect_parameter_benefit_dimensions.has(parameter_name):
+				return {} # Effect growth must explicitly declare its balance dimension.
+			dimension = String(definition.effect_parameter_benefit_dimensions[parameter_name])
+		elif growth_key.begins_with("benefitAdd.") or growth_key.begins_with("benefitMul."):
+			prefix = "benefitAdd." if growth_key.begins_with("benefitAdd.") else "benefitMul."
+			dimension = growth_key.trim_prefix(prefix)
+		else:
 			return {}
-		var parameter_name := growth_key.trim_prefix(prefix)
-		if not definition.effect_parameter_benefit_dimensions.has(parameter_name):
-			return {} # Every balance-relevant grown parameter needs an explicit effect-to-benefit mapping.
-		var dimension := String(definition.effect_parameter_benefit_dimensions[parameter_name])
 		var growth_value: Variant = instance.growth_attributes[raw_key]
-		if not adjusted_benefit.has(dimension) or typeof(adjusted_benefit[dimension]) not in [TYPE_INT, TYPE_FLOAT]:
+		if dimension.is_empty() or not adjusted_benefit.has(dimension) or typeof(adjusted_benefit[dimension]) not in [TYPE_INT, TYPE_FLOAT]:
 			return {}
 		if typeof(growth_value) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(growth_value)):
 			return {}
-		adjusted_benefit[dimension] = float(adjusted_benefit[dimension]) + float(growth_value) if prefix == "effectAdd." else float(adjusted_benefit[dimension]) * float(growth_value)
-		if not is_finite(float(adjusted_benefit[dimension])):
+		if prefix == "effectAdd." or prefix == "benefitAdd.":
+			additive_benefits[dimension] = float(additive_benefits.get(dimension, 0.0)) + float(growth_value)
+		else:
+			multiplicative_benefits[dimension] = float(multiplicative_benefits.get(dimension, 1.0)) * float(growth_value)
+	for dimension in additive_benefits:
+		adjusted_benefit[dimension] = float(adjusted_benefit[dimension]) + float(additive_benefits[dimension])
+	for dimension in multiplicative_benefits:
+		adjusted_benefit[dimension] = float(adjusted_benefit[dimension]) * float(multiplicative_benefits[dimension])
+		if not is_finite(float(adjusted_benefit[dimension])) or float(adjusted_benefit[dimension]) < 0.0:
+			return {}
+	for dimension in additive_benefits:
+		if not is_finite(float(adjusted_benefit[dimension])) or float(adjusted_benefit[dimension]) < 0.0:
 			return {}
 	var report := SpaceSkillBalanceModel.evaluate(adjusted_benefit, jar_order, context, balance_profile)
 	if not bool(report.get("valid", false)) or String(report.get("balanceStatus", "")) == "undercosted":
