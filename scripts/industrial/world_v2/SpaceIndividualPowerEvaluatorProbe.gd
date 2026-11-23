@@ -3,7 +3,7 @@ class_name SpaceIndividualPowerEvaluatorProbe
 ## Synthetic adapter tests. They verify metric provenance, not production balance values.
 
 static func run() -> bool:
-	if not _probe_parser() or not _probe_workshop() or not _probe_skill():
+	if not _probe_parser() or not _probe_workshop() or not _probe_skill() or not _probe_target_value_and_production_gate():
 		return false
 	return true
 
@@ -175,19 +175,68 @@ static func _probe_skill() -> bool:
 		and String(template_entry.entry.get("orderTemplateName", "")) == "probe.skill.offense@2" \
 		and template_pool.is_valid()
 
+
+static func _probe_target_value_and_production_gate() -> bool:
+	var model := SpaceIndividualPowerModelDefinition.new()
+	model.model_id = &"probe.workshop.target-power"
+	model.definition_version = 1
+	model.item_kind = "workshop"
+	model.metric_dimensions = {
+		"max_jars": {"minimum": 1.0, "maximum": 10.0, "weight": 1.0, "scoringMode": "target_value", "targetValue": 5.0},
+		"max_liquids": {"minimum": 1.0, "maximum": 10.0, "weight": 1.0, "scoringMode": "target_value", "targetValue": 4.0},
+		"liquid_staging_capacity": {"minimum": 0.0, "maximum": 10.0, "weight": 1.0, "scoringMode": "target_value", "targetValue": 3.0}
+	}
+	var ideal := model.calculate_power_score({"max_jars": 5.0, "max_liquids": 4.0, "liquid_staging_capacity": 3.0})
+	var excessive := model.calculate_power_score({"max_jars": 10.0, "max_liquids": 10.0, "liquid_staging_capacity": 10.0})
+	if not bool(ideal.get("success", false)) or not bool(excessive.get("success", false)):
+		return false
+	if float(ideal.powerScore) <= float(excessive.powerScore):
+		return false # More capacity is not automatically stronger; score peaks at an authored workload target.
+	if not model.get_production_validation_errors().is_empty():
+		return false # Configured state is a separate production gate, not a scoring shortcut.
+	var pool := SpaceRoguelikeIndividualPool.new()
+	pool.pool_id = &"probe.unconfigured-workshop-pool"
+	pool.definition_version = 1
+	pool.power_model_id = model.model_id
+	pool.power_model_version = model.definition_version
+	pool.item_kind = "workshop"
+	pool.power_model = model
+	pool.require_definition_evaluation = false
+	pool.power_bands = {"common": {"minimum": 0.0, "maximum": 10.0}}
+	pool.entries = [{
+		"definitionId": "probe.target-workshop",
+		"definitionVersion": 1,
+		"rarity": "common",
+		"powerScore": float(ideal.powerScore),
+		"powerMetrics": {"max_jars": 5.0, "max_liquids": 4.0, "liquid_staging_capacity": 3.0},
+		"weight": 1.0,
+		"tags": []
+	}]
+	if pool.is_valid():
+		return false
+	model.configuration_status = "configured"
+	return pool.is_valid()
+
+
 static func _model(id: String, kind: String, metrics: Dictionary) -> SpaceIndividualPowerModelDefinition:
 	var model := SpaceIndividualPowerModelDefinition.new()
 	model.model_id = StringName(id)
 	model.definition_version = 1
 	model.item_kind = kind
+	model.configuration_status = "configured" # Synthetic fixture only; never a production balance declaration.
 	for key in metrics:
 		var minimum := 0.0
-		model.metric_dimensions[key] = {
+		var dimension := {
 			"minimum": minimum,
 			"maximum": 100000.0,
-			"weight": 1.0,
-			"higherIsBetter": not ["difficulty_overcost_deviation", "difficulty_undercost_deviation"].has(String(key))
+			"weight": 1.0
 		}
+		if kind == "workshop" and ["max_jars", "max_liquids", "liquid_staging_capacity"].has(String(key)):
+			dimension["scoringMode"] = "target_value"
+			dimension["targetValue"] = float(metrics[key])
+		else:
+			dimension["scoringMode"] = "lower_is_better" if ["difficulty_overcost_deviation", "difficulty_undercost_deviation"].has(String(key)) else "higher_is_better"
+		model.metric_dimensions[key] = dimension
 	return model
 
 static func _pool_for_model(id: String, kind: String, model: SpaceIndividualPowerModelDefinition) -> SpaceRoguelikeIndividualPool:
