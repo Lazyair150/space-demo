@@ -6,7 +6,8 @@ class_name SpaceHangarOwnedInventoryBuilder
 static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePlayerProgressionState) -> Dictionary:
 	if bundle == null or progression == null or not progression.get_validation_errors().is_empty():
 		return _empty("Catalog bundle or player progression state is invalid")
-	if bundle.create_runtime_bundle() == null:
+	var runtime_bundle := bundle.create_runtime_bundle()
+	if runtime_bundle == null:
 		return _empty("Catalog bundle failed validation")
 	var result := {
 		"isReady": true,
@@ -56,7 +57,7 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 					"iconTexture": definition.display_icon
 				})
 			"workshop":
-				var definition := _resolve_workshop_definition(bundle, String(instance.definition_id), instance.definition_version)
+				var definition := runtime_bundle.workshop_catalog.resolve_definition(String(instance.definition_id), instance.definition_version)
 				if definition == null:
 					return _empty("Owned workshop instance references a missing exact definition")
 				result.workshopInstanceChoices.append({
@@ -99,15 +100,6 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 	result.workshopChoices = world_choices
 	result.workshopWorldChoices = world_choices.duplicate(true)
 	return result
-
-static func _resolve_workshop_definition(bundle: SpaceHangarCatalogBundleResource, definition_id: String, version: int) -> SpaceWorkshopDefinition:
-	for combination in bundle.workshop_combination_catalog.definitions:
-		if combination == null:
-			continue
-		for workshop in combination.workshop_definitions:
-			if workshop != null and String(workshop.workshop_id) == definition_id and workshop.definition_version == version:
-				return workshop.duplicate(true) as SpaceWorkshopDefinition
-	return null
 
 static func _resolve_skill_definition(bundle: SpaceHangarCatalogBundleResource, definition_id: String, version: int) -> SpaceSkillDefinition:
 	for definition in bundle.skill_definitions:
