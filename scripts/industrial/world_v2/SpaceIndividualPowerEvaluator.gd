@@ -65,6 +65,63 @@ static func evaluate_parser_profile(
 	metrics["average_progress_required_per_jar"] = total_progress / float(shape_vocabulary.size())
 	return _score(model, metrics)
 
+
+## Evaluate parser performance against an exact encounter supply profile.
+## Drop distribution belongs to the encounter profile; defeat cadence belongs to its forecast.
+static func evaluate_parser_in_encounter(
+	profile: Dictionary,
+	shape_vocabulary: Array,
+	supply_context: SpaceParserSupplyEvaluationContext,
+	model: SpaceIndividualPowerModelDefinition
+) -> Dictionary:
+	if supply_context == null:
+		return _failure("parser encounter evaluation requires an explicit supply context")
+	var context_errors := supply_context.get_validation_errors(shape_vocabulary)
+	if not context_errors.is_empty():
+		return _failure("; ".join(context_errors))
+	var base := evaluate_parser_profile(profile, shape_vocabulary, model)
+	if not bool(base.get("success", false)):
+		return base
+	var parser := SpaceOreParserDefinition.from_runtime_profile(profile)
+	var drop_profile := supply_context.energy_stone_drop_profile
+	var total_weight_by_shape := {}
+	var weighted_volume_by_shape := {}
+	for raw_shape in shape_vocabulary:
+		total_weight_by_shape[String(raw_shape)] = 0.0
+		weighted_volume_by_shape[String(raw_shape)] = 0.0
+	var total_weight := 0.0
+	for entry in drop_profile.weighted_stones:
+		var shape := String(entry.get("stoneType", ""))
+		var weight := float(entry.get("weight", 0.0))
+		total_weight += weight
+		total_weight_by_shape[shape] = float(total_weight_by_shape.get(shape, 0.0)) + weight
+		weighted_volume_by_shape[shape] = float(weighted_volume_by_shape.get(shape, 0.0)) + float(entry.get("volume", 0.0)) * weight
+	if total_weight <= 0.0:
+		return _failure("encounter drop profile has no positive weighted stone supply")
+	var metrics: Dictionary = base.powerMetrics.duplicate(true)
+	var defeat_rate := supply_context.expected_enemy_defeats_per_second
+	for raw_shape in shape_vocabulary:
+		var shape := String(raw_shape)
+		var shape_weight := float(total_weight_by_shape.get(shape, 0.0))
+		var conditional_mean := 0.0 if shape_weight <= 0.0 else float(weighted_volume_by_shape.get(shape, 0.0)) / shape_weight
+		var expected_volume_per_enemy := drop_profile.drop_chance * float(weighted_volume_by_shape.get(shape, 0.0)) / total_weight
+		var expected_volume_per_second := expected_volume_per_enemy * defeat_rate
+		var parser_rate := float(parser.shape_processing_rate_per_second.get(shape, 0.0)) * float(parser.production_percentage) / 100.0
+		if conditional_mean > 0.0 and parser_rate <= 0.0:
+			return _failure("parser cannot process a stone type present in the encounter supply profile: " + shape)
+		metrics["conditional_mean_stone_volume." + shape] = conditional_mean
+		metrics["expected_supply_volume_per_enemy." + shape] = expected_volume_per_enemy
+		metrics["expected_supply_volume_per_second." + shape] = expected_volume_per_second
+		metrics["stone_processing_seconds_per_drop." + shape] = 0.0 if conditional_mean <= 0.0 else conditional_mean / parser_rate
+	var scored := _score(model, metrics)
+	if bool(scored.get("success", false)):
+		scored["supplyEvaluationContext"] = {
+			"dropProfileId": String(drop_profile.profile_id),
+			"dropProfileVersion": drop_profile.profile_version,
+			"expectedEnemyDefeatsPerSecond": defeat_rate
+		}
+	return scored
+
 static func evaluate_workshop(
 	definition: SpaceWorkshopDefinition,
 	shape_vocabulary: Array,
