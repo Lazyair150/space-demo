@@ -90,6 +90,32 @@ static func run() -> bool:
 		return false
 	if inventory.parserChoices.size() != 2 or inventory.workshopInstanceChoices.size() != 2 or inventory.skillChoices.size() != 2 or inventory.workshopWorldChoices.size() != 2:
 		return false
+	# Exercise the same generic Owned Instance -> Board Slot assignment path used by Hangar UI.
+	var generic_draft := SpaceHangarSelectionDraft.new()
+	if not generic_draft.configure(inventory, DEMO_BOARD):
+		return false
+	if not generic_draft.set_ship("demo.ship.starter", 1, "demo.ship.starter.01"):
+		return false
+	if not generic_draft.set_workshop("demo.world.starter", 1):
+		return false
+	var generic_assignments := {
+		"workshop.master": "demo.workshop.alpha.01",
+		"workshop.slave": "demo.workshop.beta.01",
+		"decomposition.parser.primary": "demo.parser.precision.01",
+		"orders.active.primary": "demo.skill.rapid_fire.01",
+		"orders.passive.recon": "demo.skill.recon_scan.01"
+	}
+	for slot_id in generic_assignments:
+		if not generic_draft.assign_instance(slot_id, String(generic_assignments[slot_id])):
+			return false
+	if not generic_draft.validate_assignments().is_empty():
+		return false
+	var generic_selection := generic_draft.build_selection()
+	if generic_selection == null:
+		return false
+	var generic_assignment_snapshot := generic_draft.build_assignment_snapshot()
+	if generic_assignment_snapshot.is_empty() or generic_assignment_snapshot.get("assignments", []).size() != 5:
+		return false
 	var identity := {
 		"shipWorldId": "demo.ship_world",
 		"loadoutId": "demo.starter.loadout",
