@@ -338,3 +338,9 @@
 
 ### 验证
 - 本轮新增/修改的 GDScript Probe 仅为 authored；未运行 Godot、GDScript parser、.NET 集成或 runtime Probe。
+
+
+### 2026-11-24 实施补充
+- 通用 Assignment 编辑入口现已在 Draft 内检查工作台实例与当前选中 World 规则配置的兼容性；通过通用 `assign_instance` 替换主/从工作台时，不会绕过原有 World compatibility 约束。
+- 修正 Board Definition Probe 的 demo slot count：demo Board 实际定义 5 个槽位，Probe 现在按 5 验证。
+- Loadout freeze 的完整性检查现在同时阻止 required slot 缺失，并将运行时投影身份集合与 Assignment Map 精确对照。
