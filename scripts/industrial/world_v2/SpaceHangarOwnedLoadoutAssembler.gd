@@ -23,10 +23,10 @@ static func assemble(
 	var combination := bundle.workshop_combination_catalog.resolve_definition(String(selection.workshopId), int(selection.workshopVersion))
 	if combination == null:
 		return _reject("exact workshop combination definition is missing")
-	var master_definition := _find_workshop(combination, String(combination.workshop_pair.master_workshop_id), master_instance.definition_version)
-	var slave_definition := _find_workshop(combination, String(combination.workshop_pair.slave_workshop_id), slave_instance.definition_version)
-	if String(master_instance.definition_id) != String(combination.workshop_pair.master_workshop_id) or String(slave_instance.definition_id) != String(combination.workshop_pair.slave_workshop_id) or master_definition == null or slave_definition == null:
-		return _reject("owned workshop instances do not match the selected Master/Slave role definitions")
+	var master_definition := _find_workshop(combination, String(master_instance.definition_id), master_instance.definition_version)
+	var slave_definition := _find_workshop(combination, String(slave_instance.definition_id), slave_instance.definition_version)
+	if master_definition == null or slave_definition == null:
+		return _reject("both selected workshop instances must resolve to definitions in the selected component roster")
 	var used_instance_ids := {
 		String(ship_instance.instance_id): true,
 		String(parser_instance.instance_id): true,
@@ -72,7 +72,8 @@ static func assemble(
 		String(selection.parserSlotId), bundle.workshop_combination_catalog,
 		String(selection.workshopId), int(selection.workshopVersion),
 		bundle.skill_catalog, skill_selections, bundle.balance_profile,
-		float(selection.expectedBattleDurationLogicalMilli), bundle.effect_catalog
+		float(selection.expectedBattleDurationLogicalMilli), bundle.effect_catalog,
+		String(master_instance.definition_id), String(slave_instance.definition_id)
 	)
 	if snapshot == null:
 		return null
@@ -110,31 +111,28 @@ static func assemble(
 			devices[index] = composed
 	frozen.productionDeviceSelections = devices
 	var workshops: Array = jar_options.get("workshops", [])
-	if workshops.size() != combination.workshop_definitions.size():
-		return _reject("materialized workshop roster size differs from the exact combination definition")
-	for index in range(workshops.size()):
-		var authored: Dictionary = workshops[index]
-		# build_jar_world_options preserves the authored roster order. Resolve by the
-		# exact definition at this index, never by a mutable/display-only label.
-		var authored_definition: SpaceWorkshopDefinition = combination.workshop_definitions[index]
-		if authored_definition == null or String(authored.get("name", "")) != authored_definition.display_name:
-			return _reject("materialized workshop roster identity/order differs from the exact combination")
-		var authored_definition_id := String(authored_definition.workshop_id)
-		var workshop_instance: SpaceOwnedProgressionInstance = null
-		if authored_definition_id == String(combination.workshop_pair.master_workshop_id):
-			workshop_instance = master_instance
-		elif authored_definition_id == String(combination.workshop_pair.slave_workshop_id):
-			workshop_instance = slave_instance
-		if workshop_instance == null:
-			return _reject("materialized workshop roster does not match the selected pair definition")
-		var workshop_definition := _find_workshop(combination, String(workshop_instance.definition_id), workshop_instance.definition_version)
+	if workshops.size() != 2:
+		return _reject("materialized World V2 workspace must contain exactly the two selected workshop positions")
+	var selected_workshop_instances: Array[SpaceOwnedProgressionInstance] = [master_instance, slave_instance]
+	var selected_workshop_definitions: Array[SpaceWorkshopDefinition] = [master_definition, slave_definition]
+	for index in range(2):
+		var workshop_instance := selected_workshop_instances[index]
+		var workshop_definition := selected_workshop_definitions[index]
 		var composed_workshop := SpaceProgressionRuntimeProfileComposer.compose_workshop(workshop_definition, workshop_instance, shapes)
 		if composed_workshop.is_empty():
 			return _reject("workshop growth attributes do not satisfy local workshop rules")
-		workshops[index] = composed_workshop
+		var core_workshop: Dictionary = composed_workshop.get("coreDefinition", {})
+		if core_workshop.is_empty():
+			core_workshop = workshop_definition.build_core_definition()
+		core_workshop["name"] = workshop_definition.display_name + ("（主台）" if index == 0 else "（从台）")
+		workshops[index] = core_workshop
 	jar_options.workshops = workshops
 	frozen.jarWorldOptions = jar_options
 	var workshop_selection: Dictionary = frozen.workshopCombinationSelection
+	workshop_selection.masterWorkshopDefinitionId = String(master_instance.definition_id)
+	workshop_selection.masterWorkshopDefinitionVersion = master_instance.definition_version
+	workshop_selection.slaveWorkshopDefinitionId = String(slave_instance.definition_id)
+	workshop_selection.slaveWorkshopDefinitionVersion = slave_instance.definition_version
 	workshop_selection.masterWorkshopInstance = master_instance.build_frozen_snapshot()
 	workshop_selection.slaveWorkshopInstance = slave_instance.build_frozen_snapshot()
 	frozen.workshopCombinationSelection = workshop_selection
