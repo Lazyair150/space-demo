@@ -20,6 +20,9 @@ var _shake_strength:float
 var _battle_loadout: SpaceBattleLoadoutSnapshot
 var _stage_director: SpaceStageEncounterDirector
 var _selected_stage: SpaceStageDefinition
+var _stage_objective_runtime: SpaceStageObjectiveRuntime
+var _stage_encounters_completed: bool = false
+var _stage_protected_target: Node
 var _order_effect_dispatcher: SpaceOrderEffectDispatcher
 var _order_effect_commit_callback: Callable
 var _persisted_order_dispatcher_state: Dictionary = {}
@@ -57,14 +60,19 @@ func configure_battle_loadout(
 
 ## A finite stage must be frozen with the same owned-instance snapshots as the battle loadout.
 ## Call before adding the combat scene to the SceneTree.
-func configure_battle_stage(stage: SpaceStageDefinition) -> bool:
-	if is_inside_tree() or stage == null or not stage.is_valid() or _battle_loadout == null:
+func configure_battle_stage(stage: SpaceStageDefinition, protected_target: Node = null) -> bool:
+	if is_inside_tree() or stage == null or not stage.is_valid() or _battle_loadout == null or not _persisted_jar_execution_checkpoint_json.is_empty():
+		return false
+	var objective_runtime := SpaceStageObjectiveRuntime.new()
+	if not objective_runtime.configure(stage, protected_target):
 		return false
 	var director := SpaceStageEncounterDirector.new()
 	if not director.configure(stage, _battle_loadout.to_dictionary()):
 		return false
 	_selected_stage = stage
 	_stage_director = director
+	_stage_objective_runtime = objective_runtime
+	_stage_protected_target = protected_target
 	return true
 
 ## Read by the child Spawner during its _ready; configuration is pre-tree only.
@@ -229,8 +237,8 @@ func _ready() -> void:
 	_scatter_asteroids()
 	var spawner := get_node_or_null("Spawner")
 	if spawner != null:
-		if spawner.has_signal("stage_completed") and not spawner.stage_completed.is_connected(_on_stage_completed):
-			spawner.stage_completed.connect(_on_stage_completed)
+		if spawner.has_signal("encounters_completed") and not spawner.encounters_completed.is_connected(_on_stage_encounters_completed):
+			spawner.encounters_completed.connect(_on_stage_encounters_completed)
 		if spawner.has_signal("stage_faulted") and not spawner.stage_faulted.is_connected(_on_stage_faulted):
 			spawner.stage_faulted.connect(_on_stage_faulted)
 	if player:
@@ -239,15 +247,37 @@ func _ready() -> void:
 		if not player.damaged.is_connected(_on_player_damaged):
 			player.damaged.connect(_on_player_damaged)
 
-## Encounter completion is deliberately not reward settlement or campaign persistence.
-func _on_stage_completed(result: Dictionary) -> void:
-	if _selected_stage == null or _battle_shutdown_started:
+## Encounter completion is not objective completion or reward settlement.
+func _on_stage_encounters_completed(result: Dictionary) -> void:
+	if _selected_stage == null or _stage_objective_runtime == null or _battle_shutdown_started:
 		return
 	var identity: Variant = result.get("stageIdentity", null)
 	if not (identity is Dictionary) or String(identity.get("stageId", "")) != String(_selected_stage.stage_id) or int(identity.get("definitionVersion", 0)) != _selected_stage.definition_version:
-		_shutdown_battle(true, "finite stage completion identity mismatch")
+		_shutdown_battle(true, "finite stage encounter identity mismatch")
 		return
-	stage_completed.emit(result.duplicate(true))
+	_stage_encounters_completed = true
+	_stage_objective_runtime.mark_encounters_completed()
+	_try_complete_stage()
+
+func _try_complete_stage() -> void:
+	if _selected_stage == null or _stage_objective_runtime == null or _battle_shutdown_started or not _stage_objective_runtime.is_complete():
+		return
+	stage_completed.emit({
+		"stageIdentity": {"stageId": String(_selected_stage.stage_id), "definitionVersion": _selected_stage.definition_version},
+		"objectiveProgress": _stage_objective_runtime.progress(),
+		"status": "objective_complete"
+	})
+
+func record_stage_boss_defeated(definition_id: String) -> bool:
+	if _stage_objective_runtime == null or not _stage_objective_runtime.record_boss_defeated(definition_id):
+		return false
+	_try_complete_stage()
+	return true
+
+func get_stage_objective_progress() -> Dictionary:
+	return _stage_objective_runtime.progress() if _stage_objective_runtime != null else {}
+
+
 
 func _on_stage_faulted(reason: String) -> void:
 	stage_faulted.emit(reason)
@@ -478,7 +508,11 @@ func _restore_pending_energy_stone_pickups(
 func ingest_energy_stone(pickup_id: String, stone_type: String, volume: float) -> Dictionary:
 	if _ore_parser_runtime == null:
 		return {"success": false, "reason": "no frozen ore parser is active"}
-	return _ore_parser_runtime.ingest_stone(pickup_id, stone_type, volume)
+	var receipt := _ore_parser_runtime.ingest_stone(pickup_id, stone_type, volume)
+	if bool(receipt.get("success", false)) and _stage_objective_runtime != null:
+		_stage_objective_runtime.record_resource("energy_stone", volume)
+		_try_complete_stage()
+	return receipt
 
 ## Spawner reads the frozen Jar vocabulary; an enemy drop cannot invent a new stone type.
 func get_ore_parser_shape_vocabulary() -> Array:
@@ -572,6 +606,9 @@ func capture_ore_parser_state() -> Dictionary:
 ## Capture Jar Core state, the Host-owned fractional clock, and Space parser state at one
 ## completed step boundary. The caller must persist this object as one save transaction.
 func capture_jar_space_runtime_checkpoint() -> Dictionary:
+	if _selected_stage != null:
+		push_warning("[Game] Finite-stage checkpoint envelope is not implemented yet; refusing to write an incomplete checkpoint")
+		return {}
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if jar_host == null or not jar_host.IsShipWorldActive or _battle_loadout == null:
 		return {}
@@ -650,6 +687,9 @@ func capture_order_dispatcher_state() -> Dictionary:
 	return _order_effect_dispatcher.capture_state()
 
 func _physics_process(delta: float) -> void:
+	if _stage_objective_runtime != null:
+		_stage_objective_runtime.advance(delta)
+		_try_complete_stage()
 	# Buffs, the Space-owned ore parser, and Jar all consume the same authorized simulation step.
 	if player != null and player.effects != null:
 		player.effects.advance_from_space_world(delta)
