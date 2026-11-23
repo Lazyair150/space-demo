@@ -1,6 +1,7 @@
 extends RefCounted
 class_name SpaceBattleRunStateProbe
-## Checks that transient run progression is checkpointable without touching persistent wallet data.
+## Checks transient progression validation and the Spawner's wave-resume policy.
+const SPAWNER_SCRIPT = preload("res://scripts/Spawner.gd")
 
 static func run() -> Dictionary:
     var scene_tree := Engine.get_main_loop() as SceneTree
@@ -30,6 +31,22 @@ static func run() -> Dictionary:
     if game_state.capture_run_state() != expected:
         game_state.restore_run_state(original)
         return _failure("rejected run-state checkpoint partially mutated live state")
+
+    var inconsistent := expected.duplicate(true)
+    inconsistent.segment = "精英"
+    if game_state.restore_run_state(inconsistent):
+        game_state.restore_run_state(original)
+        return _failure("wave/segment mismatch was accepted")
+    if game_state.capture_run_state() != expected:
+        game_state.restore_run_state(original)
+        return _failure("rejected wave/segment mismatch partially mutated live state")
+
+    if SPAWNER_SCRIPT.initial_wave_for_checkpoint(6) != 6:
+        game_state.restore_run_state(original)
+        return _failure("resume policy advanced or reset the saved wave")
+    if SPAWNER_SCRIPT.initial_wave_for_checkpoint(0) != 1:
+        game_state.restore_run_state(original)
+        return _failure("new-run policy did not begin at wave one")
 
     if not game_state.restore_run_state(original):
         return _failure("probe could not restore the original GameState")
