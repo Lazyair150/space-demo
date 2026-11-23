@@ -86,3 +86,13 @@ func _sync_overlay() -> void:
 	_overlay.visible = _paused
 	if is_instance_valid(_reason_label):
 		_reason_label.text = "窗口失焦，等待手动继续" if _reason == "window_focus_lost" else "战斗逻辑与 Jar 世界均已冻结"
+
+func _exit_tree() -> void:
+	if not _paused:
+		return
+	var tree := get_tree()
+	var host := tree.root.get_node_or_null("WorldV2ShipHost")
+	tree.paused = false
+	if host != null:
+		host.call("ResumeShipWorld")
+	_paused = false
