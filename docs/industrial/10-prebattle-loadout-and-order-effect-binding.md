@@ -304,3 +304,9 @@ The parser is a Space-owned runtime, not a Jar time-driven Producer:
 The Godot end-to-end probe covers a synthetic stone becoming a Jar, a simulated lost import receipt, retry through the same operation ID, and the invariant that imported Jars enter the central warehouse rather than a workshop.
 
 Remaining integration work is production data/ownership, not the parser kernel: Hangar must freeze a real versioned parser profile into the loadout; ship/enemy pickup systems must call the Space ingestion entrypoint with stable pickup IDs and actual stone volumes; the battle save coordinator must persist parser state together with the Jar execution checkpoint. No production rates, drop volumes, or parser percentages are fabricated here.
+
+### Parser runtime integrity follow-up
+
+The selected parser definition is copied into the runtime at initialization; mutating the source Resource later cannot alter the active battle parser or its checkpoint fingerprint. Parser runtime state schema v2 stores explicit pickup type/original volume records. Restore validates exact configured shape maps, pickup-to-queue correspondence, fixed-point progress and rate remainders, parser-instance-scoped pending batch IDs, and positive bounded Jar counts before replacing any live state.
+
+Each parser advance now computes against staged copies. Arithmetic overflow or a per-step Jar import count above the Bridge's Int32 batch limit rejects the step without consuming queued stone volume, changing progress, or changing rate remainders. The synthetic probe checks both rejection paths and verifies the parser state remains byte-for-byte/value-equivalent after rejection. Progress-per-Jar thresholds below the one-micro-unit fixed-point resolution are rejected during definition/loadout validation.
