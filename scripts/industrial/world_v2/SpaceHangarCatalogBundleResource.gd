@@ -107,6 +107,10 @@ func build_selection_inventory() -> Dictionary:
 
 func _build_display_anchor_inventory(anchors: Array[SpaceShipDisplayAnchor]) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
+	var validation_definition := SpaceShipDefinition.new()
+	validation_definition.display_anchors = anchors
+	if not validation_definition.get_display_validation_errors().is_empty():
+		return result
 	for anchor in anchors:
 		if anchor == null:
 			continue
