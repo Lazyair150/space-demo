@@ -45,7 +45,6 @@ func _build() -> void:
 	add_child(_panel)
 
 	var column := UiKit.vbox(8)
-	_panel.add_child(column)
 	_status = UiKit.label("Jar 世界尚未启动", UiKit.FONT_SMALL, UiKit.MUTED)
 	column.add_child(_status)
 
