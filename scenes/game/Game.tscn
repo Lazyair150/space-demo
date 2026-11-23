@@ -14,6 +14,7 @@
 [ext_resource type="Resource" path="res://data/effects/poison.tres" id="12_poison"]
 [ext_resource type="Resource" path="res://data/effects/aim_assist.tres" id="13_aim"]
 [ext_resource type="Resource" path="res://data/effects/lifesteal.tres" id="14_lifesteal"]
+[ext_resource type="PackedScene" path="res://scenes/industrial/SpaceEnergyStonePickup.tscn" id="15_stone"]
 
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wvhbo"]
@@ -74,5 +75,6 @@ chaser_scene = ExtResource("6_gg4pt")
 pickup_scene = ExtResource("9_pickup")
 pickup_chance = 0.3
 pickup_effects = [ExtResource("10_haste"), ExtResource("11_boost"), ExtResource("12_poison"), ExtResource("13_aim"), ExtResource("14_lifesteal")]
+energy_stone_pickup_scene = ExtResource("15_stone")
 
 [editable path="Arena/Player"]
