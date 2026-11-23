@@ -116,6 +116,11 @@ func _ready() -> void:
 		push_error("[Game] Application flow rejected battle scene entry")
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
+	if not _persisted_jar_execution_checkpoint_json.is_empty() and not GameFlow.begin_battle_resuming():
+		push_error("[Game] Application flow rejected checkpoint resume phase")
+		GameFlow.fault_battle()
+		process_mode = Node.PROCESS_MODE_DISABLED
+		return
 	if not _persisted_run_state.is_empty():
 		if not GameState.restore_run_state(_persisted_run_state):
 			push_error("[Game] Saved transient run state is invalid")
