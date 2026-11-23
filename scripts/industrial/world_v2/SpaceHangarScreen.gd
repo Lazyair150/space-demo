@@ -479,7 +479,7 @@ func _set_primary_shape_label(label: Label, choice: Dictionary) -> void:
 	var primary_shape := String(choice.get("primaryShape", ""))
 	if primary_shape.is_empty():
 		label.text = ""
-		label.add_theme_color_override("font_color", UiKit.MUTED)
+		label.add_theme_color_override("font_color", ShapeVisuals.NEUTRAL)
 		return
 	label.text = "%s 主形 %s" % [ShapeVisuals.glyph_for(primary_shape), primary_shape]
 	label.add_theme_color_override("font_color", ShapeVisuals.color_for(primary_shape))
