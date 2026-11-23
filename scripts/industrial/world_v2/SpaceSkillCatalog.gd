@@ -42,7 +42,7 @@ func create_order_binding_for_build(
 	if definition == null:
 		return {}
 	if balance_profile == null or not balance_profile.is_valid() or effect_catalog == null:
-		return {}
+	return {}
 	var effect_id := String(definition.effect_definition_id)
 	var benefit_metrics := effect_catalog.resolve_balance_metrics(effect_id, definition.effect_definition_version)
 	if benefit_metrics.is_empty():
@@ -68,9 +68,14 @@ func create_order_binding_for_build(
 	if not context.get("valid", false):
 		push_error("Skill build difficulty context rejected: " + String(context.get("reason", "unknown")))
 		return {}
-	return definition.create_order_binding(order_definition_key, selected_control_area, balance_profile, context, benefit_metrics, balance_jar_order)
+	return definition.create_order_binding(
+		order_definition_key, selected_control_area, balance_profile,
+		context, benefit_metrics, balance_jar_order
+	)
 
-func is_empty() -> bool:
+## Resolve an exact versioned Space skill template from the selected frozen World V2 options.
+## The returned expanded order is for Space-side balance evaluation only. Runtime binding
+## still contains templateName only, so Core remains the sole requirement source.
 func resolve_order_template(
 	definition: SpaceSkillDefinition,
 	jar_world_options: Dictionary,
@@ -107,7 +112,6 @@ func resolve_order_template(
 	var liquid_vocabulary := {}
 	for raw_liquid in allowed_liquids:
 		liquid_vocabulary[String(raw_liquid)] = true
-	var total_count := requirements.size()
 	var primary_count := 0
 	for requirement in requirements:
 		if not (requirement is Dictionary):
@@ -120,7 +124,7 @@ func resolve_order_template(
 		var liquid := String(requirement.get("liquid", "")).strip_edges()
 		if not liquid.is_empty() and not liquid_vocabulary.has(liquid):
 			return {}
-	if primary_count * 2 <= total_count:
+	if primary_count * 2 <= requirements.size():
 		push_error("Core order template must give the skill primary shape a strict majority")
 		return {}
 	return {
@@ -130,6 +134,7 @@ func resolve_order_template(
 		"requirements": requirements.duplicate(true)
 	}
 
+func is_empty() -> bool:
 	return _definitions.is_empty()
 
 func definition_count() -> int:
