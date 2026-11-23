@@ -386,3 +386,10 @@
 - Core PR #60 最新提交已加入上述 DTO、Factory、RuleContext、Snapshot 与差分测试；CI 尚待本轮运行结果，不预先宣称通过。
 - Space PR #2 已更新 Assignment progression revision、Core option ingress 和 root/options 一致性检查。
 - GDScript Probe 代码已更新，但未执行 Godot、GDScript parser 或 runtime Probe。PR #2 仍为 Draft/Open，不合并。
+
+
+### 14.1 Core 验证状态更正（2026-11-24）
+
+- Core Actions run 45224300866 对应提交 52c2537，主项目与 Godot Host build 阶段通过；新增工厂测试因两处 nullable Rules 访问导致测试项目编译失败，xUnit 未执行。
+- Core 后续提交 4808ea4 已修正两处可空访问，但修复提交尚无新的 Actions run。不得把该轮标记为通过。
+- Space 的 GDScript Probe 仍未执行；PR #2 保持 Draft/Open。
