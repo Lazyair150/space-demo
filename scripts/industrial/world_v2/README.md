@@ -349,7 +349,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `SpaceBattleLoadoutSnapshot` 要求构筑中恰好选择一个通用 `ore_parser`，并把完整解析器属性纳入冻结快照与指纹。
 - `SpaceOreParserRuntime.gd` 无条件接受当前世界词表中的所有原石类型；类型决定目标 Jar 形状，体积是有限可解析资源量。各形状队列、进度和速率余数独立；未解析完的原石体积不会丢失。
 - 达到每形状的完整 Jar 进度阈值后，解析器创建稳定 operationId 的待交付批次。批次在确认前留在解析器状态中。
-- `SpaceOreParserJarIngress.gd` 通过 `WorldV2ShipHost.ImportProducedJars` 提交批次；Jar 的资源账本持久去重，中央仓库容量溢出按 Jar Core 规则丢弃。
+- `SpaceOreParserJarIngress.gd` 通过 `WorldV2ShipHost.ImportProducedJars` 提交批次；Jar 的资源账本持久去重，中央仓库容量溢出按 Jar Core 规则丢弃。解析器先在本地 staged state 中完成整步计算，只有所有算术和单批 Int32 数量限制通过后才提交消费/进度，失败不会吞掉原石。
 - `WorldV2ShipHost.AccumulateSpaceSimulationDelta` 是唯一的毫秒余数持有者。Game 先取出本步精确整数毫秒，让 Space 解析器处理并提交 Jar，再把同一整数毫秒交给 Jar Core 推进；避免两套时间余数逐步漂移。
 - `Game.gd` 暴露 `ingest_energy_stone`、`capture_ore_parser_state`，并在战斗步进前推进解析器、提交待产 Jar。解析器检查点包括拾取身份、待解析体积、独立进度、速率余数和未确认输出批次。
 - `SpaceOreParserRuntimeProbe.gd` 覆盖百分比吞吐、并行独立进度、重复拾取去重、身份冲突、固定点分步一致性、输出批次检查点和单次确认。
