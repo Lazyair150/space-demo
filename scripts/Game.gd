@@ -21,6 +21,8 @@ var _persisted_order_dispatcher_state: Dictionary = {}
 var _ore_parser_runtime: SpaceOreParserRuntime
 var _persisted_ore_parser_state: Dictionary = {}
 var _next_energy_stone_pickup_sequence: int = 1
+var _persisted_jar_execution_checkpoint_json: String = ""
+var _persisted_space_clock_remainder_milli: float = -1.0
 
 @export var allow_sandbox_world_for_development: bool = true
 
@@ -28,13 +30,17 @@ var _next_energy_stone_pickup_sequence: int = 1
 func configure_battle_loadout(
 	loadout: SpaceBattleLoadoutSnapshot,
 	persisted_dispatcher_state: Dictionary = {},
-	persisted_ore_parser_state: Dictionary = {}
+	persisted_ore_parser_state: Dictionary = {},
+	persisted_jar_execution_checkpoint_json: String = "",
+	persisted_space_clock_remainder_milli: float = -1.0
 ) -> bool:
 	if is_inside_tree() or loadout == null or loadout.to_dictionary().is_empty():
 		return false
 	_battle_loadout = loadout
 	_persisted_order_dispatcher_state = persisted_dispatcher_state.duplicate(true)
 	_persisted_ore_parser_state = persisted_ore_parser_state.duplicate(true)
+	_persisted_jar_execution_checkpoint_json = persisted_jar_execution_checkpoint_json
+	_persisted_space_clock_remainder_milli = persisted_space_clock_remainder_milli
 	return true
 
 ## The callback must atomically persist Space effect state and dispatcher state before returning true.
@@ -84,14 +90,29 @@ func _begin_ship_world() -> bool:
 		push_error("[Game] Jar rejected the frozen battle loadout configuration")
 		return false
 
-	var materialized: Dictionary = jar_host.MaterializeSelectedOrders(
-		_battle_loadout.selected_order_bindings()
-	)
-	if not bool(materialized.get("success", false)):
-		if jar_host.IsShipWorldActive:
+	if not _persisted_jar_execution_checkpoint_json.is_empty():
+		# The checkpoint already contains selected demands, sessions, resources and
+		# ledger receipts. Never materialize the frozen orders a second time.
+		if not jar_host.RestoreExecutionCheckpointJson(_persisted_jar_execution_checkpoint_json):
+			if jar_host.IsShipWorldActive:
+				jar_host.EndShipWorld()
+			push_error("[Game] Jar execution checkpoint restore failed")
+			return false
+	else:
+		var materialized: Dictionary = jar_host.MaterializeSelectedOrders(
+			_battle_loadout.selected_order_bindings()
+		)
+		if not bool(materialized.get("success", false)):
+			if jar_host.IsShipWorldActive:
+				jar_host.EndShipWorld()
+			push_error("[Game] Selected order materialization failed: " + str(materialized.get("error", "")))
+			return false
+
+	if _persisted_space_clock_remainder_milli >= 0.0:
+		if not jar_host.RestoreSpaceClockRemainderMilli(_persisted_space_clock_remainder_milli):
 			jar_host.EndShipWorld()
-		push_error("[Game] Selected order materialization failed: " + str(materialized.get("error", "")))
-		return false
+			push_error("[Game] Saved Space clock remainder is invalid or was restored too late")
+			return false
 
 	if not _initialize_ore_parser():
 		if jar_host.IsShipWorldActive:
