@@ -84,7 +84,6 @@ func _build() -> void:
 	_active_dock.offset_right = 330
 	_active_dock.offset_bottom = -24
 	_active_dock.custom_minimum_size = Vector2(660, 80)
-	_active_dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var active_style := StyleBoxFlat.new()
 	active_style.bg_color = Color("101923", 0.92)
 	active_style.border_color = Color("3b86a8")
@@ -99,7 +98,6 @@ func _build() -> void:
 	_active_order_slots = HFlowContainer.new()
 	_active_order_slots.add_theme_constant_override("h_separation", 6)
 	_active_order_slots.add_theme_constant_override("v_separation", 4)
-	_active_order_slots.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	active_column.add_child(_active_order_slots)
 
 	# Passive orders are persistent status badges, separated from activatable slots.
@@ -381,7 +379,7 @@ func _show_feedback(message: String, tint: Color) -> void:
 	if _feedback_tween != null and _feedback_tween.is_valid():
 		_feedback_tween.kill()
 	_feedback_tween = create_tween()
-	_feedback_tween.tween_property(_toggle, "modulate", Color.WHITE, 0.35)
+	_feedback_tween.tween_property(_strip_panel, "modulate", Color.WHITE, 0.35)
 	_feedback_tween.parallel().tween_interval(1.8)
 	_feedback_tween.tween_property(_feedback_label, "modulate:a", 0.0, 0.65)
 
