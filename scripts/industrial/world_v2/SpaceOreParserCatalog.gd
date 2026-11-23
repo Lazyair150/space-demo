@@ -12,6 +12,11 @@ func register_definition(definition: SpaceOreParserDefinition) -> bool:
 	if definition.parser_id == &"" or definition.definition_version <= 0:
 		push_error("Ore parser catalog rejected an unidentified definition")
 		return false
+	var candidate_shapes: Array = definition.shape_processing_rate_per_second.keys()
+	var validation_errors := definition.get_validation_errors(candidate_shapes)
+	if not validation_errors.is_empty():
+		push_error("Ore parser catalog rejected an invalid universal parser definition: " + "; ".join(validation_errors))
+		return false
 	if _definitions.has(key):
 		push_error("Duplicate ore parser definition version: " + key)
 		return false
