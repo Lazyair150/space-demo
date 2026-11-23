@@ -59,6 +59,12 @@ static func _pool(id: String, kind: String) -> SpaceRoguelikeIndividualPool:
 	pool.definition_version = 1
 	pool.power_model_id = StringName("probe.power." + kind)
 	pool.power_model_version = 1
+	var model := SpaceIndividualPowerModelDefinition.new()
+	model.model_id = pool.power_model_id
+	model.definition_version = pool.power_model_version
+	model.item_kind = kind
+	model.metric_dimensions = {"normalized_strength": {"minimum": 0.0, "maximum": 1.0, "weight": 1.0, "higherIsBetter": true}}
+	pool.power_model = model
 	pool.item_kind = kind
 	pool.power_bands = {
 		"common": {"minimum": 1.0, "maximum": 3.0},
@@ -69,6 +75,7 @@ static func _pool(id: String, kind: String) -> SpaceRoguelikeIndividualPool:
 		"definitionVersion": 1,
 		"rarity": "common",
 		"powerScore": 2.0,
+		"powerMetrics": {"normalized_strength": 0.2},
 		"weight": 1.0,
 		"tags": ["offense"]
 	}]
