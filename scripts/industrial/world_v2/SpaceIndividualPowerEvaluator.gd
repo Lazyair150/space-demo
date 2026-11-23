@@ -9,27 +9,59 @@ static func evaluate_parser(
 	shape_vocabulary: Array,
 	model: SpaceIndividualPowerModelDefinition
 ) -> Dictionary:
-	if definition == null or model == null or model.item_kind != "ore_parser":
-		return _failure("parser evaluation requires an ore-parser definition and matching model")
+	if definition == null:
+		return _failure("parser evaluation requires a parser definition")
+	return evaluate_parser_profile(definition.build_runtime_profile(), shape_vocabulary, model)
+
+## Evaluate the exact effective runtime profile, including Owned Instance growth.
+## Rates and progress thresholds are read after composition; output throughput therefore
+## reflects production percentage, parser speed, and progress required per Jar together.
+static func evaluate_effective_parser(
+	definition: SpaceOreParserDefinition,
+	instance: SpaceOwnedProgressionInstance,
+	shape_vocabulary: Array,
+	model: SpaceIndividualPowerModelDefinition
+) -> Dictionary:
+	var effective_profile := SpaceProgressionRuntimeProfileComposer.compose_parser(
+		definition, instance, shape_vocabulary
+	)
+	if effective_profile.is_empty():
+		return _failure("parser Owned Instance growth could not be composed into a valid runtime profile")
+	return evaluate_parser_profile(effective_profile, shape_vocabulary, model)
+
+static func evaluate_parser_profile(
+	profile: Dictionary,
+	shape_vocabulary: Array,
+	model: SpaceIndividualPowerModelDefinition
+) -> Dictionary:
+	if model == null or model.item_kind != "ore_parser":
+		return _failure("parser evaluation requires a matching ore-parser power model")
+	var definition := SpaceOreParserDefinition.from_runtime_profile(profile)
 	var errors := definition.get_validation_errors(shape_vocabulary)
 	if not errors.is_empty():
 		return _failure("; ".join(errors))
+	var percentage := float(definition.production_percentage)
 	var metrics := {
-		"production_percentage": float(definition.production_percentage),
+		"production_percentage": percentage,
 		"shape_count": float(shape_vocabulary.size())
 	}
-	var total_rate := 0.0
+	var total_nominal_rate := 0.0
+	var total_effective_rate := 0.0
 	var total_progress := 0.0
 	for raw_shape in shape_vocabulary:
 		var shape := String(raw_shape)
-		var rate := float(definition.shape_processing_rate_per_second[shape])
+		var nominal_rate := float(definition.shape_processing_rate_per_second[shape])
+		var effective_rate := nominal_rate * percentage / 100.0
 		var progress := float(definition.progress_per_jar_by_shape[shape])
-		metrics["processing_rate." + shape] = rate
+		metrics["processing_rate." + shape] = nominal_rate
+		metrics["effective_processing_rate." + shape] = effective_rate
 		metrics["progress_required_per_jar." + shape] = progress
-		metrics["throughput_per_jar." + shape] = rate / progress
-		total_rate += rate
+		metrics["throughput_per_jar." + shape] = effective_rate / progress
+		total_nominal_rate += nominal_rate
+		total_effective_rate += effective_rate
 		total_progress += progress
-	metrics["average_processing_rate"] = total_rate / float(shape_vocabulary.size())
+	metrics["average_processing_rate"] = total_nominal_rate / float(shape_vocabulary.size())
+	metrics["average_effective_processing_rate"] = total_effective_rate / float(shape_vocabulary.size())
 	metrics["average_progress_required_per_jar"] = total_progress / float(shape_vocabulary.size())
 	return _score(model, metrics)
 
