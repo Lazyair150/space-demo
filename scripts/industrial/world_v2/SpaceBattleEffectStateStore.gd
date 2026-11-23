@@ -110,8 +110,54 @@ func _valid_snapshot(payload: Dictionary) -> bool:
         return false
     if int(effects.get("schemaVersion", 0)) != 1 or not (effects.get("instances", null) is Array) or not (effects.get("processedOrderEventIds", null) is Array):
         return false
+    if not _valid_dispatcher_state(dispatcher, identity, effects.get("processedOrderEventIds", [])):
+        return false
     var runtime_checkpoint: Variant = payload.get("runtimeCheckpoint", null)
     return runtime_checkpoint is Dictionary and _valid_runtime_checkpoint(runtime_checkpoint, identity)
+
+func _valid_dispatcher_state(dispatcher: Dictionary, identity: Dictionary, effect_event_ids: Array) -> bool:
+    if int(dispatcher.get("schemaVersion", 0)) != 1:
+        return false
+    if String(dispatcher.get("shipWorldId", "")) != String(identity.get("shipWorldId", "")):
+        return false
+    if String(dispatcher.get("loadoutId", "")) != String(identity.get("loadoutId", "")):
+        return false
+    if typeof(dispatcher.get("loadoutVersion", null)) != TYPE_INT or int(dispatcher.get("loadoutVersion", 0)) != int(identity.get("loadoutVersion", 0)):
+        return false
+    if String(dispatcher.get("loadoutFingerprint", "")) != String(identity.get("loadoutFingerprint", "")):
+        return false
+    var raw_ids: Variant = dispatcher.get("processedEventIds", null)
+    if not (raw_ids is Array):
+        return false
+    var world_instance_id := String(dispatcher.get("jarWorldInstanceId", ""))
+    if raw_ids.is_empty():
+        if not world_instance_id.is_empty():
+            return false
+    elif world_instance_id.is_empty():
+        return false
+    var dispatcher_ids := {}
+    for raw_id in raw_ids:
+        if typeof(raw_id) != TYPE_STRING:
+            return false
+        var event_id := String(raw_id)
+        if event_id.is_empty() or dispatcher_ids.has(event_id):
+            return false
+        if not event_id.begins_with(world_instance_id + ":"):
+            return false
+        var suffix := event_id.trim_prefix(world_instance_id + ":").split(":")
+        if suffix.size() != 2 or not suffix[0].is_valid_int() or not suffix[1].is_valid_int():
+            return false
+        var demand_id := int(suffix[0])
+        var cycle_sequence := int(suffix[1])
+        if demand_id <= 0 or cycle_sequence <= 0 or str(demand_id) != suffix[0] or str(cycle_sequence) != suffix[1]:
+            return false
+        dispatcher_ids[event_id] = true
+    if effect_event_ids.size() != dispatcher_ids.size():
+        return false
+    for raw_id in effect_event_ids:
+        if typeof(raw_id) != TYPE_STRING or not dispatcher_ids.has(String(raw_id)):
+            return false
+    return true
 
 func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity: Dictionary) -> bool:
     if int(runtime_checkpoint.get("schemaVersion", 0)) != 2:
