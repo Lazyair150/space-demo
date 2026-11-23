@@ -283,6 +283,12 @@ static func run() -> bool:
 		return false
 
 	# Player progression is separate from immutable catalog definitions.
+	var progression_bundle := SpaceHangarCatalogBundle.create(
+		ships, devices, parsers, workshops, skills,
+		SpaceSkillBalanceProfile.new(), effects
+	)
+	if not progression_bundle.validate_and_prepare().is_empty():
+		return false
 	var progression := SpacePlayerProgressionState.new()
 	progression.player_id = &"probe.player"
 	var parser_instance := SpaceOwnedProgressionInstance.new()
@@ -292,15 +298,17 @@ static func run() -> bool:
 	parser_instance.definition_version = 1
 	if progression.acquire_instance(parser_instance):
 		return false # An instance cannot be acquired before its exact definition is unlocked.
-	if not progression.unlock_definition("ore_parser", "probe.parser", 1):
+	if not SpacePlayerProgressionCatalogService.unlock_definition(progression, progression_bundle, "ore_parser", "probe.parser", 1):
+		return false
+	if SpacePlayerProgressionCatalogService.unlock_definition(progression, progression_bundle, "ore_parser", "missing.parser", 1):
 		return false
 	if progression.unlock_definition("ore_parser", "probe.parser", 1):
 		return false
-	if not progression.acquire_instance(parser_instance):
+	if not SpacePlayerProgressionCatalogService.acquire_instance(progression, progression_bundle, parser_instance):
 		return false
 	var second_parser_instance := parser_instance.duplicate(true) as SpaceOwnedProgressionInstance
 	second_parser_instance.instance_id = &"probe.parser.instance.b"
-	if not progression.acquire_instance(second_parser_instance):
+	if not SpacePlayerProgressionCatalogService.acquire_instance(progression, progression_bundle, second_parser_instance):
 		return false
 	var stale_parser_copy := progression.resolve_instance("probe.parser.instance.a")
 	var upgraded_parser := progression.resolve_instance("probe.parser.instance.a")
