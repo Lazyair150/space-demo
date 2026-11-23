@@ -12,22 +12,6 @@ class_name SpaceShipDefinition
 
 func get_validation_errors(configured_shapes: Array) -> PackedStringArray:
 	var errors := PackedStringArray()
-	var anchor_ids := {}
-	var logical_slots := {}
-	for anchor in display_anchors:
-		if anchor == null:
-			errors.append("ship display anchor cannot be null")
-			continue
-		for anchor_error in anchor.get_validation_errors():
-			errors.append("ship display anchor: " + anchor_error)
-		var anchor_key := String(anchor.anchor_id)
-		var slot_key := anchor.component_kind + ":" + anchor.logical_slot_id
-		if anchor_ids.has(anchor_key):
-			errors.append("ship display anchor IDs must be unique: " + anchor_key)
-		anchor_ids[anchor_key] = true
-		if logical_slots.has(slot_key):
-			errors.append("ship display anchors must map each component slot once: " + slot_key)
-		logical_slots[slot_key] = true
 	if ship_id == &"" or definition_version <= 0:
 		errors.append("ship definition identity/version is invalid")
 	if display_name.strip_edges().is_empty():
@@ -45,6 +29,26 @@ func get_validation_errors(configured_shapes: Array) -> PackedStringArray:
 	for key in expected_stone_progress_per_second_by_shape:
 		if not configured_shapes.has(String(key)):
 			errors.append("ship stone profile contains an unconfigured shape: " + String(key))
+	return errors
+
+func get_display_validation_errors() -> PackedStringArray:
+	var errors := PackedStringArray()
+	var anchor_ids := {}
+	var logical_slots := {}
+	for anchor in display_anchors:
+		if anchor == null:
+			errors.append("ship display anchor cannot be null")
+			continue
+		for anchor_error in anchor.get_validation_errors():
+			errors.append("ship display anchor: " + anchor_error)
+		var anchor_key := String(anchor.anchor_id)
+		var slot_key := anchor.component_kind + ":" + anchor.logical_slot_id
+		if anchor_ids.has(anchor_key):
+			errors.append("ship display anchor IDs must be unique: " + anchor_key)
+		anchor_ids[anchor_key] = true
+		if logical_slots.has(slot_key):
+			errors.append("ship display anchors must map each component slot once: " + slot_key)
+		logical_slots[slot_key] = true
 	return errors
 
 func build_selection(configured_shapes: Array) -> Dictionary:
