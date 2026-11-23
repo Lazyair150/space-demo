@@ -53,7 +53,7 @@ The editable SVG concept library is under `assets/sprites/`: player frigate, sco
 
 ## Roguelike individual library and power budgets
 
-- Parser, individual workshop, and skill definitions are eligible reward kinds. The library stores versioned pools per kind; a pool entry references an exact definition ID/version and carries rarity, normalized power score, weight, and tags.
+- Parser, individual workshop, and skill definitions are eligible reward kinds. The library stores versioned pools per kind; a pool entry references an exact definition ID/version and carries rarity, normalized power score, weight, and tags. Each pool pins an exact subsystem power-model ID/version; score calculation remains owned by that item's subsystem.
 - Each rarity has an authored inclusive power band. Pool validation rejects entries below or above that band, invalid weights, duplicate exact definition identities, missing rarity bands, and unsupported item kinds.
 - Weighted rolls are deterministic under the supplied RNG seed and can filter rarity, tags, and already-seen definition identities. The result is only a reward candidate; it does not grant ownership or mutate player progression.
 - Acquisition remains the responsibility of SpacePlayerProgressionCatalogService and SpacePlayerProgressionState: the exact catalog definition must be unlocked/resolved before a new SpaceOwnedProgressionInstance is acquired. Repeated copies retain separate instance IDs and growth.
