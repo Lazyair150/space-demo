@@ -23,6 +23,8 @@ static func run() -> bool:
 		return false
 	if not catalog.is_unlocked(second, progression.cleared_stage_keys()):
 		return false
+	if progression.record_stage_clear(second, {"rank": "gold"}, "stage-clear:drift-perimeter:v1"):
+		return false # Settlement identity cannot be reused across stages.
 	var restored := SpaceCampaignProgressState.from_data(progression.to_data())
 	if restored == null or not restored.is_stage_cleared(String(first.stage_id), first.definition_version):
 		return false
@@ -40,5 +42,20 @@ static func run() -> bool:
 	if absf(float(difficulty.averageLoadoutLevel) - 3.0) > 0.000001:
 		return false
 	if absf(float(difficulty.encounterScale) - 1.16) > 0.000001:
+		return false
+	var director := SpaceStageEncounterDirector.new()
+	if not director.configure(first, loadout):
+		return false
+	var first_beat := director.begin()
+	if first_beat.is_empty() or int(first_beat.beatIndex) != 0:
+		return false
+	var beat_result := director.complete_current_beat()
+	if not bool(beat_result.get("success", false)) or bool(beat_result.get("complete", true)):
+		return false
+	var director_checkpoint := director.capture_state()
+	var resumed_director := SpaceStageEncounterDirector.new()
+	if not resumed_director.restore_state(first, loadout, director_checkpoint):
+		return false
+	if int(resumed_director.current_beat().beatIndex) != 1:
 		return false
 	return true
