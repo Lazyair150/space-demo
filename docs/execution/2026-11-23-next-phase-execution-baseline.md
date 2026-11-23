@@ -140,7 +140,7 @@
 - `SpaceHangarBattleLauncher` 的新开与恢复路径都注入 stage settlement callback；但必须继续检查 Game checkpoint restore 后 stage runtime 的 exact identity 检查，不能仅凭 callback 注入就判定完整。
 - `Spawner` 的 boss beat 将 boss 数量固定为 1，不随 encounter scale 复制；普通敌人数才缩放。
 - `SpaceStageBossActor.configure_stage_boss` 在入树前缩放 max_hp；Boss 物理逻辑重写接触处理，避免复用普通追击敌机的接触即死亡语义。仍需检查 EnemyChaser/Health 初始化时序及 Probe。
-- `SpaceHangarScreen` 源码仍包含 Definition picker 字段与 UI 控件；SelectionController 已使用 owned inventory API，但当前界面是否把所有控件接到 owned instance draft 尚未证实。这是 Phase A 首要核对项。
+- `SpaceHangarScreen` 的 `_render_view_model` 从 owned inventory 填充选项，飞船/解析器/工作台/设备/技能的选择回调会把对应 `instanceId`（工作台为 Master/Slave 两个 instance ID）传给 SelectionController；因此 UI 已接入 Owned Instance draft，并非单纯 Definition picker。控件文案仍有“定义”旧称，后续可统一。
 - 当前分支没有可见的正式 `data/industrial` catalog 资源目录；只有 sandbox/invalid World V2 JSON。Stage catalog 已单独存在。
 
 ## 6. 当前阶段的禁止事项
@@ -159,4 +159,7 @@
 - 已核对 PR #2 仍为 Draft / Open / 未合并。
 - 已核对当前分支目录：`data/industrial` 仅有 sandbox/invalid JSON；`data/stages/campaign_01` 存在关卡资源。
 - 已开始审计 Hangar Preparation、Owned Loadout Assembler、Selection Controller、Hangar Screen、Game、Spawner、Boss Actor 与 Launcher。
-- 待完成：Phase A 全面调用链核查；Phase B 子系统指标模型设计与代码落地。
+- 额外确认：Hangar 的“检查并冻结装配快照”按钮目前只构建并显示 fingerprint，不负责启动战斗；MainMenu/Launch 路由仍未闭环。
+- 发现并修复：奖励服务曾将 `roguelike` 来源数据塞入 `growth_attributes`，与各子系统 composer 的严格属性白名单冲突。现新增独立 `acquisition_provenance`，RewardService 写入该字段；ProgressionState 导入时会把旧 `growthAttributes.roguelike` 迁移到新字段。
+- 已扩展 `SpaceRoguelikeIndividualLibraryProbe`：验证奖励实例的成长属性为空、来源信息单独保存、Skill composer 可以接受该实例、存档 round-trip 保留来源，以及旧格式迁移。Probe 仅已编写，未执行。
+- 待完成：继续审计 stage checkpoint exact identity / protected-target resume；审计 provenance 与冻结 Loadout 传播；随后进入子系统指标模型的真实契约设计。
