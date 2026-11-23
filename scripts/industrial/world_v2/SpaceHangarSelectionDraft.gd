@@ -173,7 +173,7 @@ func _assign(slot_id: String, expected_kind: String, choice: Dictionary) -> bool
 func _validate_assignment_map(assignments: Dictionary) -> PackedStringArray:
 	if _board == null:
 		return PackedStringArray()
-	return SpaceHangarBoardAssignment.validate(_board, assignments, _inventory)
+	return SpaceHangarBoardAssignment.validate(_board, assignments, _inventory, false)
 
 func _slot_by_id(slot_id: String) -> SpaceHangarBoardSlotDefinition:
 	return _board.resolve_slot(slot_id) if _board != null else null
