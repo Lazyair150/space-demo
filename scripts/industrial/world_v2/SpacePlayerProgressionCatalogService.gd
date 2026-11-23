@@ -46,3 +46,6 @@ static func _definition_exists(bundle: SpaceHangarCatalogBundle, item_kind: Stri
 					if definition != null and String(definition.workshop_id) == definition_id and definition.definition_version == version:
 						return true
 	return false
+
+static func validate_definition(bundle: SpaceHangarCatalogBundle, item_kind: String, definition_id: String, version: int) -> bool:
+	return bundle != null and not bundle.validate_and_prepare().is_empty() == false and _definition_exists(bundle, item_kind, definition_id, version)
