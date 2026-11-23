@@ -608,9 +608,6 @@ func capture_ore_parser_state() -> Dictionary:
 ## Capture Jar Core state, the Host-owned fractional clock, and Space parser state at one
 ## completed step boundary. The caller must persist this object as one save transaction.
 func capture_jar_space_runtime_checkpoint() -> Dictionary:
-	if _selected_stage != null:
-		push_warning("[Game] Finite-stage checkpoint envelope is not implemented yet; refusing to write an incomplete checkpoint")
-		return {}
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if jar_host == null or not jar_host.IsShipWorldActive or _battle_loadout == null:
 		return {}
@@ -626,14 +623,77 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 		push_error("[Game] Coordinated checkpoint is incomplete: Jar or ore-parser state is missing")
 		return {}
 	return {
-		"schemaVersion": 2,
+		"schemaVersion": 3 if _selected_stage != null else 2,
 		"loadoutIdentity": identity,
 		"jarExecutionCheckpointJson": jar_checkpoint,
 		"spaceClockRemainderMilli": jar_host.CaptureSpaceClockRemainderMilli(),
 		"oreParserState": parser_checkpoint,
-		"runState": GameState.capture_run_state()
+		"runState": GameState.capture_run_state(),
+		"stageRuntime": _capture_stage_runtime_checkpoint()
 	}
 
+func _capture_stage_runtime_checkpoint() -> Dictionary:
+	if _selected_stage == null:
+		return {}
+	if _stage_director == null or _stage_objective_runtime == null or _battle_loadout == null:
+		return {}
+	var director_state := _stage_director.capture_state()
+	var objective_state := _stage_objective_runtime.capture_state()
+	if director_state.is_empty() or objective_state.is_empty():
+		return {}
+	return {
+		"schemaVersion": 1,
+		"stageId": String(_selected_stage.stage_id),
+		"definitionVersion": _selected_stage.definition_version,
+		"loadoutIdentity": {
+			"shipWorldId": _battle_loadout.ship_world_id(),
+			"loadoutId": _battle_loadout.loadout_id(),
+			"loadoutVersion": _battle_loadout.loadout_version(),
+			"loadoutFingerprint": _battle_loadout.loadout_fingerprint()
+		},
+		"directorState": director_state,
+		"objectiveState": objective_state,
+		"encountersCompleted": _stage_encounters_completed,
+		"completionEmitted": _stage_completion_emitted
+	}
+
+## Restore only against the exact stage and frozen loadout identities.
+func restore_battle_stage_from_checkpoint(stage: SpaceStageDefinition, source: Dictionary, protected_target: Node = null) -> bool:
+	if is_inside_tree() or _battle_loadout == null or stage == null or not stage.is_valid() or _selected_stage != null:
+		return false
+	if int(source.get("schemaVersion", 0)) != 1 or String(source.get("stageId", "")) != String(stage.stage_id) or int(source.get("definitionVersion", 0)) != stage.definition_version:
+		return false
+	var expected_loadout := {
+		"shipWorldId": _battle_loadout.ship_world_id(),
+		"loadoutId": _battle_loadout.loadout_id(),
+		"loadoutVersion": _battle_loadout.loadout_version(),
+		"loadoutFingerprint": _battle_loadout.loadout_fingerprint()
+	}
+	if source.get("loadoutIdentity", {}) != expected_loadout:
+		return false
+	var director_state: Variant = source.get("directorState", null)
+	var objective_state: Variant = source.get("objectiveState", null)
+	if not (director_state is Dictionary) or not (objective_state is Dictionary):
+		return false
+	var director := SpaceStageEncounterDirector.new()
+	if not director.restore_state(stage, _battle_loadout.to_dictionary(), director_state):
+		return false
+	var objective := SpaceStageObjectiveRuntime.new()
+	if not objective.restore_state(stage, objective_state, protected_target):
+		return false
+	var encounters_completed := bool(source.get("encountersCompleted", false))
+	if encounters_completed != (director.state() == SpaceStageEncounterDirector.State.COMPLETE):
+		return false
+	var completion_emitted := bool(source.get("completionEmitted", false))
+	if completion_emitted and not objective.is_complete():
+		return false
+	_selected_stage = stage
+	_stage_director = director
+	_stage_objective_runtime = objective
+	_stage_protected_target = protected_target
+	_stage_encounters_completed = encounters_completed
+	_stage_completion_emitted = completion_emitted
+	return true
 func _refresh_last_completed_simulation_position(jar_host: Node) -> void:
 	if jar_host == null or not jar_host.has_method("GetWorldSnapshot"):
 		return
