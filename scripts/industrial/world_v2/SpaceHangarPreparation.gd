@@ -125,6 +125,8 @@ func build_loadout(
 	skill_selections: Array,
 	expected_battle_duration_logical_milli: float
 ) -> SpaceBattleLoadoutSnapshot:
+	if require_owned_instances or player_progression_state != null:
+		return _failure_snapshot("Definition-only assembly is disabled for production Hangar; select owned instance IDs")
 	return SpaceHangarLoadoutAssembler.assemble(
 		identity,
 		ship_catalog,
@@ -162,6 +164,8 @@ func launch_new_battle(
 	expected_battle_duration_logical_milli: float,
 	commit_callback: Callable
 ) -> Dictionary:
+	if require_owned_instances or player_progression_state != null:
+		return _failure("Definition-only launch is disabled for production Hangar; use an owned selection")
 	if parent == null or not parent.is_inside_tree() or game_scene == null:
 		return _failure("Hangar launch parent or combat scene is unavailable")
 	var loadout := build_loadout(
