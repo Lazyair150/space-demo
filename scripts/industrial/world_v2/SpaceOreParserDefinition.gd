@@ -13,6 +13,7 @@ const MAX_FIXED_POINT_UNITS: float = 1000000000.0
 @export_range(0, 100, 1) var production_percentage: int = 0
 @export var shape_processing_rate_per_second: Dictionary = {}
 @export var progress_per_jar_by_shape: Dictionary = {}
+@export var rule_contributions: Array[SpaceRuleContributionDefinition] = []
 
 func get_validation_errors(shape_names: Array) -> Array[String]:
 	var errors: Array[String] = []
