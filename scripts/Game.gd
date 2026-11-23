@@ -229,13 +229,10 @@ func _begin_ship_world() -> bool:
 
 	if _persisted_space_clock_remainder_milli >= 0.0:
 		if not jar_host.RestoreSpaceClockRemainderMilli(_persisted_space_clock_remainder_milli):
-			jar_host.EndShipWorld()
 			push_error("[Game] Saved Space clock remainder is invalid or was restored too late")
 			return false
 
 	if not _initialize_ore_parser():
-		if jar_host.IsShipWorldActive:
-			jar_host.EndShipWorld()
 		return false
 	return true
 
@@ -532,7 +529,10 @@ func _shutdown_battle(faulted: bool, reason: String) -> void:
 	if jar_host != null:
 		jar_host.EndShipWorld()
 	if faulted:
-		GameFlow.fault_battle()
+		GameFlow.fault_battle(reason)
+		var pause_controller := get_node_or_null("PauseController")
+		if pause_controller != null and pause_controller.has_method("show_fault"):
+			pause_controller.call("show_fault", reason)
 	else:
 		GameFlow.end_battle()
 	process_mode = Node.PROCESS_MODE_DISABLED
