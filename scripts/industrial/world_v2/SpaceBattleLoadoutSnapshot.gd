@@ -259,6 +259,12 @@ func jar_world_options_json() -> String:
 
 func selected_order_bindings() -> Array:
 	return _data.get("selectedOrderBindings", []).duplicate(true)
+func ore_parser_profile() -> Dictionary:
+	for device in _data.get("productionDeviceSelections", []):
+		if String(device.get("deviceKind", "")) == "ore_parser":
+			return device.get("oreParserProfile", {}).duplicate(true)
+	return {}
+
 
 func order_definition_keys() -> PackedStringArray:
 	var result := PackedStringArray()
