@@ -18,7 +18,6 @@ var _order_effect_commit_callback: Callable
 var _persisted_order_dispatcher_state: Dictionary = {}
 var _ore_parser_runtime: SpaceOreParserRuntime
 var _persisted_ore_parser_state: Dictionary = {}
-var _ore_parser_world_time_remainder_milli: float
 
 @export var allow_sandbox_world_for_development: bool = true
 
@@ -116,7 +115,6 @@ func _initialize_ore_parser() -> bool:
 		push_error("[Game] Ore parser initialization failed: " + String(initialized.get("reason", "")))
 		_ore_parser_runtime = null
 		return false
-	_ore_parser_world_time_remainder_milli = 0.0
 	if not _persisted_ore_parser_state.is_empty():
 		var parser_state: Variant = _persisted_ore_parser_state.get("parserRuntime", null)
 		if not (parser_state is Dictionary):
@@ -126,11 +124,6 @@ func _initialize_ore_parser() -> bool:
 		if not bool(restored.get("success", false)):
 			push_error("[Game] Ore parser state restore failed: " + String(restored.get("reason", "")))
 			return false
-		var remainder := float(_persisted_ore_parser_state.get("worldTimeRemainderMilli", -1.0))
-		if not is_finite(remainder) or remainder < 0.0 or remainder >= 1.0:
-			push_error("[Game] Ore parser world-time remainder is invalid")
-			return false
-		_ore_parser_world_time_remainder_milli = remainder
 	return true
 
 ## Space pickup systems call this after the ship has acquired an energy stone.
@@ -144,8 +137,7 @@ func capture_ore_parser_state() -> Dictionary:
 	if _ore_parser_runtime == null:
 		return {}
 	return {
-		"parserRuntime": _ore_parser_runtime.capture_state(),
-		"worldTimeRemainderMilli": _ore_parser_world_time_remainder_milli
+		"parserRuntime": _ore_parser_runtime.capture_state()
 	}
 
 func _fail_ore_parser(jar_host: WorldV2ShipHost, reason: String) -> void:
@@ -161,17 +153,17 @@ func capture_order_dispatcher_state() -> Dictionary:
 	return _order_effect_dispatcher.capture_state()
 
 func _physics_process(delta: float) -> void:
-	# This is the owning combat world's simulation step. Delta is already simulation-scaled.
-	# Buffs, the Space-owned ore parser, and Jar all consume this same authorized time.
+	# Buffs, the Space-owned ore parser, and Jar all consume the same authorized simulation step.
 	if player != null and player.effects != null:
 		player.effects.advance_from_space_world(delta)
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
-	if jar_host != null and _ore_parser_runtime != null and jar_host.IsShipWorldActive and delta > 0.0:
-		_ore_parser_world_time_remainder_milli += delta * 1000.0
-		var parser_delta_milli := int(floor(_ore_parser_world_time_remainder_milli))
-		_ore_parser_world_time_remainder_milli -= parser_delta_milli
-		if parser_delta_milli > 0:
-			var parser_step: Dictionary = _ore_parser_runtime.advance(parser_delta_milli)
+	var jar_step_advanced := false
+	if jar_host != null:
+		# Host owns the sole fractional-millisecond accumulator. Space parses and imports
+		# using exactly the same whole-millisecond delta that Jar receives next.
+		var shared_delta_milli: int = jar_host.AccumulateSpaceSimulationDelta(delta)
+		if _ore_parser_runtime != null and jar_host.IsShipWorldActive and shared_delta_milli > 0:
+			var parser_step: Dictionary = _ore_parser_runtime.advance(shared_delta_milli)
 			if not bool(parser_step.get("success", false)):
 				_fail_ore_parser(jar_host, String(parser_step.get("reason", "unknown parser failure")))
 				return
@@ -179,10 +171,7 @@ func _physics_process(delta: float) -> void:
 			if not bool(ingress.get("success", false)):
 				_fail_ore_parser(jar_host, String(ingress.get("reason", "Jar import failed")))
 				return
-
-	var jar_step_advanced := false
-	if jar_host != null:
-		jar_step_advanced = jar_host.AdvanceSpaceSimulation(delta)
+		jar_step_advanced = jar_host.AdvanceSpaceSimulationMilliseconds(shared_delta_milli)
 	if jar_step_advanced and delta > 0.0 and _order_effect_dispatcher != null and _order_effect_commit_callback.is_valid():
 		_order_effect_dispatcher.drain_pending(jar_host, _order_effect_commit_callback)
 	if _shake_time > 0.0:
