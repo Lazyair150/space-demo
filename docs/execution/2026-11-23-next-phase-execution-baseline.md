@@ -361,3 +361,28 @@
 - 因此跨仓库的精确 Owned Instance → Rule Contribution → Effective Rule Profile 链目前完成了 Space 侧的生产与快照，尚未完成 Core 侧消费。下一步应扩展 WorldV2Bridge 的显式版本化输入契约，让 Core 校验贡献来源与 Board Assignment，并按 workshop/skill/parser/device 等 scope 合成真正的 Board Effective Rule Profile。
 - 任何尚无执行器的 Effect 只能保留为明确的 Undetermined，不可被忽略，也不可直接变成“可行”。
 - 本轮没有运行 Godot / GDScript Probe；不宣称 Probe 已通过。
+
+
+## 14. Board Rule Profile 已接入 Core ingress（2026-11-24）
+
+### 已提交的跨仓库连接
+
+- SpaceHangarOwnedInventoryBuilder 将每个 Owned Instance 的 progressionRevision 暴露给装配选择数据。
+- SpaceHangarBoardAssignment 将 sourceRevision 与 slot、Owned Instance、Definition/version 一起冻结；验证时会重新对照玩家库存中的实例 revision。
+- SpaceRuleContributionResolver 产出的每条 contribution source revision 必须与对应 Board Assignment revision 一致。
+- SpaceBattleLoadoutSnapshot 同时验证 Assignment revision 对应 ownedInstanceSnapshots、Contribution revision 对应 Assignment，并验证 Board Profile fingerprint。
+- SpaceHangarOwnedLoadoutAssembler 把完全相同的 boardRuleProfile 和 boardAssignmentSnapshot 放进根 Loadout 与 jarWorldOptions。Profile hash payload 保持不变；Assignment Snapshot 作为独立字段传输。
+- 每个 Core workshop option 额外携带 boardSlotId，由 Board Assignment 的 roleId=master/slave 精确确定；不是由 Workshop Definition 固定主从身份。
+
+### Core 当前接收边界
+
+- Jar Core WorldV2Options 已新增版本化 boardRuleProfile / boardAssignmentSnapshot DTO；校验两份 SHA-256、Board identity、required slots、slot kind、Owned Instance、Definition/version 和 progression revision。
+- WorldV2Factory 按 workshop Board Slot 创建独立 Effective Rule Context；Master 与 Slave 的规则贡献隔离，执行与求解快照共用同一 Profile。
+- 当前只接受 scope=workshop 且来源为 workshop Board Slot 的贡献。Parser、Skill、Production Device 的规则 scope 还没有 Core 消费者，当前会明确拒绝；不能把“数据已传入”误报为“所有元件规则都已生效”。
+- 当前只接受 RuleVersion 1；未实现的 RequireCondition / ModifyCapacity 保持 Undetermined。多 Parser runtime 仍未实现。
+
+### 当前验证状态
+
+- Core PR #60 最新提交已加入上述 DTO、Factory、RuleContext、Snapshot 与差分测试；CI 尚待本轮运行结果，不预先宣称通过。
+- Space PR #2 已更新 Assignment progression revision、Core option ingress 和 root/options 一致性检查。
+- GDScript Probe 代码已更新，但未执行 Godot、GDScript parser 或 runtime Probe。PR #2 仍为 Draft/Open，不合并。
