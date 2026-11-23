@@ -33,7 +33,7 @@ func set_paused(value: bool, reason: String = "player") -> void:
 	var tree := get_tree()
 	var host := tree.root.get_node_or_null("WorldV2ShipHost")
 	if value:
-		if host != null and String(host.get("LifecycleState")) == "Active":
+		if host != null:
 			host.call("PauseShipWorld")
 		_paused = true
 		_reason = reason
@@ -42,7 +42,7 @@ func set_paused(value: bool, reason: String = "player") -> void:
 		_paused = false
 		_reason = ""
 		tree.paused = false
-		if host != null and String(host.get("LifecycleState")) == "Paused":
+		if host != null:
 			host.call("ResumeShipWorld")
 	_sync_overlay()
 	pause_changed.emit(_paused, _reason)
