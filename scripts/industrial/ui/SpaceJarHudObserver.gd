@@ -9,6 +9,12 @@ var _host: Node
 var _elapsed := 0.0
 var _expanded := false
 var _toggle: Button
+var _strip_panel: PanelContainer
+var _jar_total_label: Label
+var _shape_counts: HBoxContainer
+var _liquid_counts: HBoxContainer
+var _workshop_status: Label
+var _lifecycle_status: Label
 var _panel: PanelContainer
 var _resource_jars: HFlowContainer
 var _resource_liquids: HBoxContainer
@@ -35,18 +41,43 @@ func _process(delta: float) -> void:
 	_refresh_snapshot()
 
 func _build() -> void:
-	_toggle = UiKit.button("JAR  ·  等待世界", 260)
-	_toggle.position = Vector2(20, 62)
-	_toggle.custom_minimum_size = Vector2(760, 32)
-	_toggle.size = Vector2(760, 32)
-	_toggle.add_theme_font_size_override("font_size", 13)
-	_toggle.tooltip_text = "战斗资源状态栏：持续显示 Jar 形状库存、液体数量与主从台概况；点击展开详细只读观察。"
+	_strip_panel = PanelContainer.new()
+	_strip_panel.position = Vector2(20, 62)
+	_strip_panel.custom_minimum_size = Vector2(960, 34)
+	_strip_panel.size = Vector2(960, 34)
+	var strip_style := StyleBoxFlat.new()
+	strip_style.bg_color = Color("101923")
+	strip_style.border_color = Color("35475b")
+	strip_style.set_border_width_all(1)
+	strip_style.set_corner_radius_all(5)
+	strip_style.set_content_margin(SIDE_LEFT, 8)
+	strip_style.set_content_margin(SIDE_RIGHT, 6)
+	strip_style.set_content_margin(SIDE_TOP, 3)
+	strip_style.set_content_margin(SIDE_BOTTOM, 3)
+	_strip_panel.add_theme_stylebox_override("panel", strip_style)
+	_strip_panel.tooltip_text = "持续可见的战斗资源状态栏。数量来自 Host 快照；点击右侧详情查看 Jar 与工作台明细。"
+	add_child(_strip_panel)
+	var strip_row := UiKit.hbox(10)
+	_strip_panel.add_child(strip_row)
+	_jar_total_label = UiKit.label("JAR  —", UiKit.FONT_BODY, UiKit.TEXT)
+	strip_row.add_child(_jar_total_label)
+	_shape_counts = UiKit.hbox(7)
+	strip_row.add_child(_shape_counts)
+	strip_row.add_child(UiKit.label("│", UiKit.FONT_SMALL, UiKit.MUTED))
+	_liquid_counts = UiKit.hbox(7)
+	strip_row.add_child(_liquid_counts)
+	strip_row.add_child(UiKit.spacer())
+	_workshop_status = UiKit.label("主台 —  →  从台 —", UiKit.FONT_SMALL, UiKit.MUTED)
+	strip_row.add_child(_workshop_status)
+	_lifecycle_status = UiKit.label("未启动", UiKit.FONT_SMALL, UiKit.MUTED)
+	strip_row.add_child(_lifecycle_status)
+	_toggle = UiKit.small_button("详情 ▼", 72)
 	_toggle.pressed.connect(_toggle_expanded)
-	add_child(_toggle)
+	strip_row.add_child(_toggle)
 
 	_feedback_label = UiKit.label("", UiKit.FONT_SMALL, UiKit.ACCENT)
-	_feedback_label.position = Vector2(20, 96)
-	_feedback_label.custom_minimum_size = Vector2(720, 20)
+	_feedback_label.position = Vector2(20, 98)
+	_feedback_label.custom_minimum_size = Vector2(720, 18)
 	_feedback_label.modulate.a = 0.0
 	_feedback_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_feedback_label)
@@ -87,7 +118,7 @@ func _build() -> void:
 func _toggle_expanded() -> void:
 	_expanded = not _expanded
 	_panel.visible = _expanded
-	_toggle.text = _summary_base_text + ("  ▲" if _expanded else "  ▼")
+	_toggle.text = "详情 ▲" if _expanded else "详情 ▼"
 	if _expanded:
 		_refresh_snapshot()
 
@@ -122,7 +153,9 @@ func _refresh_snapshot() -> void:
 	var slave: Variant = snapshot.get("slave", {})
 	var demands: Variant = snapshot.get("demands", [])
 	_summary_base_text = _build_hud_resource_line(jars, liquids, master, slave, String(snapshot.get("lifecycleState", "")))
-	_toggle.text = _summary_base_text + ("  ▲" if _expanded else "  ▼")
+	_render_hud_resource_strip(jars, liquids, master, slave, String(snapshot.get("lifecycleState", "")))
+	_toggle.text = "详情 ▲" if _expanded else "详情 ▼"
+	_strip_panel.tooltip_text = _summary_base_text
 	_render_resource_jars(jars)
 	_render_resource_liquids(liquids)
 	_render_workshop(_master_box, "主台", master)
@@ -159,6 +192,28 @@ func _build_hud_resource_line(raw_jars: Variant, raw_liquids: Variant, master: V
 		_lifecycle_text(lifecycle)
 	]
 
+
+func _render_hud_resource_strip(raw_jars: Variant, raw_liquids: Variant, master: Variant, slave: Variant, lifecycle: String) -> void:
+	var jars: Array = raw_jars if raw_jars is Array else []
+	_jar_total_label.text = "JAR  %d罐 · %d装液" % [jars.size(), _filled_jar_count(jars)]
+	UiKit.clear_children(_shape_counts)
+	var counts: Dictionary = {}
+	for jar in jars:
+		if jar is Dictionary:
+			var shape := String(jar.get("shape", "未知"))
+			counts[shape] = int(counts.get(shape, 0)) + 1
+	for shape in counts:
+		_shape_counts.add_child(UiKit.label("%s %d" % [ShapeVisuals.glyph_for(String(shape)), int(counts[shape])], UiKit.FONT_BODY, ShapeVisuals.color_for(String(shape))))
+	UiKit.clear_children(_liquid_counts)
+	if raw_liquids is Dictionary:
+		for liquid in raw_liquids:
+			_liquid_counts.add_child(UiKit.label("%s %d" % [String(liquid), int(raw_liquids[liquid])], UiKit.FONT_SMALL, ShapeVisuals.liquid_color_for(String(liquid))))
+	if _liquid_counts.get_child_count() == 0:
+		_liquid_counts.add_child(UiKit.label("液体 0", UiKit.FONT_SMALL, UiKit.MUTED))
+	_workshop_status.text = "主台 %s  →  从台 %s" % [_workshop_hud_summary(master), _workshop_hud_summary(slave)]
+	_lifecycle_status.text = _lifecycle_text(lifecycle)
+	_lifecycle_status.add_theme_color_override("font_color", UiKit.WARN if lifecycle == "Faulted" else (UiKit.OK if lifecycle == "Active" else UiKit.MUTED))
+
 func _workshop_hud_summary(raw_workshop: Variant) -> String:
 	if not (raw_workshop is Dictionary) or raw_workshop.is_empty():
 		return "未配置"
@@ -172,7 +227,12 @@ func _set_unavailable(message: String) -> void:
 	_last_signature = ""
 	_previous_snapshot.clear()
 	_summary_base_text = "JAR  ·  " + message
-	_toggle.text = _summary_base_text + ("  ▲" if _expanded else "  ▼")
+	_toggle.text = "详情 ▲" if _expanded else "详情 ▼"
+	_jar_total_label.text = "JAR  —"
+	UiKit.clear_children(_shape_counts)
+	UiKit.clear_children(_liquid_counts)
+	_workshop_status.text = "主台 —  →  从台 —"
+	_lifecycle_status.text = message
 	_status.text = message
 	UiKit.clear_children(_resource_jars)
 	UiKit.clear_children(_resource_liquids)
