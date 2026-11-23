@@ -47,7 +47,7 @@ Each order demand displays its exact required shape as a colored glyph token; a 
 
 ## Data ownership and update policy
 
-`SpaceJarHudObserver` reads only `WorldV2ShipHost.GetWorldSnapshot()`. It does not call Jar mutation APIs, infer feasibility, calculate costs, or advance time. It polls at a low UI cadence and rebuilds only when the detached snapshot changes. The component uses `PROCESS_MODE_ALWAYS` so the information remains inspectable while the combat SceneTree is paused; the underlying Host lifecycle remains the authority for whether simulation can advance.
+`SpaceJarHudObserver` reads only `WorldV2ShipHost.GetWorldSnapshot()`. It does not call Jar mutation APIs, infer feasibility, calculate costs, or advance time. It polls at a low UI cadence and rebuilds only when the detached snapshot changes. The component uses `PROCESS_MODE_ALWAYS` so the information remains inspectable while the combat SceneTree is paused; the underlying Host lifecycle remains the authority for whether simulation can advance. Between distinct snapshots it compares exact Jar counts/fill counts, ship and workshop liquid totals, lifecycle state, demand cooldown transitions, and active-session step totals. It emits a short, coalesced toast and a brief tint pulse on the compact JAR control. The first snapshot after startup/reconnect establishes a baseline and never fabricates a gain event. These cues are observational only; they do not infer feasibility or trigger commands.
 
 Unavailable, disposed, or not-yet-started worlds show an explicit unavailable state rather than fabricated zero inventory. The panel is hidden by default and toggled by the compact summary control.
 
@@ -67,7 +67,7 @@ Implemented on the branch:
 - color-coded shape tokens in the industrial presentation components;
 - optional Space-owned `primary_shape` metadata on skill/order definitions, shown in Hangar selection, frozen outside the Jar order payload and validated against its requirement shapes;
 - workshop tendency accent and per-liquid staging meters where capacity is explicit;
-- combat HUD observer for the active World V2 Host snapshot;
+- combat HUD observer for the active World V2 Host snapshot;\n- snapshot-delta feedback for Jar acquisition/consumption, fill changes, ship/workshop liquid changes, lifecycle transitions, order cooldown transitions, and active-session progress;\n- pure aggregation checks in `tests/space_jar_hud_feedback.gd`;
 - order requirement shape tokens and read-only demand/cooldown/session summary.
 
 Not yet authored:
@@ -76,4 +76,4 @@ Not yet authored:
 - authoring primary shapes on production skill Resources and reviewing their visual hierarchy;
 - responsive art review against real combat captures and a manual Godot play pass.
 
-Godot compile/runtime verification has not been run for this increment.
+Godot compile/runtime verification has not been run for this increment. The new headless probe is authored but has not been executed.
