@@ -36,23 +36,25 @@ func _process(delta: float) -> void:
 
 func _build() -> void:
 	_toggle = UiKit.button("JAR  ·  等待世界", 260)
-	_toggle.position = Vector2(20, 66)
-	_toggle.custom_minimum_size = Vector2(260, 34)
-	_toggle.tooltip_text = "点击展开飞船 Jar、液体、主从工作台与订单的实时只读状态。"
+	_toggle.position = Vector2(20, 62)
+	_toggle.custom_minimum_size = Vector2(760, 32)
+	_toggle.size = Vector2(760, 32)
+	_toggle.add_theme_font_size_override("font_size", 13)
+	_toggle.tooltip_text = "战斗资源状态栏：持续显示 Jar 形状库存、液体数量与主从台概况；点击展开详细只读观察。"
 	_toggle.pressed.connect(_toggle_expanded)
 	add_child(_toggle)
 
 	_feedback_label = UiKit.label("", UiKit.FONT_SMALL, UiKit.ACCENT)
-	_feedback_label.position = Vector2(292, 72)
-	_feedback_label.custom_minimum_size = Vector2(420, 28)
+	_feedback_label.position = Vector2(20, 96)
+	_feedback_label.custom_minimum_size = Vector2(720, 20)
 	_feedback_label.modulate.a = 0.0
 	_feedback_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_feedback_label)
 
 	_panel = UiKit.panel("JarObserverPanel", UiKit.PANEL)
-	_panel.position = Vector2(20, 106)
-	_panel.custom_minimum_size = Vector2(460, 360)
-	_panel.size = Vector2(460, 360)
+	_panel.position = Vector2(20, 120)
+	_panel.custom_minimum_size = Vector2(620, 360)
+	_panel.size = Vector2(620, 360)
 	_panel.visible = false
 	add_child(_panel)
 
@@ -83,7 +85,7 @@ func _build() -> void:
 func _toggle_expanded() -> void:
 	_expanded = not _expanded
 	_panel.visible = _expanded
-	_toggle.text = _summary_base_text + ("  ▲" if _expanded else "  ▼")
+	_toggle.text = _summary_base_text
 	if _expanded:
 		_refresh_snapshot()
 
@@ -117,19 +119,53 @@ func _refresh_snapshot() -> void:
 	var master: Variant = snapshot.get("master", {})
 	var slave: Variant = snapshot.get("slave", {})
 	var demands: Variant = snapshot.get("demands", [])
-	var jar_count := jars.size() if jars is Array else 0
-	var liquid_total := 0
-	if liquids is Dictionary:
-		for value in liquids.values():
-			liquid_total += int(value)
-	var lifecycle := String(snapshot.get("lifecycleState", ""))
-	_summary_base_text = "JAR  ·  %d 罐  ·  %d 份液体  ·  %s" % [jar_count, liquid_total, _lifecycle_text(lifecycle)]
-	_toggle.text = _summary_base_text + ("  ▲" if _expanded else "  ▼")
+	_summary_base_text = _build_hud_resource_line(jars, liquids, master, slave, String(snapshot.get("lifecycleState", "")))
+	_toggle.text = _summary_base_text
 	_render_resource_jars(jars)
 	_render_resource_liquids(liquids)
 	_render_workshop(_master_box, "主台", master)
 	_render_workshop(_slave_box, "从台", slave)
 	_render_demands(demands, snapshot.get("activeSessions", []), order_presentation)
+
+
+## Persistent combat resource strip. These are exact inventory counts, not percentages:
+## ship-level capacity is not exposed by the snapshot, so no fabricated full/empty bar is drawn.
+func _build_hud_resource_line(raw_jars: Variant, raw_liquids: Variant, master: Variant, slave: Variant, lifecycle: String) -> String:
+	var jar_list: Array = raw_jars if raw_jars is Array else []
+	var jar_shapes: Dictionary = {}
+	for jar in jar_list:
+		if jar is Dictionary:
+			var shape := String(jar.get("shape", "未知"))
+			jar_shapes[shape] = int(jar_shapes.get(shape, 0)) + 1
+	var shape_parts: Array[String] = []
+	for shape in jar_shapes:
+		shape_parts.append("%s×%d" % [ShapeVisuals.glyph_for(String(shape)), int(jar_shapes[shape])])
+	var liquid_parts: Array[String] = []
+	var liquid_total := 0
+	if raw_liquids is Dictionary:
+		for liquid in raw_liquids:
+			var amount := int(raw_liquids[liquid])
+			liquid_total += amount
+			liquid_parts.append("%s %d" % [String(liquid), amount])
+	return "JAR  %d  %s    液体  %d  %s    主台 %s  →  从台 %s    %s  %s" % [
+		jar_list.size(),
+		" / ".join(shape_parts) if not shape_parts.is_empty() else "无",
+		liquid_total,
+		" / ".join(liquid_parts) if not liquid_parts.is_empty() else "无",
+		_workshop_hud_summary(master),
+		_workshop_hud_summary(slave),
+		_lifecycle_text(lifecycle),
+		"▲" if _expanded else "▼"
+	]
+
+func _workshop_hud_summary(raw_workshop: Variant) -> String:
+	if not (raw_workshop is Dictionary) or raw_workshop.is_empty():
+		return "未配置"
+	var workshop: Dictionary = raw_workshop
+	var jars: Variant = workshop.get("jars", [])
+	var liquids: Variant = workshop.get("liquids", {})
+	var jar_count := jars.size() if jars is Array else 0
+	return "%d罐/%d液" % [jar_count, _dictionary_total(liquids)]
 
 func _set_unavailable(message: String) -> void:
 	_last_signature = ""
