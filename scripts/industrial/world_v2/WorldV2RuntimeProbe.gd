@@ -48,12 +48,12 @@ func _run_command_probe() -> void:
     print("[WorldV2Probe] command probe started")
 
     # Add a deterministic one-requirement demand. Empty liquid means shape-only.
-    var demand_id: int = runtime.AddSingleRequirementDemand(
-        "圆罐",
-        "",
+    var demand_id: int = runtime.AddJarDemand(
         "A",
         "Passive",
-        0
+        0,
+        "probe.order.active-demand",
+        [{"shape": "圆罐", "liquid": ""}]
     )
     # The ID is opaque to the Godot layer; verify it by reading the snapshot instead.
 
