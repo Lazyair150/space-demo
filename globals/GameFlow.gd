@@ -46,6 +46,14 @@ func begin_battle_preparation() -> bool:
 	_emit_state()
 	return true
 
+func begin_battle_resuming() -> bool:
+	if _screen != Screen.BATTLE or _battle_phase != BattlePhase.PREPARING:
+		return false
+	_battle_phase = BattlePhase.RESUMING
+	_pause_reason = PauseReason.NONE
+	_emit_state()
+	return true
+
 func mark_battle_running() -> bool:
 	if not (_battle_phase in [BattlePhase.PREPARING, BattlePhase.RESUMING]):
 		return false
