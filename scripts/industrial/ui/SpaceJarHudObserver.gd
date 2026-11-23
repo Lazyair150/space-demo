@@ -64,6 +64,8 @@ func _build() -> void:
 	column.add_child(UiKit.title("订单 / 冷却"))
 	_demands_box = UiKit.vbox(3)
 	column.add_child(_demands_box)
+	var scroll := UiKit.scroll(column, 340)
+	_panel.add_child(scroll)
 
 func _toggle_expanded() -> void:
 	_expanded = not _expanded
@@ -169,10 +171,25 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 			var filled := int(filled_by_shape.get(shape, 0))
 			var detail := "×%d · 装液%d" % [int(by_shape[shape]), filled]
 			jar_row.add_child(_shape_token(String(shape), detail))
-	var liquid_row := UiKit.hbox(8)
+	var liquid_row := UiKit.vbox(3)
 	parent.add_child(liquid_row)
+	var liquid_capacity := int(workshop.get("maxLiquids", 0))
 	for liquid in liquids:
-		liquid_row.add_child(UiKit.label("%s %d / %d" % [String(liquid), int(liquids[liquid]), int(workshop.get("maxLiquids", 0))], UiKit.FONT_SMALL, UiKit.TEXT))
+		var liquid_line := UiKit.hbox(6)
+		liquid_row.add_child(liquid_line)
+		var amount := int(liquids[liquid])
+		var liquid_label := UiKit.label("%s %d / %d" % [String(liquid), amount, liquid_capacity], UiKit.FONT_SMALL, UiKit.TEXT)
+		liquid_label.custom_minimum_size.x = 130
+		liquid_line.add_child(liquid_label)
+		if liquid_capacity > 0:
+			var meter := ProgressBar.new()
+			meter.min_value = 0
+			meter.max_value = liquid_capacity
+			meter.value = clampi(amount, 0, liquid_capacity)
+			meter.show_percentage = false
+			meter.custom_minimum_size = Vector2(150, 9)
+			meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			liquid_line.add_child(meter)
 	var bans: Array = workshop.get("ban", [])
 	if not bans.is_empty():
 		var ban_names: Array[String] = []
