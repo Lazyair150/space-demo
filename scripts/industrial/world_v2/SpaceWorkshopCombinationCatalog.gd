@@ -43,7 +43,7 @@ func create_selection(combination_id: String, version: int) -> Dictionary:
 
 func create_jar_world_options(combination_id: String, version: int) -> Dictionary:
 	var definition := resolve_definition(combination_id, version)
-	return definition.jar_world_options.duplicate(true) if definition != null else {}
+	return definition.build_jar_world_options() if definition != null else {}
 
 func create_balance_profile(combination_id: String, version: int) -> Dictionary:
 	var definition := resolve_definition(combination_id, version)
@@ -63,6 +63,9 @@ func _copy_definition(source: SpaceWorkshopCombinationDefinition) -> SpaceWorksh
 	copy.display_name = source.display_name
 	copy.display_icon = source.display_icon
 	copy.jar_world_options = source.jar_world_options.duplicate(true)
+	copy.workshop_definitions = source.workshop_definitions.duplicate(true)
+	if source.workshop_pair != null:
+		copy.workshop_pair = source.workshop_pair.duplicate(true) as SpaceWorkshopPairDefinition
 	copy.operation_cost_by_order_type = source.operation_cost_by_order_type.duplicate(true)
 	copy.liquid_handling_operation_cost = source.liquid_handling_operation_cost
 	return copy
