@@ -172,6 +172,51 @@ static func run() -> bool:
 		routed_consumers[consumer] = int(routed_consumers.get(consumer, 0)) + 1
 	if int(routed_consumers.get("jar_core.workshop", 0)) != 2 or int(routed_consumers.get("space.parser", 0)) != 1 or int(routed_consumers.get("space.skill", 0)) != 2:
 		return false
+
+	# A route must bind to the exact installed Owned Instance and Definition revision,
+	# not merely to a profile that happens to occupy the same slot.
+	var wrong_parser_identity := frozen_data.duplicate(true)
+	wrong_parser_identity.productionDeviceSelections[0].definitionId = "parser.other"
+	if not SpaceBoardRuntimeProfileSet.build(
+		wrong_parser_identity.boardAssignmentSnapshot,
+		wrong_parser_identity.jarWorldOptions,
+		wrong_parser_identity.productionDeviceSelections,
+		wrong_parser_identity.selectedOrderBindings,
+		wrong_parser_identity.workshopCombinationSelection
+	).is_empty():
+		return false
+	var wrong_skill_provenance := frozen_data.duplicate(true)
+	wrong_skill_provenance.selectedOrderBindings[0].ownedInstance.progressionRevision += 1
+	if not SpaceBoardRuntimeProfileSet.build(
+		wrong_skill_provenance.boardAssignmentSnapshot,
+		wrong_skill_provenance.jarWorldOptions,
+		wrong_skill_provenance.productionDeviceSelections,
+		wrong_skill_provenance.selectedOrderBindings,
+		wrong_skill_provenance.workshopCombinationSelection
+	).is_empty():
+		return false
+	var wrong_workshop_provenance := frozen_data.duplicate(true)
+	wrong_workshop_provenance.workshopCombinationSelection.masterWorkshopInstance.definitionVersion += 1
+	if not SpaceBoardRuntimeProfileSet.build(
+		wrong_workshop_provenance.boardAssignmentSnapshot,
+		wrong_workshop_provenance.jarWorldOptions,
+		wrong_workshop_provenance.productionDeviceSelections,
+		wrong_workshop_provenance.selectedOrderBindings,
+		wrong_workshop_provenance.workshopCombinationSelection
+	).is_empty():
+		return false
+
+	var duplicate_parser_profile := frozen_data.duplicate(true)
+	duplicate_parser_profile.productionDeviceSelections.append(duplicate_parser_profile.productionDeviceSelections[0].duplicate(true))
+	if not SpaceBoardRuntimeProfileSet.build(
+		duplicate_parser_profile.boardAssignmentSnapshot,
+		duplicate_parser_profile.jarWorldOptions,
+		duplicate_parser_profile.productionDeviceSelections,
+		duplicate_parser_profile.selectedOrderBindings,
+		duplicate_parser_profile.workshopCombinationSelection
+	).is_empty():
+		return false
+
 	var tampered_profile_set := frozen_data.duplicate(true)
 	tampered_profile_set.boardRuntimeProfileSet.entries[0].profileFingerprint = "invalid"
 	if SpaceBattleLoadoutSnapshot.create(tampered_profile_set) != null:
