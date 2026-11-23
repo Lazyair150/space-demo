@@ -37,8 +37,8 @@ func stages_for_campaign(campaign_id: String) -> Array[SpaceStageDefinition]:
 	result.sort_custom(func(a: SpaceStageDefinition, b: SpaceStageDefinition) -> bool: return a.sequence_index < b.sequence_index)
 	return result
 
-func is_unlocked(stage: SpaceStageDefinition, cleared_stage_ids: Array, average_loadout_level: int) -> bool:
-	if stage == null or not stage.is_valid() or average_loadout_level < stage.recommended_loadout_level:
+func is_unlocked(stage: SpaceStageDefinition, cleared_stage_ids: Array) -> bool:
+	if stage == null or not stage.is_valid():
 		return false
 	if stage.sequence_index == 1:
 		return true
