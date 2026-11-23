@@ -28,6 +28,8 @@ var _controller: SpaceHangarSelectionController
 var _ship_picker: OptionButton
 var _parser_picker: OptionButton
 var _workshop_picker: OptionButton
+var _master_workshop_picker: OptionButton
+var _slave_workshop_picker: OptionButton
 var _duration_picker: SpinBox
 var _build_button: Button
 var _status_label: Label
@@ -112,7 +114,9 @@ func _build_interface() -> void:
 	_add_section_title(selection_box, "核心配置")
 	_ship_picker = _add_picker(selection_box, "飞船定义", "ship")
 	_parser_picker = _add_picker(selection_box, "原石解析器", "parser")
-	_workshop_picker = _add_picker(selection_box, "工作台组合", "workshop")
+	_workshop_picker = _add_picker(selection_box, "工作区规则配置", "workshop")
+	_master_workshop_picker = _add_picker(selection_box, "主台位置 · 工作台元件", "workshop")
+	_slave_workshop_picker = _add_picker(selection_box, "从台位置 · 工作台元件", "workshop")
 
 	_device_section = VBoxContainer.new()
 	_device_section.add_theme_constant_override("separation", 8)
@@ -169,6 +173,8 @@ func _build_interface() -> void:
 	_ship_picker.item_selected.connect(_on_ship_selected)
 	_parser_picker.item_selected.connect(_on_parser_selected)
 	_workshop_picker.item_selected.connect(_on_workshop_selected)
+	_master_workshop_picker.item_selected.connect(_on_master_workshop_selected)
+	_slave_workshop_picker.item_selected.connect(_on_slave_workshop_selected)
 
 func _build_stage_section(root: VBoxContainer) -> void:
 	var panel := PanelContainer.new()
@@ -305,13 +311,17 @@ func _render_view_model(view_model: Dictionary) -> void:
 	_suppress_picker_events = true
 	_fill_picker(_ship_picker, selectable_inventory.get("shipChoices", []), "没有可用飞船定义", "ship")
 	_fill_picker(_parser_picker, selectable_inventory.get("parserChoices", []), "没有可用解析器定义", "parser")
-	_fill_picker(_workshop_picker, selectable_inventory.get("workshopChoices", []), "没有可用工作台组合", "workshop")
+	_fill_picker(_workshop_picker, selectable_inventory.get("workshopWorldChoices", selectable_inventory.get("workshopChoices", [])), "没有可用工作区规则配置", "workshop")
+	_fill_picker(_master_workshop_picker, selectable_inventory.get("workshopInstanceChoices", []), "主台位置未安装元件", "workshop")
+	_fill_picker(_slave_workshop_picker, selectable_inventory.get("workshopInstanceChoices", []), "从台位置未安装元件", "workshop")
 	_select_exact(_ship_picker, String(selection.get("shipId", "")), int(selection.get("shipVersion", 0)), String(selection.get("shipInstanceId", "")))
 	_select_exact(_parser_picker, String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)), String(selection.get("parserInstanceId", "")))
-	_select_exact(_workshop_picker, String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)), "", String(selection.get("masterWorkshopInstanceId", "")), String(selection.get("slaveWorkshopInstanceId", "")))
+	_select_exact(_workshop_picker, String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)))
+	_select_instance(_master_workshop_picker, String(selection.get("masterWorkshopInstanceId", "")))
+	_select_instance(_slave_workshop_picker, String(selection.get("slaveWorkshopInstanceId", "")))
 	_set_icon_for_selection(_primary_icons.ship, _ship_picker, "ship")
 	_set_icon_for_selection(_primary_icons.parser, _parser_picker, "parser")
-	_set_icon_for_selection(_primary_icons.workshop, _workshop_picker, "workshop")
+	_set_icon_for_selection(_primary_icons.workshop, _master_workshop_picker, "workshop")
 	_suppress_picker_events = false
 
 	_rebuild_device_section(selectable_inventory.get("deviceChoices", []), selection.get("deviceSelections", []))
@@ -324,7 +334,7 @@ func _render_view_model(view_model: Dictionary) -> void:
 	_inventory_label.text = "飞船：%d    解析器：%d    工作台组合：%d\n生产设备：%d    技能：%d    效果定义：%d" % [
 		_array_size(inventory.get("shipChoices", [])),
 		_array_size(inventory.get("parserChoices", [])),
-		_array_size(inventory.get("workshopChoices", [])),
+		_array_size(inventory.get("workshopWorldChoices", inventory.get("workshopChoices", []))),
 		devices.size(), skills.size(), effects.size()
 	]
 	if not ready:
@@ -381,6 +391,15 @@ func _select_exact(picker: OptionButton, definition_id: String, version: int, in
 			picker.select(index)
 			return
 
+func _select_instance(picker: OptionButton, instance_id: String) -> void:
+	if instance_id.is_empty():
+		return
+	for index in range(1, picker.item_count):
+		var metadata: Dictionary = picker.get_item_metadata(index)
+		if String(metadata.get("instanceId", "")) == instance_id:
+			picker.select(index)
+			return
+
 func _set_icon_for_selection(icon: TextureRect, picker: OptionButton, category: String) -> void:
 	var choice := _selected_choice(picker)
 	_set_icon_texture(icon, choice.get("iconTexture"), category)
@@ -410,10 +429,29 @@ func _on_parser_selected(index: int) -> void:
 func _on_workshop_selected(index: int) -> void:
 	if _suppress_picker_events:
 		return
-	var choice := _selected_choice(_workshop_picker)
-	if not choice.is_empty():
-		_set_icon_texture(_primary_icons.workshop, choice.get("iconTexture"), "workshop")
-		_controller.set_workshop(String(choice.get("id", "")), int(choice.get("version", 0)), String(choice.get("masterInstanceId", "")), String(choice.get("slaveInstanceId", "")))
+	_apply_workshop_slot_selection()
+
+func _on_master_workshop_selected(index: int) -> void:
+	if _suppress_picker_events:
+		return
+	_set_icon_for_selection(_primary_icons.workshop, _master_workshop_picker, "workshop")
+	_apply_workshop_slot_selection()
+
+func _on_slave_workshop_selected(index: int) -> void:
+	if _suppress_picker_events:
+		return
+	_apply_workshop_slot_selection()
+
+func _apply_workshop_slot_selection() -> void:
+	var world := _selected_choice(_workshop_picker)
+	var master := _selected_choice(_master_workshop_picker)
+	var slave := _selected_choice(_slave_workshop_picker)
+	if world.is_empty():
+		return
+	_controller.set_workshop(
+		String(world.get("id", "")), int(world.get("version", 0)),
+		String(master.get("instanceId", "")), String(slave.get("instanceId", ""))
+	)
 
 func _rebuild_device_section(device_choices: Variant, selected_devices: Variant) -> void:
 	for child in _device_section.get_children():
