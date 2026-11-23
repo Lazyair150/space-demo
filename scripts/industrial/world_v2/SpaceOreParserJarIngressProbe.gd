@@ -2,9 +2,19 @@ extends Node
 ## End-to-end probe for Space-owned finite stone parsing -> idempotent Jar warehouse import.
 ## All numeric values are synthetic fixtures, not production balance settings.
 
+var _probe_parser: SpaceOreParserRuntime
+
+func ingest_energy_stone(pickup_id: String, stone_type: String, volume: float) -> Dictionary:
+    if _probe_parser == null:
+        return {"success": false, "reason": "probe parser is not initialized"}
+    return _probe_parser.ingest_stone(pickup_id, stone_type, volume)
+
 func _ready() -> void:
     var parser_probe := SpaceOreParserRuntimeProbe.run()
     assert(bool(parser_probe.get("passed", false)), "Space ore parser unit probe must pass")
+    var drop_profile_probe := SpaceEnergyStoneDropProfileProbe.run()
+    assert(bool(drop_profile_probe.get("passed", false)),
+        "energy-stone drop profile probe must pass: " + String(drop_profile_probe.get("reason", "")))
     var build_context_probe := SpaceSkillBuildContextEvaluatorProbe.run()
     assert(bool(build_context_probe.get("passed", false)),
         "parser percentage build-context probe must pass: " + String(build_context_probe.get("reason", "")))
@@ -72,8 +82,17 @@ func _ready() -> void:
     )
     assert(bool(initialized.get("success", false)), "universal parser must initialize")
 
-    var accepted := parser.ingest_stone("probe-stone-001", "圆罐", 1.0)
-    assert(bool(accepted.get("success", false)), "configured stone type must be accepted")
+    _probe_parser = parser
+    var collected_pickup: SpaceEnergyStonePickup = pickup_scene.instantiate()
+    assert(collected_pickup.configure("probe-stone-001", "圆罐", 1.0), "live typed pickup must configure")
+    add_child(collected_pickup)
+    var fake_player := Node2D.new()
+    fake_player.add_to_group("player")
+    add_child(fake_player)
+    collected_pickup._on_body_entered(fake_player)
+    assert(collected_pickup.is_queued_for_deletion(), "accepted pickup must be consumed by the actual pickup adapter")
+    fake_player.queue_free()
+
     var parsed := parser.advance(1000)
     assert(bool(parsed.get("success", false)), "parser must advance")
     assert(parsed.get("newBatches", []).size() == 1, "one complete Jar should be emitted")
