@@ -11,6 +11,7 @@ extends PanelContainer
 signal action_requested(kind: String, payload: Dictionary)
 
 const UiKit := preload("res://scripts/industrial/ui/UiKit.gd")
+const ShapeVisuals := preload("res://scripts/industrial/ui/ShapeVisuals.gd")
 
 const STATUS_COLORS := {
 	"待执行": UiKit.MUTED,
@@ -116,7 +117,11 @@ func _order_card(order: Dictionary, process: Dictionary, phase: String) -> Panel
 
 	# 标题行：类型 · 名称 · 状态
 	var head := UiKit.hbox(8)
-	head.add_child(UiKit.label("%s · %s" % [order_type, _order_name(order)], UiKit.FONT_BODY, UiKit.TEXT))
+	var title_color := UiKit.TEXT
+	var primary_shape := str(order.get("primaryShape", ""))
+	if not primary_shape.is_empty():
+		title_color = ShapeVisuals.color_for(primary_shape)
+	head.add_child(UiKit.label("%s · %s" % [order_type, _order_name(order)], UiKit.FONT_BODY, title_color))
 	head.add_child(UiKit.spacer())
 	var status_color: Color = STATUS_COLORS.get(status, UiKit.MUTED)
 	head.add_child(UiKit.label(status if status != "" else "未知", UiKit.FONT_SMALL, status_color))
@@ -124,12 +129,16 @@ func _order_card(order: Dictionary, process: Dictionary, phase: String) -> Panel
 
 	# 需求行
 	var requirements: Array = order.get("requirements", [])
-	var requirement_parts: Array[String] = []
+	var requirement_row := UiKit.hbox(6)
+	box.add_child(UiKit.label("需求", UiKit.FONT_SMALL, UiKit.MUTED))
+	box.add_child(requirement_row)
 	for requirement in requirements:
 		var shape := str(requirement.get("shape", ""))
 		var liquid = requirement.get("liquid", null)
-		requirement_parts.append("%s（%s）" % [shape, "空舱" if liquid == null else "装 %s" % str(liquid)])
-	box.add_child(UiKit.wrap_label("需求：%s" % "、".join(requirement_parts), UiKit.FONT_SMALL, UiKit.TEXT))
+		var detail := "空舱" if liquid == null else "装 %s" % str(liquid)
+		var token := UiKit.label("%s %s · %s" % [ShapeVisuals.glyph_for(shape), shape, detail], UiKit.FONT_SMALL, ShapeVisuals.color_for(shape))
+		token.tooltip_text = "订单需求形状：%s；颜色仅作快速识别。" % shape
+		requirement_row.add_child(token)
 
 	# 已经结束的单：可行性、做法、开始按钮都没有意义了，只留一句结果和"清掉它"。
 	if status == "成功" or status == "失败":
