@@ -27,6 +27,7 @@ var _persisted_run_state: Dictionary = {}
 var _persisted_effect_state: Dictionary = {}
 var _effect_catalog: SpaceEffectCatalog
 var _effect_target_resolver: Callable
+var _battle_shutdown_started: bool = false
 
 @export var allow_sandbox_world_for_development: bool = true
 
@@ -118,14 +119,12 @@ func _ready() -> void:
 		return
 	if not _persisted_jar_execution_checkpoint_json.is_empty() and not GameFlow.begin_battle_resuming():
 		push_error("[Game] Application flow rejected checkpoint resume phase")
-		GameFlow.fault_battle()
-		process_mode = Node.PROCESS_MODE_DISABLED
+		_shutdown_battle(true, "battle initialization failed")
 		return
 	if not _persisted_run_state.is_empty():
 		if not GameState.restore_run_state(_persisted_run_state):
 			push_error("[Game] Saved transient run state is invalid")
-			GameFlow.fault_battle()
-			process_mode = Node.PROCESS_MODE_DISABLED
+			_shutdown_battle(true, "battle initialization failed")
 			return
 	elif _persisted_jar_execution_checkpoint_json.is_empty():
 		GameState.reset_run()
@@ -135,13 +134,11 @@ func _ready() -> void:
 		player.effects.external_time_authority = true
 	if not _restore_saved_effect_state():
 		push_error("[Game] Saved Space effect state could not be restored")
-		GameFlow.fault_battle()
-		process_mode = Node.PROCESS_MODE_DISABLED
+		_shutdown_battle(true, "battle initialization failed")
 		return
 	if not _begin_ship_world():
 		push_error("[Game] Ship world initialization failed; combat build is not allowed to proceed")
-		GameFlow.fault_battle()
-		process_mode = Node.PROCESS_MODE_DISABLED
+		_shutdown_battle(true, "battle initialization failed")
 		return
 	var active_jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if active_jar_host != null and not active_jar_host.ShipWorldFaulted.is_connected(_on_ship_world_faulted):
@@ -149,20 +146,17 @@ func _ready() -> void:
 	if not _persisted_jar_execution_checkpoint_json.is_empty():
 		if not GameFlow.mark_battle_resume_ready():
 			push_error("[Game] Application flow could not enter resume-ready state")
-			GameFlow.fault_battle()
-			process_mode = Node.PROCESS_MODE_DISABLED
+			_shutdown_battle(true, "battle initialization failed")
 			return
 		var pause_controller := get_node_or_null("PauseController")
 		if pause_controller == null or not pause_controller.has_method("enter_resume_ready") or not bool(pause_controller.call("enter_resume_ready")):
 			push_error("[Game] Restored battle could not acquire the mandatory resume-ready pause gates")
-			GameFlow.fault_battle()
-			process_mode = Node.PROCESS_MODE_DISABLED
+			_shutdown_battle(true, "battle initialization failed")
 			return
 	else:
 		if not GameFlow.mark_battle_running():
 			push_error("[Game] Application flow could not enter the running battle phase")
-			GameFlow.fault_battle()
-			process_mode = Node.PROCESS_MODE_DISABLED
+			_shutdown_battle(true, "battle initialization failed")
 			return
 	_camera_home = camera_2d.position
 	_scatter_asteroids()
@@ -518,10 +512,27 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 
 func _fail_ore_parser(jar_host: WorldV2ShipHost, reason: String) -> void:
 	push_error("[Game] Ore parser/ingress failed closed: " + reason)
-	GameFlow.fault_battle()
-	process_mode = Node.PROCESS_MODE_DISABLED
-	if jar_host != null and jar_host.IsShipWorldActive:
+	_shutdown_battle(true, "ore parser/ingress failure")
+
+## Idempotent terminal boundary for every failed, ended, or externally removed battle.
+## Host disposal and the SceneTree pause release happen before any scene transition.
+func _shutdown_battle(faulted: bool, reason: String) -> void:
+	if _battle_shutdown_started:
+		return
+	_battle_shutdown_started = true
+	if not reason.is_empty():
+		print("[Game] Battle shutdown: " + reason)
+	var tree := get_tree()
+	if tree != null:
+		tree.paused = false
+	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if jar_host != null:
 		jar_host.EndShipWorld()
+	if faulted:
+		GameFlow.fault_battle()
+	else:
+		GameFlow.end_battle()
+	process_mode = Node.PROCESS_MODE_DISABLED
 
 ## Save integration captures processed EventIds and Jar world identity with the frozen loadout identity.
 func capture_order_dispatcher_state() -> Dictionary:
@@ -562,25 +573,16 @@ func _physics_process(delta: float) -> void:
 			camera_2d.position=_camera_home
 
 func _exit_tree() -> void:
-	# A combat scene must never leak SceneTree pause into the next screen.
-	get_tree().paused = false
-	GameFlow.end_battle()
-	# Leaving the owning ship-world is terminal for this Jar session.
-	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
-	if jar_host != null:
-		jar_host.EndShipWorld()
+	# Unexpected removal of a live battle is a fault, not a successful end.
+	if not _battle_shutdown_started:
+		_shutdown_battle(true, "combat scene removed before terminal shutdown")
 
 func _on_ship_world_faulted(message: String) -> void:
 	push_error("[Game] Ship world faulted: " + message)
-	GameFlow.fault_battle()
-	process_mode = Node.PROCESS_MODE_DISABLED
+	_shutdown_battle(true, "World V2 Host fault: " + message)
 
 func _on_player_died()->void:
-	GameFlow.end_battle()
-	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
-	if jar_host != null:
-		jar_host.EndShipWorld()
-	process_mode = Node.PROCESS_MODE_DISABLED
+	_shutdown_battle(false, "player died")
 	GameState.report_game_over()
 	await get_tree().create_timer(1.0, false).timeout
 	GameFlow.request_scene_transition(GameFlow.Screen.GAME_OVER, "res://scenes/menus/GameOver.tscn")
