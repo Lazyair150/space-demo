@@ -181,7 +181,7 @@
 - `SpaceProgressionRuntimeProfileComposer` 成长后从冻结 `jarWorldOptions.orderTemplates` 重新解析真实 Core 模板，再计算有效技能收益/成本；冻结快照和成长重算都验证 `templateId@version == templateName`，避免身份字段与实际模板错配。
 - `SpaceSkillTemplateContractProbe` 已接入 `SpaceSkillCatalogProbe`，覆盖 exact version、主形状多数、液体词表、模板最小 runtime payload、禁止 legacy/template 混搭。
 - Core PR #60 verify workflow run `45197432477` 已成功，且 run head 与 PR head 完全一致：`063e2b7151ea43e92cf6ba1d627b9c7d50819b5b`。
-- Space Demo 当前 head `d23d1cb061c3eaccac162cd485cb1794be210cc3`；compare `main...world-v2/phase-4.10b-hangar-ui` 为 ahead 555 / behind 0。当前 head 没有关联 workflow run；Godot/.NET/GDScript 验证未执行。
+- 较早记录的 Space Demo head `d23d1cb...` 已被后续提交更新；当前最新 head 与 ahead/behind 数以本执行记录末尾的最新核对为准。Space Demo Godot/.NET/GDScript 验证仍未执行。
 - 本轮 Space 模板接线后续提交：`f4b19f3`、`04d93cc`、`1e2dfa7`、`c008590`、`00872a4`、`de58577`、`baf41ef`、`8274f9c`、`685442e`、`d23d1cb`。
 - 本次续接后发现：Skill template resolver 原本从 `combination.jar_world_options` 读取模板，但真正的 Core options 是 `build_jar_world_options()` 生成；这会使 typed catalog 与技能 resolver 脱节。已修复 `SpaceHangarCatalogBundleResource`：每个可选世界先通过组合定义完整校验，再物化 World V2 options，之后才解析技能 exact template。
 - 新增 `SpaceCoreOrderTemplateDefinition.gd`：用独立 Resource 表达 `template_id + version + A/B type + requirements`；模板名固定为 `id@version`。需求列表逐项映射 Core 的 shape/liquid，不允许自造 count 语义。
