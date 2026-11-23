@@ -83,8 +83,16 @@ func restore_run_state(state: Dictionary) -> bool:
 		return false
 	if typeof(raw_segment) != TYPE_STRING or not ["", "热身", "压力", "精英", "喘息"].has(String(raw_segment)):
 		return false
-	if int(raw_wave) == 0 and not String(raw_segment).is_empty():
-		return false
+	var wave_value := int(raw_wave)
+	var segment_value := String(raw_segment)
+	if wave_value == 0:
+		if not segment_value.is_empty():
+			return false
+	else:
+		var expected_segments := ["热身", "压力", "精英", "喘息"]
+		var expected_segment := String(expected_segments[(wave_value - 1) % expected_segments.size()])
+		if segment_value != expected_segment:
+			return false
 	score = int(raw_score)
 	wave = int(raw_wave)
 	segment = String(raw_segment)
