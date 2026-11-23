@@ -104,7 +104,10 @@ static func _evaluate_exact_definition(
 					continue
 				for workshop in combination.workshop_definitions:
 					if workshop != null and String(workshop.workshop_id) == definition_id and workshop.definition_version == definition_version:
-						return SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, pool.power_model)
+						var shapes: Variant = entry.get("shapeVocabulary", null)
+						if not (shapes is Array) or shapes.is_empty():
+							return {"success": false, "reason": "workshop entry has no exact evaluation shape vocabulary"}
+						return SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, shapes, pool.power_model)
 			return {"success": false, "reason": "workshop exact definition is absent from the prepared catalog"}
 		"skill":
 			var skill := bundle.skill_catalog.resolve_skill(definition_id, definition_version)
