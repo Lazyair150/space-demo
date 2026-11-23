@@ -80,13 +80,6 @@ static func run() -> bool:
 	local_slave.base_marks = ["round"]
 	local_slave.max_jars = 4
 	local_slave.max_liquids = 2
-	var pair := SpaceWorkshopPairDefinition.new()
-	pair.pair_id = &"probe.pair"
-	pair.definition_version = 3
-	pair.display_name = "Probe Master/Slave Pair"
-	pair.master_workshop_id = local_master.workshop_id
-	pair.slave_workshop_id = local_slave.workshop_id
-
 	var workshop := SpaceWorkshopCombinationDefinition.new()
 	workshop.combination_id = &"probe.workshop"
 	workshop.definition_version = 5
@@ -112,7 +105,6 @@ static func run() -> bool:
 		"executionLogicalTimePerUnit": 1000
 	}
 	workshop.workshop_definitions = [local_master, local_slave]
-	workshop.workshop_pair = pair
 	workshop.operation_cost_by_order_type = {"A": 1.0, "B": 2.0}
 	workshop.liquid_handling_operation_cost = 0.5
 	var workshops := SpaceWorkshopCombinationCatalog.new()
@@ -120,7 +112,6 @@ static func run() -> bool:
 		return false
 	local_master.base_marks[0] = "mutated"
 	local_master.banned_liquids[0] = "mutated"
-	pair.master_workshop_id = &"probe.slave"
 	workshop.jar_world_options.shapes[0] = "mutated"
 	core_template.requirements[0].shape = "mutated-template-shape"
 	workshop.operation_cost_by_order_type["A"] = 99.0
