@@ -140,6 +140,9 @@ func _initialize_ore_parser() -> bool:
 		_ore_parser_runtime = null
 		return false
 	if not _persisted_ore_parser_state.is_empty():
+		if int(_persisted_ore_parser_state.get("schemaVersion", 0)) != 1:
+			push_error("[Game] Unsupported Space ore parser envelope schema")
+			return false
 		var parser_state: Variant = _persisted_ore_parser_state.get("parserRuntime", null)
 		if not (parser_state is Dictionary):
 			push_error("[Game] Saved ore parser state is malformed")
@@ -192,6 +195,7 @@ func _restore_pending_energy_stone_pickups(
 			for staged in staged_nodes:
 				staged.free()
 			return false
+		staged_ids[pickup_id] = true
 		if seen_pickups.has(pickup_id):
 			# The parser already accepted this pickup before the save boundary; never
 			# resurrect a world object whose resource has entered parser inventory.
@@ -216,7 +220,6 @@ func _restore_pending_energy_stone_pickups(
 			return false
 		pickup.global_position = Vector2(float(raw_x), float(raw_y))
 		staged_nodes.append(pickup)
-		staged_ids[pickup_id] = true
 
 	for pickup in staged_nodes:
 		add_child(pickup)
