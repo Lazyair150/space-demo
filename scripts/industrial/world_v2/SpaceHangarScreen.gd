@@ -4,7 +4,7 @@ class_name SpaceHangarScreen
 ## this screen supplies category SVG fallbacks and delegates all domain decisions.
 
 @export var loadout_identity: Dictionary = {}
-@export var parser_slot_id: String = "ore-parser"
+@export var parser_slot_id: String = ""
 ## Slot identifiers are supplied by the owning ship/loadout flow, never inferred from device types.
 @export var device_slot_ids: PackedStringArray = PackedStringArray()
 ## Each entry is authored by the owning order flow: { "orderDefinitionKey": "...", "label": "..." }.
@@ -229,6 +229,8 @@ func _render_view_model(view_model: Dictionary) -> void:
 		_status_label.text = String(inventory.get("unavailableReason", view_model.get("lastError", "目录不可用")))
 	elif not _identity_is_supplied():
 		_status_label.text = "目录已加载。等待所属游戏流程提供 shipWorldId / loadoutId / loadoutVersion。"
+	elif parser_slot_id.strip_edges().is_empty():
+		_status_label.text = "等待游戏流程提供 parser_slot_id；机库不会自行创建解析器槽位身份。"
 	elif not _slot_configuration_is_valid():
 		_status_label.text = "机库槽位配置无效：设备槽位必须唯一且不能占用解析器槽位，技能订单键必须唯一。"
 	elif not devices.is_empty() and device_slot_ids.is_empty():
