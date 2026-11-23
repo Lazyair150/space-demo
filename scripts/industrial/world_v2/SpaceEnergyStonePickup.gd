@@ -28,7 +28,6 @@ func configure(stable_pickup_id: String, configured_stone_type: String, stone_vo
 	return true
 
 func _ready() -> void:
-	add_to_group("space_energy_stone_pickups")
 	if not _configured:
 		_configured = configure(pickup_id, stone_type, volume)
 	if not _configured:
