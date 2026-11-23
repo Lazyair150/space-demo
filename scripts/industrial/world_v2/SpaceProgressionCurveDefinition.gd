@@ -17,7 +17,7 @@ const INTERPOLATIONS := ["linear", "step", "ease_in", "ease_out", "smoothstep"]
 ## Attribute key -> [{ "level": 1, "value": 0.0 }, ...].
 ## Values are raw subsystem-owned growth values, not universal multipliers.
 @export var attribute_keyframes: Dictionary = {}
-@export_enum("linear", "step") var interpolation: String = "linear"
+@export_enum("linear", "step", "ease_in", "ease_out", "smoothstep") var interpolation: String = "linear"
 
 func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
