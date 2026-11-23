@@ -365,3 +365,13 @@ The assembler accepts the stable battle/loadout identity from its caller and doe
 ### Explicit limits of this increment
 
 This is the domain/catalog and assembly boundary, not the finished Hangar feature. No production catalog assets or numeric balance values have been authored. Non-parser production-device profiles are currently opaque data; their operational semantics and compatibility matrix must be supplied by the relevant device subsystem rather than guessed by the assembler. Workshop options are carried as the exact authored World V2 options dictionary; deeper option validation remains with the Jar World V2 options/host boundary. The next integration increment is to wire the assembler into the real pre-battle entry point and then connect the resulting snapshot to the existing Game frozen-loadout startup path. UI remains downstream of that boundary.
+
+
+### Hangar-to-Game launch boundary
+
+`SpaceHangarBattleLauncher` now provides the final pre-SceneTree handoff:
+- New battle: requires a detached, already-frozen loadout; when orders are selected, it also requires the durable effect-commit callback. It configures the Game node first and only then attaches it to the live parent, so `Game._ready` cannot initialize Jar from an unconfigured/sandbox state.
+- Resumed battle: forwards the frozen loadout, schema-v3 combined save, commit callback, exact effect catalog, and target resolver to `Game.configure_battle_loadout_from_checkpoint`; it attaches the node only after the complete restore contract accepts the checkpoint.
+- The launcher does not create a save store, fabricate a target resolver, or generate catalog content. The menu/Hangar owner supplies those dependencies and owns the save file lifecycle.
+
+The launch coordinator closes the domain-to-runtime handoff API, but it is not yet wired to a concrete menu/Hangar scene. The next increment is the actual pre-battle owner that loads author-authored catalogs, captures the user's selections, invokes `SpaceHangarLoadoutAssembler`, and calls this launcher. UI remains downstream of the stable assembly and launch APIs.
