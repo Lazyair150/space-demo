@@ -375,3 +375,17 @@ This is the domain/catalog and assembly boundary, not the finished Hangar featur
 - The launcher does not create a save store, fabricate a target resolver, or generate catalog content. The menu/Hangar owner supplies those dependencies and owns the save file lifecycle.
 
 The launch coordinator closes the domain-to-runtime handoff API, but it is not yet wired to a concrete menu/Hangar scene. The next increment is the actual pre-battle owner that loads author-authored catalogs, captures the user's selections, invokes `SpaceHangarLoadoutAssembler`, and calls this launcher. UI remains downstream of the stable assembly and launch APIs.
+
+
+### Non-UI Hangar preparation owner
+
+`SpaceHangarPreparation` is the first concrete pre-battle owner. The future Hangar view supplies user selections; this node owns the sequence:
+1. Resolve the authored catalog selections through `SpaceHangarLoadoutAssembler`.
+2. Reject the entire selection if any exact-version definition, shape mapping, slot, skill balance binding, or immutable snapshot check fails.
+3. Instantiate the combat scene only after a valid snapshot exists.
+4. Call `SpaceHangarBattleLauncher` so Game receives the frozen loadout and durable effect callback before entering the SceneTree.
+5. For resumed battles, pass the saved schema-v3 checkpoint and exact effect catalog/target resolver through the existing Game restore contract before attaching the scene.
+
+The owner exposes catalog/profile Resources as exported dependencies. They must be assigned by authored project data; an empty catalog is not replaced with synthetic content. The controller intentionally does not generate ship/device/workshop/skill stats or a default build.
+
+The controller is not yet connected to the current MainMenu button or a visual selection screen. That wiring is blocked on actual authored production catalog assets and the game's intended selection UX, not on CL validation. The old direct Start route remains the legacy development path until the project explicitly switches it to the Hangar-owned launch route.
