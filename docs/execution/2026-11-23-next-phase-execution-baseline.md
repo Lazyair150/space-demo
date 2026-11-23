@@ -211,3 +211,15 @@
 - 当前剩余：在真实 WorkshopCombination 配置中录入 versioned Core orderTemplates，并迁移生产 skill definitions；继续核对 MainMenu / Hangar launch route、Protected Target identity 和真实子系统 power metric 契约。
 
 - 最新续接核对（文档提交前）：Space Demo PR #2 head `235e3a88e5ef778dc55d5959d058363e0003de4f`，ahead 597 / behind 0，Draft/Open/未合并；文档本次提交将继续更新 head。Jar Core PR #60 head `063e2b7151ea43e92cf6ba1d627b9c7d50819b5b`，verify run `45197432477` completed/success。Space Demo 仍无 Godot/.NET/GDScript 运行验证。
+
+
+## 8. 本轮续接 — Parser encounter supply context 与 Owned Hangar 冻结审计
+
+- 新增 SpaceParserSupplyEvaluationContext：明确把 exact SpaceEnergyStoneDropProfile（掉落概率、各形状石头体积分布）与 encounter expected enemy defeats/sec（遭遇侧击杀节奏）作为显式评估上下文；二者均不是 Parser Definition 固有属性。
+- 新增 SpaceIndividualPowerEvaluator.evaluate_parser_in_encounter()：在原有 Parser intrinsic metrics 上，按 shape 计算 conditional mean stone volume、每敌人期望供给体积、每秒期望供给体积，以及每颗对应石头按该 Parser 有效处理速率可维持的秒数。报告同时冻结 drop profile exact ID/version 与 encounter defeat rate。
+- 供给量按 drop chance × 该 shape 的加权平均体积 × encounter defeat rate 计算；每颗石头维持时间使用条件平均体积 / Parser effective processing rate。不存在供给的 shape 返回零值；若供给配置包含某 shape 但 Parser 有效处理速率为零，则拒绝评分，不把无限维持时间伪装成强度。
+- 新增 synthetic Probe 覆盖多 shape 权重、drop chance、每秒击杀率、石头维持时间、exact profile provenance 与非法 encounter rate 拒绝。Probe authored，未执行。
+- 该 API 仍不配置任何生产 Parser power model：模型必须显式包含 encounter metrics 的确切维度，真实范围、方向、权重和 encounter forecast 必须由正式关卡/敌人掉落数据决定；未确定前 Parser production pool 继续保持 unconfigured。
+- Owned assembler 审计确认：Ship、Parser、Master/Slave 两个不同 Workshop、Device、Skill 均按 Owned Instance ID 解析；各子系统成长 profile 被写回 snapshot；技能成长后重新基于冻结 jarWorldOptions.orderTemplates 计算收益与 Core 成本；快照的 ownedInstanceSnapshots 与槽位引用做集合一致性校验。Workshop pair 角色来自 exact combination pair definition，不从实例成长数据推断。
+- 下一项审计点：Workshop power evaluator 目前只接收单个 Workshop Definition + local rules，没有 role/真实工作负载结果输入；因此不能仅凭容量/Mark/Ban 给 Master 或 Slave 实例打生产强度分。后续需建立角色/工作负载评估上下文，或将组合协同强度独立归属 pair model，不能混入 Workshop 个体固有属性。
+- 本轮未创建正式 Parser/Workshop/Skill power model、权重、范围、rarity band、production pool 或虚构 drop profile。Space Demo Godot/.NET/GDScript 验证仍未执行。
