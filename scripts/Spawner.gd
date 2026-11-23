@@ -43,6 +43,7 @@ var _cycle:int=0
 var _energy_stone_rng := RandomNumberGenerator.new()
 var _stage_director: SpaceStageEncounterDirector
 var _stage_active: bool = false
+var _stage_mode: bool = false
 var _stage_faulted: bool = false
 var _stage_break_pending: bool = false
 
@@ -104,6 +105,7 @@ func _start_finite_stage() -> void:
 		_fault_stage("finite stage director could not begin")
 		return
 	_stage_active = true
+	_stage_mode = true
 	_start_stage_beat(beat)
 
 func _start_stage_beat(beat: Dictionary) -> void:
@@ -133,7 +135,9 @@ func _start_stage_beat(beat: Dictionary) -> void:
 	_segment_index = SEGMENT_WARMUP
 	_cycle = 0
 	GameState.set_wave(_current_wave)
-	GameState.set_segment(String(beat.get("segment", "遭遇")))
+	var segment_name := String(beat.get("segment", "warmup"))
+	var segment_labels := {"warmup": "热身", "pressure": "压力", "elite": "精英", "rest": "喘息", "boss": "精英"}
+	GameState.set_segment(String(segment_labels.get(segment_name, "热身")))
 	_spawning = true
 	for index in chasers:
 		if not _spawn_stage_enemy(false, false):
@@ -348,8 +352,9 @@ func _check_wave_clear()->void:
 	if not is_inside_tree():
 		return
 	wave_cleared.emit()
-	if _stage_active:
-		_complete_stage_beat()
+	if _stage_mode:
+		if _stage_active:
+			_complete_stage_beat()
 		return
 	await get_tree().create_timer(_break_seconds(), false).timeout
 	if not is_inside_tree():
