@@ -54,3 +54,14 @@ func _has_duplicates(values: Array) -> bool:
 			return true
 		seen[key] = true
 	return false
+
+func is_compatible_with_world(shape_vocabulary: Array, liquid_vocabulary: Array) -> bool:
+	if not get_validation_errors().is_empty():
+		return false
+	for mark in base_marks + additional_marks:
+		if not shape_vocabulary.has(mark):
+			return false
+	for liquid in banned_liquids:
+		if not liquid_vocabulary.has(liquid):
+			return false
+	return true
