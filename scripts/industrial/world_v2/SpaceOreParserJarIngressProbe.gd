@@ -9,6 +9,14 @@ func _ready() -> void:
     assert(bool(build_context_probe.get("passed", false)),
         "parser percentage build-context probe must pass: " + String(build_context_probe.get("reason", "")))
 
+    var pickup_scene := load("res://scenes/industrial/SpaceEnergyStonePickup.tscn") as PackedScene
+    assert(pickup_scene != null, "typed energy-stone pickup scene must load")
+    var pickup := pickup_scene.instantiate() as SpaceEnergyStonePickup
+    assert(pickup != null, "typed energy-stone pickup script must instantiate")
+    assert(not pickup.configure("", "圆罐", 1.0), "pickup must reject an unstable empty ID")
+    assert(pickup.configure("probe-pickup-stable-id", "圆罐", 1.0), "pickup must accept a stable typed resource identity")
+    pickup.free()
+
     var jar_host := WorldV2ShipHost.new()
     add_child(jar_host)
 
