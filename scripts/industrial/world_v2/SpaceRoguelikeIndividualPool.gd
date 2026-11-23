@@ -66,8 +66,8 @@ func get_validation_errors() -> PackedStringArray:
 					if not (entry.get("benefitMetrics", null) is Dictionary) or not (entry.get("balanceContext", null) is Dictionary):
 						errors.append("skill pool entry %d requires benefit metrics and battle evaluation context" % index)
 				"workshop":
-					if not (entry.get("shapeVocabulary", null) is Array) or entry.shapeVocabulary.is_empty():
-						errors.append("workshop pool entry %d requires its exact evaluation shape vocabulary" % index)
+					if not (entry.get("shapeVocabulary", null) is Array) or entry.shapeVocabulary.is_empty() or not (entry.get("liquidVocabulary", null) is Array) or entry.liquidVocabulary.is_empty():
+						errors.append("workshop pool entry %d requires its exact evaluation shape and liquid vocabularies" % index)
 		if not power_bands.has(rarity):
 			errors.append("pool entry %d references an undefined rarity band" % index)
 		elif not (power_bands[rarity] is Dictionary) or not _valid_number(power) or float(power) < float(power_bands[rarity].get("minimum", INF)) or float(power) > float(power_bands[rarity].get("maximum", -INF)):
