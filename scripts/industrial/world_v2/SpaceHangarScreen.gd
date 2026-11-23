@@ -414,7 +414,16 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 				if not (item_icon is Texture2D):
 					item_icon = load(FALLBACK_ICONS.skill)
 				var primary_shape := String(choice.get("primaryShape", ""))
-				var choice_text := "%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))]
+				var category := String(choice.get("category", ""))
+				var category_label := String({
+					"Offense": "攻击",
+					"Defense": "防御",
+					"Support": "支援",
+					"Reconnaissance": "侦察",
+					"Utility": "辅助"
+				}.get(category, category))
+				var choice_name := String(choice.get("label", choice.get("id", "")))
+				var choice_text := "【%s】%s  [v%d]" % [category_label, choice_name, int(choice.get("version", 0))] if not category_label.is_empty() else "%s  [v%d]" % [choice_name, int(choice.get("version", 0))]
 				if not primary_shape.is_empty():
 					choice_text += "  ·  主形 %s %s" % [ShapeVisuals.glyph_for(primary_shape), primary_shape]
 				skill_picker.add_icon_item(item_icon, choice_text)
