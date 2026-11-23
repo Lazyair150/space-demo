@@ -24,6 +24,7 @@ var _buff_ticker := 0.0
 var _bound_effects: StatusEffectManager
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_reward_ui()
 	_last_ore = GameState.ore
 	_last_materials = GameState.materials
