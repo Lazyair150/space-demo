@@ -82,6 +82,39 @@ func replace_instance_progression(updated: SpaceOwnedProgressionInstance) -> boo
 			return true
 	return false
 
+static func from_data(source: Dictionary) -> SpacePlayerProgressionState:
+	var state := SpacePlayerProgressionState.new()
+	state.schema_version = int(source.get("schemaVersion", 0))
+	state.player_id = StringName(source.get("playerId", ""))
+	state.state_revision = int(source.get("stateRevision", 0))
+	var raw_unlocks: Variant = source.get("unlockedDefinitionKeys", null)
+	var raw_instances: Variant = source.get("ownedInstances", null)
+	if not (raw_unlocks is Array) or not (raw_instances is Array):
+		return null
+	for raw_key in raw_unlocks:
+		if not (raw_key is String):
+			return null
+		state.unlocked_definition_keys.append(raw_key)
+	for raw_instance in raw_instances:
+		if not (raw_instance is Dictionary):
+			return null
+		var instance := SpaceOwnedProgressionInstance.new()
+		instance.instance_id = StringName(raw_instance.get("instanceId", ""))
+		instance.item_kind = String(raw_instance.get("itemKind", ""))
+		instance.definition_id = StringName(raw_instance.get("definitionId", ""))
+		instance.definition_version = int(raw_instance.get("definitionVersion", 0))
+		instance.level = int(raw_instance.get("level", 0))
+		instance.experience = int(raw_instance.get("experience", -1))
+		instance.progression_revision = int(raw_instance.get("progressionRevision", 0))
+		var growth: Variant = raw_instance.get("growthAttributes", null)
+		if not (growth is Dictionary):
+			return null
+		instance.growth_attributes = growth.duplicate(true)
+		state.owned_instances.append(instance)
+	if not state.get_validation_errors().is_empty():
+		return null
+	return state
+
 func to_data() -> Dictionary:
 	var instances: Array[Dictionary] = []
 	for instance in owned_instances:
