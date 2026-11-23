@@ -24,7 +24,7 @@ func refresh_inventory() -> bool:
 		_last_error = "Hangar catalog bundle is not configured"
 		_emit_changed()
 		return false
-	_inventory = _preparation.build_owned_selection_inventory() if _preparation.player_progression_state != null else _preparation.catalog_bundle_resource.build_selection_inventory()
+	_inventory = _preparation.build_owned_selection_inventory() if (_preparation.require_owned_instances or _preparation.player_progression_state != null) else _preparation.catalog_bundle_resource.build_selection_inventory()
 	_draft = SpaceHangarSelectionDraft.new()
 	var ready := _draft.configure(_inventory)
 	_last_error = "" if ready else "Authored Hangar catalogs are incomplete or invalid"
@@ -64,7 +64,7 @@ func build_loadout_snapshot() -> SpaceBattleLoadoutSnapshot:
 		_last_error = "Stable ship-world/loadout identity must be supplied by the owning game flow"
 		_emit_changed()
 		return null
-	var snapshot := _preparation.build_owned_loadout_from_selection(_identity, _draft.snapshot_data()) if _preparation.player_progression_state != null else _preparation.build_loadout_from_draft(_identity, _draft)
+	var snapshot := _preparation.build_owned_loadout_from_selection(_identity, _draft.snapshot_data()) if (_preparation.require_owned_instances or _preparation.player_progression_state != null) else _preparation.build_loadout_from_draft(_identity, _draft)
 	_last_error = "" if snapshot != null else "Current selection could not be assembled; check exact versions and cross-catalog compatibility"
 	_emit_changed()
 	return snapshot
