@@ -125,7 +125,7 @@ func _ready() -> void:
 		if not GameState.restore_run_state(_persisted_run_state):
 			push_error("[Game] Saved transient run state is invalid")
 			GameFlow.fault_battle()
-		process_mode = Node.PROCESS_MODE_DISABLED
+			process_mode = Node.PROCESS_MODE_DISABLED
 			return
 	elif _persisted_jar_execution_checkpoint_json.is_empty():
 		GameState.reset_run()
@@ -136,19 +136,19 @@ func _ready() -> void:
 	if not _restore_saved_effect_state():
 		push_error("[Game] Saved Space effect state could not be restored")
 		GameFlow.fault_battle()
-			process_mode = Node.PROCESS_MODE_DISABLED
+		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 	if not _begin_ship_world():
 		push_error("[Game] Ship world initialization failed; combat build is not allowed to proceed")
 		GameFlow.fault_battle()
-			process_mode = Node.PROCESS_MODE_DISABLED
+		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 	if not GameFlow.mark_battle_running():
 		push_error("[Game] Application flow could not enter the running battle phase")
 		GameFlow.fault_battle()
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
-	_camera_home=camera_2d.position
+	_camera_home = camera_2d.position
 	_scatter_asteroids()
 	if player:
 		if not player.died.is_connected(_on_player_died):
