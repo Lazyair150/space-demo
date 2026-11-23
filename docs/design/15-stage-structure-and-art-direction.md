@@ -15,7 +15,7 @@ The current Spawner is an endless four-beat loop (warmup, pressure, elite, rest)
 
 ## Growth adaptation
 
-Every stage authors its recommended loadout level and an optional bounded difficulty profile. The profile compares the average level of the exact owned instances frozen into the battle loadout against the recommendation. It returns an encounter-scale proposal only; the encounter director applies it to authored enemy counts/health/speed. It never changes the player's curve, owned instances, Jar definitions, workshop bans, order costs, or skill balance.
+Every stage authors its recommended loadout level and an optional bounded difficulty profile. The profile compares the average level of the exact owned instances frozen into the battle loadout against the recommendation. The finite encounter director carries the resulting encounter-scale proposal with each authored beat; the live Spawner still needs to apply that proposal to authored enemy counts/health/speed. It never changes the player's curve, owned instances, Jar definitions, workshop bans, order costs, or skill balance.
 
 A stage can be deliberately fixed-difficulty by setting both scale bounds and per-level coefficients to neutral values. This avoids silently rubber-banding every encounter. The recommended level is also useful for Hangar warnings and stage unlock requirements.
 
