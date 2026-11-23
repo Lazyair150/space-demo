@@ -142,6 +142,10 @@ func _emit_snapshot_feedback(snapshot: Dictionary) -> void:
 		_previous_snapshot = snapshot.duplicate(true)
 		return
 	var events: Array[String] = []
+	var old_lifecycle := String(_previous_snapshot.get("lifecycleState", ""))
+	var new_lifecycle := String(snapshot.get("lifecycleState", ""))
+	if old_lifecycle != new_lifecycle and not new_lifecycle.is_empty():
+		events.append("世界状态：" + _lifecycle_text(new_lifecycle))
 	var old_jars: Variant = _previous_snapshot.get("resourceJars", [])
 	var new_jars: Variant = snapshot.get("resourceJars", [])
 	var old_jar_count := old_jars.size() if old_jars is Array else 0
@@ -173,9 +177,13 @@ func _emit_snapshot_feedback(snapshot: Dictionary) -> void:
 			var role := "主台" if key == "master" else "从台"
 			events.append("%s装液 Jar %s%d" % [role, "+" if new_bench_filled > old_bench_filled else "−", absi(new_bench_filled - old_bench_filled)])
 	var old_cooling := _cooling_demand_ids(_previous_snapshot.get("demands", []))
-	for demand_id in _cooling_demand_ids(snapshot.get("demands", [])):
+	var new_cooling := _cooling_demand_ids(snapshot.get("demands", []))
+	for demand_id in new_cooling:
 		if not old_cooling.has(demand_id):
 			events.append("订单 #%s 进入冷却" % demand_id)
+	for demand_id in old_cooling:
+		if not new_cooling.has(demand_id):
+			events.append("订单 #%s 冷却结束" % demand_id)
 	var step_delta := _active_session_step_total(snapshot.get("activeSessions", [])) - _active_session_step_total(_previous_snapshot.get("activeSessions", []))
 	if step_delta > 0:
 		events.append("订单推进 %d 步" % step_delta)
