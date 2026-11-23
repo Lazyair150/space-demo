@@ -402,7 +402,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `SpaceOreParserCatalog.gd` 以 `(parserId, definitionVersion)` 注册/解析版本；注册时复制 Resource 配置，调用方后续修改原始 Resource 不会污染 Catalog。
 - `SpaceBattleLoadoutSnapshot.create_with_ore_parser` 是战前构筑的解析器入口：按指定精确版本从 Catalog 生成生产设备选择，检查槽位冲突和重复解析器，再把解析器 profile 纳入 loadout fingerprint。不同解析器版本/属性必须产生不同 fingerprint。
 - `SpaceOreParserCatalogProbe.gd` 覆盖精确版本、未知版本拒绝、注册隔离、slot/shape 覆盖、冻结构筑指纹以及重复解析器拒绝。
-- `SpaceSkillBuildContextEvaluator` 现在要求 Ship 原石进度表与解析器形状集合精确一致；不允许缺形状后静默按 0 产能处理。进度阈值必须能表示为至少一个固定点微单位。
+- `SpaceSkillBuildContextEvaluator` 现在要求 Ship 原石进度表与解析器形状集合精确一致；不允许缺形状后静默按 0 产能处理。传入平衡求解器的 Jar 阈值映射也必须与冻结解析器 profile 完全一致，不能遗漏或覆盖阈值；进度阈值必须能表示为至少一个固定点微单位。
 - Space parser envelope schema v2 在原有 parser 状态、pickup ID 序号和未拾取实体列表之外，加入 Spawner 的 `RandomNumberGenerator.state`。恢复时必须同时恢复该 RNG 状态，避免同一战斗检查点之后重新抽取出不同掉落序列。
 - `capture_jar_space_runtime_checkpoint` 仍把 Jar execution checkpoint、Host 时钟余数、Space parser envelope 和订单事件 dispatcher 状态放入同一个 checkpoint 对象；调用方必须把它作为一次保存事务持久化。
 
