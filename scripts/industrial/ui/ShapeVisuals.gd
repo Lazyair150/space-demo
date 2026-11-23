@@ -45,3 +45,22 @@ static func blend_marks(base_marks: Array, additional_marks: Array) -> Color:
 		total += color_for(String(mark))
 		weight += 1.0
 	return total / weight if weight > 0.0 else NEUTRAL
+
+static func liquid_color_for(liquid: String) -> Color:
+	match liquid:
+		"酒":
+			return Color("d96b7c")
+		"蜜":
+			return Color("e5b85f")
+		_:
+			return NEUTRAL
+
+static func apply_meter_style(meter: ProgressBar, fill_color: Color) -> void:
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = fill_color
+	fill.set_corner_radius_all(4)
+	var background := StyleBoxFlat.new()
+	background.bg_color = Color("263241")
+	background.set_corner_radius_all(4)
+	meter.add_theme_stylebox_override("fill", fill)
+	meter.add_theme_stylebox_override("background", background)
