@@ -121,9 +121,7 @@ static func assemble(
 		var composed_workshop := SpaceProgressionRuntimeProfileComposer.compose_workshop(workshop_definition, workshop_instance, shapes)
 		if composed_workshop.is_empty():
 			return _reject("workshop growth attributes do not satisfy local workshop rules")
-		var core_workshop: Dictionary = composed_workshop.get("coreDefinition", {})
-		if core_workshop.is_empty():
-			core_workshop = workshop_definition.build_core_definition()
+		var core_workshop: Dictionary = composed_workshop.duplicate(true)
 		core_workshop["name"] = workshop_definition.display_name + ("（主台）" if index == 0 else "（从台）")
 		workshops[index] = core_workshop
 	jar_options.workshops = workshops
