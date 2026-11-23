@@ -12,6 +12,9 @@ func ingest_energy_stone(pickup_id: String, stone_type: String, volume: float) -
 func _ready() -> void:
     var parser_probe := SpaceOreParserRuntimeProbe.run()
     assert(bool(parser_probe.get("passed", false)), "Space ore parser unit probe must pass")
+    var catalog_probe := SpaceOreParserCatalogProbe.run()
+    assert(bool(catalog_probe.get("passed", false)),
+        "pre-battle ore parser catalog probe must pass: " + String(catalog_probe.get("reason", "")))
     var drop_profile_probe := SpaceEnergyStoneDropProfileProbe.run()
     assert(bool(drop_profile_probe.get("passed", false)),
         "energy-stone drop profile probe must pass: " + String(drop_profile_probe.get("reason", "")))
