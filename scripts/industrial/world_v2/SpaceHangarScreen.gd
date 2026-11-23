@@ -477,7 +477,11 @@ func _on_skill_selected(index: int, order_key: String, skill_picker: OptionButto
 
 func _set_primary_shape_label(label: Label, choice: Dictionary) -> void:
 	var primary_shape := String(choice.get("primaryShape", ""))
-	label.text = "" if primary_shape.is_empty() else "%s 主形" % ShapeVisuals.glyph_for(primary_shape) + " " + primary_shape
+	if primary_shape.is_empty():
+		label.text = ""
+		label.add_theme_color_override("font_color", UiKit.MUTED)
+		return
+	label.text = "%s 主形 %s" % [ShapeVisuals.glyph_for(primary_shape), primary_shape]
 	label.add_theme_color_override("font_color", ShapeVisuals.color_for(primary_shape))
 
 func _on_skill_area_selected(index: int, order_key: String, skill_picker: OptionButton, area_picker: OptionButton) -> void:
