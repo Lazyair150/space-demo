@@ -446,3 +446,16 @@ This establishes the editor-authored data-loading seam. It does not create a pro
 The draft is UI-independent and can be bound to either a Control-based scene or a later UI framework. No scene, MainMenu route, default build, or production catalog data is introduced by this increment. Godot compilation and runtime probes remain pending.
 
 - `SpaceHangarPreparation.build_loadout_from_draft(identity, draft)` now closes the UI-state-to-domain boundary: it rejects an unavailable/incomplete draft, materializes its validated `SpaceHangarSelection`, and delegates to the existing selection-based preparation path. It does not bypass bundle validation or assembler compatibility checks.
+
+
+### Hangar selection controller and UI view model
+
+`SpaceHangarSelectionController` now coordinates the editor-authored bundle inventory and `SpaceHangarSelectionDraft` as the UI-facing state boundary:
+
+- `configure(preparation, identity)` loads the bundle's inventory and creates a fresh draft. Missing bundle Resources or invalid/empty catalogs produce an explicit unavailable view model with empty choices.
+- Selection methods delegate to the draft and emit `view_model_changed` after accepted or rejected edits. UI code consumes `get_view_model()` for readiness, inventory, current exact-version selections, build availability, validation status, and the latest rejection/build error.
+- `build_loadout_snapshot()` delegates to `SpaceHangarPreparation.build_loadout_from_draft`; the controller does not duplicate compatibility rules, balance evaluation, or snapshot construction.
+- `refresh_inventory()` intentionally starts a new draft because the inventory's authored version set may have changed. A caller should explicitly confirm/discard current choices before invoking it in a live editor flow.
+- The ownership probe now verifies that a controller configured without an authored bundle fails closed and exposes no fabricated ship choices.
+
+This is the controller/view-model layer, not yet a concrete visual scene. It provides the stable UI binding API while leaving the existing MainMenu route untouched until production catalog assets and the actual Hangar experience are ready. Godot compilation and runtime probes remain pending.
