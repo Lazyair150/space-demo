@@ -37,12 +37,12 @@ func stages_for_campaign(campaign_id: String) -> Array[SpaceStageDefinition]:
 	result.sort_custom(func(a: SpaceStageDefinition, b: SpaceStageDefinition) -> bool: return a.sequence_index < b.sequence_index)
 	return result
 
-func is_unlocked(stage: SpaceStageDefinition, cleared_stage_ids: Array) -> bool:
+func is_unlocked(stage: SpaceStageDefinition, cleared_stage_keys: Array) -> bool:
 	if stage == null or not stage.is_valid():
 		return false
 	if stage.sequence_index == 1:
 		return true
 	for previous in stages_for_campaign(String(stage.campaign_id)):
 		if previous.sequence_index == stage.sequence_index - 1:
-			return cleared_stage_ids.has(String(previous.stage_id))
+			return cleared_stage_keys.has("%s@%d" % [String(previous.stage_id), previous.definition_version])
 	return false
