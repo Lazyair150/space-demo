@@ -92,9 +92,9 @@ static func run() -> bool:
 	workshop.display_icon = GradientTexture2D.new()
 	workshop.jar_world_options = {
 		"shapes": ["round", "square"],
-		"liquids": ["blocked-liquid"],
-		"producers": [{"name": "probe", "rates": {"round": 1.0}}],
-		"initialLiquidStock": {"blocked-liquid": 3},
+		"liquids": ["blocked-liquid", "other-liquid"],
+		"producers": [{"name": "probe", "rates": {"round": 1.0, "square": 0.0}}],
+		"initialLiquidStock": {"blocked-liquid": 3, "other-liquid": 0},
 		"jarFlowRatePerLogicalTime": 1.0,
 		"liquidFlowRatePerLogicalTime": 1.0,
 		"executionLogicalTimePerUnit": 1000

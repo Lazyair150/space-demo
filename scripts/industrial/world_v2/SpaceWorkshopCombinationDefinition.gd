@@ -36,11 +36,14 @@ func get_validation_errors() -> PackedStringArray:
 			shape_set[String(shape)] = true
 	var liquids: Variant = jar_world_options.get("liquids", null)
 	var liquid_set := {}
-	if not (liquids is Array):
-		errors.append("workshop combination must provide a liquid vocabulary")
+	if not (liquids is Array) or liquids.size() != 2:
+		errors.append("workshop combination must provide the Core's exact two-liquid vocabulary")
 	elif liquids is Array:
 		for liquid in liquids:
-			liquid_set[String(liquid)] = true
+			var liquid_name := String(liquid).strip_edges()
+			if liquid_name.is_empty() or liquid_set.has(liquid_name):
+				errors.append("workshop combination liquid vocabulary contains an empty or duplicate name")
+			liquid_set[liquid_name] = true
 	if workshop_definitions.size() < 2:
 		errors.append("workshop combination must provide at least two individual workshop definitions")
 	var ids := {}
