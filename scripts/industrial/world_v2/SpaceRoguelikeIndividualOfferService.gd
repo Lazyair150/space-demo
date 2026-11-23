@@ -70,5 +70,5 @@ static func acquire_selected(
 	if not (selected is Dictionary) or not (selected.get("candidate", null) is Dictionary):
 		return {"success": false, "reason": "selected reward payload is malformed"}
 	return SpaceRoguelikeIndividualRewardService.acquire_candidate(
-		state, bundle, library, selected.candidate.duplicate(true), instance_id, String(offer.offerId) + ":" + str(selected_index)
+		state, bundle, library, selected.candidate.duplicate(true), instance_id, String(offer.offerId)
 	)
