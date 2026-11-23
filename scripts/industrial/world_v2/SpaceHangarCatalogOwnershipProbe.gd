@@ -435,13 +435,15 @@ static func run() -> bool:
 	if absf(float(composed_parser.progressPerJarByShape.round) - 2.0) > 0.000001:
 		return false
 
+	var growth_master_definition := resolved_workshop.workshop_definitions[0]
+	var growth_slave_definition := resolved_workshop.workshop_definitions[1]
 	var workshop_growth_instance := SpaceOwnedProgressionInstance.new()
 	workshop_growth_instance.instance_id = &"probe.workshop.growth"
 	workshop_growth_instance.item_kind = "workshop"
-	workshop_growth_instance.definition_id = local_master.workshop_id
-	workshop_growth_instance.definition_version = local_master.definition_version
+	workshop_growth_instance.definition_id = growth_master_definition.workshop_id
+	workshop_growth_instance.definition_version = growth_master_definition.definition_version
 	workshop_growth_instance.growth_attributes = {"maxJarsBonus": 2}
-	var composed_workshop := SpaceProgressionRuntimeProfileComposer.compose_workshop(local_master, workshop_growth_instance, ["round", "square", "diamond", "triangle", "hex"])
+	var composed_workshop := SpaceProgressionRuntimeProfileComposer.compose_workshop(growth_master_definition, workshop_growth_instance, ["round", "square", "diamond", "triangle", "hex"])
 	if composed_workshop.is_empty() or int(composed_workshop.maxJars) != 10:
 		return false
 	if not composed_workshop.ban.has("blocked-liquid") or int(composed_workshop.maxLiquids) != 5:
@@ -449,10 +451,10 @@ static func run() -> bool:
 	var workshop_mark_instance := SpaceOwnedProgressionInstance.new()
 	workshop_mark_instance.instance_id = &"probe.workshop.mark-growth"
 	workshop_mark_instance.item_kind = "workshop"
-	workshop_mark_instance.definition_id = local_slave.workshop_id
-	workshop_mark_instance.definition_version = local_slave.definition_version
+	workshop_mark_instance.definition_id = growth_slave_definition.workshop_id
+	workshop_mark_instance.definition_version = growth_slave_definition.definition_version
 	workshop_mark_instance.growth_attributes = {"additionalMark.square": 1}
-	var composed_workshop_marks := SpaceProgressionRuntimeProfileComposer.compose_workshop(local_slave, workshop_mark_instance, ["round", "square", "diamond", "triangle", "hex"])
+	var composed_workshop_marks := SpaceProgressionRuntimeProfileComposer.compose_workshop(growth_slave_definition, workshop_mark_instance, ["round", "square", "diamond", "triangle", "hex"])
 	if composed_workshop_marks.is_empty() or not composed_workshop_marks.additionalMarks.has("square"):
 		return false
 
