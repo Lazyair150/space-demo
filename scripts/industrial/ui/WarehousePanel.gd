@@ -5,6 +5,7 @@ extends PanelContainer
 ## 仓库里有多少，以及**被丢掉了多少**（丢弃发生在流入/容量钳制时，不是"仓库满了"）。
 
 const UiKit := preload("res://scripts/industrial/ui/UiKit.gd")
+const ShapeVisuals := preload("res://scripts/industrial/ui/ShapeVisuals.gd")
 
 var _built := false
 var _count: Label
@@ -47,8 +48,9 @@ func bind(warehouse: Dictionary) -> void:
 			by_shape[shape] = int(by_shape.get(shape, 0)) + 1
 		var parts: Array[String] = []
 		for shape in by_shape.keys():
-			parts.append("%s×%d" % [str(shape), int(by_shape[shape])])
+			parts.append("%s %s×%d" % [ShapeVisuals.glyph_for(str(shape)), str(shape), int(by_shape[shape])])
 		_shapes.text = "构成：%s" % "、".join(parts)
+		_shapes.add_theme_color_override("font_color", ShapeVisuals.color_for(str(by_shape.keys()[0])))
 
 	var liquids: Dictionary = warehouse.get("liquids", {})
 	var liquid_parts: Array[String] = []
