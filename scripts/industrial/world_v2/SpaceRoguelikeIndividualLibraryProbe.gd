@@ -87,6 +87,11 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 			return false # Reward provenance must never pollute subsystem growth attributes.
 		if String(acquired_instance.acquisition_provenance.get("source", "")) != "roguelike_reward" or String(acquired_instance.acquisition_provenance.get("rewardId", "")) != String(reward_offer.offerId):
 			return false
+		var tampered_provenance := acquired_instance.duplicate(true) as SpaceOwnedProgressionInstance
+		tampered_provenance.progression_revision += 1
+		tampered_provenance.acquisition_provenance.rewardId = "probe.tampered-reward"
+		if state.replace_instance_progression(tampered_provenance):
+			return false # Acquisition provenance cannot be rewritten by a growth update.
 		var acquired_skill := bundle.skill_catalog.resolve_skill(skill_id, skill_version)
 		if acquired_skill == null or SpaceProgressionRuntimeProfileComposer.compose_skill(acquired_skill, acquired_instance) == null:
 			return false # A newly rewarded skill must remain usable by the subsystem composer.
