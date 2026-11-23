@@ -34,10 +34,13 @@ func get_validation_errors() -> PackedStringArray:
 		if settlement_keys.has(settlement_id):
 			errors.append("campaign reward settlement is duplicated: " + settlement_id)
 		settlement_keys[settlement_id] = true
+	var ledger_keys := {}
 	for settlement_id in reward_settlement_ids:
-		if settlement_id.is_empty() or settlement_keys.has(String(settlement_id)):
+		if settlement_id.is_empty() or ledger_keys.has(String(settlement_id)):
 			errors.append("campaign settlement ledger contains an empty or duplicate ID")
-		settlement_keys[String(settlement_id)] = true
+		ledger_keys[String(settlement_id)] = true
+	if ledger_keys != settlement_keys:
+		errors.append("campaign settlement ledger must exactly match the stage clear records")
 	return errors
 
 func is_stage_cleared(stage_id: String, version: int) -> bool:
@@ -83,6 +86,7 @@ func record_stage_clear(stage: SpaceStageDefinition, result: Dictionary, settlem
 		"rewardSettlementId": settlement_id,
 		"result": result.duplicate(true)
 	})
+	reward_settlement_ids.append(settlement_id)
 	revision += 1
 	changed.emit(revision)
 	return true
