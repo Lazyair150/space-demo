@@ -37,6 +37,18 @@ func _ready() -> void:
 		return
 	GameFlow.end_battle()
 	GameFlow.enter_screen(GameFlow.Screen.MENU)
+	if not GameFlow.begin_battle_preparation() or not GameFlow.mark_battle_running() or not GameFlow.fault_battle("probe fault reason"):
+		_fail_probe(controller, "runtime fault must latch from RUNNING")
+		return
+	controller.show_fault("probe fault reason")
+	var fault_snapshot := GameFlow.snapshot()
+	if String(fault_snapshot.get("battlePhase", "")) != "FAULTED" or String(fault_snapshot.get("faultReason", "")) != "probe fault reason" or controller._paused or not controller._faulted or not controller._overlay.visible:
+		_fail_probe(controller, "fault must be distinct from player death/pause and remain visible")
+		return
+	if controller._primary_button.text != "返回主菜单  /  Main Menu":
+		_fail_probe(controller, "fault action must navigate to the main menu, not resume combat")
+		return
+	GameFlow.enter_screen(GameFlow.Screen.MENU)
 	print("[SpaceBattlePauseControllerProbe] passed")
 	controller.queue_free()
 
