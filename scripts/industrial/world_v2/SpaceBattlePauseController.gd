@@ -9,6 +9,9 @@ var _paused := false
 var _reason := ""
 var _overlay: Control
 var _reason_label: Label
+var _title_label: Label
+var _primary_button: Button
+var _faulted := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -44,8 +47,25 @@ func enter_resume_ready() -> bool:
 	pause_changed.emit(true, _reason)
 	return true
 
+func show_fault(reason: String) -> void:
+	_faulted = true
+	_paused = false
+	_reason = reason.strip_edges()
+	if is_instance_valid(_title_label):
+		_title_label.text = "战斗已停止  /  BATTLE FAULT"
+	if is_instance_valid(_primary_button):
+		_primary_button.text = "返回主菜单  /  Main Menu"
+	_sync_overlay()
+	pause_changed.emit(false, "faulted")
+
+func _on_primary_action() -> void:
+	if _faulted:
+		GameFlow.request_scene_transition(GameFlow.Screen.MENU, "res://scenes/menus/MainMenu.tscn")
+	else:
+		set_paused(false)
+
 func set_paused(value: bool, reason: String = "player") -> void:
-	if not is_inside_tree() or _paused == value:
+	if _faulted or not is_inside_tree() or _paused == value:
 		return
 	var tree := get_tree()
 	var host := tree.root.get_node_or_null("WorldV2ShipHost")
@@ -90,25 +110,27 @@ func _build_overlay() -> void:
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
 	column.add_theme_constant_override("separation", 14)
 	panel.add_child(column)
-	var title := Label.new()
-	title.text = "PAUSED  /  已暂停"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 26)
-	column.add_child(title)
+	_title_label = Label.new()
+	_title_label.text = "PAUSED  /  已暂停"
+	_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_title_label.add_theme_font_size_override("font_size", 26)
+	column.add_child(_title_label)
 	_reason_label = Label.new()
 	_reason_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_reason_label)
-	var resume := Button.new()
-	resume.text = "继续游戏  /  Resume"
-	resume.pressed.connect(func() -> void: set_paused(false))
-	column.add_child(resume)
+	_primary_button = Button.new()
+	_primary_button.text = "继续游戏  /  Resume"
+	_primary_button.pressed.connect(_on_primary_action)
+	column.add_child(_primary_button)
 
 func _sync_overlay() -> void:
 	if not is_instance_valid(_overlay):
 		return
-	_overlay.visible = _paused
+	_overlay.visible = _paused or _faulted
 	if is_instance_valid(_reason_label):
-		if _reason == "window_focus_lost":
+		if _faulted:
+			_reason_label.text = _reason if not _reason.is_empty() else "运行时发生故障，模拟已终止"
+		elif _reason == "window_focus_lost":
 			_reason_label.text = "窗口失焦，等待手动继续"
 		elif _reason == "resume_ready":
 			_reason_label.text = "存档已恢复。确认后继续战斗"
