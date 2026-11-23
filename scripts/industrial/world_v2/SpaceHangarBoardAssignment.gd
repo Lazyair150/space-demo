@@ -8,14 +8,15 @@ static func create_entry(slot: SpaceHangarBoardSlotDefinition, choice: Dictionar
 	var instance_id := String(choice.get("instanceId", "")).strip_edges()
 	var definition_id := String(choice.get("id", "")).strip_edges()
 	var version := int(choice.get("version", 0))
-	if instance_id.is_empty() or definition_id.is_empty() or version <= 0:
+	if instance_id.is_empty() or definition_id.is_empty() or version <= 0 or int(choice.get("progressionRevision", 0)) <= 0:
 		return {}
 	var entry := {
 		"slotId": String(slot.slot_id),
 		"componentKind": slot.component_kind,
 		"ownedInstanceId": instance_id,
 		"definitionId": definition_id,
-		"definitionVersion": version
+		"definitionVersion": version,
+		"sourceRevision": int(choice.get("progressionRevision", 0))
 	}
 	if slot.component_kind == "workshop":
 		entry["roleId"] = slot.role_id
@@ -58,6 +59,8 @@ static func validate(board: SpaceHangarBoardDefinition, assignments: Dictionary,
 			continue
 		if String(choice.get("id", "")) != String(entry.get("definitionId", "")) or int(choice.get("version", 0)) != int(entry.get("definitionVersion", 0)):
 			errors.append("assignment exact Definition identity/version does not match owned instance: " + instance_id)
+		if int(choice.get("progressionRevision", 0)) != int(entry.get("sourceRevision", 0)):
+			errors.append("assignment progression revision does not match owned instance: " + instance_id)
 		if not _kind_matches(String(slot.componentKind), String(choice.get("itemKind", _kind_for_slot(String(slot.componentKind))))):
 			errors.append("owned instance item kind does not match slot: " + slot_id)
 	for slot_id in slots:
