@@ -11,7 +11,19 @@ static func run() -> bool:
 		return false
 	var first := stages[0]
 	var second := stages[1]
+	var ore_convoy := stages[2]
+	var boss_stage := stages[4]
 	if not catalog.is_unlocked(first, []) or catalog.is_unlocked(second, []):
+		return false
+	if String(ore_convoy.objective_parameters.get("resource_type", "")) != "energy_stone" or float(ore_convoy.objective_parameters.get("target_amount", 0.0)) <= 0.0:
+		return false
+	if String(boss_stage.objective_parameters.get("boss_definition_id", "")) != "rift_warden":
+		return false
+	if ore_convoy.wave_plan(3).get("segment", "") != "rest":
+		return false
+	if not ore_convoy.is_valid() or not boss_stage.is_valid():
+		return false
+	if false:
 		return false
 
 	var progression := SpaceCampaignProgressState.new()
