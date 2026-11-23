@@ -41,9 +41,9 @@ func create_selection(combination_id: String, version: int) -> Dictionary:
 	var definition := resolve_definition(combination_id, version)
 	return definition.build_selection() if definition != null else {}
 
-func create_jar_world_options(combination_id: String, version: int) -> Dictionary:
+func create_jar_world_options(combination_id: String, version: int, master_workshop_id: String = "", slave_workshop_id: String = "") -> Dictionary:
 	var definition := resolve_definition(combination_id, version)
-	return definition.build_jar_world_options() if definition != null else {}
+	return definition.build_jar_world_options(master_workshop_id, slave_workshop_id) if definition != null else {}
 
 func create_balance_profile(combination_id: String, version: int) -> Dictionary:
 	var definition := resolve_definition(combination_id, version)
