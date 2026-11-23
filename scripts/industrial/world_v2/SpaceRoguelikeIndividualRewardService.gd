@@ -125,5 +125,17 @@ static func _evaluate_exact_definition(
 			var context: Variant = entry.get("balanceContext", null)
 			if skill == null or not (benefits is Dictionary) or not (context is Dictionary):
 				return {"success": false, "reason": "skill entry is missing its exact definition, benefit metrics or evaluation context"}
-			return SpaceIndividualPowerEvaluator.evaluate_skill(skill, benefits, context, bundle.balance_profile, pool.power_model)
+			var world_options: Dictionary = {}
+			if skill.jar_order_template_id != &"":
+				if String(entry.get("orderTemplateName", "")) != skill.core_order_template_name():
+					return {"success": false, "reason": "skill pool entry does not preserve the exact Core template identity"}
+				for combination in bundle.workshop_combination_catalog.definitions:
+					if combination != null and not combination.jar_world_options.is_empty():
+						world_options = combination.jar_world_options.duplicate(true)
+						break
+				if world_options.is_empty():
+					return {"success": false, "reason": "skill template cannot resolve against any prepared workshop world"}
+			return SpaceIndividualPowerEvaluator.evaluate_skill(
+				skill, benefits, context, bundle.balance_profile, pool.power_model, world_options
+			)
 	return {"success": false, "reason": "unsupported individual item kind"}
