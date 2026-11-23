@@ -93,5 +93,8 @@ static func from_runtime_profile(profile: Dictionary) -> SpaceEnergyStoneDropPro
     definition.drop_chance = float(profile.get("dropChance", 0.0))
     var entries: Variant = profile.get("weightedStones", [])
     if entries is Array:
-        definition.weighted_stones = entries.duplicate(true)
+        definition.weighted_stones.clear()
+        for entry in entries:
+            if entry is Dictionary:
+                definition.weighted_stones.append(entry.duplicate(true))
     return definition
