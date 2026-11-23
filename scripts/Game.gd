@@ -2,6 +2,7 @@ extends Node2D
 
 signal stage_completed(result: Dictionary)
 signal stage_failed(result: Dictionary)
+signal stage_settlement_failed(result: Dictionary)
 signal stage_faulted(reason: String)
 
 const ENERGY_STONE_PICKUP_SCENE: PackedScene = preload("res://scenes/industrial/SpaceEnergyStonePickup.tscn")
@@ -25,6 +26,7 @@ var _stage_objective_runtime: SpaceStageObjectiveRuntime
 var _stage_encounters_completed: bool = false
 var _stage_completion_emitted: bool = false
 var _stage_failure_emitted: bool = false
+var _stage_settlement_callback: Callable
 var _stage_protected_target: Node
 var _order_effect_dispatcher: SpaceOrderEffectDispatcher
 var _order_effect_commit_callback: Callable
@@ -63,6 +65,13 @@ func configure_battle_loadout(
 
 ## A finite stage must be frozen with the same owned-instance snapshots as the battle loadout.
 ## Call before adding the combat scene to the SceneTree.
+## A finite-stage launch must supply a durable clear-ledger callback before entering the SceneTree.
+func configure_stage_settlement_callback(callback: Callable) -> bool:
+	if is_inside_tree() or not callback.is_valid():
+		return false
+	_stage_settlement_callback = callback
+	return true
+
 func configure_battle_stage(stage: SpaceStageDefinition, protected_target: Node = null) -> bool:
 	if is_inside_tree() or stage == null or not stage.is_valid() or _battle_loadout == null or not _persisted_jar_execution_checkpoint_json.is_empty():
 		return false
@@ -277,12 +286,17 @@ func _on_stage_encounters_completed(result: Dictionary) -> void:
 func _try_complete_stage() -> void:
 	if _selected_stage == null or _stage_objective_runtime == null or _battle_shutdown_started or _stage_completion_emitted or not _stage_encounters_completed or not _stage_objective_runtime.is_complete():
 		return
-	_stage_completion_emitted = true
-	stage_completed.emit({
+	var result := {
 		"stageIdentity": {"stageId": String(_selected_stage.stage_id), "definitionVersion": _selected_stage.definition_version},
 		"objectiveProgress": _stage_objective_runtime.progress(),
 		"status": "objective_complete"
-	})
+	}
+	if not _stage_settlement_callback.is_valid() or not bool(_stage_settlement_callback.call(result)):
+		stage_settlement_failed.emit(result)
+		_shutdown_battle(true, "finite-stage clear could not be durably recorded")
+		return
+	_stage_completion_emitted = true
+	stage_completed.emit(result)
 
 func record_stage_boss_defeated(definition_id: String) -> bool:
 	if _stage_objective_runtime == null or not _stage_objective_runtime.record_boss_defeated(definition_id):
