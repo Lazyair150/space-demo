@@ -15,6 +15,12 @@ static func run() -> Dictionary:
 		return _failure("valid exact-version parser definition was not registered")
 	if catalog.register_definition(definition):
 		return _failure("duplicate parser ID/version was accepted")
+	var invalid_definition := SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
+	invalid_definition.parser_id = &"probe-invalid-parser"
+	invalid_definition.production_percentage = 101
+	var invalid_catalog := SpaceOreParserCatalog.new()
+	if invalid_catalog.register_definition(invalid_definition):
+		return _failure("catalog registered a parser with an invalid production percentage")
 	var versions := catalog.registered_versions("probe-universal-parser")
 	if versions.size() != 1 or versions[0] != 3:
 		return _failure("catalog did not expose the registered exact version")
