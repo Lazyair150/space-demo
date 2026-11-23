@@ -19,8 +19,8 @@ static func evaluate(
 ) -> Dictionary:
 	if profile == null or not profile.is_valid():
 		return _failure("invalid balance profile")
-	if expected_battle_duration_logical_milli <= 0.0:
-		return _failure("expected battle duration must be positive")
+	if not is_finite(expected_battle_duration_logical_milli) or expected_battle_duration_logical_milli <= 0.0:
+		return _failure("expected battle duration must be finite and positive")
 	var requirements: Variant = jar_order.get("requirements", null)
 	if not (requirements is Array) or requirements.is_empty():
 		return _failure("Jar requirements must be a non-empty array")
@@ -45,8 +45,15 @@ static func evaluate(
 		var parser_progress: Variant = parser_profile.get("progressPerJarByShape", null)
 		if not (rates is Dictionary) or rates.is_empty() or not (parser_progress is Dictionary) or parser_progress.is_empty():
 			return _failure("ore parser must provide per-shape processing rates and progressPerJarByShape")
+		if rates.size() != parser_progress.size():
+			return _failure("ore parser rate and progress maps must cover the same shapes")
 		parser_progress_per_jar = parser_progress.duplicate(true)
 		for shape in rates:
+			if not parser_progress.has(shape):
+				return _failure("ore parser is missing progress-per-Jar for shape: " + String(shape))
+			var raw_threshold: Variant = parser_progress[shape]
+			if (typeof(raw_threshold) != TYPE_INT and typeof(raw_threshold) != TYPE_FLOAT) or not is_finite(float(raw_threshold)) or float(raw_threshold) <= 0.0 or float(raw_threshold) > 1000000000.0:
+				return _failure("ore parser progress-per-Jar is invalid for shape: " + String(shape))
 			var raw_rate: Variant = rates[shape]
 			if (typeof(raw_rate) != TYPE_INT and typeof(raw_rate) != TYPE_FLOAT) or not is_finite(float(raw_rate)) or float(raw_rate) < 0.0 or float(raw_rate) > 1000000000.0:
 				return _failure("shape processing rates are outside the supported fixed-point range")
@@ -60,8 +67,8 @@ static func evaluate(
 		return _failure("ship resource profile must provide expectedStoneProgressPerSecondByShape")
 	for shape_key in stone_rates:
 		var raw_stone_rate: Variant = stone_rates[shape_key]
-		if (typeof(raw_stone_rate) != TYPE_INT and typeof(raw_stone_rate) != TYPE_FLOAT) or not is_finite(float(raw_stone_rate)) or float(raw_stone_rate) < 0.0:
-			return _failure("ship stone progress rates must be finite and non-negative")
+		if (typeof(raw_stone_rate) != TYPE_INT and typeof(raw_stone_rate) != TYPE_FLOAT) or not is_finite(float(raw_stone_rate)) or float(raw_stone_rate) < 0.0 or float(raw_stone_rate) > 1000000000.0:
+			return _failure("ship stone progress rates are outside the supported fixed-point range")
 	var shape_demand := {}
 	var liquid_jar_count := 0
 	for raw_requirement in requirements:
