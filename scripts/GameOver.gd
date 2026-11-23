@@ -14,12 +14,8 @@ func _ready() -> void:
 	retry_button.grab_focus()
 
 func _on_retry()->void:
-	if not GameFlow.begin_battle_preparation():
-		return
 	GameState.reset_run()
-	get_tree().change_scene_to_file("res://scenes/game/Game.tscn")
+	GameFlow.request_scene_transition(GameFlow.Screen.BATTLE, "res://scenes/game/Game.tscn")
 
 func _on_menu()->void:
-	if not GameFlow.enter_screen(GameFlow.Screen.MENU):
-		return
-	get_tree().change_scene_to_file("res://scenes/menus/MainMenu.tscn")
+	GameFlow.request_scene_transition(GameFlow.Screen.MENU, "res://scenes/menus/MainMenu.tscn")
