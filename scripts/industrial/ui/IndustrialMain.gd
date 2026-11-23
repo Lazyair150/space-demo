@@ -65,6 +65,7 @@ var _restart_armed := false
 
 
 func _ready() -> void:
+	GameFlow.enter_screen(GameFlow.Screen.INDUSTRIAL)
 	_build()
 	_connect_runtime()
 
@@ -660,7 +661,8 @@ func _on_leave_pressed() -> void:
 	# 离开工业舱前先落盘：返回菜单之后这一局还在，别让玩家以为切一下就丢了。
 	if _runtime != null and _runtime.has_method("save_game"):
 		_runtime.save_game()
-	get_tree().change_scene_to_file("res://scenes/menus/MainMenu.tscn")
+	if GameFlow.enter_screen(GameFlow.Screen.MENU):
+		get_tree().change_scene_to_file("res://scenes/menus/MainMenu.tscn")
 
 
 func _on_save_pressed() -> void:
