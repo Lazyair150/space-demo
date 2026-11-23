@@ -58,26 +58,7 @@ func get_validation_errors() -> PackedStringArray:
 		var template_shapes: Array = shapes if shapes is Array else []
 		var template_liquids: Array = liquids if liquids is Array else []
 		errors.append_array(template.get_validation_errors(template_shapes, template_liquids))
-	var ids := {}
-	var names := {}
-	for workshop in workshop_definitions:
-		if workshop == null:
-			errors.append("workshop roster contains a null definition")
-			continue
-		for error in workshop.get_validation_errors():
-			errors.append("workshop %s: %s" % [String(workshop.workshop_id), error])
-		for mark in workshop.base_marks + workshop.additional_marks:
-			if not shape_set.has(mark):
-				errors.append("workshop %s references unknown shape %s" % [String(workshop.workshop_id), mark])
-		for liquid in workshop.banned_liquids:
-			if not liquid_set.has(liquid):
-				errors.append("workshop %s bans unknown liquid %s" % [String(workshop.workshop_id), liquid])
-		var id := String(workshop.workshop_id)
-		var name := workshop.display_name.strip_edges()
-		if ids.has(id) or names.has(name):
-			errors.append("workshop roster identities and names must be unique")
-		ids[id] = true
-		names[name] = true
+
 	if not operation_cost_by_order_type.has("A") or not operation_cost_by_order_type.has("B"):
 		errors.append("workshop combination must author operation costs for both A and B")
 	for order_type in ["A", "B"]:
@@ -93,16 +74,25 @@ func build_jar_world_options(master_workshop_id: String = "", slave_workshop_id:
 		return {}
 	var selected_master_id := master_workshop_id
 	var selected_slave_id := slave_workshop_id
-	if selected_master_id.is_empty() and selected_slave_id.is_empty() and not workshop_definitions.is_empty():
-		# Validation/template inspection may materialize two positions from one definition.
-		# Production Hangar always passes the exact two selected Owned Instance definitions.
-		selected_master_id = String(workshop_definitions[0].workshop_id)
-		selected_slave_id = String(workshop_definitions[1].workshop_id) if workshop_definitions.size() > 1 else selected_master_id
+	var shapes: Array = jar_world_options.get("shapes", [])
+	var liquids: Array = jar_world_options.get("liquids", [])
+	if selected_master_id.is_empty() and selected_slave_id.is_empty():
+		# Bundle validation chooses compatible definitions only as a temporary template witness.
+		var compatible_definitions: Array[SpaceWorkshopDefinition] = []
+		for candidate in workshop_definitions:
+			if candidate != null and candidate.is_compatible_with_world(shapes, liquids):
+				compatible_definitions.append(candidate)
+		if compatible_definitions.is_empty():
+			return {}
+		selected_master_id = String(compatible_definitions[0].workshop_id)
+		selected_slave_id = String(compatible_definitions[1].workshop_id) if compatible_definitions.size() > 1 else selected_master_id
 	if selected_master_id.is_empty() or selected_slave_id.is_empty():
 		return {}
 	var master_definition := find_workshop_definition(selected_master_id)
 	var slave_definition := find_workshop_definition(selected_slave_id)
 	if master_definition == null or slave_definition == null:
+		return {}
+	if not master_definition.is_compatible_with_world(shapes, liquids) or not slave_definition.is_compatible_with_world(shapes, liquids):
 		return {}
 	var result := jar_world_options.duplicate(true)
 	var master_entry := master_definition.build_core_definition()
