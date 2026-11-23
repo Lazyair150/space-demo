@@ -81,6 +81,45 @@ static func run() -> bool:
 	if multi_parser.get_runtime_projection_errors().is_empty() or not multi_parser.build_hangar_configuration().is_empty():
 		return false
 
+	# End-to-end prototype inventory -> owned-instance assembly -> frozen board snapshot.
+	var progression := SpaceDemoProgressionBootstrap.create_starting_inventory(DEMO_CATALOG)
+	if progression == null:
+		return false
+	var inventory := SpaceHangarOwnedInventoryBuilder.build(DEMO_CATALOG, progression)
+	if not bool(inventory.get("isReady", false)):
+		return false
+	if inventory.parserChoices.size() != 2 or inventory.workshopInstanceChoices.size() != 2 or inventory.skillChoices.size() != 2 or inventory.workshopWorldChoices.size() != 2:
+		return false
+	var identity := {
+		"shipWorldId": "demo.ship_world",
+		"loadoutId": "demo.starter.loadout",
+		"loadoutVersion": 1
+	}
+	var selection := {
+		"shipId": "demo.ship.starter", "shipVersion": 1, "shipInstanceId": "demo.ship.starter.01",
+		"parserId": "demo.parser.precision", "parserVersion": 1, "parserSlotId": "decomposition.parser.primary",
+		"parserInstanceId": "demo.parser.precision.01",
+		"workshopId": "demo.world.starter", "workshopVersion": 1,
+		"masterWorkshopInstanceId": "demo.workshop.alpha.01",
+		"slaveWorkshopInstanceId": "demo.workshop.beta.01",
+		"deviceSelections": [],
+		"skillSelections": [
+			{"orderDefinitionKey": "orders.active.primary", "skillId": "demo.skill.rapid_fire", "definitionVersion": 1, "controlArea": "Active", "instanceId": "demo.skill.rapid_fire.01"},
+			{"orderDefinitionKey": "orders.passive.recon", "skillId": "demo.skill.recon_scan", "definitionVersion": 1, "controlArea": "Passive", "instanceId": "demo.skill.recon_scan.01"}
+		],
+		"expectedBattleDurationLogicalMilli": 60000.0
+	}
+	var assembled := SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, selection, progression)
+	if assembled == null:
+		return false
+	var frozen_data := assembled.to_dictionary()
+	frozen_data["assemblyBoard"] = DEMO_BOARD.build_frozen_snapshot()
+	frozen_data.erase("loadoutFingerprint")
+	var frozen := SpaceBattleLoadoutSnapshot.create(frozen_data)
+	if frozen == null or frozen.order_definition_keys().size() != 2:
+		return false
+	if frozen.to_dictionary().get("ownedInstanceSnapshots", []).size() != 6:
+		return false
 	var invalid := DEMO_BOARD.duplicate(true) as SpaceHangarBoardDefinition
 	invalid.slots.append(invalid.slots[0].duplicate(true) as SpaceHangarBoardSlotDefinition)
 	return not invalid.get_validation_errors().is_empty()
