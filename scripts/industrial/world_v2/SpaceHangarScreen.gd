@@ -398,6 +398,10 @@ func _render_view_model(view_model: Dictionary) -> void:
 		_status_label.text = "玩家成长存档尚未注入 Preparation；当前不能使用生产机库实例库存。"
 	elif not _identity_is_supplied():
 		_status_label.text = "目录已加载。等待所属游戏流程提供 shipWorldId / loadoutId / loadoutVersion。"
+	elif board_definition != null and not _controller.validate_assignments().is_empty():
+		_status_label.text = "电路板尚未完成安装： " + "; ".join(_controller.validate_assignments())
+	elif not String(view_model.get("lastError", "")).is_empty():
+		_status_label.text = String(view_model.get("lastError", ""))
 	elif parser_slot_id.strip_edges().is_empty():
 		_status_label.text = "等待游戏流程提供 parser_slot_id；机库不会自行创建解析器槽位身份。"
 	elif not _slot_configuration_is_valid():
