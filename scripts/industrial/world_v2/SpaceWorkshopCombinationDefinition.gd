@@ -5,6 +5,7 @@ class_name SpaceWorkshopCombinationDefinition
 @export var combination_id: StringName = &""
 @export var definition_version: int = 1
 @export var display_name: String = ""
+@export var display_icon: Texture2D
 @export var jar_world_options: Dictionary = {}
 @export var operation_cost_by_order_type: Dictionary = {}
 @export var liquid_handling_operation_cost: float = 0.0
