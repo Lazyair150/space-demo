@@ -10,7 +10,7 @@ class_name SpaceIndividualPowerModelDefinition
 
 func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
-	if model_id == &"" or definition_version <= 0 or not SpaceRoguelikeIndividualPool.SUPPORTED_KINDS.has(item_kind):
+	if model_id == &"" or definition_version <= 0 or not SUPPORTED_KINDS.has(item_kind):
 		errors.append("power model requires a stable versioned supported item kind")
 	if metric_dimensions.is_empty():
 		errors.append("power model requires at least one subsystem metric dimension")
