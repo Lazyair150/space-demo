@@ -119,6 +119,8 @@ func build_selection_inventory() -> Dictionary:
 				"description": definition.description,
 				"category": definition.ability_category,
 				"primaryShape": String(definition.primary_shape),
+				"orderTemplateId": String(definition.jar_order_template_id),
+				"orderTemplateVersion": definition.jar_order_template_version,
 				"categoryShape": ability_shape_profile.shape_for_category(definition.ability_category) if ability_shape_profile != null else "",
 				"allowedControlAreas": definition.allowed_control_areas.duplicate(),
 				"iconTexture": definition.display_icon
