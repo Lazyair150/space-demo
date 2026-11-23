@@ -135,7 +135,8 @@ static func _pool(id: String, kind: String) -> SpaceRoguelikeIndividualPool:
 	model.model_id = pool.power_model_id
 	model.definition_version = pool.power_model_version
 	model.item_kind = kind
-	model.metric_dimensions = {"normalized_strength": {"minimum": 0.0, "maximum": 1.0, "weight": 1.0, "higherIsBetter": true}}
+	model.configuration_status = "configured" # Synthetic isolated fixture; not a production balance model.
+	model.metric_dimensions = {"normalized_strength": {"minimum": 0.0, "maximum": 1.0, "weight": 1.0, "scoringMode": "higher_is_better"}}
 	pool.power_model = model
 	pool.item_kind = kind
 	pool.require_definition_evaluation = false
