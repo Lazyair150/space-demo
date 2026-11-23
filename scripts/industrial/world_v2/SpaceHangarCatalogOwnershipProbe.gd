@@ -328,4 +328,13 @@ static func run() -> bool:
 	var progression_data := progression.to_data()
 	if progression_data.ownedInstances.size() != 2 or progression_data.unlockedDefinitionKeys.size() != 1:
 		return false
+	var restored_progression := SpacePlayerProgressionState.from_data(progression_data)
+	if restored_progression == null or not restored_progression.get_validation_errors().is_empty():
+		return false
+	if int(restored_progression.build_owned_instance_snapshot("probe.parser.instance.a").get("level", 0)) != 2:
+		return false
+	var invalid_progression_data := progression_data.duplicate(true)
+	invalid_progression_data.ownedInstances[0].instanceId = "probe.parser.instance.a"
+	if SpacePlayerProgressionState.from_data(invalid_progression_data) != null:
+		return false
 	return true
