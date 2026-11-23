@@ -450,3 +450,12 @@
 - Follow-up hardening: parser identity derivation accepts the old `shipWorldId:parserDefinitionId` only when the restored checkpoint carries that exact legacy identity. This preserves pending operation IDs across an ambiguous Core import receipt; new battles still use exact Owned Instance IDs. The Probe covers legacy namespace preservation and cross-copy checkpoint rejection.
 
 - Follow-up: `SpaceRuleContributionResolver` now fails loadout assembly immediately when Parser/Skill/Production Device contributions are authored for the Core-facing profile, or when a contribution resolves outside `scope=workshop`. Unsupported scopes no longer travel to the battle's Core ingress only to fail later.
+
+
+## 16. Consumer-routed Board runtime profile set (2026-11-24)
+
+- Added `SpaceBoardRuntimeProfileSet.gd`: every frozen Board Assignment is routed to `jar_core.workshop`, `space.parser`, `space.skill`, or `space.production_device` with exact slot/Owned Instance/Definition/version/progression provenance and a fingerprint of its actual composed runtime profile.
+- `SpaceHangarOwnedLoadoutAssembler` creates the set only after all consumer runtime profiles have been composed.
+- `SpaceBattleLoadoutSnapshot` rebuilds and validates the manifest against the frozen workshop, parser, skill, and device profiles. Missing or tampered profile bindings reject the loadout.
+- The manifest is a routing/identity contract, not a generic rule executor. Core ingress remains workshop-only; unsupported Parser/Skill/Device Rule Contributions remain rejected until their subsystem semantics exist.
+- `SpaceHangarBoardDefinitionProbe` now checks the expected 2 workshop / 1 parser / 2 skill consumer routes and verifies tamper rejection. Probe is authored, not executed; Godot runtime validation remains pending.
