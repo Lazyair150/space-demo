@@ -102,9 +102,11 @@ func build_jar_world_options(master_workshop_id: String = "", slave_workshop_id:
 	if selected_master_id.is_empty() and selected_slave_id.is_empty() and workshop_pair != null:
 		selected_master_id = String(workshop_pair.master_workshop_id)
 		selected_slave_id = String(workshop_pair.slave_workshop_id)
-	if selected_master_id.is_empty() and selected_slave_id.is_empty() and workshop_definitions.size() >= 2:
+	if selected_master_id.is_empty() and selected_slave_id.is_empty() and not workshop_definitions.is_empty():
+		# Validation/template inspection may materialize two positions from one definition.
+		# Production Hangar always passes the exact two selected Owned Instance definitions.
 		selected_master_id = String(workshop_definitions[0].workshop_id)
-		selected_slave_id = String(workshop_definitions[1].workshop_id)
+		selected_slave_id = String(workshop_definitions[1].workshop_id) if workshop_definitions.size() > 1 else selected_master_id
 	if selected_master_id.is_empty() or selected_slave_id.is_empty():
 		return {}
 	var master_definition := find_workshop_definition(selected_master_id)
