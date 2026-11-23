@@ -448,3 +448,5 @@
 
 
 - Follow-up hardening: parser identity derivation accepts the old `shipWorldId:parserDefinitionId` only when the restored checkpoint carries that exact legacy identity. This preserves pending operation IDs across an ambiguous Core import receipt; new battles still use exact Owned Instance IDs. The Probe covers legacy namespace preservation and cross-copy checkpoint rejection.
+
+- Follow-up: `SpaceRuleContributionResolver` now fails loadout assembly immediately when Parser/Skill/Production Device contributions are authored for the Core-facing profile, or when a contribution resolves outside `scope=workshop`. Unsupported scopes no longer travel to the battle's Core ingress only to fail later.
