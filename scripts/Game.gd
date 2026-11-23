@@ -396,8 +396,10 @@ func _initialize_ore_parser() -> bool:
 	_ore_parser_runtime = SpaceOreParserRuntime.new()
 	# Production owned loadouts namespace parser state by the exact installed copy,
 	# not merely by its shared Definition. Definition-only IDs remain a development fallback.
+	var persisted_parser_runtime: Variant = _persisted_ore_parser_state.get("parserRuntime", {})
+	var persisted_identity_state: Dictionary = persisted_parser_runtime if persisted_parser_runtime is Dictionary else {}
 	var parser_instance_id := SpaceOreParserRuntime.build_runtime_instance_id(
-		_battle_loadout.ship_world_id(), parser_profile
+		_battle_loadout.ship_world_id(), parser_profile, persisted_identity_state
 	)
 	if parser_instance_id.is_empty():
 		push_error("[Game] Frozen parser profile has invalid Owned Instance provenance")
