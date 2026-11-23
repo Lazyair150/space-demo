@@ -9,8 +9,8 @@ class_name SpaceWorkshopDefinition
 @export var base_marks: Array[String] = []
 @export var additional_marks: Array[String] = []
 @export var banned_liquids: Array[String] = []
-@export_range(1, 2147483647, 1) var max_jars: int = 1
-@export_range(1, 2147483647, 1) var max_liquids: int = 1
+@export_range(0, 2147483647, 1) var max_jars: int = 0
+@export_range(0, 2147483647, 1) var max_liquids: int = 0
 ## Optional aggregate staging limit. -1 means use Core's documented maxLiquids fallback.
 @export_range(-1, 2147483647, 1) var liquid_staging_capacity: int = -1
 
