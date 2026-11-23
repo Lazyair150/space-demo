@@ -461,3 +461,16 @@ The draft is UI-independent and can be bound to either a Control-based scene or 
 This is the controller/view-model layer, not yet a concrete visual scene. It provides the stable UI binding API while leaving the existing MainMenu route untouched until production catalog assets and the actual Hangar experience are ready. Godot compilation and runtime probes remain pending.
 
 - The controller also requires the owning game flow to supply stable `shipWorldId`, `loadoutId`, and positive `loadoutVersion`; it never generates identities. The view model keeps build disabled until both the selection and this identity contract are valid.
+
+
+### 独立机库界面场景（首个 UI 切片）
+
+新增 `scenes/industrial/SpaceHangar.tscn` 与 `SpaceHangarScreen.gd`，作为不接入 MainMenu 的独立界面入口：
+
+- 场景持有 `SpaceHangarPreparation` 节点；目录资源包由编辑器配置在该节点上，所属游戏流程通过屏幕的 `loadout_identity` 提供稳定身份。
+- 飞船、原石解析器、工作台组合选择器从真实 inventory 动态填充，显示精确版本，不包含任何硬编码游戏定义或默认选择。
+- 目录未配置、目录无效或身份缺失时显示明确原因；目录库存统计同时展示设备、技能、效果数量。
+- 预计战斗时长必须由操作者输入正值；选择状态由 `SpaceHangarSelectionController` 管理，快照构建仍委托 Preparation/Assembler。
+- 当前 UI 切片尚未提供设备槽位和技能订单绑定控件。只要真实目录中存在设备或技能定义，冻结按钮就保持禁用，避免把未配置的目录内容误当作完整装配。
+- 每次控制器发出 ViewModel 更新后，界面会按精确 `(id, version)` 恢复当前选择，避免刷新状态标签时意外清空用户选择。
+- MainMenu 路由保持不变；该场景可独立打开用于后续 UI 迭代。Godot 编译和场景运行尚未执行。
