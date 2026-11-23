@@ -45,6 +45,17 @@ func _ready()->void:
 	await get_tree().process_frame
 	_start_next_wave()
 
+## Persist the drop RNG stream with the battle state so a restored encounter
+## does not reroll a different sequence from the same point in combat.
+func capture_energy_stone_drop_rng_state() -> int:
+	return int(_energy_stone_rng.state)
+
+func restore_energy_stone_drop_rng_state(state: int) -> bool:
+	if not is_inside_tree() or state == 0:
+		return false
+	_energy_stone_rng.state = state
+	return true
+
 ## 第 1 波热身、第 2 波压力、第 3 波精英、第 4 波喘息，第 5 波回到热身。
 func segment_for_wave(wave:int)->int:
 	return (wave - 1) % SEGMENT_LABELS.size()
