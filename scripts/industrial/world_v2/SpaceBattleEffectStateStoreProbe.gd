@@ -137,7 +137,14 @@ static func _probe_effect_manager_restore() -> Dictionary:
     if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001:
         return {"passed": false, "reason": "rejected version mismatch partially mutated the live manager"}
 
-    restored.apply_order_event("checkpoint-probe-event", definition)
+    var unresolved_target_snapshot := snapshot.duplicate(true)
+    unresolved_target_snapshot["instances"][0]["targetKey"] = "missing-target"
+    if restored.restore_runtime_state(unresolved_target_snapshot, definition_resolver, target_resolver):
+        return {"passed": false, "reason": "unresolved stable Buff target was silently restored"}
+    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001:
+        return {"passed": false, "reason": "rejected target restore partially mutated the live manager"}
+
+    restored.apply_order_event("checkpoint-probe-event", frozen_definition)
     if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001:
         return {"passed": false, "reason": "replayed processed event duplicated or refreshed the restored Buff"}
     return {"passed": true}
