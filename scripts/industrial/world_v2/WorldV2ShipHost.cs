@@ -118,14 +118,10 @@ public partial class WorldV2ShipHost : Node
     }
 
     /// <summary>
-    /// Sole production time ingress. deltaSeconds must be the already-scaled
-    /// simulation delta from the owning Space world step.
-    /// </summary>
-    /// <summary>
-    /// Convert the owning Space simulation delta into the exact whole logical milliseconds
-    /// that will be forwarded to Jar. The fractional remainder is owned only by this Host.
-    /// Call once per Space step, then let Space-owned systems process the returned delta
-    /// before calling AdvanceSpaceSimulationMilliseconds.
+    /// Sole production time ingress. Convert the already-scaled owning Space simulation delta
+    /// into the exact whole logical milliseconds forwarded to Jar. The fractional remainder
+    /// is owned only by this Host; Space-owned systems may process the returned delta before
+    /// calling AdvanceSpaceSimulationMilliseconds.
     /// </summary>
     public long AccumulateSpaceSimulationDelta(double deltaSeconds)
     {
@@ -244,8 +240,8 @@ public partial class WorldV2ShipHost : Node
     }
 
     /// <summary>
-    /// Submit Space-calculated Jar production rates before the next shared simulation advance.
-    /// The Runtime/Bridge validates the complete configured shape table and serializes the mutation.
+    /// Update a configured time-driven Jar Producer. This is not the finite energy-stone parser
+    /// ingress; completed parser output must use ImportProducedJars.
     /// </summary>
     public bool UpdateJarProducerRates(string producerName, GDictionary rates)
     {
@@ -271,6 +267,10 @@ public partial class WorldV2ShipHost : Node
         return result;
     }
 
+    /// <summary>
+    /// Read pending Jar order-cycle events at the Space world-step boundary.
+    /// Repeated reads return the same events until explicitly acknowledged.
+    /// </summary>
     public GArray GetPendingOrderCycleEvents()
     {
         if (_runtime == null || !_runtime.IsInitialized || _runtime.IsDisposed)
