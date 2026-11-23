@@ -29,6 +29,9 @@ const ELITE_SCORE := 60
 @export var pickup_chance:float=0.25
 ## 可掉的 Buff 定义；留空则不掉
 @export var pickup_effects:Array[BuffDefinition]=[]
+## Optional elite-only profile. Its authored stone volumes can differ from ordinary enemies;
+## null leaves the enemy scene's own optional profile unchanged.
+@export var elite_energy_stone_drop_profile: SpaceEnergyStoneDropProfile
 
 var _current_wave:int=0
 var _spawning:bool=false
@@ -92,6 +95,8 @@ func _spawn_one(shooter_chance:float, elite:bool)->void:
 		e.set("max_hp", ELITE_BASE_HP + ELITE_HP_PER_CYCLE * _cycle)
 		e.set("speed", ELITE_SPEED)
 		e.set("score_value", ELITE_SCORE)
+		if elite_energy_stone_drop_profile != null:
+			e.set("energy_stone_drop_profile", elite_energy_stone_drop_profile)
 		e.scale =Vector2(ELITE_SCALE, ELITE_SCALE)
 	e.position =_random_edge_position()
 	e.tree_exited.connect(_on_enemy_freed)
