@@ -6,6 +6,7 @@ var ship_catalog: SpaceShipCatalog
 var production_device_catalog: SpaceProductionDeviceCatalog
 var ore_parser_catalog: SpaceOreParserCatalog
 var workshop_combination_catalog: SpaceWorkshopCombinationCatalog
+var workshop_catalog: SpaceWorkshopCatalog
 var skill_catalog: SpaceSkillCatalog
 var balance_profile: SpaceSkillBalanceProfile
 var effect_catalog: SpaceEffectCatalog
@@ -37,8 +38,10 @@ func validate_and_prepare() -> PackedStringArray:
 	elif not production_device_catalog.rebuild_index(): errors.append("production device catalog index is invalid")
 	if ore_parser_catalog == null: errors.append("ore parser catalog is missing")
 	elif not ore_parser_catalog.rebuild_index(): errors.append("ore parser catalog index is invalid")
-	if workshop_combination_catalog == null: errors.append("workshop combination catalog is missing")
-	elif not workshop_combination_catalog.rebuild_index(): errors.append("workshop combination catalog index is invalid")
+	if workshop_combination_catalog == null: errors.append("World V2 rules profile catalog is missing")
+	elif not workshop_combination_catalog.rebuild_index(): errors.append("World V2 rules profile index is invalid")
+	if workshop_catalog == null: errors.append("global workshop component catalog is missing")
+	elif not workshop_catalog.is_valid(): errors.append("global workshop component catalog is invalid")
 	if skill_catalog == null: errors.append("skill catalog is missing")
 	elif skill_catalog.is_empty(): errors.append("skill catalog has no authored definitions")
 	if balance_profile == null or not balance_profile.is_valid(): errors.append("skill balance profile is missing or invalid")
