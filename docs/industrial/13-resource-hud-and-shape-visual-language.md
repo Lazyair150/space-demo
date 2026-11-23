@@ -11,6 +11,11 @@ The combat HUD keeps survival information (health, wave, score) in its existing 
 - separate Master and Slave workshop cards with shape-affinity borders, Jar occupancy/capacity, shape marks, individual Jar tiles, liquid staging meters and explicit staging-Ban warnings; the Master → Slave transfer direction is shown between the cards;
 - selected demand identity, required Jar shapes/liquid-bearing requirements, cooldown state, and active session step counts.
 
+Two skill-like order docks remain visible without opening the detail panel:
+- **Active orders / active skills** occupy the bottom-center skill-bar position. Each slot shows its authored primary-shape accent, required-shape glyphs, cooldown or live execution progress, and an explicit Start button. The button forwards only `StartActiveDemand(demandId)` through `WorldV2ShipHost`; Core remains the sole authority for feasibility, admission, and execution. A rejected start is shown as a reason, not reinterpreted by the HUD.
+- **Passive orders / passive skills** occupy a separate upper-right badge rail below the survival HUD. They show their own shape identity and cooldown state, but do not display an activation button: the Passive area remains scheduler-owned.
+- The detailed order section repeats the Active/Passive separation. Neither dock derives the primary shape from the first requirement; it uses only the Space-owned `primaryShape` presentation metadata.
+
 The compact state remains visible without opening a menu; the detail panel is on-demand so it does not permanently cover the combat play area. The panel is an observer, not a control surface for mutating the Jar world.
 
 ## Shared shape language
@@ -47,7 +52,7 @@ Each order demand displays its exact required shape as a colored glyph token; a 
 
 ## Data ownership and update policy
 
-`SpaceJarHudObserver` reads only `WorldV2ShipHost.GetWorldSnapshot()`. It does not call Jar mutation APIs, infer feasibility, calculate costs, or advance time. It polls at a low UI cadence and rebuilds only when the detached snapshot changes. The component uses `PROCESS_MODE_ALWAYS` so the information remains inspectable while the combat SceneTree is paused; the underlying Host lifecycle remains the authority for whether simulation can advance. Between distinct snapshots it compares exact Jar counts/fill counts, ship and workshop liquid totals, lifecycle state, demand cooldown transitions, and active-session step totals. It emits a short, coalesced toast and a brief tint pulse on the compact JAR control. The first snapshot after startup/reconnect establishes a baseline and never fabricates a gain event. Clock-only changes update the time label without rebuilding the inventory controls, avoiding repeated UI churn during steady simulation. Workshop liquid meters use a presentation-only 80% caution tint and a full-capacity label; this is not a Core threshold or an admission rule. These cues are observational only; they do not infer feasibility or trigger commands.
+`SpaceJarHudObserver` reads detached state through `WorldV2ShipHost.GetWorldSnapshot()`. Its only command is an explicit Active-demand trigger forwarded through `WorldV2ShipHost.StartActiveDemand()`; it does not infer feasibility, calculate costs, mutate resources directly, or advance time. Core decides whether a requested demand can start. It polls at a low UI cadence and rebuilds only when the detached snapshot changes. The component uses `PROCESS_MODE_ALWAYS` so the information remains inspectable while the combat SceneTree is paused; the underlying Host lifecycle remains the authority for whether simulation can advance. Between distinct snapshots it compares exact Jar counts/fill counts, ship and workshop liquid totals, lifecycle state, demand cooldown transitions, and active-session step totals. It emits a short, coalesced toast and a brief tint pulse on the compact JAR control. The first snapshot after startup/reconnect establishes a baseline and never fabricates a gain event. Clock-only changes update the time label without rebuilding the inventory controls, avoiding repeated UI churn during steady simulation. Workshop liquid meters use a presentation-only 80% caution tint and a full-capacity label; this is not a Core threshold or an admission rule. These cues are observational only; they do not infer feasibility or trigger commands.
 
 Unavailable, disposed, or not-yet-started worlds show an explicit unavailable state rather than fabricated zero inventory. The panel is hidden by default and toggled by the compact summary control.
 
@@ -58,7 +63,7 @@ Unavailable, disposed, or not-yet-started worlds show an explicit unavailable st
 - Shape name and glyph accompany every color.
 - Ban and warning text remain explicit; color is supplementary.
 - Detail view does not block the center combat path and can be collapsed immediately.
-- The panel remains read-only: resource transfers, workshop replacement, order control, and pause remain owned by their existing command/lifecycle boundaries.
+- Resource transfers, workshop replacement, and pause remain owned by their existing command/lifecycle boundaries. The Active slot is the one explicit order action and delegates admission to Core; Passive slots remain observational.
 
 ## Current implementation boundary
 
@@ -80,4 +85,4 @@ Not yet authored:
 - authoring primary shapes on production skill Resources and reviewing their visual hierarchy;
 - responsive art review against real combat captures and a manual Godot play pass.
 
-Godot compile/runtime verification has not been run for this increment. The new headless probe is authored but has not been executed.
+The Core's latest Space-ingress branch verification is tracked separately in `jar-system-dotnet` PR #59. Godot 4.7.1 .NET compilation and the updated WorldV2RuntimeProbe have not yet been executed in this environment.
