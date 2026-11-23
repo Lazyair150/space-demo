@@ -146,10 +146,11 @@ static func validate(source: Dictionary) -> PackedStringArray:
 	var jar_options: Variant = source.get("jarWorldOptions", null)
 	var devices: Variant = source.get("productionDeviceSelections", null)
 	var orders: Variant = source.get("selectedOrderBindings", null)
-	if not (assignment is Dictionary) or not (jar_options is Dictionary) or not (devices is Array) or not (orders is Array):
-		errors.append("Board Runtime Profile Set requires exact assignment, Jar options, device, and skill profile collections")
+	var workshop_selection: Variant = source.get("workshopCombinationSelection", null)
+	if not (assignment is Dictionary) or not (jar_options is Dictionary) or not (devices is Array) or not (orders is Array) or not (workshop_selection is Dictionary):
+		errors.append("Board Runtime Profile Set requires exact assignment, workshop, device, and skill profile collections")
 		return errors
-	var expected := build(assignment, jar_options, devices, orders)
+	var expected := build(assignment, jar_options, devices, orders, workshop_selection)
 	if expected.is_empty():
 		errors.append("Board Runtime Profile Set could not resolve every installed slot to its real consumer profile")
 		return errors
