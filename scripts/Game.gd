@@ -394,7 +394,15 @@ func _initialize_ore_parser() -> bool:
 		push_error("[Game] Frozen Jar world has no shape vocabulary for the ore parser")
 		return false
 	_ore_parser_runtime = SpaceOreParserRuntime.new()
-	var parser_instance_id := _battle_loadout.ship_world_id() + ":" + String(definition.parser_id)
+	# Production owned loadouts namespace parser state by the exact installed copy,
+	# not merely by its shared Definition. Definition-only IDs remain a development fallback.
+	var parser_instance_id := SpaceOreParserRuntime.build_runtime_instance_id(
+		_battle_loadout.ship_world_id(), parser_profile
+	)
+	if parser_instance_id.is_empty():
+		push_error("[Game] Frozen parser profile has invalid Owned Instance provenance")
+		_ore_parser_runtime = null
+		return false
 	var initialized := _ore_parser_runtime.initialize(definition, parser_instance_id, shape_names)
 	if not bool(initialized.get("success", false)):
 		push_error("[Game] Ore parser initialization failed: " + String(initialized.get("reason", "")))
