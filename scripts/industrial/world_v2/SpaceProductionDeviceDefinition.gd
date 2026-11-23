@@ -12,6 +12,9 @@ class_name SpaceProductionDeviceDefinition
 @export var rule_contributions: Array[SpaceRuleContributionDefinition] = []
 
 func is_valid() -> bool:
+	for contribution in rule_contributions:
+		if contribution == null or not contribution.get_validation_errors().is_empty():
+			return false
 	return device_id != &"" and definition_version > 0 and not device_kind.strip_edges().is_empty() and device_kind != "ore_parser" and not display_name.strip_edges().is_empty()
 
 func build_selection(slot_id: String) -> Dictionary:
