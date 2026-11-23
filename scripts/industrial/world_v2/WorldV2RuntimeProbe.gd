@@ -126,7 +126,7 @@ func _run_clock_control_probe() -> void:
     # Pause must freeze both world and logical time, even though Godot keeps ticking.
     runtime.PauseWorld()
     var paused_before: Dictionary = runtime.GetWorldSnapshot()
-    await get_tree().create_timer(0.3).timeout
+    await get_tree().create_timer(0.3, true).timeout
     var paused_after: Dictionary = runtime.GetWorldSnapshot()
     assert(
         int(paused_after.get("worldTimeMilli", -1)) == int(paused_before.get("worldTimeMilli", -2)),
@@ -143,7 +143,7 @@ func _run_clock_control_probe() -> void:
     runtime.SetWorldSpeedRatio(2.0)
     var fast_before: Dictionary = runtime.GetWorldSnapshot()
     assert(int(fast_before.get("speedRatioMilli", -1)) == 2000, "2x ratio must be visible in snapshot")
-    await get_tree().create_timer(0.5).timeout
+    await get_tree().create_timer(0.5, true).timeout
     var fast_after: Dictionary = runtime.GetWorldSnapshot()
     var fast_world_delta := int(fast_after.get("worldTimeMilli", 0)) - int(fast_before.get("worldTimeMilli", 0))
     var fast_logical_delta := int(fast_after.get("logicalTimeMilli", 0)) - int(fast_before.get("logicalTimeMilli", 0))
