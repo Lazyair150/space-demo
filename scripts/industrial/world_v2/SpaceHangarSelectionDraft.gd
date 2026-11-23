@@ -150,7 +150,7 @@ func set_expected_battle_duration(logical_milli: float) -> bool:
 	return true
 
 func build_selection() -> SpaceHangarSelection:
-	if not _inventory_ready:
+	if not _inventory_ready or (_board != null and not validate_assignments().is_empty()):
 		return null
 	var data := snapshot_data()
 	var selection := SpaceHangarSelection.from_data(data)
