@@ -28,7 +28,7 @@ func _ready() -> void:
 	var root := get_node_or_null("Root") as Control
 	if root != null:
 		root.add_child(jar_observer)
-	_build_reward_ui()
+	_build_combat_feedback_ui()
 	GameState.score_changed.connect(_on_score_changed)
 	GameState.wave_changed.connect(_on_wave_changed)
 	GameState.segment_changed.connect(_on_segment_changed)
@@ -37,8 +37,8 @@ func _ready() -> void:
 	_on_wave_changed(GameState.wave)
 	_on_hp_changed(3)
 
-## 运行时搭两块提示，避免改动已有的 Hud.tscn 布局。
-func _build_reward_ui() -> void:
+## Build the transient combat feedback toast and active-effect bar.
+func _build_combat_feedback_ui() -> void:
 	var root:=get_node_or_null("Root") as Control
 	if root == null:
 		return
