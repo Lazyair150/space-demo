@@ -214,9 +214,9 @@ func _render_view_model(view_model: Dictionary) -> void:
 	_fill_picker(_ship_picker, selectable_inventory.get("shipChoices", []), "没有可用飞船定义", "ship")
 	_fill_picker(_parser_picker, selectable_inventory.get("parserChoices", []), "没有可用解析器定义", "parser")
 	_fill_picker(_workshop_picker, selectable_inventory.get("workshopChoices", []), "没有可用工作台组合", "workshop")
-	_select_exact(_ship_picker, String(selection.get("shipId", "")), int(selection.get("shipVersion", 0)))
-	_select_exact(_parser_picker, String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)))
-	_select_exact(_workshop_picker, String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)))
+	_select_exact(_ship_picker, String(selection.get("shipId", "")), int(selection.get("shipVersion", 0)), String(selection.get("shipInstanceId", "")))
+	_select_exact(_parser_picker, String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)), String(selection.get("parserInstanceId", "")))
+	_select_exact(_workshop_picker, String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)), "", String(selection.get("masterWorkshopInstanceId", "")), String(selection.get("slaveWorkshopInstanceId", "")))
 	_set_icon_for_selection(_primary_icons.ship, _ship_picker, "ship")
 	_set_icon_for_selection(_primary_icons.parser, _parser_picker, "parser")
 	_set_icon_for_selection(_primary_icons.workshop, _workshop_picker, "workshop")
@@ -271,12 +271,18 @@ func _fill_picker(picker: OptionButton, raw_choices: Variant, empty_text: String
 		picker.add_icon_item(icon_texture, "%s  [v%d]" % [label, version])
 		picker.set_item_metadata(picker.item_count - 1, choice.duplicate())
 
-func _select_exact(picker: OptionButton, definition_id: String, version: int) -> void:
+func _select_exact(picker: OptionButton, definition_id: String, version: int, instance_id: String = "", master_instance_id: String = "", slave_instance_id: String = "") -> void:
 	if definition_id.is_empty() or version <= 0:
 		return
 	for index in range(1, picker.item_count):
 		var metadata: Dictionary = picker.get_item_metadata(index)
 		if String(metadata.get("id", "")) == definition_id and int(metadata.get("version", 0)) == version:
+			if not instance_id.is_empty() and String(metadata.get("instanceId", "")) != instance_id:
+				continue
+			if not master_instance_id.is_empty() and String(metadata.get("masterInstanceId", "")) != master_instance_id:
+				continue
+			if not slave_instance_id.is_empty() and String(metadata.get("slaveInstanceId", "")) != slave_instance_id:
+				continue
 			picker.select(index)
 			return
 
@@ -296,7 +302,7 @@ func _on_ship_selected(index: int) -> void:
 	var choice := _selected_choice(_ship_picker)
 	if not choice.is_empty():
 		_set_icon_texture(_primary_icons.ship, choice.get("iconTexture"), "ship")
-		_controller.set_ship(String(choice.get("id", "")), int(choice.get("version", 0)))
+		_controller.set_ship(String(choice.get("id", "")), int(choice.get("version", 0)), String(choice.get("instanceId", "")))
 
 func _on_parser_selected(index: int) -> void:
 	if _suppress_picker_events:
@@ -304,7 +310,7 @@ func _on_parser_selected(index: int) -> void:
 	var choice := _selected_choice(_parser_picker)
 	if not choice.is_empty():
 		_set_icon_texture(_primary_icons.parser, choice.get("iconTexture"), "parser")
-		_controller.set_parser(String(choice.get("id", "")), int(choice.get("version", 0)), parser_slot_id)
+		_controller.set_parser(String(choice.get("id", "")), int(choice.get("version", 0)), parser_slot_id, String(choice.get("instanceId", "")))
 
 func _on_workshop_selected(index: int) -> void:
 	if _suppress_picker_events:
@@ -312,7 +318,7 @@ func _on_workshop_selected(index: int) -> void:
 	var choice := _selected_choice(_workshop_picker)
 	if not choice.is_empty():
 		_set_icon_texture(_primary_icons.workshop, choice.get("iconTexture"), "workshop")
-		_controller.set_workshop(String(choice.get("id", "")), int(choice.get("version", 0)))
+		_controller.set_workshop(String(choice.get("id", "")), int(choice.get("version", 0)), String(choice.get("masterInstanceId", "")), String(choice.get("slaveInstanceId", "")))
 
 func _rebuild_device_section(device_choices: Variant, selected_devices: Variant) -> void:
 	for child in _device_section.get_children():
@@ -352,7 +358,7 @@ func _rebuild_device_section(device_choices: Variant, selected_devices: Variant)
 		if not existing.is_empty():
 			for item_index in range(1, picker.item_count):
 				var candidate: Dictionary = picker.get_item_metadata(item_index)
-				if String(candidate.get("id", "")) == String(existing.get("definitionId", "")) and int(candidate.get("version", 0)) == int(existing.get("definitionVersion", 0)):
+				if String(candidate.get("id", "")) == String(existing.get("definitionId", "")) and int(candidate.get("version", 0)) == int(existing.get("definitionVersion", 0)) and String(candidate.get("instanceId", "")) == String(existing.get("instanceId", "")):
 					picker.select(item_index)
 					_set_icon_texture(icon, candidate.get("iconTexture"), "device")
 					break
@@ -374,7 +380,7 @@ func _on_device_selected(index: int, slot_id: String, picker: OptionButton, icon
 		_set_icon_texture(icon, null, "device")
 		return
 	var choice: Dictionary = picker.get_item_metadata(index)
-	if _controller.set_device(slot_id, String(choice.get("id", "")), int(choice.get("version", 0))):
+	if _controller.set_device(slot_id, String(choice.get("id", "")), int(choice.get("version", 0)), String(choice.get("instanceId", ""))):
 		_set_icon_texture(icon, choice.get("iconTexture"), "device")
 
 func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) -> void:
@@ -438,9 +444,10 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 		var pending: Dictionary = _pending_skill_choices.get(order_key, {})
 		var wanted_id := String(pending.get("id", existing.get("skillId", "")))
 		var wanted_version := int(pending.get("version", existing.get("definitionVersion", 0)))
+		var wanted_instance_id := String(pending.get("instanceId", existing.get("instanceId", "")))
 		for item_index in range(1, skill_picker.item_count):
 			var candidate: Dictionary = skill_picker.get_item_metadata(item_index)
-			if String(candidate.get("id", "")) == wanted_id and int(candidate.get("version", 0)) == wanted_version:
+			if String(candidate.get("id", "")) == wanted_id and int(candidate.get("version", 0)) == wanted_version and (wanted_instance_id.is_empty() or String(candidate.get("instanceId", "")) == wanted_instance_id):
 				skill_picker.select(item_index)
 				_set_icon_texture(icon, candidate.get("iconTexture"), "skill")
 				_set_primary_shape_label(primary_shape_label, candidate)
@@ -505,7 +512,7 @@ func _apply_skill_binding(order_key: String, skill_picker: OptionButton, area_pi
 	var pending: Dictionary = _pending_skill_choices.get(order_key, skill.duplicate(true))
 	pending["controlArea"] = selected_area
 	_pending_skill_choices[order_key] = pending
-	if _controller.set_skill(order_key, String(skill.get("id", "")), int(skill.get("version", 0)), selected_area):
+	if _controller.set_skill(order_key, String(skill.get("id", "")), int(skill.get("version", 0)), selected_area, String(skill.get("instanceId", ""))):
 		_pending_skill_choices.erase(order_key)
 
 func _rebuild_effect_section(effect_choices: Variant) -> void:
