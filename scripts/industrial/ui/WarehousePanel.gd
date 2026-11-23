@@ -9,7 +9,7 @@ const ShapeVisuals := preload("res://scripts/industrial/ui/ShapeVisuals.gd")
 
 var _built := false
 var _count: Label
-var _shapes: Label
+var _shapes: HBoxContainer
 var _liquids: Label
 var _discarded: Label
 
@@ -23,7 +23,7 @@ func _ready() -> void:
 	box.add_child(UiKit.title("中央仓库"))
 	_count = UiKit.label("", UiKit.FONT_BODY, UiKit.TEXT)
 	box.add_child(_count)
-	_shapes = UiKit.wrap_label("", UiKit.FONT_SMALL, UiKit.MUTED)
+	_shapes = UiKit.hbox(8)
 	box.add_child(_shapes)
 	_liquids = UiKit.wrap_label("", UiKit.FONT_SMALL, UiKit.TEXT)
 	box.add_child(_liquids)
@@ -40,17 +40,16 @@ func bind(warehouse: Dictionary) -> void:
 
 	var jar_list: Array = warehouse.get("jarList", [])
 	if jar_list.is_empty():
-		_shapes.text = ""
+		UiKit.clear_children(_shapes)
 	else:
 		var by_shape := {}
 		for jar in jar_list:
 			var shape := str(jar.get("shape", ""))
 			by_shape[shape] = int(by_shape.get(shape, 0)) + 1
-		var parts: Array[String] = []
+		UiKit.clear_children(_shapes)
 		for shape in by_shape.keys():
-			parts.append("%s %s×%d" % [ShapeVisuals.glyph_for(str(shape)), str(shape), int(by_shape[shape])])
-		_shapes.text = "构成：%s" % "、".join(parts)
-		_shapes.add_theme_color_override("font_color", ShapeVisuals.color_for(str(by_shape.keys()[0])))
+			var token := UiKit.label("%s %s×%d" % [ShapeVisuals.glyph_for(str(shape)), str(shape), int(by_shape[shape])], UiKit.FONT_SMALL, ShapeVisuals.color_for(str(shape)))
+			_shapes.add_child(token)
 
 	var liquids: Dictionary = warehouse.get("liquids", {})
 	var liquid_parts: Array[String] = []
