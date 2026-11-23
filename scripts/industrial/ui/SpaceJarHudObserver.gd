@@ -50,10 +50,7 @@ func _build() -> void:
 	strip_style.border_color = Color("35475b")
 	strip_style.set_border_width_all(1)
 	strip_style.set_corner_radius_all(5)
-	strip_style.set_content_margin(SIDE_LEFT, 8)
-	strip_style.set_content_margin(SIDE_RIGHT, 6)
-	strip_style.set_content_margin(SIDE_TOP, 3)
-	strip_style.set_content_margin(SIDE_BOTTOM, 3)
+	strip_style.set_content_margin_all(8)
 	_strip_panel.add_theme_stylebox_override("panel", strip_style)
 	_strip_panel.tooltip_text = "持续可见的战斗资源状态栏。数量来自 Host 快照；点击右侧详情查看 Jar 与工作台明细。"
 	add_child(_strip_panel)
