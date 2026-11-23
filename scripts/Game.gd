@@ -596,6 +596,12 @@ func _shutdown_battle(faulted: bool, reason: String) -> void:
 		GameFlow.end_battle()
 	process_mode = Node.PROCESS_MODE_DISABLED
 
+## Presentation-only metadata frozen with the battle loadout; it never enters Jar's order contract.
+func get_order_presentation_metadata() -> Dictionary:
+	if _battle_loadout == null:
+		return {}
+	return _battle_loadout.order_presentation_metadata()
+
 ## Save integration captures processed EventIds and Jar world identity with the frozen loadout identity.
 func capture_order_dispatcher_state() -> Dictionary:
 	if _order_effect_dispatcher == null:
