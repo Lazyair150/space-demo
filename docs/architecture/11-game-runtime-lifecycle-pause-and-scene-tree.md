@@ -123,7 +123,7 @@ When the Industrial UI is open, the application flow must decide whether the com
 
 - Freeze the battle loadout before instantiating/attaching the combat scene.
 - Restore Jar, Space clock remainder, parser/pickup RNG, effect instances, dispatcher receipts, and transient run state before the first simulation step.
-- A resumed battle should enter a paused/ready-to-resume presentation state in the eventual flow controller; it must not silently advance while a restore screen is visible.
+- A resumed battle passes through `RESUMING → RESUME_READY → RUNNING`. The restored Host is paused and the SceneTree gate is closed before the ready overlay is shown. Only the explicit Resume action changes `RESUME_READY` to `RUNNING`; restoration itself never authorizes a simulation step.
 - Capture the coordinated runtime checkpoint only at a completed Space/Jar step boundary.
 - A pause state is a runtime gate and pause reason, not part of the authoritative Jar/Space resource checkpoint. Save the fact that a run is resumable; require an explicit resume action after restoration.
 - On terminal exit, dispose the Host-owned Jar session and clear the SceneTree pause gate. Do not leave a stale Host active behind another screen.
@@ -144,10 +144,10 @@ Implemented in this phase:
 Still requiring a later systematic migration/audit:
 
 - Every actor, projectile, pickup, effect, and animation scene must be checked for explicit process modes, timers, and callbacks that intentionally bypass pause.
-- `GameFlow` now records and validates the application screen and battle phase transitions for Menu, Industrial, Battle, and GameOver. Scene loading itself is still called by the current screen owners; consolidating all scene changes into a single navigation service remains a later migration.
-- The resumed-battle launch path should show a paused restore-ready state before authorizing simulation.
+- `GameFlow` is now the sole application scene-navigation owner. Screen owners request a target screen and path; it validates the lifecycle transition, calls `change_scene_to_file`, and restores the prior registry snapshot if Godot rejects the request immediately. The bootstrap route, Menu, Industrial exit, GameOver retry/menu, and combat death route use this API. Hangar's embedded combat launcher enters the same battle lifecycle before attaching its preconfigured scene.
+- Resumed battles now enter `RESUME_READY`: the Host and SceneTree are paused before the ready overlay is exposed, and only the explicit Resume action authorizes `RUNNING`.
 - Industrial UI focus, application-level pause, and save/exit behavior need a unified policy without collapsing the separate IndustrialRuntime clock.
-- `SpaceBattlePauseControllerProbe` now checks the synchronous SceneTree pause/overlay/resume contract, but has not been executed. Add automated Godot probes for focus-loss behavior, gameplay timer freezing, Host lifecycle state, and no post-exit pause leakage.
+- `SpaceBattlePauseControllerProbe` now checks the synchronous SceneTree pause/overlay/resume contract and the `RESUMING → RESUME_READY → RUNNING` state contract, but has not been executed. Add automated Godot probes for focus-loss behavior, gameplay timer freezing, Host lifecycle state, scene-load rejection, and no post-exit pause leakage.
 
 ## 9. Non-goals
 
@@ -169,3 +169,12 @@ Still requiring a later systematic migration/audit:
 - Monotonic transition sequence for diagnostics.
 
 MainMenu, Game, IndustrialMain, GameOver, and the combat pause controller now publish their lifecycle transitions through GameFlow. GameFlow rejects leaving an active battle before it has been ended. It is currently a state registry/transition validator, not yet the owner of `change_scene_to_file`; screen owners still perform scene loading. The pause controller and GameFlow must transition together, and the SceneTree/Host remain the actual execution gates.
+
+
+## 11. Centralized scene navigation and restore gate
+
+`GameFlow.request_scene_transition(screen, path)` is the only production entry to `SceneTree.change_scene_to_file`. It validates the requested screen against the battle lifecycle, publishes the intended state, requests the Godot transition, and rolls the registry back if Godot returns an immediate error. A later asynchronous scene initialization failure is a different failure boundary: the entering scene must latch `FAULTED` and keep its simulation disabled rather than pretending that the previous scene was restored.
+
+The Hangar's combat scene is attached as a configured child rather than replacing the root scene. Its launcher therefore uses the same `begin_battle_preparation()` lifecycle gate before attachment; it does not call `change_scene_to_file`. The distinction is explicit: GameFlow owns application screen replacement, while the Hangar launcher owns one prevalidated embedded combat attachment.
+
+For checkpoint restoration, `Game._ready()` performs all synchronous restoration and starts the Host, then immediately transitions to `RESUME_READY` and asks the always-process pause controller to pause the Host and SceneTree before the first frame can advance. The overlay remains visible until the player explicitly confirms Resume. The ready state is observable in the versioned GameFlow snapshot and is not conflated with an ordinary player pause.
