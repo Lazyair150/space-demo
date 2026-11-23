@@ -239,7 +239,9 @@ public partial class WorldV2ShipHost : Node
             !_runtime.IsInitialized || _runtime.IsDisposed)
             return new GDictionary { ["success"] = false, ["error"] = "Ship world is not active" };
 
-        return _runtime.ImportProducedJars(operationId, jarCounts);
+        var result = _runtime.ImportProducedJars(operationId, jarCounts);
+        result["success"] = true;
+        return result;
     }
 
     public GArray GetPendingOrderCycleEvents()
