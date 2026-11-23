@@ -11,6 +11,39 @@ class_name SpaceHangarPreparation
 @export var balance_profile: SpaceSkillBalanceProfile
 @export var effect_catalog: SpaceEffectCatalog
 
+func create_catalog_bundle() -> SpaceHangarCatalogBundle:
+	return SpaceHangarCatalogBundle.create(
+		ship_catalog, production_device_catalog, ore_parser_catalog,
+		workshop_combination_catalog, skill_catalog, balance_profile, effect_catalog
+	)
+
+func build_loadout_from_selection(
+	identity: Dictionary,
+	selection: SpaceHangarSelection
+) -> SpaceBattleLoadoutSnapshot:
+	if selection == null:
+		return _failure_snapshot("Hangar selection is missing")
+	var selection_errors := selection.validate()
+	if not selection_errors.is_empty():
+		return _failure_snapshot("Hangar selection rejected: " + "; ".join(selection_errors))
+	var bundle := create_catalog_bundle()
+	var dependency_errors := bundle.validate_and_prepare()
+	if not dependency_errors.is_empty():
+		return _failure_snapshot("Hangar catalog bundle rejected: " + "; ".join(dependency_errors))
+	return SpaceHangarLoadoutAssembler.assemble(
+		identity, bundle.ship_catalog, selection.ship_id, selection.ship_version,
+		bundle.production_device_catalog, selection.device_selections,
+		bundle.ore_parser_catalog, selection.parser_id, selection.parser_version,
+		selection.parser_slot_id, bundle.workshop_combination_catalog,
+		selection.workshop_id, selection.workshop_version, bundle.skill_catalog,
+		selection.skill_selections, bundle.balance_profile,
+		selection.expected_battle_duration_logical_milli, bundle.effect_catalog
+	)
+
+func _failure_snapshot(reason: String) -> SpaceBattleLoadoutSnapshot:
+	push_error("Space Hangar preparation failed: " + reason)
+	return null
+
 func build_loadout(
 	identity: Dictionary,
 	ship_id: String,
