@@ -106,6 +106,8 @@ static func from_data(source: Dictionary) -> SpacePlayerProgressionState:
 		instance.level = int(raw_instance.get("level", 0))
 		instance.experience = int(raw_instance.get("experience", -1))
 		instance.progression_revision = int(raw_instance.get("progressionRevision", 0))
+		instance.growth_curve_id = StringName(raw_instance.get("growthCurveId", ""))
+		instance.growth_curve_version = int(raw_instance.get("growthCurveVersion", 0))
 		var growth: Variant = raw_instance.get("growthAttributes", null)
 		if not (growth is Dictionary):
 			return null
