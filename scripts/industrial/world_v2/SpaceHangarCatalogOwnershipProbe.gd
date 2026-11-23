@@ -375,11 +375,13 @@ static func run() -> bool:
 		return false
 	if absf(float(level_two_growth.progressPerJarMultiplier) - 2.0) > 0.000001:
 		return false # Linear interpolation between authored keyframes.
-	if not SpaceProgressionGrowthService.apply_to_player_state(progression, "probe.parser.instance.b", parser_curve, 260):
+	if not SpaceProgressionGrowthService.apply_with_catalog(progression, "probe.parser.instance.b", curve_catalog, "ore_parser", "probe.parser-growth", 2, 260):
 		return false
 	var curve_upgraded := progression.resolve_instance("probe.parser.instance.b")
 	if curve_upgraded == null or curve_upgraded.level != 2 or curve_upgraded.experience != 260:
 		return false
+	if SpaceProgressionGrowthService.apply_with_catalog(progression, "probe.parser.instance.b", curve_catalog, "ore_parser", "probe.parser-growth", 2, 260):
+		return false # Reapplying an unchanged XP total must not increment progression revision.
 	if absf(float(curve_upgraded.growth_attributes.shapeProcessingRateMultiplier) - 1.25) > 0.000001:
 		return false
 	if curve_upgraded.growth_curve_id != parser_curve.curve_id or curve_upgraded.growth_curve_version != parser_curve.definition_version:
