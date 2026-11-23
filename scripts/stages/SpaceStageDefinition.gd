@@ -18,6 +18,7 @@ const SEGMENTS := ["warmup", "pressure", "elite", "rest", "boss"]
 ## Required: segment, chaser_count, shooter_count, elite_count, break_seconds.
 @export var wave_plans: Array[Dictionary] = []
 ## Explicit progression reward payload; actual reward settlement is owned by campaign progression.
+@export var objective_parameters: Dictionary = {}
 @export var completion_rewards: Dictionary = {}
 ## Optional stage-specific tuning. These are authored values, never inferred by a global multiplier.
 @export var difficulty_profile: Dictionary = {}
@@ -30,6 +31,19 @@ func get_validation_errors() -> PackedStringArray:
 		errors.append("stage requires a display name and supported objective")
 	if recommended_loadout_level <= 0 or estimated_minutes <= 0:
 		errors.append("stage recommendation and estimated duration must be positive")
+	match objective:
+		"survive_duration":
+			if typeof(objective_parameters.get("duration_seconds", null)) not in [TYPE_INT, TYPE_FLOAT] or float(objective_parameters.get("duration_seconds", 0.0)) <= 0.0:
+				errors.append("survive_duration objective requires positive duration_seconds")
+		"collect_resource":
+			if String(objective_parameters.get("resource_type", "")).is_empty() or typeof(objective_parameters.get("target_amount", null)) not in [TYPE_INT, TYPE_FLOAT] or float(objective_parameters.get("target_amount", 0.0)) <= 0.0:
+				errors.append("collect_resource objective requires resource_type and positive target_amount")
+		"protect_target":
+			if String(objective_parameters.get("target_definition_id", "")).is_empty():
+				errors.append("protect_target objective requires target_definition_id")
+		"boss":
+			if String(objective_parameters.get("boss_definition_id", "")).is_empty():
+				errors.append("boss objective requires boss_definition_id")
 	if wave_plans.is_empty():
 		errors.append("finite stage requires at least one authored encounter beat")
 	for index in range(wave_plans.size()):
@@ -43,7 +57,7 @@ func get_validation_errors() -> PackedStringArray:
 				errors.append("wave plan %d requires non-negative integer %s" % [index + 1, key])
 			else:
 				total += int(value)
-		if total <= 0 and objective != "survive_duration":
+		if total <= 0 and String(beat.get("segment", "")) != "rest" and objective != "survive_duration":
 			errors.append("wave plan %d must spawn enemies for this objective" % (index + 1))
 		var break_value: Variant = beat.get("break_seconds", null)
 		if (typeof(break_value) not in [TYPE_INT, TYPE_FLOAT]) or not is_finite(float(break_value)) or float(break_value) < 0.0:
@@ -52,6 +66,8 @@ func get_validation_errors() -> PackedStringArray:
 			var duration: Variant = beat.duration_seconds
 			if (typeof(duration) not in [TYPE_INT, TYPE_FLOAT]) or not is_finite(float(duration)) or float(duration) <= 0.0:
 				errors.append("wave plan %d duration_seconds must be positive" % (index + 1))
+		if String(beat.get("segment", "")) == "boss" and String(beat.get("boss_id", "")).is_empty():
+			errors.append("boss beat %d requires boss_id" % (index + 1))
 	for key in completion_rewards:
 		if str(key).strip_edges().is_empty():
 			errors.append("completion reward keys cannot be empty")
