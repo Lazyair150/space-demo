@@ -153,6 +153,73 @@ func _initialize_ore_parser() -> bool:
 		if not bool(restored.get("success", false)):
 			push_error("[Game] Ore parser state restore failed: " + String(restored.get("reason", "")))
 			return false
+		if not _restore_pending_energy_stone_pickups(_persisted_ore_parser_state, shape_names, parser_state):
+			return false
+	elif not _persisted_jar_execution_checkpoint_json.is_empty():
+		push_error("[Game] Jar checkpoint cannot be restored without its matching Space ore parser state")
+		return false
+	return true
+
+func _restore_pending_energy_stone_pickups(
+	parser_envelope: Dictionary,
+	shape_names: Array,
+	parser_state: Dictionary
+) -> bool:
+	var raw_pickups: Variant = parser_envelope.get("pendingPickups", [])
+	if not (raw_pickups is Array):
+		push_error("[Game] Saved pending energy-stone pickup list is malformed")
+		return false
+	var seen_pickups: Variant = parser_state.get("seenPickups", {})
+	if not (seen_pickups is Dictionary):
+		push_error("[Game] Saved parser pickup identity ledger is malformed")
+		return false
+
+	var staged_nodes: Array[SpaceEnergyStonePickup] = []
+	var staged_ids := {}
+	for raw_record in raw_pickups:
+		if not (raw_record is Dictionary):
+			push_error("[Game] Saved energy-stone pickup record is malformed")
+			for staged in staged_nodes:
+				staged.free()
+			return false
+		var pickup_id := String(raw_record.get("pickupId", ""))
+		var stone_type := String(raw_record.get("stoneType", ""))
+		var raw_volume: Variant = raw_record.get("volume", null)
+		var raw_x: Variant = raw_record.get("positionX", null)
+		var raw_y: Variant = raw_record.get("positionY", null)
+		if pickup_id.strip_edges().is_empty() or pickup_id.length() > 128 or staged_ids.has(pickup_id):
+			push_error("[Game] Saved energy-stone pickup identity is empty or duplicated")
+			for staged in staged_nodes:
+				staged.free()
+			return false
+		if seen_pickups.has(pickup_id):
+			# The parser already accepted this pickup before the save boundary; never
+			# resurrect a world object whose resource has entered parser inventory.
+			continue
+		if not shape_names.has(stone_type) or (typeof(raw_volume) != TYPE_INT and typeof(raw_volume) != TYPE_FLOAT) or not is_finite(float(raw_volume)) or float(raw_volume) <= 0.0 or float(raw_volume) > 1000000000.0:
+			push_error("[Game] Saved energy-stone pickup type/volume is invalid")
+			for staged in staged_nodes:
+				staged.free()
+			return false
+		if (typeof(raw_x) != TYPE_INT and typeof(raw_x) != TYPE_FLOAT) or (typeof(raw_y) != TYPE_INT and typeof(raw_y) != TYPE_FLOAT) or not is_finite(float(raw_x)) or not is_finite(float(raw_y)):
+			push_error("[Game] Saved energy-stone pickup position is invalid")
+			for staged in staged_nodes:
+				staged.free()
+			return false
+		var pickup := ENERGY_STONE_PICKUP_SCENE.instantiate() as SpaceEnergyStonePickup
+		if pickup == null or not pickup.configure(pickup_id, stone_type, float(raw_volume)):
+			if pickup != null:
+				pickup.free()
+			push_error("[Game] Saved energy-stone pickup could not be reconstructed")
+			for staged in staged_nodes:
+				staged.free()
+			return false
+		pickup.global_position = Vector2(float(raw_x), float(raw_y))
+		staged_nodes.append(pickup)
+		staged_ids[pickup_id] = true
+
+	for pickup in staged_nodes:
+		add_child(pickup)
 	return true
 
 ## Space pickup systems call this after the ship has acquired an energy stone.
@@ -224,9 +291,40 @@ func spawn_energy_stone_drop(
 func capture_ore_parser_state() -> Dictionary:
 	if _ore_parser_runtime == null:
 		return {}
+	var pending_pickups: Array[Dictionary] = []
+	for node in get_tree().get_nodes_in_group("space_energy_stone_pickups"):
+		if not (node is SpaceEnergyStonePickup) or node.is_queued_for_deletion():
+			continue
+		pending_pickups.append({
+			"pickupId": node.pickup_id,
+			"stoneType": node.stone_type,
+			"volume": node.volume,
+			"positionX": node.global_position.x,
+			"positionY": node.global_position.y
+		})
+	pending_pickups.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return String(a.pickupId) < String(b.pickupId)
+	)
 	return {
+		"schemaVersion": 1,
 		"parserRuntime": _ore_parser_runtime.capture_state(),
-		"nextPickupSequence": _next_energy_stone_pickup_sequence
+		"nextPickupSequence": _next_energy_stone_pickup_sequence,
+		"pendingPickups": pending_pickups
+	}
+
+## Capture Jar Core state, the Host-owned fractional clock, and Space parser state at one
+## completed step boundary. The caller must persist this object as one save transaction.
+func capture_jar_space_runtime_checkpoint() -> Dictionary:
+	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if jar_host == null or not jar_host.IsShipWorldActive:
+		return {}
+	return {
+		"schemaVersion": 1,
+		"shipWorldId": _battle_loadout.ship_world_id() if _battle_loadout != null else "",
+		"jarExecutionCheckpointJson": jar_host.CaptureExecutionCheckpointJson(),
+		"spaceClockRemainderMilli": jar_host.CaptureSpaceClockRemainderMilli(),
+		"oreParserState": capture_ore_parser_state(),
+		"orderDispatcherState": capture_order_dispatcher_state()
 	}
 
 func _fail_ore_parser(jar_host: WorldV2ShipHost, reason: String) -> void:
