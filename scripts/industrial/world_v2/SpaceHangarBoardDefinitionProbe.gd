@@ -147,6 +147,19 @@ static func run() -> bool:
 		return false
 	if frozen.to_dictionary().get("ownedInstanceSnapshots", []).size() != 6 or not frozen_data.has("boardAssignmentSnapshot"):
 		return false
+	var runtime_profile_set: Dictionary = frozen_data.get("boardRuntimeProfileSet", {})
+	if runtime_profile_set.get("entries", []).size() != 5:
+		return false
+	var routed_consumers := {}
+	for route in runtime_profile_set.get("entries", []):
+		var consumer := String(route.get("consumer", ""))
+		routed_consumers[consumer] = int(routed_consumers.get(consumer, 0)) + 1
+	if int(routed_consumers.get("jar_core.workshop", 0)) != 2 or int(routed_consumers.get("space.parser", 0)) != 1 or int(routed_consumers.get("space.skill", 0)) != 2:
+		return false
+	var tampered_profile_set := frozen_data.duplicate(true)
+	tampered_profile_set.boardRuntimeProfileSet.entries[0].profileFingerprint = "invalid"
+	if SpaceBattleLoadoutSnapshot.create(tampered_profile_set) != null:
+		return false
 	if not _probe_assignments() or not _probe_rule_contributions():
 		return false
 
