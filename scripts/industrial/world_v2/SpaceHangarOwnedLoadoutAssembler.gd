@@ -102,7 +102,14 @@ static func assemble(
 	var workshops: Array = jar_options.get("workshops", [])
 	for index in range(workshops.size()):
 		var authored: Dictionary = workshops[index]
-		var workshop_instance := master_instance if String(authored.get("name", "")) == String(combination.workshop_definitions.filter(func(w): return w != null and String(w.workshop_id) == String(combination.workshop_pair.master_workshop_id))[0].display_name) else slave_instance
+		var authored_definition_id := ""
+		for candidate in combination.workshop_definitions:
+			if candidate != null and String(candidate.display_name) == String(authored.get("name", "")):
+				authored_definition_id = String(candidate.workshop_id)
+				break
+		var workshop_instance := master_instance if authored_definition_id == String(combination.workshop_pair.master_workshop_id) else slave_instance if authored_definition_id == String(combination.workshop_pair.slave_workshop_id) else null
+		if workshop_instance == null:
+			return _reject("materialized workshop roster does not match the selected pair definition")
 		var workshop_definition := _find_workshop(combination, String(workshop_instance.definition_id), workshop_instance.definition_version)
 		var composed_workshop := SpaceProgressionRuntimeProfileComposer.compose_workshop(workshop_definition, workshop_instance, shapes)
 		if composed_workshop.is_empty():
