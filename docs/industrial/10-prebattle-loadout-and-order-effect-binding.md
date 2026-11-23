@@ -326,3 +326,15 @@ The build-context evaluator also requires the ship's expected stone-progress pro
 ### Deterministic drop checkpoint envelope
 
 Space parser checkpoint envelope schema v2 includes the Spawner's energy-stone drop RNG state in addition to parser runtime state, next pickup identity sequence, and all uncollected pickup records. Restoring the same battle checkpoint restores the RNG stream before the next enemy drop, preventing a resumed battle from rerolling a different drop sequence. `capture_jar_space_runtime_checkpoint` groups the Jar execution checkpoint, Host fractional clock remainder, parser/drop envelope, and order dispatcher state into one object; the outer save coordinator must persist this object atomically with the frozen loadout and Space effect state.
+
+### Coordinated Jar/Space checkpoint and exactly-once effect commit
+
+WorldV2RuntimeNode now captures/restores the Jar execution checkpoint JSON through the Bridge using the exact WorldV2Options used to initialize the world. WorldV2ShipHost enforces step-boundary capture and pre-mutation restore. Its fractional-millisecond remainder is captured separately because it belongs to the Space clock, not Jar Core.
+
+Game captures a loadout-bound runtime payload containing Jar checkpoint JSON, Host clock remainder, parser state, stable pickup sequence, and all uncollected energy-stone pickup records. Restore validates the frozen loadout identity, restores Jar before parser, skips re-materializing orders already present in the Jar checkpoint, and reconstructs only pickups not already accepted by the parser.
+
+SpaceBattleEffectStateStore schema v2 writes effect state, the next dispatcher state, and this Jar/Space runtime payload into one pending/previous file-replacement transaction. SpaceOrderEffectCommitter requires a runtime-checkpoint provider: it applies the effect, captures Jar/Space state, commits the combined snapshot, and only then returns success so the dispatcher may acknowledge Jar's outbox event. A failed save leaves the event pending. Schema v1 remains readable for legacy effect/dispatcher-only saves but cannot resume the new cross-domain runtime.
+
+The integration probe now simulates a process restart after Jar accepted an import but before Space acknowledged it. It restores Jar's resource-ledger operation IDs, Space's pending parser batch, and the Host's fractional clock remainder, retries the same operation ID, and verifies one physical Jar only. The store probe verifies the combined schema-v2 persistence contract.
+
+Remaining save integration is the outer Hangar/menu orchestration: load the stored frozen loadout and effect state, configure the committer with Game.capture_jar_space_runtime_checkpoint as its provider, pass the stored snapshot to Game.configure_battle_loadout_from_checkpoint, restore player effect state, and only then add the combat scene to the SceneTree. No complete combat save (player HP/position, wave scheduler, enemy state) is claimed by this resource-runtime checkpoint.
