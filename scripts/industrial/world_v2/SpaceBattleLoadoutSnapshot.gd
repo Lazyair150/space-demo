@@ -234,6 +234,57 @@ static func _validate_board_assignment_snapshot(source: Dictionary) -> PackedStr
 			errors.append("frozen Board Assignment has no parser selection")
 	return errors
 
+
+static func _validate_board_rule_profile(source: Dictionary) -> PackedStringArray:
+	var errors := PackedStringArray()
+	var profile: Variant = source.get("boardRuleProfile", null)
+	var assignment: Dictionary = source.get("boardAssignmentSnapshot", {})
+	if not (profile is Dictionary) or assignment.is_empty():
+		errors.append("boardRuleProfile requires a matching Board Assignment snapshot")
+		return errors
+	if int(profile.get("schemaVersion", 0)) != 1 or _required_text(profile, "fingerprint").is_empty():
+		errors.append("boardRuleProfile requires schema version and fingerprint")
+	if _required_text(profile, "boardId") != _required_text(assignment, "boardId") or int(profile.get("boardDefinitionVersion", 0)) != int(assignment.get("definitionVersion", 0)):
+		errors.append("boardRuleProfile Board identity differs from Board Assignment")
+	if _required_text(profile, "assignmentFingerprint") != _required_text(assignment, "assignmentFingerprint"):
+		errors.append("boardRuleProfile was not resolved from the frozen Board Assignment revision")
+	var payload: Dictionary = profile.duplicate(true)
+	var supplied := String(payload.get("fingerprint", ""))
+	payload.erase("fingerprint")
+	var hashing := HashingContext.new()
+	hashing.start(HashingContext.HASH_SHA256)
+	hashing.update(JSON.stringify(_canonicalize(payload)).to_utf8_buffer())
+	if supplied.is_empty() or hashing.finish().hex_encode() != supplied:
+		errors.append("boardRuleProfile fingerprint does not match its canonical contributions")
+	var assignments_by_slot := {}
+	for entry in assignment.get("assignments", []):
+		if entry is Dictionary:
+			assignments_by_slot[String(entry.get("slotId", ""))] = entry
+	var contributions: Variant = profile.get("contributions", null)
+	if not (contributions is Array):
+		errors.append("boardRuleProfile contributions must be an array")
+		return errors
+	for contribution in contributions:
+		if not (contribution is Dictionary):
+			errors.append("boardRuleProfile contains an invalid contribution")
+			continue
+		var contribution_source: Variant = contribution.get("source", null)
+		if not (contribution_source is Dictionary):
+			errors.append("rule contribution source provenance is required")
+			continue
+		var slot_id := _required_text(contribution_source, "slotId")
+		if not assignments_by_slot.has(slot_id):
+			errors.append("rule contribution source references a slot with no installed component")
+			continue
+		var installed: Dictionary = assignments_by_slot[slot_id]
+		if _required_text(contribution_source, "sourceInstanceId") != _required_text(installed, "ownedInstanceId"):
+			errors.append("rule contribution source instance differs from installed Owned Instance")
+		if _required_text(contribution_source, "definitionId") != _required_text(installed, "definitionId") or int(contribution_source.get("definitionVersion", 0)) != int(installed.get("definitionVersion", 0)):
+			errors.append("rule contribution source Definition identity/version differs from Board Assignment")
+		if _required_text(contribution, "ruleId").is_empty() or int(contribution.get("ruleVersion", 0)) <= 0 or _required_text(contribution, "target").is_empty() or _required_text(contribution, "scope").is_empty():
+			errors.append("rule contribution is missing exact rule identity, target or scope")
+	return errors
+
 static func validate_data(source: Dictionary) -> PackedStringArray:
 	var errors := PackedStringArray()
 	if int(source.get("schemaVersion", 0)) != CURRENT_SCHEMA_VERSION:
@@ -303,6 +354,10 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 
 	if source.has("boardAssignmentSnapshot"):
 		errors.append_array(_validate_board_assignment_snapshot(source))
+	if source.has("boardRuleProfile"):
+		errors.append_array(_validate_board_rule_profile(source))
+	elif source.has("boardAssignmentSnapshot"):
+		errors.append("boardAssignmentSnapshot requires its resolved boardRuleProfile")
 	if source.has("assemblyBoard") and source.has("boardAssignmentSnapshot"):
 		var assembly_board: Dictionary = source.get("assemblyBoard", {})
 		var assignment_board: Dictionary = source.get("boardAssignmentSnapshot", {}).get("boardDefinition", {})
