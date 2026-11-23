@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://x8pdj8wbeybg" path="res://scenes/actors/Player.tscn" id="3_vrspl"]
 [ext_resource type="PackedScene" uid="uid://d33svcgjaffdv" path="res://scenes/actors/EnemyShooter.tscn" id="5_365ku"]
 [ext_resource type="PackedScene" uid="uid://b012awswm6uk7" path="res://scenes/actors/EnemyChaser.tscn" id="6_gg4pt"]
+[ext_resource type="PackedScene" path="res://scenes/actors/SpaceStageBoss.tscn" id="16_stage_boss"]
 [ext_resource type="PackedScene" uid="uid://bmar716cbuob6" path="res://scenes/ui/HUD.tscn" id="7_gg4pt"]
 [ext_resource type="Script" uid="uid://dnxrwdiunwvuh" path="res://scripts/Spawner.gd" id="8_wnrko"]
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceBattlePauseController.gd" id="15_pause"]
@@ -72,6 +73,7 @@ offset = Vector2(640, 360)
 script = ExtResource("8_wnrko")
 shooter_scene = ExtResource("5_365ku")
 chaser_scene = ExtResource("6_gg4pt")
+boss_scene = ExtResource("16_stage_boss")
 pickup_scene = ExtResource("9_pickup")
 pickup_chance = 0.3
 pickup_effects = [ExtResource("10_haste"), ExtResource("11_boost"), ExtResource("12_poison"), ExtResource("13_aim"), ExtResource("14_lifesteal")]
