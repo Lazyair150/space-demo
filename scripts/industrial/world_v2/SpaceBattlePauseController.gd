@@ -27,6 +27,23 @@ func _notification(what: int) -> void:
 func is_paused() -> bool:
 	return _paused
 
+## Used only after a saved battle has been fully restored. The Host is paused
+## before the SceneTree gate closes, so no first-frame simulation can escape.
+func enter_resume_ready() -> bool:
+	if _paused or GameFlow.snapshot().get("battlePhase", "") != "RESUME_READY":
+		return false
+	var tree := get_tree()
+	var host := tree.root.get_node_or_null("WorldV2ShipHost")
+	if host == null or not host.has_method("PauseShipWorld"):
+		return false
+	host.call("PauseShipWorld")
+	_paused = true
+	_reason = "resume_ready"
+	tree.paused = true
+	_sync_overlay()
+	pause_changed.emit(true, _reason)
+	return true
+
 func set_paused(value: bool, reason: String = "player") -> void:
 	if not is_inside_tree() or _paused == value:
 		return
@@ -42,7 +59,8 @@ func set_paused(value: bool, reason: String = "player") -> void:
 		_reason = reason
 		tree.paused = true
 	else:
-		if not GameFlow.resume_battle():
+		var resumed := GameFlow.confirm_resume_battle() if _reason == "resume_ready" else GameFlow.resume_battle()
+		if not resumed:
 			return
 		_paused = false
 		_reason = ""
@@ -90,7 +108,12 @@ func _sync_overlay() -> void:
 		return
 	_overlay.visible = _paused
 	if is_instance_valid(_reason_label):
-		_reason_label.text = "窗口失焦，等待手动继续" if _reason == "window_focus_lost" else "战斗逻辑与 Jar 世界均已冻结"
+		if _reason == "window_focus_lost":
+			_reason_label.text = "窗口失焦，等待手动继续"
+		elif _reason == "resume_ready":
+			_reason_label.text = "存档已恢复。确认后继续战斗"
+		else:
+			_reason_label.text = "战斗逻辑与 Jar 世界均已冻结"
 
 func _exit_tree() -> void:
 	if not _paused:
@@ -100,5 +123,8 @@ func _exit_tree() -> void:
 	tree.paused = false
 	if host != null:
 		host.call("ResumeShipWorld")
-	GameFlow.resume_battle()
+	if _reason == "resume_ready":
+		GameFlow.end_battle()
+	else:
+		GameFlow.resume_battle()
 	_paused = false
