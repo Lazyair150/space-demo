@@ -121,7 +121,7 @@ static func run() -> bool:
 		return false
 	if frozen.to_dictionary().get("ownedInstanceSnapshots", []).size() != 6 or not frozen_data.has("boardAssignmentSnapshot"):
 		return false
-	if not _probe_assignments():
+	if not _probe_assignments() or not _probe_rule_contributions():
 		return false
 
 	var invalid := DEMO_BOARD.duplicate(true) as SpaceHangarBoardDefinition
@@ -174,3 +174,34 @@ static func _probe_assignments() -> bool:
 	var wrong_kind := assignments.duplicate(true)
 	wrong_kind["decomposition.parser.primary"]["componentKind"] = "workshop"
 	return not SpaceHangarBoardAssignment.validate(DEMO_BOARD, wrong_kind, inventory).is_empty()
+
+static func _probe_rule_contributions() -> bool:
+	var definition := SpaceRuleContributionDefinition.new()
+	definition.rule_id = &"component.output-modifier"
+	definition.rule_version = 2
+	definition.effect = "ModifyIntensity"
+	definition.target = "liquid:蜜"
+	definition.scope = "workshop"
+	definition.priority = 4
+	definition.parameters = {"factorPerMille": 1000}
+	definition.growth_parameter_bindings = {"factorPerMille": "outputFactor"}
+	if not definition.get_validation_errors().is_empty():
+		return false
+	var instance := SpaceOwnedProgressionInstance.new()
+	instance.instance_id = &"owned.rule-probe"
+	instance.item_kind = "workshop"
+	instance.definition_id = &"workshop.alpha"
+	instance.definition_version = 3
+	instance.progression_revision = 7
+	instance.growth_attributes = {"outputFactor": 1450}
+	var resolved := definition.resolve(instance, "workshop.master")
+	if resolved.is_empty():
+		return false
+	var source: Dictionary = resolved.get("source", {})
+	var parameters: Dictionary = resolved.get("parameters", {})
+	if String(source.get("sourceInstanceId", "")) != "owned.rule-probe" or int(source.get("sourceRevision", 0)) != 7:
+		return false
+	if String(source.get("slotId", "")) != "workshop.master" or String(parameters.get("factorPerMille", "")) != "1450":
+		return false
+	instance.growth_attributes.clear()
+	return definition.resolve(instance, "workshop.master").is_empty()
