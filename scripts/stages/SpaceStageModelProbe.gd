@@ -6,6 +6,8 @@ class ProbeHealth extends Node:
 	var current: float = 10.0
 
 static func run() -> bool:
+	if not SpaceStageBossActorProbe.run():
+		return false
 	var catalog := load("res://data/stages/campaign_01/catalog.tres") as SpaceStageCatalog
 	if catalog == null or not catalog.get_validation_errors().is_empty():
 		return false
