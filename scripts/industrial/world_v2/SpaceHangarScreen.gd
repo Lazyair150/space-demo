@@ -28,6 +28,7 @@ var _duration_picker: SpinBox
 var _build_button: Button
 var _status_label: Label
 var _inventory_label: Label
+var _assembly_preview: SpaceHangarAssemblyPreview
 var _refresh_confirmation: ConfirmationDialog
 var _device_section: VBoxContainer
 var _skill_section: VBoxContainer
@@ -85,6 +86,10 @@ func _build_interface() -> void:
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_status_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.42, 1.0))
 	root.add_child(_status_label)
+
+	_assembly_preview = SpaceHangarAssemblyPreview.new()
+	_assembly_preview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.add_child(_assembly_preview)
 
 	var selection_panel := PanelContainer.new()
 	root.add_child(selection_panel)
@@ -199,6 +204,7 @@ func _render_view_model(view_model: Dictionary) -> void:
 		return
 	var inventory: Dictionary = view_model.get("inventory", {})
 	var ready := bool(view_model.get("isReady", false))
+	_assembly_preview.render(view_model)
 	var selectable_inventory: Dictionary = inventory if ready else {}
 	var selection: Dictionary = view_model.get("selection", {})
 	_suppress_picker_events = true
