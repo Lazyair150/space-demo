@@ -453,12 +453,13 @@ static func run() -> bool:
 
 	var skill_for_growth := skill.duplicate(true) as SpaceSkillDefinition
 	skill_for_growth.effect_parameters = {"damage": 10.0}
+	skill_for_growth.effect_parameter_benefit_dimensions = {"damage": "power"}
 	var skill_growth_instance := SpaceOwnedProgressionInstance.new()
 	skill_growth_instance.instance_id = &"probe.skill.growth"
 	skill_growth_instance.item_kind = "skill"
 	skill_growth_instance.definition_id = skill.skill_id
 	skill_growth_instance.definition_version = skill.definition_version
-	skill_growth_instance.growth_attributes = {"effectMul.damage": 1.2, "benefitMul.power": 1.2}
+	skill_growth_instance.growth_attributes = {"effectMul.damage": 1.2}
 	var composed_skill := SpaceProgressionRuntimeProfileComposer.compose_skill(skill_for_growth, skill_growth_instance)
 	if composed_skill == null or absf(float(composed_skill.effect_parameters.damage) - 12.0) > 0.000001:
 		return false
