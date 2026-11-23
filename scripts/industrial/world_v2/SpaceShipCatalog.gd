@@ -52,6 +52,10 @@ func _copy_definition(source: SpaceShipDefinition) -> SpaceShipDefinition:
 	copy.definition_version = source.definition_version
 	copy.display_name = source.display_name
 	copy.display_icon = source.display_icon
+	copy.display_hull_texture = source.display_hull_texture
+	for anchor in source.display_anchors:
+		if anchor != null:
+			copy.display_anchors.append(anchor.duplicate_anchor())
 	copy.expected_stone_progress_per_second_by_shape = source.expected_stone_progress_per_second_by_shape.duplicate(true)
 	return copy
 
