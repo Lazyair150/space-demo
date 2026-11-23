@@ -105,6 +105,8 @@ func _valid_snapshot(payload: Dictionary) -> bool:
         return not payload.has("runtimeCheckpoint")
     if version != 3:
         return false
+    if int(effects.get("schemaVersion", 0)) != 1 or not (effects.get("instances", null) is Array) or not (effects.get("processedOrderEventIds", null) is Array):
+        return false
     var runtime_checkpoint: Variant = payload.get("runtimeCheckpoint", null)
     return runtime_checkpoint is Dictionary and _valid_runtime_checkpoint(runtime_checkpoint, identity)
 
@@ -127,8 +129,15 @@ func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity:
         return false
     if typeof(run_state.get("segment", null)) != TYPE_STRING or not ["", "热身", "压力", "精英", "喘息"].has(String(run_state.get("segment", ""))):
         return false
-    if int(run_state.get("wave", 0)) == 0 and not String(run_state.get("segment", "")).is_empty():
-        return false
+    var run_wave := int(run_state.get("wave", 0))
+    var run_segment := String(run_state.get("segment", ""))
+    if run_wave == 0:
+        if not run_segment.is_empty():
+            return false
+    else:
+        var expected_segments := ["热身", "压力", "精英", "喘息"]
+        if run_segment != String(expected_segments[(run_wave - 1) % expected_segments.size()]):
+            return false
     if (typeof(clock) != TYPE_INT and typeof(clock) != TYPE_FLOAT) or not is_finite(float(clock)) or float(clock) < 0.0 or float(clock) >= 1.0:
         return false
     if not (parser is Dictionary) or int(parser.get("schemaVersion", 0)) != 2:
