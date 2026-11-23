@@ -356,6 +356,12 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 		errors.append_array(_validate_board_assignment_snapshot(source))
 	if source.has("boardRuleProfile"):
 		errors.append_array(_validate_board_rule_profile(source))
+		var jar_profile: Variant = jar_options.get("boardRuleProfile", {}) if jar_options is Dictionary else {}
+		var jar_assignment: Variant = jar_options.get("boardAssignmentSnapshot", {}) if jar_options is Dictionary else {}
+		if not (jar_profile is Dictionary) or JSON.stringify(_canonicalize(jar_profile)) != JSON.stringify(_canonicalize(source.get("boardRuleProfile", {}))):
+			errors.append("jarWorldOptions.boardRuleProfile must exactly match the root frozen Board rule profile")
+		if not (jar_assignment is Dictionary) or JSON.stringify(_canonicalize(jar_assignment)) != JSON.stringify(_canonicalize(source.get("boardAssignmentSnapshot", {}))):
+			errors.append("jarWorldOptions.boardAssignmentSnapshot must exactly match the root frozen Board Assignment")
 	elif source.has("boardAssignmentSnapshot"):
 		errors.append("boardAssignmentSnapshot requires its resolved boardRuleProfile")
 	if source.has("assemblyBoard") and source.has("boardAssignmentSnapshot"):
