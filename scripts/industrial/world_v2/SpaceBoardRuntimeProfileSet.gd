@@ -7,9 +7,10 @@ static func build(
 	assignment_snapshot: Dictionary,
 	jar_world_options: Dictionary,
 	device_selections: Array,
-	order_bindings: Array
+	order_bindings: Array,
+	workshop_selection: Dictionary
 ) -> Dictionary:
-	if assignment_snapshot.is_empty() or jar_world_options.is_empty():
+	if assignment_snapshot.is_empty() or jar_world_options.is_empty() or workshop_selection.is_empty():
 		return {}
 	var board: Dictionary = assignment_snapshot.get("boardDefinition", {})
 	var assignments: Variant = assignment_snapshot.get("assignments", null)
@@ -23,18 +24,30 @@ static func build(
 		var slot_id := String(assignment.get("slotId", ""))
 		var kind := String(assignment.get("componentKind", ""))
 		var instance_id := String(assignment.get("ownedInstanceId", ""))
-		if slot_id.is_empty() or instance_id.is_empty() or seen_slots.has(slot_id):
+		if slot_id.is_empty() or instance_id.is_empty() or seen_slots.has(slot_id) or String(assignment.get("definitionId", "")).is_empty() or int(assignment.get("definitionVersion", 0)) <= 0 or int(assignment.get("sourceRevision", 0)) <= 0:
 			return {}
 		seen_slots[slot_id] = true
 		var consumer := ""
 		var runtime_profile: Dictionary = {}
+		var matched_count := 0
 		match kind:
 			"workshop":
 				consumer = "jar_core.workshop"
 				for workshop in jar_world_options.get("workshops", []):
 					if workshop is Dictionary and String(workshop.get("boardSlotId", "")) == slot_id:
+						matched_count += 1
 						runtime_profile = workshop.duplicate(true)
-						break
+				if matched_count != 1:
+					return {}
+				var role_id := String(assignment.get("roleId", ""))
+				var owned_key := "masterWorkshopInstance" if role_id == "master" else ("slaveWorkshopInstance" if role_id == "slave" else "")
+				var definition_key := "masterWorkshopDefinitionId" if role_id == "master" else ("slaveWorkshopDefinitionId" if role_id == "slave" else "")
+				var version_key := "masterWorkshopDefinitionVersion" if role_id == "master" else ("slaveWorkshopDefinitionVersion" if role_id == "slave" else "")
+				var workshop_owned: Variant = workshop_selection.get(owned_key, null)
+				if owned_key.is_empty() or not _owned_instance_matches(workshop_owned, assignment):
+					return {}
+				if String(workshop_selection.get(definition_key, "")) != String(assignment.get("definitionId", "")) or int(workshop_selection.get(version_key, 0)) != int(assignment.get("definitionVersion", 0)):
+					return {}
 				if runtime_profile.is_empty():
 					return {}
 				var core_rules: Dictionary = jar_world_options.get("boardRuleProfile", {})
@@ -46,17 +59,20 @@ static func build(
 				consumer = "space.parser"
 				for device in device_selections:
 					if device is Dictionary and String(device.get("slotId", "")) == slot_id and String(device.get("deviceKind", "")) == "ore_parser":
+						matched_count += 1
 						var parser: Variant = device.get("oreParserProfile", null)
-						if parser is Dictionary:
+						if parser is Dictionary and _device_identity_matches(device, assignment) and _parser_profile_matches(parser, assignment):
 							runtime_profile = parser.duplicate(true)
-						break
-				if runtime_profile.is_empty():
+				if matched_count != 1 or runtime_profile.is_empty():
 					return {}
 			"skill":
 				consumer = "space.skill"
 				var skill_profile_found := false
 				for binding in order_bindings:
 					if binding is Dictionary and String(binding.get("orderDefinitionKey", "")) == slot_id:
+						matched_count += 1
+						if not _skill_identity_matches(binding, assignment):
+							return {}
 						var jar_order: Variant = binding.get("jarOrder", null)
 						var skill_control: Variant = binding.get("skillControl", null)
 						var benefit_profile: Variant = binding.get("benefitProfile", null)
@@ -71,19 +87,19 @@ static func build(
 						}
 						skill_profile_found = true
 						break
-				if not skill_profile_found:
+				if matched_count != 1 or not skill_profile_found:
 					return {}
 			"production_device":
 				consumer = "space.production_device"
 				var device_profile_found := false
 				for device in device_selections:
 					if device is Dictionary and String(device.get("slotId", "")) == slot_id and String(device.get("deviceKind", "")) != "ore_parser":
+						matched_count += 1
 						var device_profile: Variant = device.get("deviceRuntimeProfile", null)
-						if device_profile is Dictionary:
+						if device_profile is Dictionary and _device_identity_matches(device, assignment):
 							runtime_profile = device_profile.duplicate(true)
 							device_profile_found = true
-							break
-				if not device_profile_found:
+				if matched_count != 1 or not device_profile_found:
 					return {}
 			_:
 				return {}
@@ -140,6 +156,40 @@ static func validate(source: Dictionary) -> PackedStringArray:
 	if JSON.stringify(_canonicalize(supplied)) != JSON.stringify(_canonicalize(expected)):
 		errors.append("Board Runtime Profile Set differs from the frozen consumer profiles or exact assignments")
 	return errors
+
+static func _owned_instance_matches(raw: Variant, assignment: Dictionary) -> bool:
+	if not (raw is Dictionary):
+		return false
+	return (
+		String(raw.get("instanceId", "")) == String(assignment.get("ownedInstanceId", ""))
+		and String(raw.get("definitionId", "")) == String(assignment.get("definitionId", ""))
+		and int(raw.get("definitionVersion", 0)) == int(assignment.get("definitionVersion", 0))
+		and int(raw.get("progressionRevision", 0)) == int(assignment.get("sourceRevision", 0))
+	)
+
+static func _device_identity_matches(device: Dictionary, assignment: Dictionary) -> bool:
+	return (
+		String(device.get("definitionId", "")) == String(assignment.get("definitionId", ""))
+		and int(device.get("definitionVersion", 0)) == int(assignment.get("definitionVersion", 0))
+		and _owned_instance_matches(device.get("ownedInstance", null), assignment)
+	)
+
+static func _parser_profile_matches(profile: Dictionary, assignment: Dictionary) -> bool:
+	return (
+		String(profile.get("parserId", "")) == String(assignment.get("definitionId", ""))
+		and int(profile.get("definitionVersion", 0)) == int(assignment.get("definitionVersion", 0))
+		and _owned_instance_matches(profile.get("ownedInstance", null), assignment)
+	)
+
+static func _skill_identity_matches(binding: Dictionary, assignment: Dictionary) -> bool:
+	var control: Variant = binding.get("skillControl", null)
+	return (
+		String(binding.get("skillDefinitionId", "")) == String(assignment.get("definitionId", ""))
+		and int(binding.get("skillDefinitionVersion", 0)) == int(assignment.get("definitionVersion", 0))
+		and _owned_instance_matches(binding.get("ownedInstance", null), assignment)
+		and control is Dictionary
+		and String(control.get("area", "")) == String(assignment.get("controlArea", ""))
+	)
 
 static func _fingerprint(value: Dictionary) -> String:
 	var hashing := HashingContext.new()
