@@ -423,3 +423,5 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `GameState.restore_run_state` now requires wave and segment to agree; invalid combinations are rejected before any transient state changes.
 - `Spawner` no longer unconditionally starts wave 1 after `Game` restores a run. A positive saved wave restarts from its beginning without incrementing or overwriting the saved progression; a new run starts at wave 1.
 - This is intentionally a wave-restart policy, not exact mid-wave resume. Spawn timers/coroutines, live enemies, player state, and projectiles are not in the current checkpoint. `SpaceBattleRunStateProbe` covers wave/segment consistency and the initial-wave policy.
+
+- `SpaceEffectCatalog` now snapshots registered BuffDefinition Resources and returns detached exact-version copies, preventing source or consumer mutation from changing a registered effect definition. The effect restore probe checks both isolation boundaries.
