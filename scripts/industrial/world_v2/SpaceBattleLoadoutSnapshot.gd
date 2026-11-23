@@ -140,6 +140,13 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 	else:
 		if _required_text(workshop, "definitionId").is_empty() or int(workshop.get("definitionVersion", 0)) <= 0:
 			errors.append("workshop combination must identify a versioned definition")
+		if source.has("progressionOwnerPlayerId"):
+			var master_instance: Variant = workshop.get("masterWorkshopInstance", null)
+			var slave_instance: Variant = workshop.get("slaveWorkshopInstance", null)
+			if not (master_instance is Dictionary) or not (slave_instance is Dictionary):
+				errors.append("owned workshop positions must freeze both exact owned instances")
+			elif _required_text(master_instance, "instanceId").is_empty() or _required_text(slave_instance, "instanceId").is_empty() or _required_text(master_instance, "instanceId") == _required_text(slave_instance, "instanceId"):
+				errors.append("Master and Slave positions must contain two different owned instance identities")
 
 	var jar_options: Variant = source.get("jarWorldOptions", null)
 	if not (jar_options is Dictionary):
