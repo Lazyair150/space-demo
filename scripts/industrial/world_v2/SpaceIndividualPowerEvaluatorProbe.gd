@@ -3,7 +3,7 @@ class_name SpaceIndividualPowerEvaluatorProbe
 ## Synthetic adapter tests. They verify metric provenance, not production balance values.
 
 static func run() -> bool:
-	if not _probe_parser() or not _probe_workshop() or not _probe_skill() or not _probe_target_value_and_production_gate():
+	if not _probe_parser() or not _probe_parser_encounter_supply() or not _probe_workshop() or not _probe_skill() or not _probe_target_value_and_production_gate():
 		return false
 	return true
 
@@ -58,6 +58,58 @@ static func _probe_parser() -> bool:
 		and is_equal_approx(float(effective_metrics["effective_processing_rate.round"]), 1.8) \
 		and is_equal_approx(float(effective_metrics["throughput_per_jar.round"]), 1.8) \
 		and is_equal_approx(float(effective_metrics["throughput_per_jar.square"]), 7.2)
+
+
+static func _probe_parser_encounter_supply() -> bool:
+	var parser := SpaceOreParserDefinition.new()
+	parser.parser_id = &"probe.parser.supply"
+	parser.definition_version = 1
+	parser.display_name = "Supply Parser"
+	parser.production_percentage = 50
+	parser.shape_processing_rate_per_second = {"round": 2.0, "square": 4.0}
+	parser.progress_per_jar_by_shape = {"round": 2.0, "square": 1.0}
+	var drop := SpaceEnergyStoneDropProfile.new()
+	drop.profile_id = &"probe.encounter.drops"
+	drop.profile_version = 3
+	drop.drop_chance = 0.5
+	drop.weighted_stones = [
+		{"stoneType": "round", "volume": 10.0, "weight": 1.0},
+		{"stoneType": "round", "volume": 20.0, "weight": 1.0},
+		{"stoneType": "square", "volume": 40.0, "weight": 2.0}
+	]
+	var context := SpaceParserSupplyEvaluationContext.new()
+	context.energy_stone_drop_profile = drop
+	context.expected_enemy_defeats_per_second = 2.0
+	var metrics := {
+		"production_percentage": 50.0, "shape_count": 2.0,
+		"processing_rate.round": 2.0, "progress_required_per_jar.round": 2.0,
+		"effective_processing_rate.round": 1.0, "throughput_per_jar.round": 0.5,
+		"processing_rate.square": 4.0, "effective_processing_rate.square": 2.0,
+		"progress_required_per_jar.square": 1.0, "throughput_per_jar.square": 2.0,
+		"average_processing_rate": 3.0, "average_effective_processing_rate": 1.5,
+		"average_progress_required_per_jar": 1.5,
+		"conditional_mean_stone_volume.round": 15.0,
+		"expected_supply_volume_per_enemy.round": 0.1875,
+		"expected_supply_volume_per_second.round": 0.375,
+		"stone_processing_seconds_per_drop.round": 15.0,
+		"conditional_mean_stone_volume.square": 40.0,
+		"expected_supply_volume_per_enemy.square": 0.25,
+		"expected_supply_volume_per_second.square": 0.5,
+		"stone_processing_seconds_per_drop.square": 20.0
+	}
+	var model := _model("probe.parser.encounter.power", "ore_parser", metrics)
+	var result := SpaceIndividualPowerEvaluator.evaluate_parser_in_encounter(
+		parser.build_runtime_profile(), ["round", "square"], context, model
+	)
+	if not bool(result.get("success", false)) or result.get("powerMetrics", {}) != metrics:
+		return false
+	if String(result.supplyEvaluationContext.get("dropProfileId", "")) != "probe.encounter.drops" or int(result.supplyEvaluationContext.get("dropProfileVersion", 0)) != 3:
+		return false
+	var invalid := context.duplicate(true) as SpaceParserSupplyEvaluationContext
+	invalid.expected_enemy_defeats_per_second = 0.0
+	return not bool(SpaceIndividualPowerEvaluator.evaluate_parser_in_encounter(
+		parser.build_runtime_profile(), ["round", "square"], invalid, model
+	).get("success", false))
 
 static func _probe_workshop() -> bool:
 	var workshop := SpaceWorkshopDefinition.new()
