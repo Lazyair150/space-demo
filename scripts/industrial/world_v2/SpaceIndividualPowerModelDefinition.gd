@@ -9,7 +9,7 @@ const SUPPORTED_KINDS := ["ore_parser", "workshop", "skill"]
 @export_enum("ore_parser", "workshop", "skill") var item_kind: String = "skill"
 ## Unconfigured models may be evaluated in isolated tuning probes, but never referenced by production pools.
 @export_enum("unconfigured", "configured") var configuration_status: String = "unconfigured"
-## metric -> {minimum, maximum, weight, higherIsBetter}
+## metric -> {minimum, maximum, weight, scoringMode, targetValue?}; legacy higherIsBetter is probe-compatible only.
 @export var metric_dimensions: Dictionary = {}
 
 func get_validation_errors() -> PackedStringArray:
