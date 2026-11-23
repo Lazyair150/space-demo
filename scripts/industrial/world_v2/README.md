@@ -417,3 +417,9 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `SpaceBattleEffectStateStoreProbe` 验证 schema v3 联合快照、loadout identity、无效 checkpoint 拒绝且不覆盖上一份有效快照。
 - `GameState.capture_run_state/restore_run_state` 与 `SpaceBattleRunStateProbe.gd` 覆盖 score、wave、segment 的验证恢复；继续战斗时 Game 不再调用 `reset_run` 覆盖已保存进度。钱包与 high-score 仍走既有独立持久化路径。
 - `SpaceOreParserJarIngressProbe` 额外模拟进程重启：分别恢复 Jar resource-ledger checkpoint、Space parser outbox 和 Host clock remainder，再以同一批次 ID 重试，验证 Jar 返回持久化 duplicate receipt 且只存在一只 Jar。
+
+### Wave checkpoint recovery boundary
+
+- `GameState.restore_run_state` now requires wave and segment to agree; invalid combinations are rejected before any transient state changes.
+- `Spawner` no longer unconditionally starts wave 1 after `Game` restores a run. A positive saved wave restarts from its beginning without incrementing or overwriting the saved progression; a new run starts at wave 1.
+- This is intentionally a wave-restart policy, not exact mid-wave resume. Spawn timers/coroutines, live enemies, player state, and projectiles are not in the current checkpoint. `SpaceBattleRunStateProbe` covers wave/segment consistency and the initial-wave policy.
