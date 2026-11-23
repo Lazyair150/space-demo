@@ -281,8 +281,19 @@ static func _validate_board_rule_profile(source: Dictionary) -> PackedStringArra
 			errors.append("rule contribution source instance differs from installed Owned Instance")
 		if _required_text(contribution_source, "definitionId") != _required_text(installed, "definitionId") or int(contribution_source.get("definitionVersion", 0)) != int(installed.get("definitionVersion", 0)):
 			errors.append("rule contribution source Definition identity/version differs from Board Assignment")
-		if _required_text(contribution, "ruleId").is_empty() or int(contribution.get("ruleVersion", 0)) <= 0 or _required_text(contribution, "target").is_empty() or _required_text(contribution, "scope").is_empty():
-			errors.append("rule contribution is missing exact rule identity, target or scope")
+		if _required_text(contribution_source, "sourceKind") != "installed-component":
+			errors.append("rule contribution source kind must identify an installed component")
+		var owned_revision_found := false
+		for raw_owned in source.get("ownedInstanceSnapshots", []):
+			if raw_owned is Dictionary and _required_text(raw_owned, "instanceId") == _required_text(contribution_source, "sourceInstanceId"):
+				owned_revision_found = int(raw_owned.get("progressionRevision", 0)) == int(contribution_source.get("sourceRevision", 0))
+				break
+		if not owned_revision_found:
+			errors.append("rule contribution source revision differs from the frozen Owned Instance progression revision")
+		if _required_text(contribution, "scope") != "workshop" or String(installed.get("componentKind", "")) != "workshop":
+			errors.append("this Core ingress revision accepts only workshop-scoped contributions from workshop Board Slots")
+		if _required_text(contribution, "ruleId").is_empty() or int(contribution.get("ruleVersion", 0)) != 1 or _required_text(contribution, "target").is_empty():
+			errors.append("rule contribution requires a supported exact rule identity/version and target")
 	return errors
 
 static func validate_data(source: Dictionary) -> PackedStringArray:
