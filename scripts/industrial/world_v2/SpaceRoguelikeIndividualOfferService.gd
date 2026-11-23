@@ -8,10 +8,11 @@ static func roll_offer(
 	item_kind: String,
 	rng: RandomNumberGenerator,
 	offer_count: int,
+	offer_id: String,
 	allowed_rarities: PackedStringArray = PackedStringArray(),
 	required_tags: PackedStringArray = PackedStringArray()
 ) -> Dictionary:
-	if library == null or rng == null or not library.is_valid() or offer_count <= 0 or offer_count > 8:
+	if library == null or rng == null or not library.is_valid() or offer_count <= 0 or offer_count > 8 or offer_id.strip_edges().is_empty():
 		return {"success": false, "reason": "offer request dependencies/count are invalid"}
 	var candidates: Array[Dictionary] = []
 	var excluded := PackedStringArray()
@@ -45,6 +46,7 @@ static func roll_offer(
 		"success": true,
 		"libraryId": String(library.library_id),
 		"libraryVersion": library.definition_version,
+		"offerId": offer_id,
 		"itemKind": item_kind,
 		"requestedCount": offer_count,
 		"offers": candidates
@@ -59,7 +61,7 @@ static func acquire_selected(
 	library: SpaceRoguelikeIndividualLibrary,
 	instance_id: String
 ) -> Dictionary:
-	if library == null or String(offer.get("libraryId", "")) != String(library.library_id) or int(offer.get("libraryVersion", 0)) != library.definition_version:
+	if library == null or String(offer.get("offerId", "")).strip_edges().is_empty() or String(offer.get("libraryId", "")) != String(library.library_id) or int(offer.get("libraryVersion", 0)) != library.definition_version:
 		return {"success": false, "reason": "offer belongs to a different individual library version"}
 	var offers: Variant = offer.get("offers", null)
 	if not (offers is Array) or selected_index < 0 or selected_index >= offers.size():
@@ -68,5 +70,5 @@ static func acquire_selected(
 	if not (selected is Dictionary) or not (selected.get("candidate", null) is Dictionary):
 		return {"success": false, "reason": "selected reward payload is malformed"}
 	return SpaceRoguelikeIndividualRewardService.acquire_candidate(
-		state, bundle, library, selected.candidate.duplicate(true), instance_id
+		state, bundle, library, selected.candidate.duplicate(true), instance_id, String(offer.offerId) + ":" + str(selected_index)
 	)
