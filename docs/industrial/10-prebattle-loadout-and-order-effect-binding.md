@@ -389,3 +389,14 @@ The launch coordinator closes the domain-to-runtime handoff API, but it is not y
 The owner exposes catalog/profile Resources as exported dependencies. They must be assigned by authored project data; an empty catalog is not replaced with synthetic content. The controller intentionally does not generate ship/device/workshop/skill stats or a default build.
 
 The controller is not yet connected to the current MainMenu button or a visual selection screen. That wiring is blocked on actual authored production catalog assets and the game's intended selection UX, not on CL validation. The old direct Start route remains the legacy development path until the project explicitly switches it to the Hangar-owned launch route.
+
+
+### Hangar selection and dependency bundle boundary
+
+The next increment introduces two explicit domain objects:
+
+- `SpaceHangarSelection` contains only the player's exact-version choices: ship, production-device slots, universal parser and slot, workshop combination, skill/order bindings, and the expected battle duration used by the build evaluator. It deep-copies incoming and outgoing selection dictionaries and rejects missing identities, duplicate device slots, parser-slot collisions, duplicate order keys, missing control areas, and invalid duration before catalog resolution.
+- `SpaceHangarCatalogBundle` groups the complete dependency set for one build. Its preparation step rebuilds/validates Resource-backed catalog indexes and rejects missing catalogs, an invalid balance profile, or a missing effect catalog as one dependency failure. It contains no authored gameplay values and does not select defaults.
+- `SpaceHangarPreparation.build_loadout_from_selection` is the new compact entry point: validate the selection, validate the bundle, then pass the exact values into the existing assembler. The lower-level assembler remains the sole authority for cross-definition compatibility and immutable snapshot creation.
+
+The prior positional build API remains temporarily available for existing callers; new Hangar UI code should use the selection-object entry point. The probe now covers detached selection data, duplicate slot/order rejection, and incomplete-bundle rejection in addition to catalog copy isolation. These are committed checks, not a claim that Godot/CL has executed them.
