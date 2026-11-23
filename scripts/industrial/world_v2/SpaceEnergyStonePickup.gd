@@ -28,6 +28,7 @@ func configure(stable_pickup_id: String, configured_stone_type: String, stone_vo
 	return true
 
 func _ready() -> void:
+	add_to_group("space_energy_stone_pickups")
 	if not _configured:
 		_configured = configure(pickup_id, stone_type, volume)
 	if not _configured:
@@ -52,3 +53,17 @@ func _on_body_entered(body: Node2D) -> void:
 		queue_free()
 	else:
 		_collecting = false
+
+
+## Save payload for the battle coordinator. Position is stored as scalar coordinates
+## so it survives JSON-backed save serialization without Node/Object references.
+func capture_persistence_state() -> Dictionary:
+	if not _configured or is_queued_for_deletion():
+		return {}
+	return {
+		"pickupId": pickup_id,
+		"stoneType": stone_type,
+		"volume": volume,
+		"positionX": global_position.x,
+		"positionY": global_position.y
+	}
