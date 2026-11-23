@@ -337,6 +337,6 @@ GitHub 仓库文件树和本次逐文件检查覆盖了当前可见的 World v2 
 
 jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支的 WorldV2RuntimeNode 与 WorldV2ShipHost 已提供对应的 Godot 适配入口。Godot Runtime 探针验证有效完整速率表可提交；故障态和 Dispose 后探针也覆盖该命令的拒绝边界。
 
-这只打通“Space 计算产率 → Jar Core 生产器”的命令通道。它没有把能量石模型放进 Jar，也没有宣称能量石解析已完成。下一步由 Space 侧建立 typed 能量石库存/解析模型，再在每个共享模拟步前提交完整的形状速率表。Jar 的形状进度累加、满 1 产罐、中央仓库存储和仓库到主台流入仍由 Core 负责。
+`UpdateProducerRates` 只服务于真正的时间型 Jar Producer，不是能量石解析器入口。能量石是 Space 持有的有限、typed 输入；Space 解析器消费原石并独立累计各形状进度，满 1 后产生完整空 Jar，再通过 Jar Core 的 `ImportProducedJars(operationId, shapeCounts)` 离散批次入口进入中央仓库。该入口具备操作 ID 去重、检查点持久化和仓库容量/丢弃账目。Jar 继续负责中央仓库到主台流入和后续订单规则。
 
 以下数值和语义不在本接口中决定：能量石大小单位、各类型转换率、百分比生产选择方式、解析速率、战机液体生产率和液库容量。它们必须由 Space 侧版本化构筑配置明确提供；不得从 sandbox 值推导生产平衡。
