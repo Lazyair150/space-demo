@@ -23,15 +23,24 @@ static func assemble(
 	var combination := bundle.workshop_combination_catalog.resolve_definition(String(selection.workshopId), int(selection.workshopVersion))
 	if combination == null:
 		return _reject("exact workshop combination definition is missing")
-	if String(master_instance.definition_id) != String(combination.workshop_pair.master_workshop_id) or String(slave_instance.definition_id) != String(combination.workshop_pair.slave_workshop_id):
+	var master_definition := _find_workshop(combination, String(combination.workshop_pair.master_workshop_id), master_instance.definition_version)
+	var slave_definition := _find_workshop(combination, String(combination.workshop_pair.slave_workshop_id), slave_instance.definition_version)
+	if String(master_instance.definition_id) != String(combination.workshop_pair.master_workshop_id) or String(slave_instance.definition_id) != String(combination.workshop_pair.slave_workshop_id) or master_definition == null or slave_definition == null:
 		return _reject("owned workshop instances do not match the selected Master/Slave role definitions")
+	var used_instance_ids := {
+		String(ship_instance.instance_id): true,
+		String(parser_instance.instance_id): true,
+		String(master_instance.instance_id): true,
+		String(slave_instance.instance_id): true
+	}
 	var base_devices: Array = []
 	for raw in selection.deviceSelections:
 		if not (raw is Dictionary):
 			return _reject("device selection must be a dictionary")
 		var instance := _resolve(progression, String(raw.get("instanceId", "")), "production_device", String(raw.get("definitionId", "")), int(raw.get("definitionVersion", 0)))
-		if instance == null:
-			return _reject("production device selection is not an owned exact-version instance")
+		if instance == null or used_instance_ids.has(String(instance.instance_id)):
+			return _reject("production device selection is not an owned unique exact-version instance")
+		used_instance_ids[String(instance.instance_id)] = true
 		base_devices.append({
 			"slotId": String(raw.get("slotId", "")),
 			"definitionId": String(raw.get("definitionId", "")),
@@ -43,8 +52,9 @@ static func assemble(
 		if not (raw_skill is Dictionary):
 			return _reject("skill selection must be a dictionary")
 		var instance := _resolve(progression, String(raw_skill.get("instanceId", "")), "skill", String(raw_skill.get("skillId", "")), int(raw_skill.get("definitionVersion", 0)))
-		if instance == null:
-			return _reject("selected skill is not an owned exact-version instance")
+		if instance == null or used_instance_ids.has(String(instance.instance_id)):
+			return _reject("selected skill is not an owned unique exact-version instance")
+		used_instance_ids[String(instance.instance_id)] = true
 		var order_key := String(raw_skill.get("orderDefinitionKey", ""))
 		if skill_instances.has(order_key):
 			return _reject("duplicate skill order key")
