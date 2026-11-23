@@ -117,7 +117,11 @@ static func assemble(
 			if candidate != null and String(candidate.display_name) == String(authored.get("name", "")):
 				authored_definition_id = String(candidate.workshop_id)
 				break
-		var workshop_instance := master_instance if authored_definition_id == String(combination.workshop_pair.master_workshop_id) else slave_instance if authored_definition_id == String(combination.workshop_pair.slave_workshop_id) else null
+		var workshop_instance: SpaceOwnedProgressionInstance = null
+		if authored_definition_id == String(combination.workshop_pair.master_workshop_id):
+			workshop_instance = master_instance
+		elif authored_definition_id == String(combination.workshop_pair.slave_workshop_id):
+			workshop_instance = slave_instance
 		if workshop_instance == null:
 			return _reject("materialized workshop roster does not match the selected pair definition")
 		var workshop_definition := _find_workshop(combination, String(workshop_instance.definition_id), workshop_instance.definition_version)
