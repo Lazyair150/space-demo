@@ -6,8 +6,19 @@ class_name SpaceWorkshopSlotSelectionProbe
 static func run() -> bool:
 	var first := _workshop("component.alpha", "Alpha")
 	var second := _workshop("component.beta", "Beta")
-	var world := _world([first, second])
+	var incompatible := _workshop("component.incompatible", "Incompatible")
+	incompatible.base_marks = ["star"]
+	var global_catalog := SpaceWorkshopCatalog.new()
+	global_catalog.definitions = [first, second, incompatible]
+	if not global_catalog.is_valid() or global_catalog.resolve_definition("component.alpha", 1) == null:
+		return false
+	var world := _world([incompatible, first, second])
 	if not world.get_validation_errors().is_empty():
+		return false
+	var validation_pair := world.build_jar_world_options()
+	if not _has_roles(validation_pair, "Alpha（主台）", "Beta（从台）"):
+		return false
+	if not world.build_jar_world_options("component.incompatible", "component.alpha").is_empty():
 		return false
 	var alpha_master := world.build_jar_world_options("component.alpha", "component.beta")
 	var beta_master := world.build_jar_world_options("component.beta", "component.alpha")
