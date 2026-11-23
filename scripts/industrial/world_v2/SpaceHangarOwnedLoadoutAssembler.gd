@@ -184,6 +184,17 @@ static func _validate_board_assignment_snapshot(snapshot: Dictionary, progressio
 		if slot_id.is_empty() or slot_index.has(slot_id):
 			return "Board Definition snapshot contains an empty or duplicate slot identity"
 		slot_index[slot_id] = slot
+	var expected_instances := {
+		String(selection.get("parserInstanceId", "")): true,
+		String(selection.get("masterWorkshopInstanceId", "")): true,
+		String(selection.get("slaveWorkshopInstanceId", "")): true
+	}
+	for raw_device in selection.get("deviceSelections", []):
+		if raw_device is Dictionary:
+			expected_instances[String(raw_device.get("instanceId", ""))] = true
+	for raw_skill in selection.get("skillSelections", []):
+		if raw_skill is Dictionary:
+			expected_instances[String(raw_skill.get("instanceId", ""))] = true
 	var seen_slots := {}
 	var seen_instances := {}
 	for entry in assignments:
@@ -207,9 +218,11 @@ static func _validate_board_assignment_snapshot(snapshot: Dictionary, progressio
 		var slot: Dictionary = slot_index[slot_id]
 		if bool(slot.get("required", false)) and not seen_slots.has(slot_id):
 			return "Required Board Slot is empty: " + slot_id
-	var expected_count := 3 + (selection.get("deviceSelections", []) as Array).size() + (selection.get("skillSelections", []) as Array).size()
-	if assignments.size() != expected_count:
+	if assignments.size() != expected_instances.size():
 		return "Board Assignment map and current runtime projection contain different component counts"
+	for instance_id in expected_instances:
+		if instance_id.is_empty() or not seen_instances.has(instance_id):
+			return "Board Assignment map differs from selected runtime instance identities"
 	return ""
 
 static func _resolve(state: SpacePlayerProgressionState, instance_id: String, kind: String, definition_id: String, version: int) -> SpaceOwnedProgressionInstance:
