@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="SpaceHangarBoardDefinition" load_steps=7 format=3]
+[gd_resource type="Resource" script_class="SpaceHangarBoardDefinition" load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceHangarBoardDefinition.gd" id="1_board"]
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceHangarBoardSlotDefinition.gd" id="2_slot"]
@@ -37,9 +37,19 @@ role_id = "none"
 control_area = "Active"
 required = false
 
+[sub_resource type="Resource" script_class="SpaceHangarBoardSlotDefinition" id="PassiveOrderSlot"]
+script = ExtResource("2_slot")
+slot_id = &"orders.passive.recon"
+area_id = "orders"
+component_kind = "skill"
+display_name = "被动订单槽位"
+role_id = "none"
+control_area = "Passive"
+required = false
+
 [resource]
 script = ExtResource("1_board")
 board_id = &"demo.circuit_board"
 definition_version = 1
 display_name = "裂隙前哨规则电路板"
-slots = Array[ExtResource("2_slot")]([SubResource("MasterWorkshopSlot"), SubResource("SlaveWorkshopSlot"), SubResource("DecompositionParserSlot"), SubResource("ActiveOrderSlot")])
+slots = Array[ExtResource("2_slot")]([SubResource("MasterWorkshopSlot"), SubResource("SlaveWorkshopSlot"), SubResource("DecompositionParserSlot"), SubResource("ActiveOrderSlot"), SubResource("PassiveOrderSlot")])
