@@ -192,4 +192,13 @@
 - 本次新增提交：`d8829bb`、`325be82`、`0fdcd38`、`0bea5f3`、`804ac33`、`270972d`、`66756fc`、`a348227`、`455e418`、`6eb3741`、`671b94b`。
 - 当前 Space PR #2 head：`671b94b18c440e3f6b24c23a95ebdccf17bf3126`；compare main...branch ahead 581 / behind 0。PR 仍 Draft/Open/未合并。
 - 仍未录入真实生产 workshop combination / skill resources；本轮建立的是可验证的类型化 authoring contract，不创建虚构技能配方或平衡数值。
+- Phase B 开始执行：检查发现通用模型只有 `higherIsBetter` 方向，无法表达工作台容量/规则的“有目标值而非越大越好”；而且任何结构有效模型都能进入生产 Pool，`unconfigured` 没有硬门禁。
+- `SpaceIndividualPowerModelDefinition` 新增 `configuration_status`（默认 `unconfigured`）和生产校验入口 `get_production_validation_errors()`。普通 evaluator 可用于隔离调试/调参；Production Pool 必须引用显式标记 `configured` 且每个维度显式声明 scoringMode 的模型。
+- 新增 `target_value` scoringMode 与 `targetValue`：目标值记满分，目标值两侧分别线性衰减至各自边界的 0 分；因此上下界不对称时也不会把“容量过大”误当成仍然接近最优。
+- 生产 Workshop power model 的 `max_jars`、`max_liquids`、`liquid_staging_capacity` 必须使用 `target_value`；每种 shape 的 base/additional mark、每种 liquid 的 Ban 和 Core staging fallback 也必须使用 workload-target 语义，避免把更多 Mark/Ban/容量机械当成更强。
+- `SpaceIndividualPowerEvaluator.evaluate_workshop()` 不再只输出 mark/ban 数量，而是输出 `base_mark.<shape>`、`additional_mark.<shape>`、`ban.<liquid>` 的逐项原始指标，保留不同规则作用对象的身份。-1 staging fallback 仍按 0 显式容量 + 独立 fallback flag 处理。
+- `SpaceRoguelikeIndividualPool.get_validation_errors()` 改为调用模型的生产校验门禁；未配置模型不能被生产 Pool 引用，即使 metrics/score 在结构上可计算也不行。
+- 扩展 `SpaceIndividualPowerEvaluatorProbe` 与 `SpaceRoguelikeIndividualLibraryProbe`：合成模型显式配置 scoringMode；覆盖目标值评分、非对称边界两侧归零、未配置模型被 Pool 拒绝、Workshop 容量禁止单调高分、逐 shape/逐 liquid 指标和成长后重新评估。Probe 仅已编写，未运行。
+- 注意：这还不是生产 power model。没有擅自确定 Parser / Workshop / Skill 的正式指标权重、边界、目标工作负载或稀有度区间；所有真实模型仍需在有真实设计数据后从 `unconfigured` 变为 `configured`。
+- 本轮 power contract 新增提交：`0b07db6`、`c14562b`、`aa69080`、`96e3110`、`4623252`、`e1da0bd`、`611f930`、`d223cfa`、`d9f087c`、`8f84725`、`ca112f8`、`bf80d28`。
 - 当前剩余：在真实 WorkshopCombination 配置中录入 versioned Core orderTemplates，并迁移生产 skill definitions；继续核对 MainMenu / Hangar launch route、Protected Target identity 和真实子系统 power metric 契约。
