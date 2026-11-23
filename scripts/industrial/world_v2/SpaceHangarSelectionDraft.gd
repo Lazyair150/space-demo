@@ -1,29 +1,25 @@
 extends RefCounted
 class_name SpaceHangarSelectionDraft
-## Mutable UI-side draft. It stores exact authored identities and never resolves runtime definitions.
-## SpaceHangarLoadoutAssembler remains the final authority when freezing a battle loadout.
+## UI draft. Board Assignment is the source of truth for installable components;
+## legacy fields are generated projections for the current Core runtime adapter.
 
 var _inventory: Dictionary = {}
 var _selection: Dictionary = {}
 var _inventory_ready: bool = false
+var _board: SpaceHangarBoardDefinition
+var _assignments: Dictionary = {}
 
-func configure(inventory: Dictionary) -> bool:
+func configure(inventory: Dictionary, board: SpaceHangarBoardDefinition = null) -> bool:
 	_inventory = inventory.duplicate(true)
 	_inventory_ready = bool(_inventory.get("isReady", false))
+	_board = board.duplicate(true) as SpaceHangarBoardDefinition if board != null else null
+	_assignments.clear()
 	_selection = {
-		"shipId": "",
-		"shipVersion": 0,
-		"shipInstanceId": "",
-		"deviceSelections": [],
-		"parserId": "",
-		"parserVersion": 0,
-		"parserSlotId": "",
-		"parserInstanceId": "",
-		"workshopId": "",
-		"workshopVersion": 0,
-		"masterWorkshopInstanceId": "",
-		"slaveWorkshopInstanceId": "",
-		"skillSelections": [],
+		"shipId": "", "shipVersion": 0, "shipInstanceId": "",
+		"deviceSelections": [], "parserId": "", "parserVersion": 0,
+		"parserSlotId": "", "parserInstanceId": "", "workshopId": "",
+		"workshopVersion": 0, "masterWorkshopInstanceId": "",
+		"slaveWorkshopInstanceId": "", "skillSelections": [],
 		"expectedBattleDurationLogicalMilli": 0.0
 	}
 	return _inventory_ready
@@ -39,34 +35,194 @@ func set_ship(definition_id: String, version: int, instance_id: String = "") -> 
 
 func set_parser(definition_id: String, version: int, slot_id: String, instance_id: String = "") -> bool:
 	var choice := _find_exact_choice("parserChoices", definition_id, version, instance_id)
-	if slot_id.strip_edges().is_empty() or choice.is_empty():
+	if choice.is_empty() or not _assign(slot_id, "ore_parser", choice):
 		return false
-	_selection.parserInstanceId = String(choice.get("instanceId", ""))
-	for raw_device in _selection.deviceSelections:
-		if String(raw_device.get("slotId", "")) == slot_id:
-			return false
-	_selection.parserId = definition_id
-	_selection.parserVersion = version
-	_selection.parserSlotId = slot_id
+	_rebuild_legacy_projection()
 	return true
 
 func set_workshop(definition_id: String, version: int, master_instance_id: String = "", slave_instance_id: String = "") -> bool:
 	var world_choices: Variant = _inventory.get("workshopWorldChoices", _inventory.get("workshopChoices", []))
-	var world_choice := _find_choice_in(world_choices, definition_id, version)
-	if world_choice.is_empty():
+	if _find_choice_in(world_choices, definition_id, version).is_empty():
 		return false
 	var world_key := definition_id + "@" + str(version)
-	if not master_instance_id.is_empty() and _find_workshop_instance(master_instance_id, world_key).is_empty():
-		master_instance_id = ""
-	if not slave_instance_id.is_empty() and _find_workshop_instance(slave_instance_id, world_key).is_empty():
-		slave_instance_id = ""
-	if not master_instance_id.is_empty() and master_instance_id == slave_instance_id:
+	var master := _find_workshop_instance(master_instance_id, world_key)
+	var slave := _find_workshop_instance(slave_instance_id, world_key)
+	if master.is_empty() or slave.is_empty() or master_instance_id == slave_instance_id:
 		return false
+	var master_slot := _slot_for_role("master")
+	var slave_slot := _slot_for_role("slave")
+	if master_slot.is_empty() or slave_slot.is_empty():
+		return false
+	var next := _assignments.duplicate(true)
+	var master_entry := SpaceHangarBoardAssignment.create_entry(master_slot, master)
+	var slave_entry := SpaceHangarBoardAssignment.create_entry(slave_slot, slave)
+	if master_entry.is_empty() or slave_entry.is_empty():
+		return false
+	next[String(master_slot.slot_id)] = master_entry
+	next[String(slave_slot.slot_id)] = slave_entry
+	if not _validate_assignment_map(next).is_empty():
+		return false
+	_assignments = next
 	_selection.workshopId = definition_id
 	_selection.workshopVersion = version
-	_selection.masterWorkshopInstanceId = master_instance_id
-	_selection.slaveWorkshopInstanceId = slave_instance_id
+	_rebuild_legacy_projection()
 	return true
+
+func set_device(slot_id: String, definition_id: String, version: int, instance_id: String = "") -> bool:
+	var choice := _find_exact_choice("deviceChoices", definition_id, version, instance_id)
+	if choice.is_empty() or not _assign(slot_id, "production_device", choice):
+		return false
+	_rebuild_legacy_projection()
+	return true
+
+func remove_device(slot_id: String) -> bool:
+	if not _assignments.has(slot_id):
+		return false
+	if String(_assignments[slot_id].get("componentKind", "")) != "production_device":
+		return false
+	_assignments.erase(slot_id)
+	_rebuild_legacy_projection()
+	return true
+
+func set_skill(order_definition_key: String, skill_id: String, version: int, control_area: String, instance_id: String = "") -> bool:
+	var choice := _find_exact_choice("skillChoices", skill_id, version, instance_id)
+	if choice.is_empty() or not _contains_string(choice.get("allowedControlAreas", []), control_area):
+		return false
+	var slot := _slot_by_id(order_definition_key)
+	if slot == null or slot.component_kind != "skill" or slot.control_area != control_area:
+		return false
+	if not _assign(order_definition_key, "skill", choice):
+		return false
+	_rebuild_legacy_projection()
+	return true
+
+func remove_skill(order_definition_key: String) -> bool:
+	if not _assignments.has(order_definition_key):
+		return false
+	if String(_assignments[order_definition_key].get("componentKind", "")) != "skill":
+		return false
+	_assignments.erase(order_definition_key)
+	_rebuild_legacy_projection()
+	return true
+
+func assign_instance(slot_id: String, owned_instance_id: String) -> bool:
+	var slot := _slot_by_id(slot_id)
+	if slot == null or owned_instance_id.strip_edges().is_empty():
+		return false
+	var choice := SpaceHangarBoardAssignment._find_inventory_instance(_inventory, owned_instance_id)
+	if choice.is_empty() or not _assign(slot_id, slot.component_kind, choice):
+		return false
+	_rebuild_legacy_projection()
+	return true
+
+func unassign_slot(slot_id: String) -> bool:
+	if not _assignments.has(slot_id):
+		return false
+	_assignments.erase(slot_id)
+	_rebuild_legacy_projection()
+	return true
+
+func get_assignment(slot_id: String) -> Dictionary:
+	return _assignments.get(slot_id, {}).duplicate(true)
+
+func validate_assignments() -> PackedStringArray:
+	return _validate_assignment_map(_assignments)
+
+func build_assignment_snapshot() -> Dictionary:
+	if _board == null or not validate_assignments().is_empty():
+		return {}
+	return SpaceHangarBoardAssignment.build_snapshot(_board, _assignments)
+
+func set_expected_battle_duration(logical_milli: float) -> bool:
+	if not is_finite(logical_milli) or logical_milli <= 0.0:
+		return false
+	_selection.expectedBattleDurationLogicalMilli = logical_milli
+	return true
+
+func build_selection() -> SpaceHangarSelection:
+	if not _inventory_ready:
+		return null
+	var data := snapshot_data()
+	var selection := SpaceHangarSelection.from_data(data)
+	if not selection.validate().is_empty():
+		return null
+	return selection
+
+func snapshot_data() -> Dictionary:
+	var result := _selection.duplicate(true)
+	result["boardAssignments"] = build_assignment_snapshot()
+	return result
+
+func is_ready() -> bool:
+	return _inventory_ready
+
+func _assign(slot_id: String, expected_kind: String, choice: Dictionary) -> bool:
+	var slot := _slot_by_id(slot_id)
+	if slot == null or slot.component_kind != expected_kind:
+		return false
+	var entry := SpaceHangarBoardAssignment.create_entry(slot, choice)
+	if entry.is_empty():
+		return false
+	var next := _assignments.duplicate(true)
+	next[slot_id] = entry
+	if not _validate_assignment_map(next).is_empty():
+		return false
+	_assignments = next
+	return true
+
+func _validate_assignment_map(assignments: Dictionary) -> PackedStringArray:
+	if _board == null:
+		return PackedStringArray()
+	return SpaceHangarBoardAssignment.validate(_board, assignments, _inventory)
+
+func _slot_by_id(slot_id: String) -> SpaceHangarBoardSlotDefinition:
+	return _board.resolve_slot(slot_id) if _board != null else null
+
+func _slot_for_role(role: String) -> SpaceHangarBoardSlotDefinition:
+	if _board == null:
+		return null
+	for slot in _board.slots:
+		if slot != null and slot.area_id == "workshop" and slot.role_id == role:
+			return _board.resolve_slot(String(slot.slot_id))
+	return null
+
+func _rebuild_legacy_projection() -> void:
+	_selection.deviceSelections = []
+	_selection.skillSelections = []
+	_selection.parserId = ""
+	_selection.parserVersion = 0
+	_selection.parserSlotId = ""
+	_selection.parserInstanceId = ""
+	_selection.masterWorkshopInstanceId = ""
+	_selection.slaveWorkshopInstanceId = ""
+	for slot_id in _assignments:
+		var entry: Dictionary = _assignments[slot_id]
+		var kind := String(entry.get("componentKind", ""))
+		match kind:
+			"ore_parser":
+				_selection.parserId = String(entry.definitionId)
+				_selection.parserVersion = int(entry.definitionVersion)
+				_selection.parserSlotId = slot_id
+				_selection.parserInstanceId = String(entry.ownedInstanceId)
+			"workshop":
+				var slot := _slot_by_id(slot_id)
+				if slot != null and slot.role_id == "master":
+					_selection.masterWorkshopInstanceId = String(entry.ownedInstanceId)
+				elif slot != null and slot.role_id == "slave":
+					_selection.slaveWorkshopInstanceId = String(entry.ownedInstanceId)
+			"production_device":
+				_selection.deviceSelections.append({
+					"slotId": slot_id, "definitionId": String(entry.definitionId),
+					"definitionVersion": int(entry.definitionVersion), "instanceId": String(entry.ownedInstanceId)
+				})
+			"skill":
+				var slot := _slot_by_id(slot_id)
+				_selection.skillSelections.append({
+					"orderDefinitionKey": slot_id, "skillId": String(entry.definitionId),
+					"definitionVersion": int(entry.definitionVersion),
+					"controlArea": slot.control_area if slot != null else "none",
+					"instanceId": String(entry.ownedInstanceId)
+				})
 
 func _find_choice_in(raw_choices: Variant, definition_id: String, version: int) -> Dictionary:
 	if not (raw_choices is Array):
@@ -86,88 +242,10 @@ func _find_workshop_instance(instance_id: String, world_key: String = "") -> Dic
 		if choice is Dictionary and String(choice.get("instanceId", "")) == instance_id:
 			var compatible_worlds: Array = choice.get("compatibleWorldKeys", [])
 			if world_key.is_empty() or compatible_worlds.has(world_key):
-				return choice
+				var result: Dictionary = choice.duplicate(true)
+				result["itemKind"] = "workshop"
+				return result
 	return {}
-
-func set_device(slot_id: String, definition_id: String, version: int, instance_id: String = "") -> bool:
-	if slot_id.strip_edges().is_empty() or slot_id == String(_selection.get("parserSlotId", "")):
-		return false
-	var choice := _find_exact_choice("deviceChoices", definition_id, version, instance_id)
-	if choice.is_empty():
-		return false
-	var devices: Array = _selection.deviceSelections
-	for index in range(devices.size()):
-		if String(devices[index].get("slotId", "")) == slot_id:
-			devices[index] = _device_choice(slot_id, definition_id, version, String(choice.get("instanceId", "")))
-			_selection.deviceSelections = devices
-			return true
-	devices.append(_device_choice(slot_id, definition_id, version, String(choice.get("instanceId", ""))))
-	_selection.deviceSelections = devices
-	return true
-
-func remove_device(slot_id: String) -> bool:
-	var devices: Array = _selection.deviceSelections
-	for index in range(devices.size() - 1, -1, -1):
-		if String(devices[index].get("slotId", "")) == slot_id:
-			devices.remove_at(index)
-			_selection.deviceSelections = devices
-			return true
-	return false
-
-func set_skill(order_definition_key: String, skill_id: String, version: int, control_area: String, instance_id: String = "") -> bool:
-	if order_definition_key.strip_edges().is_empty() or control_area.strip_edges().is_empty():
-		return false
-	var choice := _find_exact_choice("skillChoices", skill_id, version, instance_id)
-	if choice.is_empty() or not _contains_string(choice.get("allowedControlAreas", []), control_area):
-		return false
-	var skills: Array = _selection.skillSelections
-	var replacement := {
-		"orderDefinitionKey": order_definition_key,
-		"skillId": skill_id,
-		"definitionVersion": version,
-		"controlArea": control_area,
-		"instanceId": String(choice.get("instanceId", ""))
-	}
-	for index in range(skills.size()):
-		if String(skills[index].get("orderDefinitionKey", "")) == order_definition_key:
-			skills[index] = replacement
-			_selection.skillSelections = skills
-			return true
-	skills.append(replacement)
-	_selection.skillSelections = skills
-	return true
-
-func remove_skill(order_definition_key: String) -> bool:
-	var skills: Array = _selection.skillSelections
-	for index in range(skills.size() - 1, -1, -1):
-		if String(skills[index].get("orderDefinitionKey", "")) == order_definition_key:
-			skills.remove_at(index)
-			_selection.skillSelections = skills
-			return true
-	return false
-
-func set_expected_battle_duration(logical_milli: float) -> bool:
-	if not is_finite(logical_milli) or logical_milli <= 0.0:
-		return false
-	_selection.expectedBattleDurationLogicalMilli = logical_milli
-	return true
-
-func build_selection() -> SpaceHangarSelection:
-	if not _inventory_ready:
-		return null
-	var selection := SpaceHangarSelection.from_data(_selection)
-	if not selection.validate().is_empty():
-		return null
-	return selection
-
-func snapshot_data() -> Dictionary:
-	return _selection.duplicate(true)
-
-func is_ready() -> bool:
-	return _inventory_ready
-
-func _has_exact_choice(collection_key: String, definition_id: String, version: int) -> bool:
-	return not _find_exact_choice(collection_key, definition_id, version).is_empty()
 
 func _find_exact_choice(collection_key: String, definition_id: String, version: int, instance_id: String = "") -> Dictionary:
 	if not _inventory_ready or definition_id.strip_edges().is_empty() or version <= 0:
@@ -182,8 +260,17 @@ func _find_exact_choice(collection_key: String, definition_id: String, version: 
 			var choice_instance_id := String(raw_choice.get("instanceId", ""))
 			if (not instance_id.is_empty() and choice_instance_id != instance_id) or (instance_id.is_empty() and not choice_instance_id.is_empty()):
 				continue
-			return raw_choice
+			var result: Dictionary = raw_choice.duplicate(true)
+			result["itemKind"] = _kind_for_collection(collection_key)
+			return result
 	return {}
+
+func _kind_for_collection(collection_key: String) -> String:
+	match collection_key:
+		"parserChoices": return "ore_parser"
+		"deviceChoices": return "production_device"
+		"skillChoices": return "skill"
+	return ""
 
 func _contains_string(values: Variant, expected: String) -> bool:
 	if values is Array:
@@ -193,12 +280,3 @@ func _contains_string(values: Variant, expected: String) -> bool:
 	elif values is PackedStringArray:
 		return values.has(expected)
 	return false
-
-func _device_choice(slot_id: String, definition_id: String, version: int, instance_id: String = "") -> Dictionary:
-	return {
-		"slotId": slot_id,
-		"definitionId": definition_id,
-		"definitionVersion": version,
-		"instanceId": instance_id
-	}
-
