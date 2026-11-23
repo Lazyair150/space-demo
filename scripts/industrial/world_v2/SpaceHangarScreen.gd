@@ -740,18 +740,6 @@ func _on_build_pressed() -> void:
 	if snapshot == null:
 		_status_label.text = String(_controller.get_view_model().get("lastError", "装配快照构建失败"))
 		return
-	if board_definition != null:
-		var frozen_data := snapshot.to_dictionary()
-		var board_snapshot := board_definition.build_frozen_snapshot()
-		if board_snapshot.is_empty():
-			_status_label.text = "工作区规则板无法冻结。"
-			return
-		frozen_data["assemblyBoard"] = board_snapshot
-		frozen_data.erase("loadoutFingerprint")
-		snapshot = SpaceBattleLoadoutSnapshot.create(frozen_data)
-		if snapshot == null:
-			_status_label.text = "工作区规则板与装配槽位不兼容。"
-			return
 	var game_scene := load("res://scenes/game/Game.tscn") as PackedScene
 	if game_scene == null:
 		_status_label.text = "战斗场景不可用，无法启动。"
