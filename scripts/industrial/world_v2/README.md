@@ -426,3 +426,12 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 
 - `SpaceEffectCatalog` now snapshots registered BuffDefinition Resources and returns detached exact-version copies, preventing source or consumer mutation from changing a registered effect definition. The effect restore probe checks both isolation boundaries.
 - Schema-v3 `SpaceBattleEffectStateStore.save/load` validates the complete effect-manager snapshot shape and wave/segment consistency before replacing or accepting a checkpoint; malformed effect payloads and inconsistent progression leave the previous valid snapshot intact.
+
+
+## 4.14g Skill Catalog definition ownership
+
+- `SpaceSkillCatalog.register_skill` now stores a deep Resource snapshot instead of retaining the mutable authoring Resource.
+- `resolve_skill` returns a detached deep copy, so callers cannot mutate the registered exact-version definition through a resolved reference.
+- `SpaceSkillCatalogProbe` verifies source-mutation isolation, resolved-copy isolation, and exact-version lookup. The end-to-end `SpaceOreParserJarIngressProbe` invokes this ownership probe before its cross-domain parser/import checks.
+- This is a correctness prerequisite for the upcoming Hangar assembler: a frozen loadout must be built from stable versioned skill definitions, not Resources that can change after registration.
+- No production skill content, effect values, cooldowns, or balance numbers are added. The new probe is committed but has not yet been executed in Godot 4.7.1 .NET.
