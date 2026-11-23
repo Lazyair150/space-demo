@@ -83,7 +83,28 @@ static func _probe_workshop() -> bool:
 		return false
 	var pool := _pool_for_model("probe.workshop.pool", "workshop", model)
 	var built := SpaceRoguelikeIndividualPoolEntryBuilder.append_workshop(pool, workshop, ["round"], ["water", "fuel"], "common", 1.0)
-	return bool(built.get("success", false)) and pool.is_valid()
+	if not bool(built.get("success", false)) or not pool.is_valid():
+		return false
+	var owned_workshop := SpaceOwnedProgressionInstance.new()
+	owned_workshop.instance_id = &"probe.workshop.owned"
+	owned_workshop.item_kind = "workshop"
+	owned_workshop.definition_id = workshop.workshop_id
+	owned_workshop.definition_version = workshop.definition_version
+	owned_workshop.growth_attributes = {
+		"maxJarsBonus": 2,
+		"maxLiquidsBonus": 1,
+		"additionalMark.square": 1
+	}
+	var effective := SpaceIndividualPowerEvaluator.evaluate_effective_workshop(
+		workshop, owned_workshop, ["round", "square"], ["water", "fuel"], model
+	)
+	if not bool(effective.get("success", false)):
+		return false
+	var effective_metrics: Dictionary = effective.powerMetrics
+	return float(effective_metrics["max_jars"]) == 6.0 \
+		and float(effective_metrics["max_liquids"]) == 9.0 \
+		and float(effective_metrics["additional_mark_count"]) == 1.0 \
+		and float(effective_metrics["uses_core_staging_fallback"]) == 1.0
 
 static func _probe_skill() -> bool:
 	var skill := SpaceSkillDefinition.new()
