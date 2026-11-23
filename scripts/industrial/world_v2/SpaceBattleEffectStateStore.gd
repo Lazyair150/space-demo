@@ -122,7 +122,13 @@ func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity:
         return false
     if not (parser is Dictionary) or int(parser.get("schemaVersion", 0)) != 1:
         return false
-    if not (parser.get("parserRuntime", null) is Dictionary) or not (parser.get("pendingPickups", null) is Array):
+    var parser_runtime: Variant = parser.get("parserRuntime", null)
+    var next_pickup_sequence: Variant = parser.get("nextPickupSequence", null)
+    if not (parser_runtime is Dictionary) or int(parser_runtime.get("schemaVersion", 0)) != 2:
+        return false
+    if typeof(next_pickup_sequence) != TYPE_INT or int(next_pickup_sequence) <= 0:
+        return false
+    if not (parser.get("pendingPickups", null) is Array):
         return false
     return true
 
