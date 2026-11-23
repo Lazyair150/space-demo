@@ -56,10 +56,15 @@ static func append_skill(
 	)
 	if not bool(evaluated.get("success", false)):
 		return evaluated
-	return _append(pool, definition.skill_id, definition.definition_version, rarity, weight, tags, evaluated, {
+	var provenance := {
 		"benefitMetrics": benefit_metrics.duplicate(true),
 		"balanceContext": balance_context.duplicate(true)
-	})
+	}
+	if definition.jar_order_template_id != &"":
+		if String(jar_world_options.get("orderTemplates", []).size()) == "0":
+			return _failure("template-backed skill pool entry requires the exact Core world orderTemplates")
+		provenance["orderTemplateName"] = definition.core_order_template_name()
+	return _append(pool, definition.skill_id, definition.definition_version, rarity, weight, tags, evaluated, provenance)
 
 static func _append(
 	pool: SpaceRoguelikeIndividualPool,
