@@ -121,10 +121,42 @@ public partial class WorldV2ShipHost : Node
     /// Sole production time ingress. deltaSeconds must be the already-scaled
     /// simulation delta from the owning Space world step.
     /// </summary>
-    public bool AdvanceSpaceSimulation(double deltaSeconds)
+    /// <summary>
+    /// Convert the owning Space simulation delta into the exact whole logical milliseconds
+    /// that will be forwarded to Jar. The fractional remainder is owned only by this Host.
+    /// Call once per Space step, then let Space-owned systems process the returned delta
+    /// before calling AdvanceSpaceSimulationMilliseconds.
+    /// </summary>
+    public long AccumulateSpaceSimulationDelta(double deltaSeconds)
     {
         if (double.IsNaN(deltaSeconds) || double.IsInfinity(deltaSeconds) || deltaSeconds < 0)
             throw new ArgumentOutOfRangeException(nameof(deltaSeconds));
+        if (_state != HostState.Active)
+            return 0;
+        if (deltaSeconds == 0)
+            return 0;
+
+        _worldHasAdvanced = true;
+        var accumulated = _fractionalWorldTimeMilli + deltaSeconds * 1000.0;
+        if (accumulated > long.MaxValue)
+        {
+            LatchFault("Space simulation delta exceeds the supported Jar world-time range");
+            return 0;
+        }
+
+        var wholeMilliseconds = (long)Math.Floor(accumulated);
+        _fractionalWorldTimeMilli = accumulated - wholeMilliseconds;
+        return wholeMilliseconds;
+    }
+
+    /// <summary>
+    /// Advance Jar by the exact integer delta returned from AccumulateSpaceSimulationDelta.
+    /// Space can process parser output and import completed Jars between these two calls.
+    /// </summary>
+    public bool AdvanceSpaceSimulationMilliseconds(long deltaWorldTimeMilli)
+    {
+        if (deltaWorldTimeMilli < 0)
+            throw new ArgumentOutOfRangeException(nameof(deltaWorldTimeMilli));
         if (_state != HostState.Active)
             return false;
         if (_runtime == null || !_runtime.IsInitialized || _runtime.IsDisposed)
@@ -132,30 +164,25 @@ public partial class WorldV2ShipHost : Node
             LatchFault("Active ship-world has no operational World V2 Runtime");
             return false;
         }
-        if (deltaSeconds == 0)
+        if (deltaWorldTimeMilli == 0)
             return true;
 
-        _worldHasAdvanced = true;
-        var accumulated = _fractionalWorldTimeMilli + deltaSeconds * 1000.0;
-        if (accumulated > long.MaxValue)
-        {
-            LatchFault("Space simulation delta exceeds the supported Jar world-time range");
-            return false;
-        }
-
-        var wholeMilliseconds = (long)Math.Floor(accumulated);
-        _fractionalWorldTimeMilli = accumulated - wholeMilliseconds;
-        if (wholeMilliseconds <= 0)
-            return true;
-
-        // Exactly one call per Space simulation step; no _Process or wall-clock fallback.
-        _runtime.AdvanceWorldTime(wholeMilliseconds);
+        _runtime.AdvanceWorldTime(deltaWorldTimeMilli);
         if (_runtime.IsFaulted)
         {
             LatchFault(ReadRuntimeFault(_runtime, "World V2 Runtime faulted during Space time forwarding"));
             return false;
         }
         return true;
+    }
+
+    /// <summary>
+    /// Convenience path for callers with no Space-owned pre-advance processing.
+    /// </summary>
+    public bool AdvanceSpaceSimulation(double deltaSeconds)
+    {
+        var wholeMilliseconds = AccumulateSpaceSimulationDelta(deltaSeconds);
+        return AdvanceSpaceSimulationMilliseconds(wholeMilliseconds);
     }
 
     /// <summary>
