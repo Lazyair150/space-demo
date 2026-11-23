@@ -79,7 +79,9 @@ func build_selection_inventory() -> Dictionary:
 				"id": String(definition.skill_id),
 				"version": definition.definition_version,
 				"label": definition.display_name,
-				"allowedControlAreas": definition.allowed_control_areas.duplicate()
+				"description": definition.description,
+				"allowedControlAreas": definition.allowed_control_areas.duplicate(),
+				"iconTexture": definition.display_icon
 			})
 	for definition in effect_definitions:
 		if definition != null:
@@ -87,7 +89,7 @@ func build_selection_inventory() -> Dictionary:
 				"id": String(definition.id),
 				"version": definition.definition_version,
 				"label": definition.label,
-					"iconTexture": definition.display_icon
+				"iconTexture": definition.display_icon
 			})
 	var ready := create_runtime_bundle() != null
 	return {
