@@ -149,6 +149,10 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 			if not jar_options.has(required_key):
 				errors.append("jarWorldOptions is missing " + required_key)
 
+
+	if source.has("assemblyBoard"):
+		errors.append_array(_validate_assembly_board(source))
+
 	if source.has("progressionOwnerPlayerId") or source.has("ownedInstanceSnapshots"):
 		var referenced_ids := {}
 		if ship is Dictionary and ship.get("ownedInstance", null) is Dictionary:
@@ -443,6 +447,80 @@ func resolve_order_binding(order_definition_key: String) -> Dictionary:
 		if String(order.get("orderDefinitionKey", "")) == order_definition_key:
 			return order.duplicate(true)
 	return {}
+
+
+static func _validate_assembly_board(source: Dictionary) -> PackedStringArray:
+	var errors := PackedStringArray()
+	var board: Variant = source.get("assemblyBoard", null)
+	if not (board is Dictionary) or int(board.get("schemaVersion", 0)) != 1:
+		errors.append("assemblyBoard must be a versioned frozen board snapshot")
+		return errors
+	if _required_text(board, "boardId").is_empty() or int(board.get("definitionVersion", 0)) <= 0:
+		errors.append("assemblyBoard requires an exact board identity/version")
+	var raw_slots: Variant = board.get("slots", null)
+	if not (raw_slots is Array):
+		errors.append("assemblyBoard slots must be an array")
+		return errors
+	var slot_by_id := {}
+	var master_count := 0
+	var slave_count := 0
+	var parser_slot_id := ""
+	for raw_slot in raw_slots:
+		if not (raw_slot is Dictionary):
+			errors.append("assemblyBoard slot must be a dictionary")
+			continue
+		var slot: Dictionary = raw_slot
+		var slot_id := _required_text(slot, "slotId")
+		var area := String(slot.get("areaId", ""))
+		var component := String(slot.get("componentKind", ""))
+		var role := String(slot.get("roleId", "none"))
+		var control_area := String(slot.get("controlArea", "none"))
+		if slot_id.is_empty() or slot_by_id.has(slot_id):
+			errors.append("assemblyBoard slot IDs must be non-empty and unique")
+		else:
+			slot_by_id[slot_id] = slot
+		var valid_slot := (
+			(area == "workshop" and component == "workshop" and role in ["master", "slave"] and control_area == "none")
+			or (area == "decomposition" and component == "ore_parser" and role == "none" and control_area == "none")
+			or (area == "orders" and component == "skill" and role == "none" and control_area in ["Active", "Passive"])
+			or (area == "production" and component == "production_device" and role == "none" and control_area == "none")
+		)
+		if not valid_slot:
+			errors.append("assemblyBoard slot has an invalid area/component/role/control-area contract: " + slot_id)
+		if area == "workshop" and role == "master":
+			master_count += 1
+		if area == "workshop" and role == "slave":
+			slave_count += 1
+		if component == "ore_parser":
+			parser_slot_id = slot_id
+	if master_count != 1 or slave_count != 1 or parser_slot_id.is_empty():
+		errors.append("assemblyBoard must contain exactly one Master, one Slave, and one decomposition parser position")
+	var devices: Variant = source.get("productionDeviceSelections", [])
+	var selected_parser_slot := ""
+	if devices is Array:
+		for device in devices:
+			if not (device is Dictionary):
+				continue
+			var slot_id := String(device.get("slotId", ""))
+			if String(device.get("deviceKind", "")) == "ore_parser":
+				selected_parser_slot = slot_id
+				if slot_id != parser_slot_id:
+					errors.append("selected universal parser does not occupy the frozen decomposition slot")
+			elif not slot_by_id.has(slot_id) or String(slot_by_id[slot_id].get("componentKind", "")) != "production_device":
+				errors.append("selected production device does not occupy a matching board slot: " + slot_id)
+	if selected_parser_slot.is_empty():
+		errors.append("assemblyBoard requires its decomposition slot to contain the selected universal parser")
+	var orders: Variant = source.get("selectedOrderBindings", [])
+	if orders is Array:
+		for order in orders:
+			if not (order is Dictionary):
+				continue
+			var order_key := String(order.get("orderDefinitionKey", ""))
+			if not slot_by_id.has(order_key) or String(slot_by_id[order_key].get("componentKind", "")) != "skill":
+				errors.append("selected skill does not occupy a matching order board slot: " + order_key)
+			elif String(slot_by_id[order_key].get("controlArea", "")) != String(order.get("skillControl", {}).get("area", "")):
+				errors.append("selected skill control area differs from its frozen order slot: " + order_key)
+	return errors
 
 static func _required_text(source: Dictionary, key: String) -> String:
 	return String(source.get(key, "")).strip_edges()
