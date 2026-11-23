@@ -156,10 +156,55 @@ func _initialize_ore_parser() -> bool:
 		if not bool(restored.get("success", false)):
 			push_error("[Game] Ore parser state restore failed: " + String(restored.get("reason", "")))
 			return false
+		if not _validate_energy_stone_pickup_sequence(_persisted_ore_parser_state, parser_state):
+			return false
 		if not _restore_pending_energy_stone_pickups(_persisted_ore_parser_state, shape_names, parser_state):
 			return false
 	elif not _persisted_jar_execution_checkpoint_json.is_empty():
 		push_error("[Game] Jar checkpoint cannot be restored without its matching Space ore parser state")
+		return false
+	return true
+
+
+func _validate_energy_stone_pickup_sequence(parser_envelope: Dictionary, parser_state: Dictionary) -> bool:
+	var ship_world_id := _battle_loadout.ship_world_id() if _battle_loadout != null else ""
+	var prefix := "space-stone:" + ship_world_id + ":"
+	var seen: Variant = parser_state.get("seenPickups", {})
+	var pending: Variant = parser_envelope.get("pendingPickups", [])
+	if not (seen is Dictionary) or not (pending is Array):
+		push_error("[Game] Saved pickup identity sources are malformed")
+		return false
+	var maximum_issued_sequence := 0
+	for pickup_id_value in seen.keys():
+		var pickup_id := String(pickup_id_value)
+		if not pickup_id.begins_with(prefix):
+			continue
+		var suffix := pickup_id.trim_prefix(prefix)
+		if not suffix.is_valid_int():
+			push_error("[Game] Saved parser contains a malformed battle pickup ID")
+			return false
+		var sequence := int(suffix)
+		if sequence <= 0 or str(sequence) != suffix:
+			push_error("[Game] Saved parser contains a non-canonical battle pickup ID")
+			return false
+		maximum_issued_sequence = maxi(maximum_issued_sequence, sequence)
+	for raw_record in pending:
+		if not (raw_record is Dictionary):
+			continue
+		var pickup_id := String(raw_record.get("pickupId", ""))
+		if not pickup_id.begins_with(prefix):
+			continue
+		var suffix := pickup_id.trim_prefix(prefix)
+		if not suffix.is_valid_int():
+			push_error("[Game] Saved pending pickup has a malformed battle identity")
+			return false
+		var sequence := int(suffix)
+		if sequence <= 0 or str(sequence) != suffix:
+			push_error("[Game] Saved pending pickup has a non-canonical battle identity")
+			return false
+		maximum_issued_sequence = maxi(maximum_issued_sequence, sequence)
+	if _next_energy_stone_pickup_sequence <= maximum_issued_sequence:
+		push_error("[Game] Saved next pickup sequence would reuse an issued identity")
 		return false
 	return true
 
