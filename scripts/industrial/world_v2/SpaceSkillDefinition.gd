@@ -8,6 +8,7 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 @export var skill_id: StringName = &""
 @export var definition_version: int = 1
 @export var display_name: String = ""
+@export var display_icon: Texture2D
 @export_multiline var description: String = ""
 
 ## Jar-owned execution contract. Keep this data free of Space effect semantics.
