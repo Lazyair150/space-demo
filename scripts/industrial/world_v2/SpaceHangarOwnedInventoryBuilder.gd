@@ -60,11 +60,16 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 				var definition := runtime_bundle.workshop_catalog.resolve_definition(String(instance.definition_id), instance.definition_version)
 				if definition == null:
 					return _empty("Owned workshop instance references a missing exact definition")
+				var compatible_world_keys: Array[String] = []
+				for world in runtime_bundle.workshop_combination_catalog.definitions:
+					if world != null and definition.is_compatible_with_world(world.jar_world_options.get("shapes", []), world.jar_world_options.get("liquids", [])):
+						compatible_world_keys.append(String(world.combination_id) + "@" + str(world.definition_version))
 				result.workshopInstanceChoices.append({
 					"id": String(definition.workshop_id), "version": definition.definition_version,
 					"instanceId": String(instance.instance_id), "level": instance.level,
 					"experience": instance.experience, "growthAttributes": instance.growth_attributes.duplicate(true),
-					"label": definition.display_name, "iconTexture": definition.display_icon
+					"label": definition.display_name, "iconTexture": definition.display_icon,
+					"compatibleWorldKeys": compatible_world_keys
 				})
 			"skill":
 				var definition := _resolve_skill_definition(bundle, String(instance.definition_id), instance.definition_version)
