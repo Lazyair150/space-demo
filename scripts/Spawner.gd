@@ -29,14 +29,18 @@ const ELITE_SCORE := 60
 @export var pickup_chance:float=0.25
 ## 可掉的 Buff 定义；留空则不掉
 @export var pickup_effects:Array[BuffDefinition]=[]
+## Optional typed energy-stone pickup scene; no drops occur unless enemy profiles are assigned.
+@export var energy_stone_pickup_scene: PackedScene
 
 var _current_wave:int=0
 var _spawning:bool=false
 var _alive_enemies:int=0
 var _segment_index:int=SEGMENT_WARMUP
 var _cycle:int=0
+var _energy_stone_rng := RandomNumberGenerator.new()
 
 func _ready()->void:
+	_energy_stone_rng.randomize()
 	await get_tree().process_frame
 	_start_next_wave()
 
@@ -93,7 +97,7 @@ func _spawn_one(shooter_chance:float, elite:bool)->void:
 		e.scale =Vector2(ELITE_SCALE, ELITE_SCALE)
 	e.position =_random_edge_position()
 	e.tree_exited.connect(_on_enemy_freed)
-	e.died.connect(_on_enemy_died)
+	e.died.connect(_on_enemy_died_with_source.bind(e))
 	get_parent().get_node("Arena").add_child(e)
 	_alive_enemies+=1
 
@@ -116,6 +120,50 @@ func _on_enemy_died(at:Vector2)->void:
 	var pickup := pickup_scene.instantiate()
 	pickup.set("buff_definition", pickup_effects[randi() % pickup_effects.size()])
 	pickup.set("tint", _pickup_tint(pickup.get("buff_definition")))
+	pickup.position = at
+	arena.add_child(pickup)
+
+## Enemy death is a single event, but Buff capsules and energy stones are independent
+## resource channels. Absence of one channel must never suppress the other.
+func _on_enemy_died_with_source(at: Vector2, enemy: Node2D) -> void:
+	_on_enemy_died(at)
+	_spawn_energy_stone_pickup(at, enemy)
+
+func _spawn_energy_stone_pickup(at: Vector2, enemy: Node2D) -> void:
+	if energy_stone_pickup_scene == null or enemy == null:
+		return
+	var profile: Variant = enemy.get("energy_stone_drop_profile")
+	if not (profile is SpaceEnergyStoneDropProfile):
+		return
+	var game := get_parent()
+	if game == null or not game.has_method("get_ore_parser_shape_vocabulary") or not game.has_method("allocate_energy_stone_pickup_id"):
+		return
+	var shape_names: Variant = game.call("get_ore_parser_shape_vocabulary")
+	if not (shape_names is Array) or shape_names.is_empty():
+		return
+	var rolled: Dictionary = profile.roll_drop(_energy_stone_rng, shape_names)
+	if not bool(rolled.get("success", false)):
+		push_error("[Spawner] Invalid energy-stone drop profile: " + String(rolled.get("reason", "")))
+		return
+	if not bool(rolled.get("dropped", false)):
+		return
+	var pickup_id := String(game.call("allocate_energy_stone_pickup_id"))
+	if pickup_id.is_empty():
+		push_error("[Spawner] Could not allocate a stable energy-stone pickup identity")
+		return
+	var pickup := energy_stone_pickup_scene.instantiate()
+	if not pickup.has_method("configure") or not bool(pickup.configure(
+		pickup_id,
+		String(rolled.get("stoneType", "")),
+		float(rolled.get("volume", 0.0))
+	)):
+		pickup.queue_free()
+		push_error("[Spawner] Energy-stone pickup rejected the configured drop payload")
+		return
+	var arena := get_parent().get_node_or_null("Arena")
+	if arena == null:
+		pickup.queue_free()
+		return
 	pickup.position = at
 	arena.add_child(pickup)
 
