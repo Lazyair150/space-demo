@@ -126,11 +126,23 @@ func _checkpoint_event_ledgers_match(effect_state: Dictionary, dispatcher_state:
 	var dispatcher_ids: Variant = dispatcher_state.get("processedEventIds", null)
 	if not (effect_ids is Array) or not (dispatcher_ids is Array) or effect_ids.size() != dispatcher_ids.size():
 		return false
+	var world_instance_id := String(dispatcher_state.get("jarWorldInstanceId", ""))
+	if effect_ids.is_empty():
+		if not world_instance_id.is_empty():
+			return false
+	elif world_instance_id.is_empty():
+		return false
 	var expected := {}
 	for raw_id in effect_ids:
 		if typeof(raw_id) != TYPE_STRING or String(raw_id).is_empty() or expected.has(String(raw_id)):
 			return false
-		expected[String(raw_id)] = true
+		var event_id := String(raw_id)
+		if not event_id.begins_with(world_instance_id + ":"):
+			return false
+		var suffix := event_id.trim_prefix(world_instance_id + ":").split(":")
+		if suffix.size() != 2 or not suffix[0].is_valid_int() or not suffix[1].is_valid_int() or int(suffix[0]) <= 0 or int(suffix[1]) <= 0 or str(int(suffix[0])) != suffix[0] or str(int(suffix[1])) != suffix[1]:
+			return false
+		expected[event_id] = true
 	var actual := {}
 	for raw_id in dispatcher_ids:
 		if typeof(raw_id) != TYPE_STRING or String(raw_id).is_empty() or actual.has(String(raw_id)):
