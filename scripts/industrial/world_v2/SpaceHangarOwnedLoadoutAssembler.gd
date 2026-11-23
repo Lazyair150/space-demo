@@ -14,6 +14,11 @@ static func assemble(
 	for key in ["shipId", "shipVersion", "shipInstanceId", "parserId", "parserVersion", "parserSlotId", "parserInstanceId", "workshopId", "workshopVersion", "masterWorkshopInstanceId", "slaveWorkshopInstanceId", "skillSelections", "deviceSelections", "expectedBattleDurationLogicalMilli"]:
 		if not selection.has(key):
 			return _reject("owned selection is missing " + key)
+	var board_assignment_snapshot: Dictionary = selection.get("boardAssignments", {})
+	if not board_assignment_snapshot.is_empty():
+		var assignment_error := _validate_board_assignment_snapshot(board_assignment_snapshot, progression, selection)
+		if not assignment_error.is_empty():
+			return _reject(assignment_error)
 	var ship_instance := _resolve(progression, String(selection.shipInstanceId), "ship", String(selection.shipId), int(selection.shipVersion))
 	var parser_instance := _resolve(progression, String(selection.parserInstanceId), "ore_parser", String(selection.parserId), int(selection.parserVersion))
 	var master_instance := _resolve(progression, String(selection.masterWorkshopInstanceId), "workshop", "", 0)
@@ -146,6 +151,8 @@ static func assemble(
 			return _reject("skill growth attributes do not satisfy effect parameters and benefit-to-Jar balance contracts")
 		composed_binding.ownedInstance = skill_instance.build_frozen_snapshot()
 		frozen.selectedOrderBindings[index] = composed_binding
+	if not board_assignment_snapshot.is_empty():
+		frozen["boardAssignmentSnapshot"] = board_assignment_snapshot.duplicate(true)
 	frozen["progressionOwnerPlayerId"] = String(progression.player_id)
 	frozen["progressionStateRevision"] = progression.state_revision
 	var owned_snapshots: Array[Dictionary] = [
@@ -159,6 +166,51 @@ static func assemble(
 	frozen["ownedInstanceSnapshots"] = owned_snapshots
 	frozen.erase("loadoutFingerprint")
 	return SpaceBattleLoadoutSnapshot.create(frozen)
+
+
+static func _validate_board_assignment_snapshot(snapshot: Dictionary, progression: SpacePlayerProgressionState, selection: Dictionary) -> String:
+	if int(snapshot.get("schemaVersion", 0)) != 1 or String(snapshot.get("assignmentFingerprint", "")).is_empty():
+		return "Board Assignment snapshot schema or fingerprint is missing"
+	var board: Dictionary = snapshot.get("boardDefinition", {})
+	var slots: Variant = board.get("slots", [])
+	var assignments: Variant = snapshot.get("assignments", [])
+	if String(board.get("boardId", "")) != String(snapshot.get("boardId", "")) or int(board.get("definitionVersion", 0)) != int(snapshot.get("definitionVersion", 0)) or not (slots is Array) or not (assignments is Array):
+		return "Board Assignment snapshot does not contain its exact Board Definition"
+	var slot_index := {}
+	for slot in slots:
+		if not (slot is Dictionary):
+			return "Board Definition snapshot contains an invalid slot"
+		var slot_id := String(slot.get("slotId", ""))
+		if slot_id.is_empty() or slot_index.has(slot_id):
+			return "Board Definition snapshot contains an empty or duplicate slot identity"
+		slot_index[slot_id] = slot
+	var seen_slots := {}
+	var seen_instances := {}
+	for entry in assignments:
+		if not (entry is Dictionary):
+			return "Board Assignment snapshot contains an invalid assignment entry"
+		var slot_id := String(entry.get("slotId", ""))
+		var instance_id := String(entry.get("ownedInstanceId", ""))
+		if not slot_index.has(slot_id) or seen_slots.has(slot_id) or instance_id.is_empty() or seen_instances.has(instance_id):
+			return "Board Assignment snapshot contains an unknown slot or duplicated identity"
+		seen_slots[slot_id] = true
+		seen_instances[instance_id] = true
+		var slot: Dictionary = slot_index[slot_id]
+		if String(entry.get("componentKind", "")) != String(slot.get("componentKind", "")):
+			return "Board Assignment component kind does not match its slot"
+		var instance := progression.resolve_instance(instance_id)
+		if instance == null or instance.item_kind != String(slot.get("componentKind", "")):
+			return "Board Assignment references an unowned or incompatible component instance"
+		if String(instance.definition_id) != String(entry.get("definitionId", "")) or instance.definition_version != int(entry.get("definitionVersion", 0)):
+			return "Board Assignment exact Definition identity/version differs from the owned instance"
+	for slot_id in slot_index:
+		var slot: Dictionary = slot_index[slot_id]
+		if bool(slot.get("required", false)) and not seen_slots.has(slot_id):
+			return "Required Board Slot is empty: " + slot_id
+	var expected_count := 3 + (selection.get("deviceSelections", []) as Array).size() + (selection.get("skillSelections", []) as Array).size()
+	if assignments.size() != expected_count:
+		return "Board Assignment map and current runtime projection contain different component counts"
+	return ""
 
 static func _resolve(state: SpacePlayerProgressionState, instance_id: String, kind: String, definition_id: String, version: int) -> SpaceOwnedProgressionInstance:
 	var instance := state.resolve_instance(instance_id)
