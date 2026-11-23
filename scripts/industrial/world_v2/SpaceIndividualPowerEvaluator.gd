@@ -70,7 +70,8 @@ static func evaluate_skill(
 	benefit_metrics: Dictionary,
 	balance_context: Dictionary,
 	balance_profile: SpaceSkillBalanceProfile,
-	model: SpaceIndividualPowerModelDefinition
+	model: SpaceIndividualPowerModelDefinition,
+	jar_world_options: Dictionary = {}
 ) -> Dictionary:
 	if definition == null or model == null or model.item_kind != "skill":
 		return _failure("skill evaluation requires a skill definition and matching model")
@@ -79,10 +80,17 @@ static func evaluate_skill(
 	if not bool(balance_context.get("valid", false)) or float(balance_context.get("expectedBattleDurationLogicalMilli", 0.0)) <= 0.0:
 		return _failure("skill power evaluation requires a valid expected battle context")
 	var selected_area := String(definition.allowed_control_areas[0])
-	var jar_order := definition.build_jar_order(selected_area)
-	if jar_order.is_empty():
+	var runtime_order := definition.build_jar_order(selected_area)
+	if runtime_order.is_empty():
 		return _failure("skill could not materialize its Jar order contract")
-	var report := SpaceSkillBalanceModel.evaluate(benefit_metrics, jar_order, balance_context, balance_profile)
+	var balance_order := runtime_order
+	if definition.jar_order_template_id != &"":
+		balance_order = SpaceSkillCatalog.new().resolve_order_template(
+			definition, jar_world_options, selected_area
+		)
+		if balance_order.is_empty():
+			return _failure("skill exact Core order template is missing or invalid in the selected world")
+	var report := SpaceSkillBalanceModel.evaluate(benefit_metrics, balance_order, balance_context, balance_profile)
 	if not bool(report.get("valid", false)):
 		return _failure(String(report.get("reason", "skill balance model rejected the definition")))
 	var cost: Dictionary = report.get("costBreakdown", {})
@@ -100,7 +108,7 @@ static func evaluate_skill(
 		"distinct_liquid_count": float(cost.get("distinctLiquidCount", 0)),
 		"distinct_shape_count": float(cost.get("distinctShapeCount", 0)),
 		"cooldown_logical_milli": float(definition.jar_cooldown_logical_milli),
-		"order_type_b": 1.0 if definition.jar_order_type == "B" else 0.0
+		"order_type_b": 1.0 if String(balance_order.get("type", "")) == "B" else 0.0
 	}
 	var scored := _score(model, metrics)
 	if bool(scored.get("success", false)):
