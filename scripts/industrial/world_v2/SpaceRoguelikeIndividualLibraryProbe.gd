@@ -76,8 +76,10 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 		reward_library.pools = [parser_pool, workshop_pool, skill_pool]
 		var reward_rng := RandomNumberGenerator.new()
 		reward_rng.seed = 98231
-		var reward_candidate := reward_library.roll_candidate("skill", reward_rng)
-		var acquired := SpaceRoguelikeIndividualRewardService.acquire_candidate(state, bundle, reward_library, reward_candidate, "probe.roguelike-owned-copy")
+		var reward_offer := SpaceRoguelikeIndividualOfferService.roll_offer(reward_library, "skill", reward_rng, 3)
+		if not bool(reward_offer.get("success", false)) or reward_offer.offers.size() != 1:
+			return false
+		var acquired := SpaceRoguelikeIndividualOfferService.acquire_selected(reward_offer, 0, state, bundle, reward_library, "probe.roguelike-owned-copy")
 		if not bool(acquired.get("success", false)) or state.resolve_instance("probe.roguelike-owned-copy") == null:
 			return false
 	return true
