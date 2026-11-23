@@ -17,7 +17,7 @@ var _fault_reason: String = ""
 
 func snapshot() -> Dictionary:
 	return {
-		"schemaVersion": 3,
+		"schemaVersion": 4,
 		"screen": Screen.keys()[_screen],
 		"battlePhase": BattlePhase.keys()[_battle_phase],
 		"pauseReason": PauseReason.keys()[_pause_reason],
