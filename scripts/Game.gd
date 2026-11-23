@@ -115,6 +115,9 @@ func configure_battle_loadout_from_checkpoint(
 func _ready() -> void:
 	if not GameFlow.begin_battle_preparation():
 		push_error("[Game] Application flow rejected battle scene entry")
+		# This instance never acquired the battle lifecycle or Host ownership.
+		# Its teardown must not fault/dispose another active battle.
+		_battle_shutdown_started = true
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
 	if not _persisted_jar_execution_checkpoint_json.is_empty() and not GameFlow.begin_battle_resuming():
