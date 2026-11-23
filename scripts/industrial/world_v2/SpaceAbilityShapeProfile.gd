@@ -29,12 +29,16 @@ func shape_for_category(category: String) -> String:
 		return ""
 	return String(shape_by_ability_category[category]).strip_edges()
 
-func validate_shape_vocabulary(shape_names: Array) -> PackedStringArray:
+func validate_shape_vocabulary(raw_shape_names: Variant) -> PackedStringArray:
 	var errors := PackedStringArray()
+	if not (raw_shape_names is Array):
+		errors.append("Jar shape vocabulary must be an array")
+		return errors
 	if not is_valid():
 		errors.append("ability shape profile is invalid")
 		return errors
 	var known_shapes := {}
+	var shape_names: Array = raw_shape_names
 	for raw_shape in shape_names:
 		known_shapes[String(raw_shape).strip_edges()] = true
 	for category in ABILITY_CATEGORIES:
