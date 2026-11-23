@@ -171,7 +171,7 @@ static func assemble(
 		frozen.selectedOrderBindings[index] = composed_binding
 	if not board_assignment_snapshot.is_empty():
 		var runtime_profile_set := SpaceBoardRuntimeProfileSet.build(
-			board_assignment_snapshot, jar_options, devices, frozen.selectedOrderBindings
+			board_assignment_snapshot, jar_options, devices, frozen.selectedOrderBindings, workshop_selection
 		)
 		if runtime_profile_set.is_empty():
 			return _reject("Board Assignment could not be routed to exact subsystem runtime profiles")
