@@ -23,6 +23,8 @@ static func calculate_update(
 	var updated := instance.duplicate(true) as SpaceOwnedProgressionInstance
 	if not updated.apply_progression(total_experience - instance.experience, target_level, growth):
 		return null
+	updated.growth_curve_id = curve.curve_id
+	updated.growth_curve_version = curve.definition_version
 	return updated
 
 static func apply_to_player_state(
