@@ -1,5 +1,7 @@
 extends Node2D
 
+const ENERGY_STONE_PICKUP_SCENE: PackedScene = preload("res://scenes/industrial/SpaceEnergyStonePickup.tscn")
+
 const ARENA_RECT:=Rect2(80,80,1120,560)
 const ASTEROID_COUNT:=10
 
@@ -157,6 +159,45 @@ func allocate_energy_stone_pickup_id() -> String:
 		return ""
 	_next_energy_stone_pickup_sequence += 1
 	return pickup_id
+
+## Enemy/encounter drop adapter. The profile chooses type and volume; the battle owns
+## stable pickup identity, and the parser owns acceptance/consumption after collection.
+func spawn_energy_stone_drop(
+	profile: SpaceEnergyStoneDropProfile,
+	world_position: Vector2,
+	rng: RandomNumberGenerator
+) -> Dictionary:
+	if profile == null or _ore_parser_runtime == null or _battle_loadout == null:
+		return {"success": false, "reason": "frozen battle parser/loadout is not active"}
+	var frozen_profile := SpaceEnergyStoneDropProfile.from_runtime_profile(profile.build_runtime_profile())
+	var shape_names := get_ore_parser_shape_vocabulary()
+	var roll := frozen_profile.roll_drop(rng, shape_names)
+	if not bool(roll.get("success", false)):
+		return {"success": false, "reason": String(roll.get("reason", "invalid energy-stone drop profile"))}
+	if not bool(roll.get("dropped", false)):
+		return {"success": true, "dropped": false}
+
+	var pickup_id := allocate_energy_stone_pickup_id()
+	if pickup_id.is_empty():
+		return {"success": false, "reason": "could not allocate a stable energy-stone pickup ID"}
+	var pickup := ENERGY_STONE_PICKUP_SCENE.instantiate() as SpaceEnergyStonePickup
+	if pickup == null:
+		return {"success": false, "reason": "energy-stone pickup scene could not be instantiated"}
+	if not pickup.configure(pickup_id, String(roll.stoneType), float(roll.volume)):
+		pickup.free()
+		return {"success": false, "reason": "rolled energy-stone data failed pickup validation"}
+
+	add_child(pickup)
+	pickup.global_position = world_position
+	return {
+		"success": true,
+		"dropped": true,
+		"pickupId": pickup_id,
+		"stoneType": String(roll.stoneType),
+		"volume": float(roll.volume),
+		"profileId": String(roll.profileId),
+		"profileVersion": int(roll.profileVersion)
+	}
 
 ## Persist this beside the frozen loadout and Jar execution checkpoint.
 func capture_ore_parser_state() -> Dictionary:
