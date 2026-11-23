@@ -4,16 +4,17 @@ class_name SpaceOreParserJarIngress
 ## A batch remains pending in the parser until Jar confirms the import. A retry after
 ## an ambiguous response is safe because Jar persists the same operation ID in its ledger.
 
-static func flush_pending(parser_runtime: SpaceOreParserRuntime, ship_host: WorldV2ShipHost) -> Dictionary:
+static func flush_pending(parser_runtime: SpaceOreParserRuntime, ship_host: Object) -> Dictionary:
 	if parser_runtime == null or ship_host == null:
 		return {"success": false, "reason": "parser runtime and ship host are required"}
-	if not ship_host.IsShipWorldActive:
-		return {"success": false, "reason": "ship world is not active"}
+	if not bool(ship_host.get("IsShipWorldActive")) or not ship_host.has_method("ImportProducedJars"):
+		return {"success": false, "reason": "ship world is not active or has no Jar import API"}
 
 	var imported_count := 0
 	var duplicate_count := 0
 	for batch in parser_runtime.pending_output_batches():
-		var receipt: Dictionary = ship_host.ImportProducedJars(
+		var receipt: Dictionary = ship_host.call(
+			"ImportProducedJars",
 			String(batch.operationId),
 			batch.jarCounts
 		)
