@@ -341,6 +341,12 @@ static func run() -> bool:
 	var restored_progression := SpacePlayerProgressionState.from_data(progression_data)
 	if restored_progression == null or not restored_progression.get_validation_errors().is_empty():
 		return false
+	var legacy_progression_data := progression_data.duplicate(true)
+	legacy_progression_data.schemaVersion = 1
+	legacy_progression_data.erase("rewardAcquisitionIds")
+	var migrated_progression := SpacePlayerProgressionState.from_data(legacy_progression_data)
+	if migrated_progression == null or migrated_progression.schema_version != SpacePlayerProgressionState.CURRENT_SCHEMA_VERSION:
+		return false
 	if int(restored_progression.build_owned_instance_snapshot("probe.parser.instance.a").get("level", 0)) != 2:
 		return false
 	var invalid_progression_data := progression_data.duplicate(true)
