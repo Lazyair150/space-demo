@@ -827,7 +827,11 @@ func _slot_configuration_is_valid() -> bool:
 		if order_key.is_empty() or seen_order_keys.has(order_key):
 			return false
 		seen_order_keys[order_key] = bool(binding.get("required", false))
-	var selection: Dictionary = _controller.get_view_model().get("selection", {})
+	var selection: Dictionary = {}
+	if _controller != null:
+		var raw_selection: Variant = _controller.get_view_model().get("selection", {})
+		if raw_selection is Dictionary:
+			selection = raw_selection
 	var selected_order_keys := {}
 	for selected in selection.get("skillSelections", []):
 		if selected is Dictionary:
