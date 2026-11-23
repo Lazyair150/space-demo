@@ -72,8 +72,6 @@ func _copy_definition(source: SpaceWorkshopCombinationDefinition) -> SpaceWorksh
 			copy.workshop_definitions.append(null)
 		else:
 			copy.workshop_definitions.append(workshop.duplicate(true) as SpaceWorkshopDefinition)
-	if source.workshop_pair != null:
-		copy.workshop_pair = source.workshop_pair.duplicate(true) as SpaceWorkshopPairDefinition
 	copy.operation_cost_by_order_type = source.operation_cost_by_order_type.duplicate(true)
 	copy.liquid_handling_operation_cost = source.liquid_handling_operation_cost
 	return copy
