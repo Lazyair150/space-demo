@@ -23,8 +23,9 @@ static func acquire_candidate(
 	var definition_version := int(candidate.get("definitionVersion", 0))
 	var rarity := String(candidate.get("rarity", ""))
 	var power_score := float(candidate.get("powerScore", -1.0))
-	if not pool.validate_effective_power(definition_id, definition_version, rarity, power_score).is_empty():
-		return {"success": false, "reason": "candidate power score is outside its rarity budget"}
+	var power_metrics: Variant = candidate.get("powerMetrics", null)
+	if not (power_metrics is Dictionary) or not pool.validate_effective_metrics(definition_id, definition_version, rarity, power_metrics).is_empty():
+		return {"success": false, "reason": "candidate power metrics/score are outside the exact subsystem model and rarity budget"}
 	if not SpacePlayerProgressionCatalogService.validate_definition(bundle, item_kind, definition_id, definition_version):
 		return {"success": false, "reason": "candidate exact definition version is not present in the prepared catalog"}
 	var instance := SpaceOwnedProgressionInstance.new()
@@ -41,7 +42,8 @@ static func acquire_candidate(
 			"powerModelId": String(pool.power_model_id),
 			"powerModelVersion": pool.power_model_version,
 			"rarity": rarity,
-			"basePowerScore": power_score
+			"basePowerScore": power_score,
+			"powerMetrics": power_metrics.duplicate(true)
 		}
 	}
 	if not state.unlock_and_acquire_instance(instance):
