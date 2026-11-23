@@ -68,6 +68,51 @@ static func run() -> Dictionary:
 	if whole_step_runtime.capture_state() != split_step_runtime.capture_state():
 		return _failure("fixed-point parser output changed when logical time was split into smaller steps")
 
+	# The battle runtime must freeze its selected parser definition.
+	var mutable_definition := SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
+	var frozen_runtime := SpaceOreParserRuntime.new()
+	var frozen_init := frozen_runtime.initialize(mutable_definition, "frozen-profile-probe", ["圆罐", "方罐"])
+	if not bool(frozen_init.get("success", false)):
+		return _failure("immutable parser runtime initialization failed")
+	var frozen_profile := frozen_runtime.capture_state().parserProfile.duplicate(true)
+	mutable_definition.production_percentage = 100
+	mutable_definition.shape_processing_rate_per_second["圆罐"] = 999.0
+	if frozen_runtime.capture_state().parserProfile != frozen_profile:
+		return _failure("mutating the source Resource changed the frozen battle parser")
+
+	# Arithmetic overflow and the Jar Int32 import ceiling must reject atomically.
+	var overflow_definition := SpaceOreParserDefinition.new()
+	overflow_definition.parser_id = &"probe-overflow-parser"
+	overflow_definition.definition_version = 1
+	overflow_definition.production_percentage = 100
+	overflow_definition.shape_processing_rate_per_second = {"圆罐": 1000000000.0, "方罐": 0.0}
+	overflow_definition.progress_per_jar_by_shape = {"圆罐": 1.0, "方罐": 1.0}
+	var overflow_runtime := SpaceOreParserRuntime.new()
+	var overflow_init := overflow_runtime.initialize(overflow_definition, "overflow-parser-instance", ["圆罐", "方罐"])
+	if not bool(overflow_init.get("success", false)):
+		return _failure("overflow parser fixture initialization failed")
+	overflow_runtime.ingest_stone("overflow-stone", "圆罐", 1.0)
+	var overflow_before := overflow_runtime.capture_state()
+	var overflow_result := overflow_runtime.advance(9223372036854775807)
+	if bool(overflow_result.get("success", false)) or overflow_runtime.capture_state() != overflow_before:
+		return _failure("fixed-point arithmetic overflow was not rejected atomically")
+
+	var batch_limit_definition := SpaceOreParserDefinition.new()
+	batch_limit_definition.parser_id = &"probe-batch-limit-parser"
+	batch_limit_definition.definition_version = 1
+	batch_limit_definition.production_percentage = 100
+	batch_limit_definition.shape_processing_rate_per_second = {"圆罐": 214748.4, "方罐": 0.0}
+	batch_limit_definition.progress_per_jar_by_shape = {"圆罐": 0.0001, "方罐": 1.0}
+	var batch_limit_runtime := SpaceOreParserRuntime.new()
+	var batch_limit_init := batch_limit_runtime.initialize(batch_limit_definition, "batch-limit-parser-instance", ["圆罐", "方罐"])
+	if not bool(batch_limit_init.get("success", false)):
+		return _failure("batch-limit parser fixture initialization failed")
+	batch_limit_runtime.ingest_stone("batch-limit-stone", "圆罐", 214748.4)
+	var batch_limit_before := batch_limit_runtime.capture_state()
+	var batch_limit_result := batch_limit_runtime.advance(1000)
+	if bool(batch_limit_result.get("success", false)) or batch_limit_runtime.capture_state() != batch_limit_before:
+		return _failure("Jar import Int32 batch ceiling was not rejected atomically")
+
 	var checkpoint := runtime.capture_state()
 	var restored := SpaceOreParserRuntime.new()
 	var restored_init := restored.initialize(definition, "probe-ship-world-parser", ["圆罐", "方罐"])
