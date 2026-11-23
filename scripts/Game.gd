@@ -18,6 +18,7 @@ var _order_effect_commit_callback: Callable
 var _persisted_order_dispatcher_state: Dictionary = {}
 var _ore_parser_runtime: SpaceOreParserRuntime
 var _persisted_ore_parser_state: Dictionary = {}
+var _next_energy_stone_pickup_sequence: int = 1
 
 @export var allow_sandbox_world_for_development: bool = true
 
@@ -120,6 +121,11 @@ func _initialize_ore_parser() -> bool:
 		if not (parser_state is Dictionary):
 			push_error("[Game] Saved ore parser state is malformed")
 			return false
+		var raw_next_pickup_sequence: Variant = _persisted_ore_parser_state.get("nextPickupSequence", 1)
+		if typeof(raw_next_pickup_sequence) != TYPE_INT or int(raw_next_pickup_sequence) <= 0:
+			push_error("[Game] Saved energy-stone pickup sequence is malformed")
+			return false
+		_next_energy_stone_pickup_sequence = int(raw_next_pickup_sequence)
 		var restored := _ore_parser_runtime.restore_state(parser_state)
 		if not bool(restored.get("success", false)):
 			push_error("[Game] Ore parser state restore failed: " + String(restored.get("reason", "")))
@@ -132,12 +138,33 @@ func ingest_energy_stone(pickup_id: String, stone_type: String, volume: float) -
 		return {"success": false, "reason": "no frozen ore parser is active"}
 	return _ore_parser_runtime.ingest_stone(pickup_id, stone_type, volume)
 
+## Spawner reads the frozen Jar vocabulary; an enemy drop cannot invent a new stone type.
+func get_ore_parser_shape_vocabulary() -> Array:
+	if _battle_loadout == null:
+		return []
+	var raw_shapes: Variant = _battle_loadout.jar_world_options().get("shapes", [])
+	return raw_shapes.duplicate(true) if raw_shapes is Array else []
+
+## Allocate pickup identity before it enters the SceneTree. The counter is persisted
+## beside parser state so restored battles never reuse an already-issued identity.
+func allocate_energy_stone_pickup_id() -> String:
+	if _battle_loadout == null or _ore_parser_runtime == null:
+		return ""
+	if _next_energy_stone_pickup_sequence >= 9223372036854775807:
+		return ""
+	var pickup_id := "space-stone:" + _battle_loadout.ship_world_id() + ":" + str(_next_energy_stone_pickup_sequence)
+	_next_energy_stone_pickup_sequence += 1
+	if pickup_id.length() > 128:
+		return ""
+	return pickup_id
+
 ## Persist this beside the frozen loadout and Jar execution checkpoint.
 func capture_ore_parser_state() -> Dictionary:
 	if _ore_parser_runtime == null:
 		return {}
 	return {
-		"parserRuntime": _ore_parser_runtime.capture_state()
+		"parserRuntime": _ore_parser_runtime.capture_state(),
+		"nextPickupSequence": _next_energy_stone_pickup_sequence
 	}
 
 func _fail_ore_parser(jar_host: WorldV2ShipHost, reason: String) -> void:
