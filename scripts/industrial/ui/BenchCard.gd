@@ -82,6 +82,9 @@ func bind(workshop: Dictionary) -> void:
 		_pick_button.text = "撤掉副台" if not is_empty else "选副台"
 
 	if is_empty:
+		UiKit.clear_children(_mark_chips)
+		add_theme_stylebox_override("panel", UiKit.panel_style(UiKit.PANEL))
+		_head.add_theme_color_override("font_color", UiKit.ACCENT)
 		_marks.text = "还没有选这台。" if role == "master" else "还没有副装配台（可选）。"
 		_ban.text = ""
 		_jars.text = ""
