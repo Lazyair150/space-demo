@@ -8,7 +8,7 @@ The combat HUD keeps survival information (health, wave, score) in its existing 
 
 - ship resource Jars rendered as individual compact tiles, each showing its shape glyph/color, exact Jar identity when exposed, liquid fill strip, empty/filled state, and marked indicator; inventories over the visible tile budget show an explicit remaining count;
 - ship resource liquids by exact liquid key;
-- Master and Slave workshop names, Jar occupancy/capacity, shape marks, Jar shape counts and fill counts, liquid staging and Ban summary;
+- separate Master and Slave workshop cards with shape-affinity borders, Jar occupancy/capacity, shape marks, individual Jar tiles, liquid staging meters and explicit staging-Ban warnings; the Master → Slave transfer direction is shown between the cards;
 - selected demand identity, required Jar shapes/liquid-bearing requirements, cooldown state, and active session step counts.
 
 The compact state remains visible without opening a menu; the detail panel is on-demand so it does not permanently cover the combat play area. The panel is an observer, not a control surface for mutating the Jar world.
@@ -32,7 +32,7 @@ Color is never the only carrier of meaning: each token also displays a distinct 
 
 A workshop card's accent is a weighted blend of its existing shape marks: each `baseMarks` entry has weight 2 and each `additionalMarks` entry has weight 1. This gives the player a fast visual impression of the workshop's shape bias while retaining the exact mark names beside it.
 
-This blend is not a new workshop stat and must never be consumed by compatibility checks, Jar operations, selection, or balancing. Ban remains a separate warning row and is never encoded as a shape color.
+This blend is not a new workshop stat and must never be consumed by compatibility checks, Jar operations, selection, or balancing. Ban remains a separate staging-ingress warning inside its workshop card and is never encoded as a shape color.
 
 ## Resource meters and truthful quantities
 
@@ -66,7 +66,7 @@ Implemented on the branch:
 - shared shape glyph/color palette;
 - color-coded shape tokens in the industrial presentation components;
 - optional Space-owned `primary_shape` metadata on skill/order definitions, shown in Hangar selection, frozen outside the Jar order payload and validated against its requirement shapes;
-- workshop tendency accent and per-liquid staging meters where capacity is explicit;
+- workshop tendency accent as separate Master/Slave cards, an explicit one-way Master → Slave transfer cue, and per-liquid staging meters where capacity is explicit;
 - combat HUD observer for the active World V2 Host snapshot;
 - individual responsive Jar tiles in ship inventory and each workshop, with a bounded visible count and an explicit overflow count;
 - snapshot-delta feedback for Jar acquisition/consumption, fill changes, ship/workshop liquid changes, lifecycle transitions, order cooldown transitions, and active-session progress;
