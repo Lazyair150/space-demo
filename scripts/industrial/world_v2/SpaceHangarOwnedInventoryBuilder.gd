@@ -74,6 +74,8 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 					"experience": instance.experience, "growthAttributes": instance.growth_attributes.duplicate(true),
 					"label": definition.display_name, "description": definition.description,
 					"category": definition.ability_category, "primaryShape": String(definition.primary_shape),
+					"orderTemplateId": String(definition.jar_order_template_id),
+					"orderTemplateVersion": definition.jar_order_template_version,
 					"allowedControlAreas": definition.allowed_control_areas.duplicate(),
 					"iconTexture": definition.display_icon
 				})
