@@ -48,8 +48,8 @@ static func evaluate(
 		parser_progress_per_jar = parser_progress.duplicate(true)
 		for shape in rates:
 			var raw_rate: Variant = rates[shape]
-			if (typeof(raw_rate) != TYPE_INT and typeof(raw_rate) != TYPE_FLOAT) or not is_finite(float(raw_rate)) or float(raw_rate) < 0.0:
-				return _failure("shape processing rates must be finite and non-negative")
+			if (typeof(raw_rate) != TYPE_INT and typeof(raw_rate) != TYPE_FLOAT) or not is_finite(float(raw_rate)) or float(raw_rate) < 0.0 or float(raw_rate) > 1000000000.0:
+				return _failure("shape processing rates are outside the supported fixed-point range")
 			var effective_rate := float(raw_rate) * float(raw_percentage) / 100.0
 			aggregate_rates[String(shape)] = float(aggregate_rates.get(String(shape), 0.0)) + effective_rate
 	if ore_parser_count != 1:
@@ -58,6 +58,10 @@ static func evaluate(
 	var stone_rates: Variant = ship_resource_profile.get("expectedStoneProgressPerSecondByShape", null)
 	if not (stone_rates is Dictionary) or stone_rates.is_empty():
 		return _failure("ship resource profile must provide expectedStoneProgressPerSecondByShape")
+	for shape_key in stone_rates:
+		var raw_stone_rate: Variant = stone_rates[shape_key]
+		if (typeof(raw_stone_rate) != TYPE_INT and typeof(raw_stone_rate) != TYPE_FLOAT) or not is_finite(float(raw_stone_rate)) or float(raw_stone_rate) < 0.0:
+			return _failure("ship stone progress rates must be finite and non-negative")
 	var shape_demand := {}
 	var liquid_jar_count := 0
 	for raw_requirement in requirements:
