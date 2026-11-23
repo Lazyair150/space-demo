@@ -171,6 +171,11 @@ func _emit_snapshot_feedback(snapshot: Dictionary) -> void:
 				events.append("%s暂存 %s%d" % [role, "+" if delta > 0 else "−", absi(delta)])
 		var old_jars_in_bench := before.get("jars", []) if before is Dictionary else []
 		var new_jars_in_bench := after.get("jars", []) if after is Dictionary else []
+		var old_bench_count := old_jars_in_bench.size() if old_jars_in_bench is Array else 0
+		var new_bench_count := new_jars_in_bench.size() if new_jars_in_bench is Array else 0
+		if new_bench_count != old_bench_count:
+			var role := "主台" if key == "master" else "从台"
+			events.append("%s舱段 %s%d" % [role, "+" if new_bench_count > old_bench_count else "−", absi(new_bench_count - old_bench_count)])
 		var old_bench_filled := _filled_jar_count(old_jars_in_bench)
 		var new_bench_filled := _filled_jar_count(new_jars_in_bench)
 		if new_bench_filled != old_bench_filled:
@@ -195,7 +200,14 @@ func _emit_snapshot_feedback(snapshot: Dictionary) -> void:
 		visible_events.append(events[i])
 	if events.size() > 2:
 		visible_events.append("另有 %d 项变化" % (events.size() - 2))
-	_show_feedback("　·　".join(visible_events), Color("e5b85f") if events.any(func(value: String) -> bool: return "消耗" in value or "冷却" in value or "空置" in value) else Color("6fd1ae"))
+	var warning := _has_warning_event(events)
+	_show_feedback("　·　".join(visible_events), Color("e5b85f") if warning else Color("6fd1ae"))
+
+func _has_warning_event(events: Array[String]) -> bool:
+	for event in events:
+		if "消耗" in event or "冷却" in event or "空置" in event or "故障" in event:
+			return true
+	return false
 
 func _show_feedback(message: String, tint: Color) -> void:
 	_feedback_label.text = message
