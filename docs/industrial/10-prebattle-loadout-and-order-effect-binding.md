@@ -459,3 +459,5 @@ The draft is UI-independent and can be bound to either a Control-based scene or 
 - The ownership probe now verifies that a controller configured without an authored bundle fails closed and exposes no fabricated ship choices.
 
 This is the controller/view-model layer, not yet a concrete visual scene. It provides the stable UI binding API while leaving the existing MainMenu route untouched until production catalog assets and the actual Hangar experience are ready. Godot compilation and runtime probes remain pending.
+
+- The controller also requires the owning game flow to supply stable `shipWorldId`, `loadoutId`, and positive `loadoutVersion`; it never generates identities. The view model keeps build disabled until both the selection and this identity contract are valid.
