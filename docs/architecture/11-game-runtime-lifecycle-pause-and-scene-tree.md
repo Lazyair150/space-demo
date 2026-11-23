@@ -164,12 +164,13 @@ Still requiring a later systematic migration/audit:
 
 ## 10. Central state registry
 
-`GameFlow` is registered as an autoload and is the authoritative registry for application screen and battle lifecycle state. It exposes a version 5 snapshot and `state_changed` signal; version 3 adds the externally observable `RESUME_READY` phase. Current tracked values are:
+`GameFlow` is registered as an autoload and is the authoritative registry for application screen and battle lifecycle state. It exposes a version 5 snapshot and `state_changed` signal; version 3 added the externally observable `RESUME_READY` phase, version 4 added the latched fault reason, and version 5 adds the last successfully completed world/logical millisecond positions. Current tracked values are:
 
 - Screen: `MENU`, `HANGAR`, `INDUSTRIAL`, `BATTLE`, `GAME_OVER`.
 - Battle phase: `INACTIVE`, `PREPARING`, `RUNNING`, `PAUSED`, `RESUMING`, `RESUME_READY`, `ENDED`, `FAULTED`.
 - Pause reason: `NONE`, `PLAYER`, `WINDOW_FOCUS_LOST`, `SYSTEM`.
 - Monotonic transition sequence for diagnostics.
+- Fault reason and last successfully completed `worldTimeMilli` / `logicalTimeMilli`; failed in-flight steps never overwrite the previous completed position.
 
 MainMenu, Game, IndustrialMain, GameOver, bootstrap, and the combat pause controller publish lifecycle transitions through GameFlow. GameFlow owns root scene replacement; the Hangar launcher owns only the preconfigured embedded-combat attachment. `begin_battle_preparation()` is idempotent only during PREPARING and rejects duplicate launches while RUNNING, PAUSED, or restoring.
 
