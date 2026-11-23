@@ -132,6 +132,7 @@ func bind(workshop: Dictionary) -> void:
 			meter.show_percentage = false
 			meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			meter.custom_minimum_size.y = 10
+			ShapeVisuals.apply_meter_style(meter, ShapeVisuals.liquid_color_for(String(name_text)))
 			row.add_child(meter)
 		_liquids.add_child(row)
 
@@ -144,10 +145,8 @@ func bind(workshop: Dictionary) -> void:
 		if jar.get("liquid", null) != null:
 			filled += 1
 	if jars.size() > 0:
-		var parts: Array[String] = []
 		for shape in by_shape.keys():
-			parts.append("%s %s×%d" % [ShapeVisuals.glyph_for(str(shape)), str(shape), int(by_shape[shape])])
-		_liquids.add_child(UiKit.label("构成：%s" % "、".join(parts), UiKit.FONT_SMALL, UiKit.MUTED))
+			_liquids.add_child(_shape_label(String(shape), "×%d" % int(by_shape[shape])))
 		if filled > 0:
 			_liquids.add_child(UiKit.label("其中装了工质：%d 只" % filled, UiKit.FONT_SMALL, UiKit.MUTED))
 
