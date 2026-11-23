@@ -45,6 +45,16 @@ The selected roles belong to a versioned `SpaceWorkshopPairDefinition`. The actu
 
 A role swap changes the pair assignment; it does not mutate either workshop's local marks, Ban or capacities.
 
+## Alignment with the Jar Core domain model
+
+This split already exists in the World V2 Core candidate and should be preserved rather than recreated in Space:
+
+- Local workshop capability: `Workshop` owns its resources and capacities; `WorkshopCapability` owns immutable base/additional marks and Ban; `WorkshopRulebook` evaluates local Jar operations; `LiquidRules` owns free-liquid ingress/storage checks.
+- Pair/role ownership: `WorkshopRoster` owns the selected Master and Slave references; `MasterSwitchCoordinator` owns role selection; `WorkshopSwitchEvent` and `ResourceTransferrer` own Master replacement migration.
+- Pair resource semantics: `WorldOrderOrderedResourceReplay`, `WorldOrderSlaveBoundaryProjector`, and `WorldOrderSymbolicResourceSimulator` model the ordered Master/Slave boundary and exact resource handoff; `OrderResourceSettlementService` settles the role-local staging balances.
+
+Space-side Resources are authoring and freeze-time composition only. They must not become a second implementation of these Core rules.
+
 ## Composition
 
 `SpaceWorkshopCombinationDefinition` is the authored build bundle, not a third rule scope. It composes world-level Jar options, an exact-version roster of individual workshop profiles, one exact-version Master/Slave pair selection, and a separate Space-side forecast cost profile. It compiles those inputs into the Core options dictionary and freezes the exact generated options in the battle loadout.
