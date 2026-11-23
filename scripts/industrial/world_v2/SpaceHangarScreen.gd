@@ -60,6 +60,8 @@ func _ready() -> void:
 	_build_interface()
 	_controller.view_model_changed.connect(_on_view_model_changed)
 	var ready := _controller.configure(_preparation, loadout_identity)
+	if ready:
+		_controller.set_expected_battle_duration(_duration_picker.value)
 	_render_view_model(_controller.get_view_model())
 	if not ready:
 		_status_label.text = "机库目录尚未就绪：请在编辑器中为 Preparation 配置有效的目录资源包。"
