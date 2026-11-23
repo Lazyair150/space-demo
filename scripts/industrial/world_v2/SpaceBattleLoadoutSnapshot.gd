@@ -162,8 +162,9 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 				var workshop_instance: Variant = workshop.get(key, null)
 				if workshop_instance is Dictionary:
 					referenced_ids[String(workshop_instance.get("instanceId", ""))] = true
-		if orders is Array:
-			for order in orders:
+		var raw_order_bindings: Variant = source.get("selectedOrderBindings", [])
+		if raw_order_bindings is Array:
+			for order in raw_order_bindings:
 				if order is Dictionary and order.get("ownedInstance", null) is Dictionary:
 					referenced_ids[String(order.ownedInstance.get("instanceId", ""))] = true
 		var owned_snapshot_ids := {}
