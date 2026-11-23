@@ -212,6 +212,13 @@ func _build_interface() -> void:
 	footer.add_child(_build_button)
 	_build_button.pressed.connect(_on_build_pressed)
 
+	if board_definition != null:
+		_parser_picker.visible = false
+		_master_workshop_picker.visible = false
+		_slave_workshop_picker.visible = false
+		_device_section.visible = false
+		_skill_section.visible = false
+
 	_ship_picker.item_selected.connect(_on_ship_selected)
 	_parser_picker.item_selected.connect(_on_parser_selected)
 	_workshop_picker.item_selected.connect(_on_workshop_selected)
@@ -511,6 +518,121 @@ func _apply_workshop_slot_selection() -> void:
 		master_instance_id, slave_instance_id
 	)
 
+func _rebuild_board_slot_section(inventory: Dictionary, selection: Dictionary) -> void:
+	for child in _board_slot_section.get_children():
+		child.queue_free()
+	_board_slot_pickers.clear()
+	_board_slot_section.visible = board_definition != null
+	if board_definition == null:
+		return
+	_add_section_title(_board_slot_section, "电路板 · 元件安装槽位")
+	var world_key := String(selection.get("workshopId", "")) + "@" + str(int(selection.get("workshopVersion", 0)))
+	for slot in board_definition.slots:
+		if slot == null:
+			continue
+		var slot_id := String(slot.slot_id)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 10)
+		_board_slot_section.add_child(row)
+		var category := _board_slot_icon_category(slot.component_kind)
+		var icon := _make_icon(category, 44)
+		row.add_child(icon)
+		var label := Label.new()
+		label.text = "%s  ·  %s%s" % [
+			String(slot.display_name),
+			slot.component_kind,
+			"  /  " + slot.role_id if slot.component_kind == "workshop" else ("  /  " + slot.control_area if slot.component_kind == "skill" else "")
+		]
+		label.custom_minimum_size.x = 190
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		row.add_child(label)
+		var picker := OptionButton.new()
+		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		picker.add_item("未安装（点击选择元件）")
+		var choices := _board_slot_choices(inventory, slot, world_key)
+		for choice in choices:
+			var choice_icon: Variant = choice.get("iconTexture")
+			if not (choice_icon is Texture2D):
+				choice_icon = load(String(FALLBACK_ICONS.get(category, FALLBACK_ICONS.effect)))
+			var choice_label := "%s  [v%d] · Lv%d · %s" % [
+				String(choice.get("label", choice.get("id", ""))),
+				int(choice.get("version", 0)),
+				int(choice.get("level", 1)),
+				String(choice.get("instanceId", ""))
+			]
+			picker.add_icon_item(choice_icon, choice_label)
+			picker.set_item_metadata(picker.item_count - 1, choice.duplicate(true))
+			picker.set_item_tooltip(picker.item_count - 1, String(choice.get("description", "")))
+		var assignment := _controller.get_assignment(slot_id)
+		var selected_instance := String(assignment.get("ownedInstanceId", ""))
+		for item_index in range(1, picker.item_count):
+			var candidate: Dictionary = picker.get_item_metadata(item_index)
+			if String(candidate.get("instanceId", "")) == selected_instance and not selected_instance.is_empty():
+				picker.select(item_index)
+				_set_icon_texture(icon, candidate.get("iconTexture"), category)
+				break
+		picker.item_selected.connect(_on_board_slot_selected.bind(slot_id, picker))
+		_board_slot_pickers[slot_id] = picker
+		row.add_child(picker)
+		if not bool(slot.required):
+			var optional := Label.new()
+			optional.text = "可选"
+			optional.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			row.add_child(optional)
+
+func _board_slot_choices(inventory: Dictionary, slot: SpaceHangarBoardSlotDefinition, world_key: String) -> Array:
+	var collection_key := ""
+	match slot.component_kind:
+		"workshop":
+			collection_key = "workshopInstanceChoices"
+		"ore_parser":
+			collection_key = "parserChoices"
+		"skill":
+			collection_key = "skillChoices"
+		"production_device":
+			collection_key = "deviceChoices"
+		_:
+			return []
+	var raw_choices: Variant = inventory.get(collection_key, [])
+	if not (raw_choices is Array):
+		return []
+	var result: Array = []
+	for raw_choice in raw_choices:
+		if not (raw_choice is Dictionary):
+			continue
+		var choice: Dictionary = raw_choice
+		if slot.component_kind == "workshop" and not world_key.ends_with("@0") and world_key != "@" and not choice.get("compatibleWorldKeys", []).has(world_key):
+			continue
+		if slot.component_kind == "skill" and not choice.get("allowedControlAreas", []).has(slot.control_area):
+			continue
+		result.append(choice.duplicate(true))
+	return result
+
+func _board_slot_icon_category(component_kind: String) -> String:
+	match component_kind:
+		"workshop": return "workshop"
+		"ore_parser": return "parser"
+		"skill": return "skill"
+		"production_device": return "device"
+	return "effect"
+
+func _on_board_slot_selected(index: int, slot_id: String, picker: OptionButton) -> void:
+	if _suppress_picker_events:
+		return
+	if index <= 0:
+		_controller.unassign_slot(slot_id)
+		return
+	var choice: Variant = picker.get_item_metadata(index)
+	if not (choice is Dictionary):
+		return
+	var instance_id := String(choice.get("instanceId", ""))
+	if instance_id.is_empty():
+		return
+	if _controller.assign_instance(slot_id, instance_id):
+		var slot := board_definition.resolve_slot(slot_id)
+		if slot != null and slot.component_kind == "workshop" and _selected_choice(_workshop_picker).is_empty() == false:
+			_apply_workshop_slot_selection()
+
 func _rebuild_device_section(device_choices: Variant, selected_devices: Variant) -> void:
 	for child in _device_section.get_children():
 		child.queue_free()
@@ -806,7 +928,7 @@ func _update_build_enabled(view_model: Dictionary) -> void:
 	var inventory: Dictionary = view_model.get("inventory", {})
 	var devices_exist := _array_size(inventory.get("deviceChoices", [])) > 0
 	var skills_exist := _array_size(inventory.get("skillChoices", [])) > 0
-	var binding_configuration_complete := (not devices_exist or not device_slot_ids.is_empty()) and (not skills_exist or not skill_order_bindings.is_empty())
+	var binding_configuration_complete := board_definition != null or ((not devices_exist or not device_slot_ids.is_empty()) and (not skills_exist or not skill_order_bindings.is_empty()))
 	_build_button.disabled = (
 		not _board_configuration_valid
 		or not bool(view_model.get("canBuild", false))
