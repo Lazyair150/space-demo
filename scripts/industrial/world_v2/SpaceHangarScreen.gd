@@ -527,9 +527,19 @@ func _rebuild_board_slot_section(inventory: Dictionary, selection: Dictionary) -
 		return
 	_add_section_title(_board_slot_section, "电路板 · 元件安装槽位")
 	var world_key := String(selection.get("workshopId", "")) + "@" + str(int(selection.get("workshopVersion", 0)))
+	var previous_area := ""
 	for slot in board_definition.slots:
 		if slot == null:
 			continue
+		if slot.area_id != previous_area:
+			previous_area = slot.area_id
+			var area_labels := {
+				"workshop": "工作区",
+				"decomposition": "分解区",
+				"orders": "订单区",
+				"production": "生产区"
+			}
+			_add_section_title(_board_slot_section, String(area_labels.get(previous_area, previous_area)))
 		var slot_id := String(slot.slot_id)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
