@@ -15,16 +15,12 @@ func _ready() -> void:
 	start_button.grab_focus()
 
 func _on_start()->void:
-	if not GameFlow.begin_battle_preparation():
-		return
 	GameState.reset_run()
-	get_tree().change_scene_to_file("res://scenes/game/Game.tscn")
+	GameFlow.request_scene_transition(GameFlow.Screen.BATTLE, "res://scenes/game/Game.tscn")
 	
 ## 直接进工业舱：工业世界在 autoload 的 IndustrialRuntime 里，不进战斗也能开一局。
 func _on_industrial()->void:
-	if not GameFlow.enter_screen(GameFlow.Screen.INDUSTRIAL):
-		return
-	get_tree().change_scene_to_file("res://scenes/industrial/IndustrialMain.tscn")
+	GameFlow.request_scene_transition(GameFlow.Screen.INDUSTRIAL, "res://scenes/industrial/IndustrialMain.tscn")
 
 func _on_quit()->void:
 	get_tree().quit()
