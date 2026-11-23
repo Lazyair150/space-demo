@@ -143,6 +143,9 @@ func _ready() -> void:
 		GameFlow.fault_battle()
 		process_mode = Node.PROCESS_MODE_DISABLED
 		return
+	var active_jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if active_jar_host != null and not active_jar_host.ShipWorldFaulted.is_connected(_on_ship_world_faulted):
+		active_jar_host.ShipWorldFaulted.connect(_on_ship_world_faulted)
 	if not GameFlow.mark_battle_running():
 		push_error("[Game] Application flow could not enter the running battle phase")
 		GameFlow.fault_battle()
@@ -502,6 +505,7 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 
 func _fail_ore_parser(jar_host: WorldV2ShipHost, reason: String) -> void:
 	push_error("[Game] Ore parser/ingress failed closed: " + reason)
+	GameFlow.fault_battle()
 	process_mode = Node.PROCESS_MODE_DISABLED
 	if jar_host != null and jar_host.IsShipWorldActive:
 		jar_host.EndShipWorld()
@@ -532,6 +536,9 @@ func _physics_process(delta: float) -> void:
 				_fail_ore_parser(jar_host, String(ingress.get("reason", "Jar import failed")))
 				return
 		jar_step_advanced = jar_host.AdvanceSpaceSimulationMilliseconds(shared_delta_milli)
+		if jar_host.IsFaulted:
+			_on_ship_world_faulted(String(jar_host.FaultReason))
+			return
 	if jar_step_advanced and delta > 0.0 and _order_effect_dispatcher != null and _order_effect_commit_callback.is_valid():
 		_order_effect_dispatcher.drain_pending(jar_host, _order_effect_commit_callback)
 	if _shake_time > 0.0:
@@ -549,6 +556,11 @@ func _exit_tree() -> void:
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if jar_host != null:
 		jar_host.EndShipWorld()
+
+func _on_ship_world_faulted(message: String) -> void:
+	push_error("[Game] Ship world faulted: " + message)
+	GameFlow.fault_battle()
+	process_mode = Node.PROCESS_MODE_DISABLED
 
 func _on_player_died()->void:
 	GameFlow.end_battle()
