@@ -348,10 +348,11 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `productionPercentage` 属于解析器本身，按百分比缩放该解析器自己的各形状处理吞吐；它不把产出比例分配给不同形状，也不属于能量石类型。
 - `SpaceBattleLoadoutSnapshot` 要求构筑中恰好选择一个通用 `ore_parser`，并把完整解析器属性纳入冻结快照与指纹。
 - `SpaceOreParserRuntime.gd` 无条件接受当前世界词表中的所有原石类型；类型决定目标 Jar 形状，体积是有限可解析资源量。各形状队列、进度和速率余数独立；未解析完的原石体积不会丢失。
+- `SpaceEnergyStoneDropProfile.gd` 是版本化敌机/遭遇掉落配置，定义可掉落的原石类型、体积和权重；默认无掉落数据，不含任何虚构概率或体积。敌机可选配置该 profile。
 - 达到每形状的完整 Jar 进度阈值后，解析器创建稳定 operationId 的待交付批次。批次在确认前留在解析器状态中。
 - `SpaceOreParserJarIngress.gd` 通过 `WorldV2ShipHost.ImportProducedJars` 提交批次；Jar 的资源账本持久去重，中央仓库容量溢出按 Jar Core 规则丢弃。解析器先在本地 staged state 中完成整步计算，只有所有算术和单批 Int32 数量限制通过后才提交消费/进度，失败不会吞掉原石。
 - `WorldV2ShipHost.AccumulateSpaceSimulationDelta` 是唯一的毫秒余数持有者，并记录唯一待提交的 prepared step。Game 先取出本步精确整数毫秒，让 Space 解析器处理并提交 Jar，再且仅一次把同一整数毫秒交给 Jar Core 推进；Host 拒绝重复累计、错值推进或重复消费 prepared step。
-- `Game.gd` 暴露 `ingest_energy_stone`、`capture_ore_parser_state`，并在战斗步进前推进解析器、提交待产 Jar。解析器检查点包括拾取身份、待解析体积、独立进度、速率余数和未确认输出批次。
+- `Game.gd` 暴露 `ingest_energy_stone`、`spawn_energy_stone_drop`、`capture_ore_parser_state`，并在战斗步进前推进解析器、提交待产 Jar。战斗分配稳定拾取 ID，并把下一个 ID 序号与解析器状态一起保存。`SpaceEnergyStonePickup` 只有在解析器接受该 ID/类型/体积后才消失；重复相同载荷幂等接受，身份复用但载荷变化则拒绝。解析器检查点包括拾取身份、待解析体积、独立进度、速率余数和未确认输出批次。
 - `SpaceEnergyStonePickup.gd` / `SpaceEnergyStonePickup.tscn` 提供玩家碰撞拾取适配器；生成方必须在入树前提供稳定 ID、类型和体积，只有解析器接受（含重复 ID 幂等确认）后拾取物才消失。旧 `Asteroid.gd` 的 `GameState.add_ore(ore_value)` 是旧钱包资源，不被当成 typed energy stone。
 - `SpaceEnergyStoneDropProfile.gd` 提供无默认掉落数值的版本化加权原石掉落表；`Game.spawn_energy_stone_drop(profile, position, rng)` 冻结 profile、按当前 Jar 形状词表抽取类型/体积、分配可持久化的稳定 pickup ID 并生成拾取物。敌机/小行星的实际死亡事件仍需调用该入口。
 - `SpaceOreParserRuntimeProbe.gd` 覆盖百分比吞吐、并行独立进度、重复拾取去重、身份冲突、固定点分步一致性、输出批次检查点和单次确认。
@@ -382,3 +383,14 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 ```
 
 该探针覆盖跨域的“有限原石输入 → Space 进度 → 整 Jar 批次 → Jar 中央仓库”链路及不确定响应重试。它不替代实际 Godot 4.7.1 .NET 编译/运行，也不构成正式 Hangar、敌机掉落资产或战斗存档接线验收。
+
+
+### 4.14d 敌机能量石掉落与拾取接线
+
+- EnemyChaser / EnemyShooter 现在可选持有版本化 SpaceEnergyStoneDropProfile；没有 profile 的敌机不会掉原石。
+- Spawner 将敌机死亡事件拆成独立 Buff 掉落和原石掉落通道；一个通道未配置不会屏蔽另一个。
+- Game.spawn_energy_stone_drop 冻结当前掉落 profile 的值，按当前 Jar 形状词表抽取类型/体积，分配战斗范围内稳定 pickup ID，并创建 SpaceEnergyStonePickup。
+- SpaceEnergyStonePickup 只把稳定 ID、原石类型和体积交给当前战斗 Game；解析器接受（包括同载荷重复确认）后才销毁拾取物，冲突或无解析器时保留拾取物。
+- 下一个拾取 ID 序号与解析器检查点一起捕获/恢复，避免恢复后重用已经分配的 ID。
+
+当前 EnemyChaser / EnemyShooter 场景没有被填入任何生产掉落 profile，因此不会改变现有掉落平衡。尚未完成的是正式敌机/遭遇 profile 内容、未拾取掉落物的战斗存档恢复，以及 Hangar 将真实 ship/device/workshop catalog 构筑物化为 frozen loadout。
