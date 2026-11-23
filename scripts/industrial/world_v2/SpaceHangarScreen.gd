@@ -144,6 +144,10 @@ func _render_view_model(view_model: Dictionary) -> void:
 	_fill_picker(_ship_picker, inventory.get("shipChoices", []), "没有可用飞船定义")
 	_fill_picker(_parser_picker, inventory.get("parserChoices", []), "没有可用解析器定义")
 	_fill_picker(_workshop_picker, inventory.get("workshopChoices", []), "没有可用工作台组合")
+	var selection: Dictionary = view_model.get("selection", {})
+	_select_exact(_ship_picker, String(selection.get("shipId", "")), int(selection.get("shipVersion", 0)))
+	_select_exact(_parser_picker, String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)))
+	_select_exact(_workshop_picker, String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)))
 	_suppress_picker_events = false
 
 	var devices: Array = inventory.get("deviceChoices", [])
@@ -184,6 +188,15 @@ func _fill_picker(picker: OptionButton, raw_choices: Variant, empty_text: String
 			"id": definition_id,
 			"version": version
 		})
+
+func _select_exact(picker: OptionButton, definition_id: String, version: int) -> void:
+	if definition_id.is_empty() or version <= 0:
+		return
+	for index in range(1, picker.item_count):
+		var metadata: Dictionary = picker.get_item_metadata(index)
+		if String(metadata.get("id", "")) == definition_id and int(metadata.get("version", 0)) == version:
+			picker.select(index)
+			return
 
 func _on_ship_selected(index: int) -> void:
 	if _suppress_picker_events:
