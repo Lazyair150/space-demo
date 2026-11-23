@@ -18,13 +18,15 @@ static func create(
 	workshops: SpaceWorkshopCombinationCatalog,
 	skills: SpaceSkillCatalog,
 	balance: SpaceSkillBalanceProfile,
-	effects: SpaceEffectCatalog
+	effects: SpaceEffectCatalog,
+	global_workshops: SpaceWorkshopCatalog = null
 ) -> SpaceHangarCatalogBundle:
 	var bundle := SpaceHangarCatalogBundle.new()
 	bundle.ship_catalog = ships
 	bundle.production_device_catalog = devices
 	bundle.ore_parser_catalog = parsers
 	bundle.workshop_combination_catalog = workshops
+	bundle.workshop_catalog = global_workshops
 	bundle.skill_catalog = skills
 	bundle.balance_profile = balance
 	bundle.effect_catalog = effects
