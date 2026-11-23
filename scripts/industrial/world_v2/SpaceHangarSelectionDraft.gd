@@ -199,18 +199,3 @@ func _device_choice(slot_id: String, definition_id: String, version: int, instan
 		"instanceId": instance_id
 	}
 
-func _find_workshop_choice(definition_id: String, version: int, master_instance_id: String, slave_instance_id: String) -> Dictionary:
-	if not _inventory_ready:
-		return {}
-	var choices: Variant = _inventory.get("workshopChoices", [])
-	if not (choices is Array):
-		return {}
-	for choice in choices:
-		if not (choice is Dictionary) or String(choice.get("id", "")) != definition_id or int(choice.get("version", 0)) != version:
-			continue
-		if not master_instance_id.is_empty() and String(choice.get("masterInstanceId", "")) != master_instance_id:
-			continue
-		if not slave_instance_id.is_empty() and String(choice.get("slaveInstanceId", "")) != slave_instance_id:
-			continue
-		return choice
-	return {}
