@@ -49,7 +49,7 @@ The current World V2 integration branch contains the evaluator, skill/effect def
 
 The current branch documentation explicitly records that:
 - Hangar does not yet materialize a production loadout from real catalogs;
-- the Space branch now contains versioned weighted drop-profile data, a stable-ID pickup adapter/spawn API, typed energy-stone ingestion, independent per-shape parser progress, and whole empty-Jar batches; jar-system-dotnet PR #59 provides the idempotent central-warehouse import boundary; actual enemy death call sites and production drop/parser values are still not connected; legacy Asteroid wallet ore remains a separate resource;
+- the Space branch now contains versioned weighted drop-profile data, a stable-ID pickup adapter/spawn API, typed energy-stone ingestion, independent per-shape parser progress, and whole empty-Jar batches; jar-system-dotnet PR #59 provides the idempotent central-warehouse import boundary; EnemyChaser/EnemyShooter death events are now wired through optional versioned drop profiles and the stable pickup adapter; production profile assets/values, Hangar parser selection, and coordinated battle save/restore remain unconnected; legacy Asteroid wallet ore remains a separate resource;
 - production ship/drop, production-device, liquid-stock/rate, and workshop-combination catalog assets have not yet been connected.
 
 Accordingly this audit does not invent enemy drop rates, stone shape distributions, device processing rates, workshop operation costs, or skill recipes. Those values must be read from actual assets or introduced as versioned game-design profiles before numerical calibration.
