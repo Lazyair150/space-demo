@@ -3,6 +3,9 @@ class_name SpaceBattleEffectStateStoreProbe
 ## Verifies that effect/dispatcher and Jar/Space runtime state share one replaceable save payload.
 
 static func run() -> Dictionary:
+    var effect_restore := _probe_effect_manager_restore()
+    if not bool(effect_restore.get("passed", false)):
+        return _failure("StatusEffectManager restore probe failed: " + String(effect_restore.get("reason", "")))
     var path := "user://space_battle_runtime_checkpoint_probe.json"
     var absolute_path := ProjectSettings.globalize_path(path)
     var store := SpaceBattleEffectStateStore.new(path)
@@ -77,6 +80,42 @@ static func run() -> Dictionary:
 
     _cleanup(absolute_path)
     return {"passed": true, "schemaVersion": 3, "domains": 6}
+
+## Exercises real Buff instance reconstruction and processed-event idempotency.
+static func _probe_effect_manager_restore() -> Dictionary:
+    var definition := BuffDefinition.new()
+    definition.id = &"checkpoint_probe_effect"
+    definition.definition_version = 2
+    definition.duration = 10.0
+    definition.max_stacks = 3
+    if not definition.is_valid():
+        return {"passed": false, "reason": "synthetic exact-version Buff definition is invalid"}
+
+    var source := StatusEffectManager.new()
+    var applied := source.apply_order_event("checkpoint-probe-event", definition)
+    if applied == null:
+        return {"passed": false, "reason": "source manager could not apply probe event"}
+    applied.remaining = 3.5
+    applied.stacks = 2
+    var snapshot := source.capture_runtime_state()
+
+    var restored := StatusEffectManager.new()
+    var definition_resolver := func(definition_id: String, version: int) -> BuffDefinition:
+        if definition_id == String(definition.id) and version == definition.definition_version:
+            return definition
+        return null
+    var target_resolver := func(_target_key: String) -> Node:
+        return null
+    if not restored.restore_runtime_state(snapshot, definition_resolver, target_resolver):
+        return {"passed": false, "reason": "manager rejected a valid exact-version effect snapshot"}
+    if restored.count() != 1 or not restored.has_processed_order_event("checkpoint-probe-event"):
+        return {"passed": false, "reason": "restored effect/event identity was lost"}
+    if absf(restored.remaining(definition.id) - 3.5) > 0.000001 or restored.stacks(definition.id) != 2:
+        return {"passed": false, "reason": "restored Buff duration or stacks changed"}
+    restored.apply_order_event("checkpoint-probe-event", definition)
+    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001:
+        return {"passed": false, "reason": "replayed processed event duplicated or refreshed the restored Buff"}
+    return {"passed": true}
 
 static func _cleanup(absolute_path: String) -> void:
     for suffix in ["", ".pending", ".previous"]:
