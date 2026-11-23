@@ -93,17 +93,13 @@ If Jar world construction fails, the battle build must not silently fall back to
 
 ## 6. Energy-stone production path
 
-Energy stones are Space-world pickups. Each stone has a type/property corresponding to a Jar shape. The universal processor accepts all types and contributes the stone's production value to the matching shape's progress. Progress is independent per shape; when a shape reaches one complete unit, the production path emits a Jar of that shape. Different production devices have different per-shape processing rates.
+Energy stones are finite Space-world pickups. Each stone has a type/property corresponding to one Jar shape, and its volume is the amount of parseable progress it contributes. The universal parser accepts every configured type; types are processed independently and in parallel, with one queue and one fractional progress accumulator per shape.
 
-This is not the same as the current World V2 time-based Producer rate model. Do not reinterpret a static producer rate as energy-stone ingestion. The new path needs explicit concepts:
-- typed stone input and pickup identity;
-- processor/device definition and per-shape rate;
-- per-shape fractional progress;
-- output Jar creation and destination;
-- accepted/remainder receipt and idempotent pickup processing;
-- checkpoint/save state for accumulated progress and pending input.
+The selected parser is a versioned pre-battle production-device definition. Its `productionPercentage` is an attribute of that parser: it scales the parser's own per-shape processing throughput. It is not a percentage allocation among Jar shapes and is not stored on the energy-stone type. The parser also defines its per-shape processing rates and progress required for one Jar.
 
-The exact numeric conversion formula and partial-input handling are configuration decisions; the architecture must preserve per-shape progress independently and avoid losing unprocessed Space-owned stones.
+The Space-owned `SpaceOreParserRuntime` consumes finite queued stone volume at the selected parser's effective rate, retains unprocessed stone volume and sub-Jar progress, and emits a batch only when a whole Jar threshold is reached. Batches carry stable operation IDs and remain pending until Jar confirms import. `SpaceOreParserJarIngress` submits those batches through `WorldV2ShipHost.ImportProducedJars`; Jar creates empty Jars in its central warehouse and owns capacity, overflow discard, warehouse-to-Master flow, and all downstream order rules.
+
+This is deliberately not the time-based World V2 Producer rate model. `UpdateProducerRates` remains a separate generic API for configured time-driven producers and must not be used to represent finite energy-stone consumption. The parser runtime checkpoint retains pickup identities, queued remaining volumes, independent per-shape progress, fixed-point rate remainders, pending output batches, and the next batch sequence. Jar's resource-ledger operation IDs make retries safe across Jar checkpoint restore.
 
 ## 7. Workshop configuration
 
@@ -161,7 +157,7 @@ The branch currently has:
 It does not yet have:
 - hangar/pre-battle loadout data and UI;
 - loadout-to-WorldV2Options materialization;
-- energy-stone processor ingestion/progress in the new Jar world;
+- live Hangar selection/materialization of the Space-owned ore parser definition and actual enemy/pickup wiring;
 - Hangar/pre-battle UI and construction of the immutable snapshot from actual ship/device/workshop/order catalog selections;
 - binding the selected orders' orderDefinitionKey values to the actual Jar demand creation calls;
 - production-grade battle save/load orchestration and platform-tested durable replacement semantics for the combined effect/dispatcher snapshot;
@@ -205,7 +201,7 @@ Jar cooldown also affects sustained value. Shorter cooldown permits more executi
 
 The evaluator reads the exact Jar requirement entries that will be materialized. Each normalized entry represents one physical required Jar. A grouped skill-authored requirement with `count=N` is expanded into N individual Jar requirement entries before both evaluation and Jar materialization. This is important: count must never be a display-only number that the Jar bridge silently ignores.
 
-The build-context evaluator estimates output per shape as `min(expected ship stone progress rate, selected device processing rate) / progress required per Jar`. It estimates expected skill activations over the configured battle horizon and calculates pressure separately for each required shape. The worst shape bottleneck controls production pressure; a plentiful shape cannot hide a shortage of another shape. Unsupported ship-drop, processor, or shape-conversion combinations fail closed. Workshop operation cost is derived from the selected workshop combination and includes an explicit per-liquid-Jar handling cost.
+The build-context evaluator first applies the selected parser's `productionPercentage` to its own per-shape processing rates, then estimates output per shape as `min(expected ship stone progress rate, effective parser processing rate) / progress required per Jar`. It estimates expected skill activations over the configured battle horizon and calculates pressure separately for each required shape. The worst shape bottleneck controls production pressure; a plentiful shape cannot hide a shortage of another shape. Unsupported ship-drop, processor, or shape-conversion combinations fail closed. Workshop operation cost is derived from the selected workshop combination and includes an explicit per-liquid-Jar handling cost.
 
 The first cost model includes independently visible terms:
 - total required Jar count;
@@ -245,14 +241,16 @@ It also returns a component breakdown so a designer can see whether cost comes f
 
 Added:
 - `BuffDefinition.balance_metrics`: versioned benefit annotations stored beside the actual effect definition; SpaceEffectCatalog resolves them by exact effect ID/version.
-- `SpaceSkillBuildContextEvaluator.gd`: derives shape output pressure from expected ship stone-progress input, selected processor throughput, and per-shape progress-per-Jar; derives workshop and liquid-handling operation pressure from the selected workshop combination.
+- `SpaceSkillBuildContextEvaluator.gd`: derives shape output pressure from expected ship stone-progress input, the selected parser's percentage-scaled per-shape throughput, and progress-per-Jar; derives workshop and liquid-handling operation pressure from the selected workshop combination.
+- `SpaceOreParserDefinition.gd` and `SpaceOreParserRuntime.gd`: version the pre-battle parser percentage/rates/thresholds, ingest all configured stone types, preserve independent fixed-point progress, and emit idempotent whole-Jar batches.
+- `SpaceOreParserJarIngress.gd`: retries pending parser output batches through Jar's discrete `ImportProducedJars` boundary and acknowledges only after Jar confirms success.
 - `SpaceSkillBalanceProfile.gd`: versioned tunable weights, scales, curve parameters, cooldown frequency bounds, resource multipliers, and difficulty bands.
 - `SpaceSkillBalanceModel.gd`: deterministic evaluator and cost breakdown.
 - `SpaceSkillBalanceModelProbe.gd`: checks that liquid Jars increase difficulty, stronger benefits raise target difficulty, shorter cooldown raises sustained target value, and more complex resource requirements increase actual difficulty.
 - `SpaceSkillDefinition.gd`: carries benefit metrics, expands grouped requirement counts to individual Jar entries, evaluates the curve, and includes the balance report/profile identity in the generated binding.
 - `SpaceBattleLoadoutSnapshot.gd`: rejects selected skill bindings without a valid balance report and versioned balance-profile identity.
 
-The model's current numeric weights are starter tuning defaults only. The context contract now consumes expected ship stone-progress rates, per-shape processor throughput, per-shape progress-per-Jar, and workshop operation costs. Production-device and ship encounter catalogs still need real data assets and calibration. Liquid-bearing Jars already add explicit cost and workshop handling pressure, but liquid availability still needs to be projected from the Jar liquid stock/production contract using its audited time units; do not infer liquid supply from the shape-stone processor rates. The next iteration is to wire the actual ship/drop and Jar liquid-supply profiles, then calibrate the curve against representative battle duration and observed resource acquisition. That is the step that turns the first measurable curve into the complete Space↔Jar economy model.
+The model's current numeric weights are starter tuning defaults only. The context contract now consumes expected ship stone-progress rates, per-shape processor throughput, per-shape progress-per-Jar, and workshop operation costs. Production-device and ship encounter catalogs still need real data assets and calibration; the parser runtime itself is implemented, but no production percentage/rate/threshold values are fabricated. Liquid-bearing Jars already add explicit cost and workshop handling pressure, but liquid availability still needs to be projected from the Jar liquid stock/production contract using its audited time units; do not infer liquid supply from the shape-stone processor rates. The next iteration is to wire the actual ship/drop and Jar liquid-supply profiles, then calibrate the curve against representative battle duration and observed resource acquisition. That is the step that turns the first measurable curve into the complete Space↔Jar economy model.
 
 
 ## 14. Shared battle economy forecast (first implementation)
