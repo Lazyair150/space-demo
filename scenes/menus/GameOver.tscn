@@ -55,7 +55,7 @@ text = "High Score: 0"
 [node name="RetryButton" type="Button" parent="VBoxContainer" unique_id=595704753]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "Retry"
+text = "返回机库"
 
 [node name="MenuButton" type="Button" parent="VBoxContainer" unique_id=518231176]
 layout_mode = 2
