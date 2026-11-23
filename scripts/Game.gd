@@ -70,7 +70,7 @@ func configure_battle_loadout_from_checkpoint(
 	var runtime_checkpoint: Variant = saved_snapshot.get("runtimeCheckpoint", null)
 	var dispatcher_state: Variant = saved_snapshot.get("dispatcherState", null)
 	var effect_state: Variant = saved_snapshot.get("effectState", null)
-	if not (runtime_checkpoint is Dictionary) or not (dispatcher_state is Dictionary) or not (effect_state is Dictionary):
+	if not (runtime_checkpoint is Dictionary) or int(runtime_checkpoint.get("schemaVersion", 0)) != 1 or not (dispatcher_state is Dictionary) or not (effect_state is Dictionary):
 		return false
 	if runtime_checkpoint.get("loadoutIdentity", {}) != expected_identity:
 		return false
