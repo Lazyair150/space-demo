@@ -111,7 +111,7 @@ func _start_wave(wave_number: int, publish_progression: bool) -> void:
 	_spawning=true
 	for i in count:
 		_spawn_one(shooter_chance, elite)
-		await get_tree().create_timer(spawn_stagger_seconds).timeout
+		await get_tree().create_timer(spawn_stagger_seconds, false).timeout
 	_spawning=false
 	_check_wave_clear()
 
@@ -198,7 +198,7 @@ func _check_wave_clear()->void:
 	if not is_inside_tree():
 		return
 	wave_cleared.emit()
-	await get_tree().create_timer(_break_seconds()).timeout
+	await get_tree().create_timer(_break_seconds(), false).timeout
 	if not is_inside_tree():
 		return
 	_start_next_wave()
