@@ -108,5 +108,26 @@ func roll_candidate(rng: RandomNumberGenerator, allowed_rarities: PackedStringAr
 		"tags": last.get("tags", []).duplicate(true)
 	}
 
+func validate_effective_power(definition_id: String, version: int, rarity: String, effective_power_score: float) -> PackedStringArray:
+	var errors := PackedStringArray()
+	if not is_valid():
+		errors.append_array(get_validation_errors())
+		return errors
+	var found := false
+	for entry in entries:
+		if String(entry.definitionId) == definition_id and int(entry.definitionVersion) == version and String(entry.rarity) == rarity:
+			found = true
+			break
+	if not found:
+		errors.append("effective power validation requires an exact pool entry identity")
+		return errors
+	if not is_finite(effective_power_score):
+		errors.append("effective power score must be finite")
+		return errors
+	var band: Dictionary = power_bands[rarity]
+	if effective_power_score < float(band.minimum) or effective_power_score > float(band.maximum):
+		errors.append("owned instance effective power is under/over its rarity budget")
+	return errors
+
 func _valid_number(value: Variant) -> bool:
 	return typeof(value) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(value))
