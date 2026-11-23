@@ -21,7 +21,7 @@ static func run() -> bool:
 		return false
 	if progression.record_stage_clear(first, {"rank": "gold"}, "stage-clear:duplicate"):
 		return false
-	if not catalog.is_unlocked(second, progression.cleared_stage_ids()):
+	if not catalog.is_unlocked(second, progression.cleared_stage_keys()):
 		return false
 	var restored := SpaceCampaignProgressState.from_data(progression.to_data())
 	if restored == null or not restored.is_stage_cleared(String(first.stage_id), first.definition_version):
