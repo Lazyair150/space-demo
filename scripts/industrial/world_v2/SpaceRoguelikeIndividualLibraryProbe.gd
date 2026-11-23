@@ -101,8 +101,15 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 		# Backward compatibility: saves written before provenance had its own field
 		# stored it under growthAttributes.roguelike. Import must migrate it once.
 		var legacy_reward_data := state.to_data()
-		legacy_reward_data.ownedInstances[0].growthAttributes = {"roguelike": acquired_instance.acquisition_provenance.duplicate(true)}
-		legacy_reward_data.ownedInstances[0].erase("acquisitionProvenance")
+		var legacy_reward_index := -1
+		for index in range(legacy_reward_data.ownedInstances.size()):
+			if String(legacy_reward_data.ownedInstances[index].get("instanceId", "")) == "probe.roguelike-owned-copy":
+				legacy_reward_index = index
+				break
+		if legacy_reward_index < 0:
+			return false
+		legacy_reward_data.ownedInstances[legacy_reward_index].growthAttributes = {"roguelike": acquired_instance.acquisition_provenance.duplicate(true)}
+		legacy_reward_data.ownedInstances[legacy_reward_index].erase("acquisitionProvenance")
 		var migrated_reward_state := SpacePlayerProgressionState.from_data(legacy_reward_data)
 		var migrated_instance := migrated_reward_state.resolve_instance("probe.roguelike-owned-copy") if migrated_reward_state != null else null
 		if migrated_instance == null or not migrated_instance.growth_attributes.is_empty() or migrated_instance.acquisition_provenance != acquired_instance.acquisition_provenance:
