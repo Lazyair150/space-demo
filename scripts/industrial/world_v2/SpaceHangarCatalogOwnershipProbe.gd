@@ -495,6 +495,15 @@ static func run() -> bool:
 		return false
 	if not bool(balanced_skill_binding.balanceReport.get("valid", false)):
 		return false # Skill growth must be re-evaluated against the benefit-to-Jar curve.
+	var direct_benefit_growth := skill_growth_instance.duplicate(true) as SpaceOwnedProgressionInstance
+	direct_benefit_growth.growth_attributes = {"benefitAdd.power": 2.0}
+	var direct_benefit_binding := SpaceProgressionRuntimeProfileComposer.compose_skill_binding(
+		skill_binding, skill_for_growth, direct_benefit_growth, SpaceSkillBalanceProfile.new()
+	)
+	if direct_benefit_binding.is_empty() or absf(float(direct_benefit_binding.benefitProfile.power) - 12.0) > 0.000001:
+		return false # Curves may target an explicit balance dimension without changing the effect parameter.
+	if not bool(direct_benefit_binding.balanceReport.get("valid", false)):
+		return false
 	var owned_hangar_bundle := SpaceHangarCatalogBundleResource.new()
 	owned_hangar_bundle.ship_catalog = ships
 	owned_hangar_bundle.production_device_catalog = devices
