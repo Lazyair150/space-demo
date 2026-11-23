@@ -112,6 +112,21 @@ static func _probe_effect_manager_restore() -> Dictionary:
         return {"passed": false, "reason": "restored effect/event identity was lost"}
     if absf(restored.remaining(definition.id) - 3.5) > 0.000001 or restored.stacks(definition.id) != 2:
         return {"passed": false, "reason": "restored Buff duration or stacks changed"}
+
+    var non_finite_snapshot := snapshot.duplicate(true)
+    non_finite_snapshot["instances"][0]["remaining"] = INF
+    if restored.restore_runtime_state(non_finite_snapshot, definition_resolver, target_resolver):
+        return {"passed": false, "reason": "non-finite Buff duration was accepted"}
+    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001:
+        return {"passed": false, "reason": "rejected non-finite restore partially mutated the live manager"}
+
+    var wrong_version_snapshot := snapshot.duplicate(true)
+    wrong_version_snapshot["instances"][0]["definitionVersion"] = 3
+    if restored.restore_runtime_state(wrong_version_snapshot, definition_resolver, target_resolver):
+        return {"passed": false, "reason": "wrong exact Buff definition version was accepted"}
+    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001:
+        return {"passed": false, "reason": "rejected version mismatch partially mutated the live manager"}
+
     restored.apply_order_event("checkpoint-probe-event", definition)
     if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001:
         return {"passed": false, "reason": "replayed processed event duplicated or refreshed the restored Buff"}
