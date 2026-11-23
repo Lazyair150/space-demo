@@ -48,13 +48,19 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 				continue
 			push_error("Production Hangar skills must reference an exact Core order template; inline requirements are probe-only")
 			return null
+		var template_by_control_area := {}
 		for combination in workshop_combination_catalog.definitions:
 			for control_area in definition.allowed_control_areas:
-				if skill_catalog.resolve_order_template(
+				var resolved := skill_catalog.resolve_order_template(
 					definition, combination.jar_world_options, control_area
-				).is_empty():
+				)
+				if resolved.is_empty():
 					push_error("Skill Core order template is missing or incompatible with workshop world/control area: " + String(definition.skill_id))
 					return null
+				if template_by_control_area.has(control_area) and template_by_control_area[control_area] != resolved:
+					push_error("Exact skill template content must be identical across selectable workshop worlds: " + String(definition.skill_id))
+					return null
+				template_by_control_area[control_area] = resolved
 	var effect_catalog := SpaceEffectCatalog.new()
 	for definition in effect_definitions:
 		if not effect_catalog.register_buff(definition):
