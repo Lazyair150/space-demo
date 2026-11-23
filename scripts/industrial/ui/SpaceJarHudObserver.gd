@@ -83,7 +83,13 @@ func _refresh_snapshot() -> void:
 	if not (snapshot is Dictionary) or not bool(snapshot.get("available", false)):
 		_set_unavailable("Jar 世界未启动")
 		return
-	var signature := JSON.stringify(snapshot)
+	var order_presentation: Dictionary = {}
+	var game := get_node_or_null("/root/Game")
+	if game != null and game.has_method("get_order_presentation_metadata"):
+		var raw_presentation: Variant = game.call("get_order_presentation_metadata")
+		if raw_presentation is Dictionary:
+			order_presentation = raw_presentation
+	var signature := JSON.stringify({"snapshot": snapshot, "orderPresentation": order_presentation})
 	if signature == _last_signature:
 		return
 	_last_signature = signature
@@ -104,7 +110,7 @@ func _refresh_snapshot() -> void:
 	_render_resource_liquids(liquids)
 	_render_workshop(_master_box, "主台", master)
 	_render_workshop(_slave_box, "从台", slave)
-	_render_demands(demands, snapshot.get("activeSessions", []))
+	_render_demands(demands, snapshot.get("activeSessions", []), order_presentation)
 
 func _set_unavailable(message: String) -> void:
 	_last_signature = ""
@@ -198,7 +204,7 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 			ban_names.append(String(ban))
 		parent.add_child(UiKit.label("禁令：%s" % "、".join(ban_names), UiKit.FONT_SMALL, UiKit.WARN))
 
-func _render_demands(raw_demands: Variant, raw_sessions: Variant) -> void:
+func _render_demands(raw_demands: Variant, raw_sessions: Variant, order_presentation: Dictionary) -> void:
 	UiKit.clear_children(_demands_box)
 	if not (raw_demands is Array) or raw_demands.is_empty():
 		_demands_box.add_child(UiKit.label("当前没有订单", UiKit.FONT_SMALL, UiKit.MUTED))
@@ -210,7 +216,13 @@ func _render_demands(raw_demands: Variant, raw_sessions: Variant) -> void:
 		_demands_box.add_child(row)
 		var cooling := bool(demand.get("isCoolingDown", false))
 		var remaining := int(demand.get("cooldownRemainingLogicalMilli", 0))
-		row.add_child(UiKit.label("%s  #%d" % [String(demand.get("orderDefinitionKey", demand.get("type", "订单"))), int(demand.get("id", 0))], UiKit.FONT_SMALL, UiKit.WARN if cooling else UiKit.TEXT))
+		var order_key := String(demand.get("orderDefinitionKey", ""))
+		var metadata: Dictionary = order_presentation.get(order_key, {})
+		var primary_shape := String(metadata.get("primaryShape", ""))
+		var heading := UiKit.label("%s  #%d" % [order_key if not order_key.is_empty() else String(demand.get("type", "订单")), int(demand.get("id", 0))], UiKit.FONT_SMALL, ShapeVisuals.color_for(primary_shape) if not primary_shape.is_empty() else (UiKit.WARN if cooling else UiKit.TEXT))
+		row.add_child(heading)
+		if not primary_shape.is_empty():
+			row.add_child(_shape_token(primary_shape, "主形"))
 		row.add_child(UiKit.label("冷却 %d ms" % remaining if cooling else "就绪", UiKit.FONT_SMALL, UiKit.MUTED if cooling else UiKit.OK))
 		var requirements: Variant = demand.get("requirements", [])
 		if requirements is Array:
