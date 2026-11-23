@@ -17,6 +17,9 @@ var _slave_box: VBoxContainer
 var _demands_box: VBoxContainer
 var _status: Label
 var _last_signature := ""
+var _previous_snapshot: Dictionary = {}
+var _feedback_label: Label
+var _feedback_tween: Tween
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -37,6 +40,13 @@ func _build() -> void:
 	_toggle.tooltip_text = "点击展开飞船 Jar、液体、主从工作台与订单的实时只读状态。"
 	_toggle.pressed.connect(_toggle_expanded)
 	add_child(_toggle)
+
+	_feedback_label = UiKit.label("", UiKit.FONT_SMALL, UiKit.ACCENT)
+	_feedback_label.position = Vector2(292, 72)
+	_feedback_label.custom_minimum_size = Vector2(420, 28)
+	_feedback_label.modulate.a = 0.0
+	_feedback_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_feedback_label)
 
 	_panel = UiKit.panel("JarObserverPanel", UiKit.PANEL)
 	_panel.position = Vector2(20, 106)
@@ -92,6 +102,7 @@ func _refresh_snapshot() -> void:
 	var signature := JSON.stringify({"snapshot": snapshot, "orderPresentation": order_presentation})
 	if signature == _last_signature:
 		return
+	_emit_snapshot_feedback(snapshot)
 	_last_signature = signature
 	var jars: Variant = snapshot.get("resourceJars", [])
 	var liquids: Variant = snapshot.get("resourceLiquids", {})
@@ -114,6 +125,7 @@ func _refresh_snapshot() -> void:
 
 func _set_unavailable(message: String) -> void:
 	_last_signature = ""
+	_previous_snapshot.clear()
 	_toggle.text = "JAR  ·  " + message
 	_status.text = message
 	UiKit.clear_children(_resource_jars)
@@ -121,6 +133,104 @@ func _set_unavailable(message: String) -> void:
 	UiKit.clear_children(_master_box)
 	UiKit.clear_children(_slave_box)
 	UiKit.clear_children(_demands_box)
+
+
+## Compare detached Host snapshots. This is presentation feedback only:
+## no inferred feasibility, resource mutation, or UI-owned simulation clock.
+func _emit_snapshot_feedback(snapshot: Dictionary) -> void:
+	if _previous_snapshot.is_empty():
+		_previous_snapshot = snapshot.duplicate(true)
+		return
+	var events: Array[String] = []
+	var old_jars: Variant = _previous_snapshot.get("resourceJars", [])
+	var new_jars: Variant = snapshot.get("resourceJars", [])
+	var old_jar_count := old_jars.size() if old_jars is Array else 0
+	var new_jar_count := new_jars.size() if new_jars is Array else 0
+	if new_jar_count != old_jar_count:
+		var delta := new_jar_count - old_jar_count
+		events.append(("获得" if delta > 0 else "消耗") + " Jar ×%d" % absi(delta))
+	var old_filled := _filled_jar_count(old_jars)
+	var new_filled := _filled_jar_count(new_jars)
+	if new_filled != old_filled:
+		var delta := new_filled - old_filled
+		events.append(("Jar 装液 +" if delta > 0 else "Jar 空置 ") + "%d" % absi(delta))
+	var liquid_delta := _dictionary_total(snapshot.get("resourceLiquids", {})) - _dictionary_total(_previous_snapshot.get("resourceLiquids", {}))
+	if liquid_delta != 0:
+		events.append(("飞船液体 +" if liquid_delta > 0 else "飞船液体 ") + "%d" % absi(liquid_delta))
+	for key in ["master", "slave"]:
+		var before: Variant = _previous_snapshot.get(key, {})
+		var after: Variant = snapshot.get(key, {})
+		if before is Dictionary and after is Dictionary:
+			var delta := _dictionary_total(after.get("liquids", {})) - _dictionary_total(before.get("liquids", {}))
+			if delta != 0:
+				var role := "主台" if key == "master" else "从台"
+				events.append("%s暂存 %s%d" % [role, "+" if delta > 0 else "−", absi(delta)])
+		var old_jars_in_bench := before.get("jars", []) if before is Dictionary else []
+		var new_jars_in_bench := after.get("jars", []) if after is Dictionary else []
+		var old_bench_filled := _filled_jar_count(old_jars_in_bench)
+		var new_bench_filled := _filled_jar_count(new_jars_in_bench)
+		if new_bench_filled != old_bench_filled:
+			var role := "主台" if key == "master" else "从台"
+			events.append("%s装液 Jar %s%d" % [role, "+" if new_bench_filled > old_bench_filled else "−", absi(new_bench_filled - old_bench_filled)])
+	var old_cooling := _cooling_demand_ids(_previous_snapshot.get("demands", []))
+	for demand_id in _cooling_demand_ids(snapshot.get("demands", [])):
+		if not old_cooling.has(demand_id):
+			events.append("订单 #%s 进入冷却" % demand_id)
+	var step_delta := _active_session_step_total(snapshot.get("activeSessions", [])) - _active_session_step_total(_previous_snapshot.get("activeSessions", []))
+	if step_delta > 0:
+		events.append("订单推进 %d 步" % step_delta)
+	_previous_snapshot = snapshot.duplicate(true)
+	if events.is_empty():
+		return
+	var visible_events: Array[String] = []
+	for i in mini(events.size(), 2):
+		visible_events.append(events[i])
+	if events.size() > 2:
+		visible_events.append("另有 %d 项变化" % (events.size() - 2))
+	_show_feedback("　·　".join(visible_events), Color("e5b85f") if events.any(func(value: String) -> bool: return "消耗" in value or "冷却" in value or "空置" in value) else Color("6fd1ae"))
+
+func _show_feedback(message: String, tint: Color) -> void:
+	_feedback_label.text = message
+	_feedback_label.add_theme_color_override("font_color", tint)
+	_feedback_label.modulate = Color(1, 1, 1, 1)
+	_toggle.modulate = tint
+	if _feedback_tween != null and _feedback_tween.is_valid():
+		_feedback_tween.kill()
+	_feedback_tween = create_tween()
+	_feedback_tween.tween_property(_toggle, "modulate", Color.WHITE, 0.35)
+	_feedback_tween.parallel().tween_interval(1.8)
+	_feedback_tween.tween_property(_feedback_label, "modulate:a", 0.0, 0.65)
+
+func _filled_jar_count(raw_jars: Variant) -> int:
+	var count := 0
+	if raw_jars is Array:
+		for jar in raw_jars:
+			if jar is Dictionary and not String(jar.get("liquid", "")).is_empty():
+				count += 1
+	return count
+
+func _dictionary_total(raw: Variant) -> int:
+	var total := 0
+	if raw is Dictionary:
+		for value in raw.values():
+			total += int(value)
+	return total
+
+func _cooling_demand_ids(raw: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if raw is Array:
+		for demand in raw:
+			if demand is Dictionary and bool(demand.get("isCoolingDown", false)):
+				result.append(String(demand.get("id", "")))
+	return result
+
+func _active_session_step_total(raw: Variant) -> int:
+	var total := 0
+	if raw is Array:
+		for session in raw:
+			if session is Dictionary and not bool(session.get("isTerminal", false)):
+				total += int(session.get("completedMasterSteps", 0)) + int(session.get("completedSlaveSteps", 0))
+	return total
 
 func _render_resource_jars(raw_jars: Variant) -> void:
 	UiKit.clear_children(_resource_jars)
