@@ -74,12 +74,14 @@ static func _probe_workshop() -> bool:
 		"liquid_staging_capacity": 0.0,
 		"uses_core_staging_fallback": 1.0,
 		"base_mark.round": 1.0,
+		"base_mark.square": 0.0,
 		"additional_mark.round": 0.0,
+		"additional_mark.square": 0.0,
 		"ban.water": 0.0,
 		"ban.fuel": 0.0
 	}
 	var model := _model("probe.workshop.power", "workshop", metrics)
-	var result := SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, ["round"], ["water", "fuel"], model)
+	var result := SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, ["round", "square"], ["water", "fuel"], model)
 	if not bool(result.get("success", false)) or result.get("powerMetrics", {}) != metrics:
 		return false
 	var pool := _pool_for_model("probe.workshop.pool", "workshop", model)
