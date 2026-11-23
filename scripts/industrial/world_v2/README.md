@@ -344,7 +344,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 
 ## 4.14b 战前原石解析器与离散 Jar 产出链
 
-- `SpaceOreParserDefinition.gd` 是战前选定解析器的版本化定义，包含 `productionPercentage`、每形状处理速率、每形状产出一只 Jar 所需进度；`SpaceOreParserCatalog.gd` 按精确 ID/版本注册和解析定义，拒绝静默版本替换，并在注册时复制配置。
+- `SpaceOreParserDefinition.gd` 是战前选定解析器的版本化定义，包含 `productionPercentage`、每形状处理速率、每形状产出一只 Jar 所需进度；`SpaceOreParserCatalog.gd` 是可由 Inspector 维护的 Resource Catalog，`definitions` 保存版本化解析器 Resource；运行时按精确 ID/版本建立索引，拒绝静默版本替换，并在注册/解析时复制配置。
 - `productionPercentage` 属于解析器本身，按百分比缩放该解析器自己的各形状处理吞吐；它不把产出比例分配给不同形状，也不属于能量石类型。
 - `SpaceBattleLoadoutSnapshot.create_with_ore_parser` 通过精确版本 Catalog 将解析器属性物化到生产设备槽，再创建不可变快照；它拒绝重复解析器、槽位冲突和未知版本。`SpaceBattleLoadoutSnapshot` 要求构筑中恰好选择一个通用 `ore_parser`，并把完整解析器属性纳入冻结快照与指纹。
 - `SpaceOreParserRuntime.gd` 无条件接受当前世界词表中的所有原石类型；类型决定目标 Jar 形状，体积是有限可解析资源量。各形状队列、进度和速率余数独立；未解析完的原石体积不会丢失。
@@ -357,7 +357,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `SpaceEnergyStoneDropProfile.gd` 提供无默认掉落数值的版本化加权原石掉落表；`Game.spawn_energy_stone_drop(profile, position, rng)` 冻结 profile、按当前 Jar 形状词表抽取类型/体积、分配可持久化的稳定 pickup ID 并生成拾取物。敌机/小行星的实际死亡事件仍需调用该入口。
 - `SpaceOreParserRuntimeProbe.gd` 覆盖百分比吞吐、并行独立进度、重复拾取去重、身份冲突、固定点分步一致性、输出批次检查点和单次确认。
 - `SpaceSkillBuildContextEvaluatorProbe.gd` 验证 50% / 100% 是解析器自身吞吐修正，不会把一个形状的产量份额分给另一个形状。
-- `SpaceOreParserCatalogProbe.gd` 验证精确版本解析、注册配置隔离、槽位/shape 覆盖、未知版本拒绝，以及解析器属性/版本变化会改变冻结 loadout fingerprint。
+- `SpaceOreParserCatalogProbe.gd` 验证 Inspector definitions 数组索引、精确版本解析、注册配置隔离、槽位/shape 覆盖、未知版本拒绝，以及解析器属性/版本变化会改变冻结 loadout fingerprint。
 - `SpaceSkillBuildContextEvaluatorProbe.gd` 还验证 Ship 原石进度表必须与通用解析器形状词表完全一致，并拒绝低于固定点精度的 Jar 阈值。
 - `SpaceOreParserJarIngressProbe.gd` 与 `scenes/industrial/SpaceOreParserJarIngressProbe.tscn` 验证 Host 毫秒余数和 prepared-step 单次消费、版本化加权掉落 profile、typed pickup 场景与稳定 ID、Space 原石解析、Jar 离散导入、模拟丢失回执后的幂等重试，以及不会直接注入主台。
 
