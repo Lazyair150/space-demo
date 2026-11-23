@@ -13,7 +13,7 @@ static func run() -> Dictionary:
         "loadoutFingerprint": "a".repeat(64)
     }
     var runtime_checkpoint := {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "loadoutIdentity": identity.duplicate(true),
         "jarExecutionCheckpointJson": "{\"schemaVersion\":2,\"kind\":\"world-v2-execution-checkpoint\"}",
         "spaceClockRemainderMilli": 0.375,
@@ -35,9 +35,9 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("unified battle checkpoint save failed")
     var loaded := store.load(identity)
-    if int(loaded.get("schemaVersion", 0)) != 2:
+    if int(loaded.get("schemaVersion", 0)) != 3:
         _cleanup(absolute_path)
-        return _failure("unified save did not load as schema v2")
+        return _failure("unified save did not load as schema v3")
     if loaded.get("effectState", {}) != effects or loaded.get("dispatcherState", {}) != dispatcher:
         _cleanup(absolute_path)
         return _failure("effect/dispatcher state was not preserved in the unified snapshot")
@@ -66,7 +66,7 @@ static func run() -> Dictionary:
         return _failure("missing RNG rejection replaced the previous valid battle checkpoint")
 
     _cleanup(absolute_path)
-    return {"passed": true, "schemaVersion": 2, "domains": 5}
+    return {"passed": true, "schemaVersion": 3, "domains": 6}
 
 static func _cleanup(absolute_path: String) -> void:
     for suffix in ["", ".pending", ".previous"]:
