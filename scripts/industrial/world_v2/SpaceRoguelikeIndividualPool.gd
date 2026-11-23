@@ -147,5 +147,16 @@ func validate_effective_power(definition_id: String, version: int, rarity: Strin
 		errors.append("owned instance effective power is under/over its rarity budget")
 	return errors
 
+func validate_effective_metrics(definition_id: String, version: int, rarity: String, metrics: Dictionary) -> PackedStringArray:
+	var errors := PackedStringArray()
+	if power_model == null:
+		errors.append("pool has no subsystem power model")
+		return errors
+	var calculated := power_model.calculate_power_score(metrics)
+	if not bool(calculated.get("success", false)):
+		errors.append(String(calculated.get("reason", "power model rejected metrics")))
+		return errors
+	return validate_effective_power(definition_id, version, rarity, float(calculated.powerScore))
+
 func _valid_number(value: Variant) -> bool:
 	return typeof(value) in [TYPE_INT, TYPE_FLOAT] and is_finite(float(value))
