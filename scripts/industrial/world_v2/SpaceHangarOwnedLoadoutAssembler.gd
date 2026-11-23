@@ -24,6 +24,7 @@ static func assemble(
 		board_rule_profile = SpaceRuleContributionResolver.resolve(board_assignment_snapshot, bundle, progression)
 		if board_rule_profile.is_empty():
 			return _reject("installed component Rule Contributions could not be resolved from exact Definition and Owned Instance versions")
+		board_rule_profile["assignmentSnapshot"] = board_assignment_snapshot.duplicate(true)
 	var ship_instance := _resolve(progression, String(selection.shipInstanceId), "ship", String(selection.shipId), int(selection.shipVersion))
 	var parser_instance := _resolve(progression, String(selection.parserInstanceId), "ore_parser", String(selection.parserId), int(selection.parserVersion))
 	var master_instance := _resolve(progression, String(selection.masterWorkshopInstanceId), "workshop", "", 0)
@@ -132,9 +133,20 @@ static func assemble(
 		if composed_workshop.is_empty():
 			return _reject("workshop growth attributes do not satisfy local workshop rules")
 		var core_workshop: Dictionary = composed_workshop.duplicate(true)
+		var workshop_role := "master" if index == 0 else "slave"
+		var workshop_slot_id := ""
+		for assignment in board_assignment_snapshot.get("assignments", []):
+			if assignment is Dictionary and String(assignment.get("componentKind", "")) == "workshop" and String(assignment.get("roleId", "")) == workshop_role:
+				workshop_slot_id = String(assignment.get("slotId", ""))
+				break
+		if not board_assignment_snapshot.is_empty() and workshop_slot_id.is_empty():
+			return _reject("selected " + workshop_role + " workshop has no exact Board Slot assignment")
+		core_workshop["boardSlotId"] = workshop_slot_id
 		core_workshop["name"] = workshop_definition.display_name + ("（主台）" if index == 0 else "（从台）")
 		workshops[index] = core_workshop
 	jar_options.workshops = workshops
+	if not board_rule_profile.is_empty():
+		jar_options["boardRuleProfile"] = board_rule_profile.duplicate(true)
 	frozen.jarWorldOptions = jar_options
 	var workshop_selection: Dictionary = frozen.workshopCombinationSelection
 	workshop_selection.masterWorkshopDefinitionId = String(master_instance.definition_id)
