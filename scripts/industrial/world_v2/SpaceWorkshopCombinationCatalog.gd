@@ -63,6 +63,9 @@ func _copy_definition(source: SpaceWorkshopCombinationDefinition) -> SpaceWorksh
 	copy.display_name = source.display_name
 	copy.display_icon = source.display_icon
 	copy.jar_world_options = source.jar_world_options.duplicate(true)
+	copy.core_order_templates.clear()
+	for template in source.core_order_templates:
+		copy.core_order_templates.append(template.duplicate_definition() if template != null else null)
 	copy.workshop_definitions.clear()
 	for workshop in source.workshop_definitions:
 		if workshop == null:
