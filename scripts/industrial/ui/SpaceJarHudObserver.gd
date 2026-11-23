@@ -15,6 +15,10 @@ var _shape_counts: HBoxContainer
 var _liquid_counts: HBoxContainer
 var _workshop_status: Label
 var _lifecycle_status: Label
+var _active_dock: PanelContainer
+var _active_order_slots: HFlowContainer
+var _passive_dock: PanelContainer
+var _passive_order_slots: HFlowContainer
 var _panel: PanelContainer
 var _resource_jars: HFlowContainer
 var _resource_liquids: HBoxContainer
@@ -71,6 +75,58 @@ func _build() -> void:
 	_toggle = UiKit.small_button("详情 ▼", 72)
 	_toggle.pressed.connect(_toggle_expanded)
 	strip_row.add_child(_toggle)
+
+	# Active orders occupy the familiar bottom-center skill-bar position.
+	_active_dock = PanelContainer.new()
+	_active_dock.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_active_dock.offset_left = -330
+	_active_dock.offset_top = -104
+	_active_dock.offset_right = 330
+	_active_dock.offset_bottom = -24
+	_active_dock.custom_minimum_size = Vector2(660, 80)
+	_active_dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var active_style := StyleBoxFlat.new()
+	active_style.bg_color = Color("101923", 0.92)
+	active_style.border_color = Color("3b86a8")
+	active_style.set_border_width_all(1)
+	active_style.set_corner_radius_all(6)
+	active_style.set_content_margin_all(6)
+	_active_dock.add_theme_stylebox_override("panel", active_style)
+	add_child(_active_dock)
+	var active_column := UiKit.vbox(3)
+	_active_dock.add_child(active_column)
+	active_column.add_child(UiKit.label("主动技能 · 主动订单", UiKit.FONT_SMALL, UiKit.ACCENT))
+	_active_order_slots = HFlowContainer.new()
+	_active_order_slots.add_theme_constant_override("h_separation", 6)
+	_active_order_slots.add_theme_constant_override("v_separation", 4)
+	_active_order_slots.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	active_column.add_child(_active_order_slots)
+
+	# Passive orders are persistent status badges, separated from activatable slots.
+	_passive_dock = PanelContainer.new()
+	_passive_dock.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_passive_dock.offset_left = -270
+	_passive_dock.offset_top = 66
+	_passive_dock.offset_right = -20
+	_passive_dock.offset_bottom = 126
+	_passive_dock.custom_minimum_size = Vector2(250, 60)
+	_passive_dock.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var passive_style := StyleBoxFlat.new()
+	passive_style.bg_color = Color("101923", 0.88)
+	passive_style.border_color = Color("8a78b8")
+	passive_style.set_border_width_all(1)
+	passive_style.set_corner_radius_all(6)
+	passive_style.set_content_margin_all(6)
+	_passive_dock.add_theme_stylebox_override("panel", passive_style)
+	add_child(_passive_dock)
+	var passive_column := UiKit.vbox(3)
+	_passive_dock.add_child(passive_column)
+	passive_column.add_child(UiKit.label("被动技能 · 被动订单", UiKit.FONT_SMALL, Color("b69af7")))
+	_passive_order_slots = HFlowContainer.new()
+	_passive_order_slots.add_theme_constant_override("h_separation", 5)
+	_passive_order_slots.add_theme_constant_override("v_separation", 3)
+	_passive_order_slots.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	passive_column.add_child(_passive_order_slots)
 
 	_feedback_label = UiKit.label("", UiKit.FONT_SMALL, UiKit.ACCENT)
 	_feedback_label.position = Vector2(20, 98)
@@ -157,6 +213,7 @@ func _refresh_snapshot() -> void:
 	_render_resource_liquids(liquids)
 	_render_workshop(_master_box, "主台", master)
 	_render_workshop(_slave_box, "从台", slave)
+	_render_order_skill_hud(demands, snapshot.get("activeSessions", []), order_presentation)
 	_render_demands(demands, snapshot.get("activeSessions", []), order_presentation)
 
 
@@ -230,6 +287,10 @@ func _set_unavailable(message: String) -> void:
 	UiKit.clear_children(_liquid_counts)
 	_workshop_status.text = "主台 —  →  从台 —"
 	_lifecycle_status.text = message
+	UiKit.clear_children(_active_order_slots)
+	UiKit.clear_children(_passive_order_slots)
+	_active_order_slots.add_child(UiKit.label(message, UiKit.FONT_SMALL, UiKit.MUTED))
+	_passive_order_slots.add_child(UiKit.label(message, UiKit.FONT_SMALL, UiKit.MUTED))
 	_status.text = message
 	UiKit.clear_children(_resource_jars)
 	UiKit.clear_children(_resource_liquids)
@@ -493,6 +554,97 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 		for ban in bans:
 			ban_names.append(String(ban))
 		content.add_child(UiKit.label("⚠ 暂存区禁入：%s" % "、".join(ban_names), UiKit.FONT_SMALL, UiKit.WARN))
+
+
+func _render_order_skill_hud(raw_demands: Variant, raw_sessions: Variant, order_presentation: Dictionary) -> void:
+	UiKit.clear_children(_active_order_slots)
+	UiKit.clear_children(_passive_order_slots)
+	var sessions_by_demand: Dictionary = {}
+	if raw_sessions is Array:
+		for session in raw_sessions:
+			if session is Dictionary and not bool(session.get("isTerminal", false)):
+				sessions_by_demand[int(session.get("demandId", -1))] = session
+	var active_count := 0
+	var passive_count := 0
+	if raw_demands is Array:
+		for demand in raw_demands:
+			if not (demand is Dictionary):
+				continue
+			var area := String(demand.get("area", ""))
+			if area != "Active" and area != "Passive":
+				continue
+			var demand_id := int(demand.get("id", 0))
+			var order_key := String(demand.get("orderDefinitionKey", ""))
+			var metadata: Dictionary = order_presentation.get(order_key, {})
+			var primary_shape := String(metadata.get("primaryShape", ""))
+			var requirements: Array = demand.get("requirements", [])
+			var shape_text := _demand_shape_summary(primary_shape, requirements)
+			var title := order_key if not order_key.is_empty() else ("主动订单" if area == "Active" else "被动订单")
+			var cooling := bool(demand.get("isCoolingDown", false))
+			var remaining := int(demand.get("cooldownRemainingLogicalMilli", 0))
+			var session: Dictionary = sessions_by_demand.get(demand_id, {})
+			var tile := PanelContainer.new()
+			var tile_style := StyleBoxFlat.new()
+			var accent := ShapeVisuals.color_for(primary_shape) if not primary_shape.is_empty() else (UiKit.ACCENT if area == "Active" else Color("b69af7"))
+			if area == "Active":
+				tile_style.bg_color = Color("1b2a38")
+			else:
+				tile_style.bg_color = Color("282238")
+			tile_style.border_color = accent
+			tile_style.set_border_width_all(1)
+			tile_style.set_corner_radius_all(4)
+			tile_style.set_content_margin_all(5)
+			tile.add_theme_stylebox_override("panel", tile_style)
+			tile.custom_minimum_size = Vector2(112, 43) if area == "Active" else Vector2(104, 34)
+			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var tile_box := UiKit.vbox(1)
+			tile.add_child(tile_box)
+			var title_row := UiKit.hbox(4)
+			tile_box.add_child(title_row)
+			title_row.add_child(UiKit.label("%s #%d" % [title, demand_id], UiKit.FONT_SMALL, accent))
+			if not shape_text.is_empty():
+				tile_box.add_child(UiKit.label(shape_text, UiKit.FONT_SMALL, ShapeVisuals.color_for(primary_shape) if not primary_shape.is_empty() else UiKit.MUTED))
+			var state_text := ""
+			var state_color := UiKit.MUTED
+			if area == "Active":
+				if not session.is_empty():
+					state_text = "执行中 · 主%d/从%d" % [int(session.get("completedMasterSteps", 0)), int(session.get("completedSlaveSteps", 0))]
+					state_color = UiKit.ACCENT
+				elif cooling:
+					state_text = "冷却 %.1fs" % (float(remaining) / 1000.0)
+					state_color = UiKit.WARN
+				else:
+					state_text = "就绪"
+					state_color = UiKit.OK
+			else:
+				state_text = "被动槽"
+				state_color = Color("b69af7")
+			if cooling and area == "Passive":
+				state_text = "冷却 %.1fs" % (float(remaining) / 1000.0)
+				state_color = UiKit.WARN
+			tile_box.add_child(UiKit.label(state_text, UiKit.FONT_SMALL, state_color))
+			tile.tooltip_text = "%s · #%d\n%s\n%s" % [area, demand_id, title, shape_text]
+			if area == "Active":
+				_active_order_slots.add_child(tile)
+				active_count += 1
+			else:
+				_passive_order_slots.add_child(tile)
+				passive_count += 1
+	if active_count == 0:
+		_active_order_slots.add_child(UiKit.label("暂无主动订单", UiKit.FONT_SMALL, UiKit.MUTED))
+	if passive_count == 0:
+		_passive_order_slots.add_child(UiKit.label("暂无被动订单", UiKit.FONT_SMALL, UiKit.MUTED))
+
+func _demand_shape_summary(primary_shape: String, requirements: Array) -> String:
+	var parts: Array[String] = []
+	if not primary_shape.is_empty():
+		parts.append("%s 主形" % ShapeVisuals.glyph_for(primary_shape))
+	for requirement in requirements:
+		if requirement is Dictionary:
+			var shape := String(requirement.get("shape", ""))
+			if not shape.is_empty():
+				parts.append(ShapeVisuals.glyph_for(shape))
+	return " ".join(parts)
 
 func _render_demands(raw_demands: Variant, raw_sessions: Variant, order_presentation: Dictionary) -> void:
 	UiKit.clear_children(_demands_box)
