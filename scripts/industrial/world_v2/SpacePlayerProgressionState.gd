@@ -3,7 +3,7 @@ class_name SpacePlayerProgressionState
 ## Persistent player progression aggregate: unlocks and owned item instances.
 ## It stores references to exact catalog versions, never copies catalog definitions as mutable state.
 
-const CURRENT_SCHEMA_VERSION := 1
+const CURRENT_SCHEMA_VERSION := 2
 
 signal progression_changed(state_revision: int)
 
@@ -12,6 +12,8 @@ signal progression_changed(state_revision: int)
 @export var state_revision: int = 1
 @export var unlocked_definition_keys: PackedStringArray = PackedStringArray()
 @export var owned_instances: Array[SpaceOwnedProgressionInstance] = []
+## Stable receipt identities for one-time roguelike reward acquisitions.
+@export var reward_acquisition_ids: PackedStringArray = PackedStringArray()
 
 func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
@@ -24,6 +26,11 @@ func get_validation_errors() -> PackedStringArray:
 		if key.strip_edges().is_empty() or unlocked.has(key):
 			errors.append("unlocked definition keys must be non-empty and unique")
 		unlocked[key] = true
+	var reward_ids := {}
+	for reward_id in reward_acquisition_ids:
+		if reward_id.strip_edges().is_empty() or reward_ids.has(reward_id):
+			errors.append("reward acquisition identities must be non-empty and unique")
+		reward_ids[reward_id] = true
 	var instances := {}
 	for instance in owned_instances:
 		if instance == null:
@@ -61,8 +68,10 @@ func acquire_instance(instance: SpaceOwnedProgressionInstance) -> bool:
 
 
 ## Atomically unlock the exact definition if needed and acquire one owned copy.
-func unlock_and_acquire_instance(instance: SpaceOwnedProgressionInstance) -> bool:
+func unlock_and_acquire_instance(instance: SpaceOwnedProgressionInstance, reward_id: String = "") -> bool:
 	if instance == null or not get_validation_errors().is_empty() or not instance.get_validation_errors().is_empty():
+		return false
+	if not reward_id.is_empty() and (reward_id.strip_edges().is_empty() or reward_acquisition_ids.has(reward_id)):
 		return false
 	var definition_key := _definition_key(instance.item_kind, String(instance.definition_id), instance.definition_version)
 	if definition_key.is_empty() or resolve_instance(String(instance.instance_id)) != null:
@@ -71,6 +80,8 @@ func unlock_and_acquire_instance(instance: SpaceOwnedProgressionInstance) -> boo
 	if not unlocked:
 		unlocked_definition_keys.append(definition_key)
 	owned_instances.append(instance.duplicate(true) as SpaceOwnedProgressionInstance)
+	if not reward_id.is_empty():
+		reward_acquisition_ids.append(reward_id)
 	state_revision += 1
 	progression_changed.emit(state_revision)
 	return get_validation_errors().is_empty()
@@ -107,17 +118,22 @@ func replace_instance_progression(updated: SpaceOwnedProgressionInstance) -> boo
 
 static func from_data(source: Dictionary) -> SpacePlayerProgressionState:
 	var state := SpacePlayerProgressionState.new()
-	state.schema_version = int(source.get("schemaVersion", 0))
+	state.schema_version = CURRENT_SCHEMA_VERSION
 	state.player_id = StringName(source.get("playerId", ""))
 	state.state_revision = int(source.get("stateRevision", 0))
 	var raw_unlocks: Variant = source.get("unlockedDefinitionKeys", null)
 	var raw_instances: Variant = source.get("ownedInstances", null)
-	if not (raw_unlocks is Array) or not (raw_instances is Array):
+	var raw_reward_ids: Variant = source.get("rewardAcquisitionIds", []) if source_schema >= 2 else []
+	if not (raw_unlocks is Array) or not (raw_instances is Array) or not (raw_reward_ids is Array):
 		return null
 	for raw_key in raw_unlocks:
 		if not (raw_key is String):
 			return null
 		state.unlocked_definition_keys.append(raw_key)
+	for raw_reward_id in raw_reward_ids:
+		if typeof(raw_reward_id) != TYPE_STRING:
+			return null
+		state.reward_acquisition_ids.append(String(raw_reward_id))
 	for raw_instance in raw_instances:
 		if not (raw_instance is Dictionary):
 			return null
@@ -150,7 +166,8 @@ func to_data() -> Dictionary:
 		"playerId": String(player_id),
 		"stateRevision": state_revision,
 		"unlockedDefinitionKeys": Array(unlocked_definition_keys),
-		"ownedInstances": instances
+		"ownedInstances": instances,
+		"rewardAcquisitionIds": Array(reward_acquisition_ids)
 	}
 
 static func _definition_key(item_kind: String, definition_id: String, version: int) -> String:
