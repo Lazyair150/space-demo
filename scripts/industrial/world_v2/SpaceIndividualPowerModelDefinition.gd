@@ -2,6 +2,8 @@ extends Resource
 class_name SpaceIndividualPowerModelDefinition
 ## Subsystem-authored metric normalization model. Metric names and bounds belong to the owning subsystem.
 
+const SUPPORTED_KINDS := ["ore_parser", "workshop", "skill"]
+
 @export var model_id: StringName = &""
 @export var definition_version: int = 1
 @export_enum("ore_parser", "workshop", "skill") var item_kind: String = "skill"
