@@ -154,4 +154,13 @@ static func run() -> bool:
 	var unavailable_draft := SpaceHangarSelectionDraft.new()
 	if unavailable_draft.configure({"isReady": false}) or unavailable_draft.set_ship("probe.ship", 2):
 		return false
+	var unconfigured_preparation := SpaceHangarPreparation.new()
+	var selection_controller := SpaceHangarSelectionController.new()
+	if selection_controller.configure(unconfigured_preparation, {"shipWorldId": "probe.world", "loadoutId": "probe.loadout", "loadoutVersion": 1}):
+		return false
+	var unavailable_view := selection_controller.get_view_model()
+	if bool(unavailable_view.get("isReady", true)) or bool(unavailable_view.get("canBuild", true)):
+		return false
+	if not unavailable_view.get("inventory", {}).get("shipChoices", []).is_empty():
+		return false
 	return true
