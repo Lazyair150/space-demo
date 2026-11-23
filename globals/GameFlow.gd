@@ -30,7 +30,7 @@ func enter_screen(next_screen: int) -> bool:
 		return false
 	if next_screen == Screen.BATTLE:
 		return begin_battle_preparation()
-	if next_screen == Screen.GAME_OVER and not _battle_phase in [BattlePhase.ENDED, BattlePhase.FAULTED]:
+	if next_screen == Screen.GAME_OVER and not (_battle_phase in [BattlePhase.ENDED, BattlePhase.FAULTED]):
 		push_error("[GameFlow] GameOver requires an ended or faulted battle")
 		return false
 	_screen = next_screen
