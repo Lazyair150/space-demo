@@ -395,7 +395,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - SpaceEnergyStonePickup 只把稳定 ID、原石类型和体积交给当前战斗 Game；解析器接受（包括同载荷重复确认）后才销毁拾取物，冲突或无解析器时保留拾取物。
 - 下一个拾取 ID 序号与解析器检查点一起捕获/恢复，避免恢复后重用已经分配的 ID。
 
-当前 EnemyChaser / EnemyShooter 场景没有被填入任何生产掉落 profile，因此不会改变现有掉落平衡。尚未完成的是正式敌机/遭遇 profile 内容、将保存/恢复能力接入真实 Hangar 与战斗生命周期、恢复 StatusEffectManager 的 effectState、敌人/波次等完整战斗状态，以及 Hangar 将真实 ship/device/workshop/parser catalog 构筑物化为 frozen loadout。Game 级 parser envelope 已捕获并恢复未拾取实体和 Spawner 掉落 RNG；SpaceBattleEffectStateStore/SpaceOrderEffectCommitter 已提供 Jar/Space/效果/dispatcher 联合快照与事件提交路径。
+当前 EnemyChaser / EnemyShooter 场景没有被填入任何生产掉落 profile，因此不会改变现有掉落平衡。尚未完成的是正式敌机/遭遇 profile 内容、将保存/恢复能力接入真实 Hangar 与战斗生命周期、恢复 StatusEffectManager 的 effectState、敌人/波次等完整战斗状态，以及 Hangar 将真实 ship/device/workshop/parser catalog 构筑物化为 frozen loadout。Game 级 parser envelope 已捕获并恢复未拾取实体和 Spawner 掉落 RNG；SpaceBattleEffectStateStore/SpaceOrderEffectCommitter 已提供 Jar/Space/效果/dispatcher/score-wave-segment 联合快照与事件提交路径；恢复时不会把继续中的 run 重置为新局。
 
 ### 4.14e 战前解析器精确版本目录与存档连续性
 
@@ -412,7 +412,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `WorldV2ShipHost` 只允许在完整 Space 步边界捕获检查点；恢复必须发生在首次时间推进、订单物化或其他 Host 操作之前。Jar 检查点中的订单/会话已存在时，不会再次物化 loadout orders。
 - Host 的 fractional-millisecond remainder 是 Space 时钟状态，不属于 Jar Core checkpoint；两者分别捕获，并在恢复时先还原 Jar、再还原 Host remainder。
 - `Game.capture_jar_space_runtime_checkpoint()` 把 Jar checkpoint、Host clock remainder、Space parser state、未拾取的 energy-stone 节点和 loadout identity 组成一个 runtime payload。`Game.configure_battle_loadout_from_checkpoint()` 校验相同 loadout identity 后恢复。
-- `SpaceBattleEffectStateStore` schema v2 把 effect state、下一份 dispatcher EventId state 和 Jar/Space runtime payload 写进同一个 pending/previous 原子替换快照；schema v1 仅保留旧版 effect/dispatcher 兼容读取。
+- `SpaceBattleEffectStateStore` schema v3 把 effect state、下一份 dispatcher EventId state 和 Jar/Space runtime payload 写进同一个 pending/previous 原子替换快照；schema v1 仅保留旧版 effect/dispatcher 兼容读取。
 - `SpaceOrderEffectCommitter` 现在要求提供 runtime checkpoint callback。提交顺序是先应用 Space effect、捕获 Jar/Space runtime、原子保存 effect+dispatcher-next+Jar+parser+clock+pending pickups，成功后 Dispatcher 才在 Jar 中 acknowledge outbox event。保存失败时事件保持 pending。
-- `SpaceBattleEffectStateStoreProbe` 验证 schema v2 联合快照、loadout identity、无效 checkpoint 拒绝且不覆盖上一份有效快照。
+- `SpaceBattleEffectStateStoreProbe` 验证 schema v3 联合快照、loadout identity、无效 checkpoint 拒绝且不覆盖上一份有效快照。
 - `SpaceOreParserJarIngressProbe` 额外模拟进程重启：分别恢复 Jar resource-ledger checkpoint、Space parser outbox 和 Host clock remainder，再以同一批次 ID 重试，验证 Jar 返回持久化 duplicate receipt 且只存在一只 Jar。
