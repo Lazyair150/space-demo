@@ -174,9 +174,29 @@ static func _probe_skill() -> bool:
 	var template_entry := SpaceRoguelikeIndividualPoolEntryBuilder.append_skill(
 		template_pool, template_skill, benefit, context, balance, "common", 1.0, [], world_options
 	)
-	return bool(template_entry.get("success", false)) \
-		and String(template_entry.entry.get("orderTemplateName", "")) == "probe.skill.offense@2" \
-		and template_pool.is_valid()
+	if not bool(template_entry.get("success", false)) or String(template_entry.entry.get("orderTemplateName", "")) != "probe.skill.offense@2" or not template_pool.is_valid():
+		return false
+
+	var growth_skill := template_skill.duplicate(true) as SpaceSkillDefinition
+	growth_skill.effect_parameters = {"damage": 10.0}
+	growth_skill.effect_parameter_benefit_dimensions = {"damage": "power"}
+	var neutral_instance := SpaceOwnedProgressionInstance.new()
+	neutral_instance.instance_id = &"probe.skill.neutral-instance"
+	neutral_instance.item_kind = "skill"
+	neutral_instance.definition_id = growth_skill.skill_id
+	neutral_instance.definition_version = growth_skill.definition_version
+	var neutral_effective := SpaceIndividualPowerEvaluator.evaluate_effective_skill(
+		growth_skill, neutral_instance, benefit, context, balance, model, world_options
+	)
+	if not bool(neutral_effective.get("success", false)):
+		return false
+	var overgrown_instance := neutral_instance.duplicate(true) as SpaceOwnedProgressionInstance
+	overgrown_instance.instance_id = &"probe.skill.overgrown-instance"
+	overgrown_instance.growth_attributes = {"effectMul.damage": 10.0}
+	var overgrown_effective := SpaceIndividualPowerEvaluator.evaluate_effective_skill(
+		growth_skill, overgrown_instance, benefit, context, balance, model, world_options
+	)
+	return not bool(overgrown_effective.get("success", false)) # Growth that exceeds the Jar cost curve cannot receive a power score.
 
 
 static func _probe_target_value_and_production_gate() -> bool:
