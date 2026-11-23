@@ -3,7 +3,7 @@ class_name SpaceBattleLoadoutSnapshot
 ## Immutable-by-interface snapshot of the four player-authored pre-battle build dimensions.
 ## Mutable source dictionaries are deep-copied on creation and on every read.
 
-const CURRENT_SCHEMA_VERSION: int = 1
+const CURRENT_SCHEMA_VERSION: int = 2
 
 var _data: Dictionary = {}
 
