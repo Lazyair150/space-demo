@@ -11,6 +11,8 @@ class_name SpaceHangarPreparation
 @export var balance_profile: SpaceSkillBalanceProfile
 @export var effect_catalog: SpaceEffectCatalog
 @export var catalog_bundle_resource: SpaceHangarCatalogBundleResource
+## Production Hangar must select player-owned instances; definition-only selection is an explicit development mode.
+@export var require_owned_instances: bool = true
 ## Injected from the player save/session owner; never authored into a shared catalog Resource.
 var player_progression_state: SpacePlayerProgressionState
 
