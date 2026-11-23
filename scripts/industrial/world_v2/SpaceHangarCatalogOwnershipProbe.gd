@@ -32,6 +32,10 @@ static func run() -> bool:
 	ship_anchor.logical_slot_id = "mutated-slot"
 	if String(ships.resolve_definition("probe.ship", 2).display_anchors[0].logical_slot_id) != "slot-a":
 		return false
+	var invalid_display_copy := ships.resolve_definition("probe.ship", 2)
+	invalid_display_copy.display_anchors[0].normalized_position = Vector2(2.0, 0.5)
+	if not invalid_display_copy.get_validation_errors(["round"]).is_empty() or invalid_display_copy.get_display_validation_errors().is_empty():
+		return false
 	if ships.resolve_definition("probe.ship", 1) != null:
 		return false
 
