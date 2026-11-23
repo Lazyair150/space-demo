@@ -151,9 +151,19 @@ static func from_data(source: Dictionary) -> SpacePlayerProgressionState:
 		instance.growth_curve_id = StringName(raw_instance.get("growthCurveId", ""))
 		instance.growth_curve_version = int(raw_instance.get("growthCurveVersion", 0))
 		var growth: Variant = raw_instance.get("growthAttributes", null)
-		if not (growth is Dictionary):
+		var provenance: Variant = raw_instance.get("acquisitionProvenance", {})
+		if not (growth is Dictionary) or not (provenance is Dictionary):
 			return null
 		instance.growth_attributes = growth.duplicate(true)
+		instance.acquisition_provenance = provenance.duplicate(true)
+		# Migrate the earlier roguelike reward payload out of growth attributes.
+		# Subsystem composers intentionally reject foreign growth keys.
+		if instance.growth_attributes.has("roguelike"):
+			var legacy_provenance: Variant = instance.growth_attributes.get("roguelike")
+			if not (legacy_provenance is Dictionary) or not instance.acquisition_provenance.is_empty():
+				return null
+			instance.acquisition_provenance = legacy_provenance.duplicate(true)
+			instance.growth_attributes.erase("roguelike")
 		state.owned_instances.append(instance)
 	if not state.get_validation_errors().is_empty():
 		return null
