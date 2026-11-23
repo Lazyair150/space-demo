@@ -61,6 +61,7 @@ func _copy_definition(source: SpaceWorkshopCombinationDefinition) -> SpaceWorksh
 	copy.combination_id = source.combination_id
 	copy.definition_version = source.definition_version
 	copy.display_name = source.display_name
+	copy.display_icon = source.display_icon
 	copy.jar_world_options = source.jar_world_options.duplicate(true)
 	copy.operation_cost_by_order_type = source.operation_cost_by_order_type.duplicate(true)
 	copy.liquid_handling_operation_cost = source.liquid_handling_operation_cost
