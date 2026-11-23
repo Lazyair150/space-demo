@@ -7,6 +7,7 @@ class_name SpaceHangarPreparation
 @export var production_device_catalog: SpaceProductionDeviceCatalog
 @export var ore_parser_catalog: SpaceOreParserCatalog
 @export var workshop_combination_catalog: SpaceWorkshopCombinationCatalog
+@export var workshop_catalog: SpaceWorkshopCatalog
 @export var skill_catalog: SpaceSkillCatalog
 @export var balance_profile: SpaceSkillBalanceProfile
 @export var effect_catalog: SpaceEffectCatalog
@@ -21,7 +22,7 @@ func create_catalog_bundle() -> SpaceHangarCatalogBundle:
 		return catalog_bundle_resource.create_runtime_bundle()
 	return SpaceHangarCatalogBundle.create(
 		ship_catalog, production_device_catalog, ore_parser_catalog,
-		workshop_combination_catalog, skill_catalog, balance_profile, effect_catalog
+		workshop_combination_catalog, skill_catalog, balance_profile, effect_catalog, workshop_catalog
 	)
 
 func build_loadout_from_selection(
