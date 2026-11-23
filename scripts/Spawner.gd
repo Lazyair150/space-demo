@@ -23,6 +23,7 @@ const ELITE_SCORE := 60
 
 @export var shooter_scene:PackedScene
 @export var chaser_scene:PackedScene
+@export var boss_scene: PackedScene
 @export var arena_rect:Rect2 =Rect2(80,80,1120,560)
 @export var spawn_stagger_seconds:float=0.35
 @export var wave_break_seconds:float=2.0
@@ -155,27 +156,43 @@ func _start_stage_beat(beat: Dictionary) -> void:
 	var segment_labels := {"warmup": "热身", "pressure": "压力", "elite": "精英", "rest": "喘息", "boss": "精英"}
 	GameState.set_segment(String(segment_labels.get(segment_name, "热身")))
 	_spawning = true
-	for index in chasers:
-		if not _spawn_stage_enemy(false, false):
-			_fault_stage("failed to spawn an authored chaser")
+	if segment_name == "boss":
+		var boss_id := String(beat.get("boss_id", "")).strip_edges()
+		var game := get_parent()
+		if boss_id.is_empty() or chasers != 0 or shooters != 0 or elites != 1:
+			_fault_stage("boss beat must identify exactly one boss and no generic enemies")
 			return
-		await get_tree().create_timer(spawn_stagger_seconds, false).timeout
-		if not is_inside_tree() or _stage_faulted:
+		if game == null or not game.has_method("get_stage_boss_definition_id") or String(game.call("get_stage_boss_definition_id")) != boss_id:
+			_fault_stage("boss beat identity does not match the configured stage objective")
 			return
-	for index in shooters:
-		if not _spawn_stage_enemy(true, false):
-			_fault_stage("failed to spawn an authored shooter")
+		if boss_scene == null:
+			_fault_stage("boss beat requires an authored boss actor scene")
 			return
-		await get_tree().create_timer(spawn_stagger_seconds, false).timeout
-		if not is_inside_tree() or _stage_faulted:
+		if not _spawn_stage_boss(boss_id):
+			_fault_stage("failed to spawn the exact authored stage boss")
 			return
-	for index in elites:
-		if not _spawn_stage_enemy(false, true):
-			_fault_stage("failed to spawn an authored elite")
-			return
-		await get_tree().create_timer(spawn_stagger_seconds, false).timeout
-		if not is_inside_tree() or _stage_faulted:
-			return
+	else:
+		for index in chasers:
+			if not _spawn_stage_enemy(false, false):
+				_fault_stage("failed to spawn an authored chaser")
+				return
+			await get_tree().create_timer(spawn_stagger_seconds, false).timeout
+			if not is_inside_tree() or _stage_faulted:
+				return
+		for index in shooters:
+			if not _spawn_stage_enemy(true, false):
+				_fault_stage("failed to spawn an authored shooter")
+				return
+			await get_tree().create_timer(spawn_stagger_seconds, false).timeout
+			if not is_inside_tree() or _stage_faulted:
+				return
+		for index in elites:
+			if not _spawn_stage_enemy(false, true):
+				_fault_stage("failed to spawn an authored elite")
+				return
+			await get_tree().create_timer(spawn_stagger_seconds, false).timeout
+			if not is_inside_tree() or _stage_faulted:
+				return
 	_spawning = false
 	_check_wave_clear()
 
@@ -185,6 +202,32 @@ func _scaled_stage_count(authored_count: int, scale: float) -> int:
 	if authored_count == 0:
 		return 0
 	return maxi(1, int(ceil(float(authored_count) * scale)))
+
+func _spawn_stage_boss(boss_id: String) -> bool:
+	var boss := boss_scene.instantiate() as Node2D
+	if boss == null or not boss.has_method("configure_stage_boss") or not boss.has_signal("died"):
+		if boss != null:
+			boss.free()
+		return false
+	if not bool(boss.call("configure_stage_boss", boss_id)):
+		boss.free()
+		return false
+	var arena := get_parent().get_node_or_null("Arena")
+	if arena == null:
+		boss.free()
+		return false
+	boss.tree_exited.connect(_on_enemy_freed)
+	boss.died.connect(_on_enemy_died_with_source.bind(boss))
+	boss.died.connect(_on_stage_boss_died.bind(boss_id, boss))
+	boss.position = _random_edge_position()
+	arena.add_child(boss)
+	_alive_enemies += 1
+	return true
+
+func _on_stage_boss_died(_at: Vector2, boss_id: String, _boss: Node2D) -> void:
+	var game := get_parent()
+	if game == null or not game.has_method("record_stage_boss_defeated") or not bool(game.call("record_stage_boss_defeated", boss_id)):
+		_fault_stage("stage objective rejected the defeated boss identity")
 
 func _spawn_stage_enemy(use_shooter: bool, elite: bool) -> bool:
 	var scene := shooter_scene if use_shooter else chaser_scene
