@@ -120,13 +120,16 @@ func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity:
         return false
     if (typeof(clock) != TYPE_INT and typeof(clock) != TYPE_FLOAT) or not is_finite(float(clock)) or float(clock) < 0.0 or float(clock) >= 1.0:
         return false
-    if not (parser is Dictionary) or int(parser.get("schemaVersion", 0)) != 1:
+    if not (parser is Dictionary) or int(parser.get("schemaVersion", 0)) != 2:
         return false
     var parser_runtime: Variant = parser.get("parserRuntime", null)
     var next_pickup_sequence: Variant = parser.get("nextPickupSequence", null)
+    var drop_rng_state: Variant = parser.get("dropRngState", null)
     if not (parser_runtime is Dictionary) or int(parser_runtime.get("schemaVersion", 0)) != 2:
         return false
     if typeof(next_pickup_sequence) != TYPE_INT or int(next_pickup_sequence) <= 0:
+        return false
+    if typeof(drop_rng_state) != TYPE_INT:
         return false
     if not (parser.get("pendingPickups", null) is Array):
         return false
