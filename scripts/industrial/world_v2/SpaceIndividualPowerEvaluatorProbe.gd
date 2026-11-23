@@ -50,7 +50,7 @@ static func _probe_workshop() -> bool:
 		"banned_liquid_count": 0.0
 	}
 	var model := _model("probe.workshop.power", "workshop", metrics)
-	var result := SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, ["round"], model)
+	var result := SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, ["round"], ["water", "fuel"], model)
 	return bool(result.get("success", false)) and result.get("powerMetrics", {}) == metrics
 
 static func _probe_skill() -> bool:
