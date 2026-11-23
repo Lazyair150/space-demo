@@ -1,11 +1,30 @@
-extends RefCounted
+extends Resource
 class_name SpaceOreParserCatalog
 ## Exact-version registry for pre-battle universal ore-parser device definitions.
 ## The catalog never invents production percentages, rates, thresholds, or balance data.
 
+## Editor-authored exact-version parser definitions. No production values are supplied by this catalog.
+@export var definitions: Array[SpaceOreParserDefinition] = []
+
 var _definitions: Dictionary = {}
 
 func register_definition(definition: SpaceOreParserDefinition) -> bool:
+	if not _register_definition_snapshot(definition):
+		return false
+	definitions.append(SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile()))
+	return true
+
+## Rebuild after loading/editing the exported definitions array in a .tres Resource.
+## The runtime index always contains detached snapshots, never mutable authoring Resources.
+func rebuild_index() -> bool:
+	_definitions.clear()
+	for definition in definitions:
+		if not _register_definition_snapshot(definition):
+			_definitions.clear()
+			return false
+	return true
+
+func _register_definition_snapshot(definition: SpaceOreParserDefinition) -> bool:
 	if definition == null:
 		return false
 	var key := _key(String(definition.parser_id), definition.definition_version)
@@ -20,11 +39,12 @@ func register_definition(definition: SpaceOreParserDefinition) -> bool:
 	if _definitions.has(key):
 		push_error("Duplicate ore parser definition version: " + key)
 		return false
-	# Store a detached value snapshot; catalog callers cannot mutate registered content.
 	_definitions[key] = SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
 	return true
 
 func resolve_definition(parser_id: String, version: int) -> SpaceOreParserDefinition:
+	if _definitions.is_empty() and not definitions.is_empty() and not rebuild_index():
+		return null
 	if parser_id.strip_edges().is_empty() or version <= 0:
 		return null
 	var definition := _definitions.get(_key(parser_id, version), null) as SpaceOreParserDefinition
@@ -66,6 +86,8 @@ func validate_device_selection(selection: Dictionary, expected_slot_id: String, 
 	return errors
 
 func registered_versions(parser_id: String) -> PackedInt32Array:
+	if _definitions.is_empty() and not definitions.is_empty() and not rebuild_index():
+		return PackedInt32Array()
 	var versions := PackedInt32Array()
 	for key in _definitions:
 		var definition := _definitions[key] as SpaceOreParserDefinition
