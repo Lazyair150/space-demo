@@ -570,4 +570,4 @@ static func run() -> bool:
 	cross_subsystem_growth.growth_attributes = {"maxJarsBonus": 2}
 	if SpaceProgressionRuntimeProfileComposer.compose_skill(skill_for_growth, cross_subsystem_growth) != null:
 		return false
-	return true
+	return SpaceRoguelikeIndividualLibraryProbe.run()
