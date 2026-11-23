@@ -245,7 +245,7 @@ func _complete_stage_beat() -> void:
 
 ## Finite-stage checkpoints are safe only in the enemy-free inter-beat window.
 func can_capture_finite_stage_checkpoint() -> bool:
-	return _stage_mode and _stage_active and _stage_break_pending and not _spawning and _alive_enemies == 0 and not _stage_faulted
+	return _stage_mode and _stage_active and _stage_director != null and _stage_director.state() == SpaceStageEncounterDirector.State.ACTIVE and _stage_break_pending and not _spawning and _alive_enemies == 0 and not _stage_faulted
 func _fault_stage(reason: String) -> void:
 	if _stage_faulted:
 		return
