@@ -33,6 +33,9 @@ func save(
             return false
         payload["schemaVersion"] = 3
         payload["runtimeCheckpoint"] = runtime_checkpoint.duplicate(true)
+        if not _valid_snapshot(payload):
+            push_error("Battle schema-v3 snapshot failed its complete persistence contract")
+            return false
     return _replace_snapshot(payload)
 
 func _replace_snapshot(payload: Dictionary) -> bool:
