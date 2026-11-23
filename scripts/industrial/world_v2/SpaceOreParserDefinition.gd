@@ -8,6 +8,8 @@ const MAX_FIXED_POINT_UNITS: float = 1000000000.0
 
 @export var parser_id: StringName = &""
 @export var definition_version: int = 1
+@export var display_name: String = ""
+@export var display_icon: Texture2D
 @export_range(0, 100, 1) var production_percentage: int = 0
 @export var shape_processing_rate_per_second: Dictionary = {}
 @export var progress_per_jar_by_shape: Dictionary = {}
