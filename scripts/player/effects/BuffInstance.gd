@@ -105,7 +105,7 @@ func restore_runtime_state(snapshot: Dictionary, resolved_definition: BuffDefini
 		return false
 	if typeof(raw_definition_version) != TYPE_INT or int(raw_definition_version) != resolved_definition.definition_version:
 		return false
-	if typeof(raw_target_key) != TYPE_STRING:
+	if typeof(raw_target_key) != TYPE_STRING or (not String(raw_target_key).is_empty() and resolved_target == null):
 		return false
 	if (typeof(raw_remaining) != TYPE_INT and typeof(raw_remaining) != TYPE_FLOAT) or (typeof(raw_accumulator) != TYPE_INT and typeof(raw_accumulator) != TYPE_FLOAT):
 		return false
