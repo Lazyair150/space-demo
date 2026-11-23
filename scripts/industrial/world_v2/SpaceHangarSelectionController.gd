@@ -22,7 +22,7 @@ func refresh_inventory() -> bool:
 	if _preparation == null or _preparation.catalog_bundle_resource == null:
 		_inventory = _unavailable_inventory("Authored Hangar catalog bundle is not assigned")
 		_draft = SpaceHangarSelectionDraft.new()
-		_draft.configure(_inventory, board)
+		_draft.configure(_inventory, _board_definition)
 		_last_error = "Hangar catalog bundle is not configured"
 		_emit_changed()
 		return false
