@@ -298,6 +298,11 @@ func _try_complete_stage() -> void:
 	_stage_completion_emitted = true
 	stage_completed.emit(result)
 
+func get_stage_boss_definition_id() -> String:
+	if _selected_stage == null or _selected_stage.objective != "boss":
+		return ""
+	return String(_selected_stage.objective_parameters.get("boss_definition_id", ""))
+
 func record_stage_boss_defeated(definition_id: String) -> bool:
 	if _stage_objective_runtime == null or not _stage_objective_runtime.record_boss_defeated(definition_id):
 		return false
