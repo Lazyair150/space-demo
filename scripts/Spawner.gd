@@ -43,7 +43,19 @@ var _energy_stone_rng := RandomNumberGenerator.new()
 func _ready()->void:
 	_energy_stone_rng.randomize()
 	await get_tree().process_frame
-	_start_next_wave()
+	# Game restores transient run state in its _ready before this deferred start.
+	# The current wave is restarted from its beginning because enemy/scheduler
+	# instances are not part of the present runtime checkpoint.
+	var saved_wave := int(GameState.wave)
+	if saved_wave > 0:
+		_start_wave(initial_wave_for_checkpoint(saved_wave), false)
+	else:
+		_start_next_wave()
+
+## A resumed run restarts its saved wave; a new run starts at wave one.
+## Kept pure so the resume policy can be regression-tested without spawning actors.
+static func initial_wave_for_checkpoint(saved_wave: int) -> int:
+	return saved_wave if saved_wave > 0 else 1
 
 ## Persist the drop RNG stream with the battle state so a restored encounter
 ## does not reroll a different sequence from the same point in combat.
@@ -70,11 +82,18 @@ func current_segment()->int:
 	return _segment_index
 
 func _start_next_wave()->void:
-	_current_wave +=1
-	_segment_index =segment_for_wave(_current_wave)
-	_cycle =cycle_for_wave(_current_wave)
-	GameState.set_wave(_current_wave)
-	GameState.set_segment(current_segment_label())
+	_start_wave(_current_wave + 1, true)
+
+func _start_wave(wave_number: int, publish_progression: bool) -> void:
+	if wave_number <= 0:
+		push_error("[Spawner] Refusing to start an invalid wave number")
+		return
+	_current_wave = wave_number
+	_segment_index = segment_for_wave(_current_wave)
+	_cycle = cycle_for_wave(_current_wave)
+	if publish_progression:
+		GameState.set_wave(_current_wave)
+		GameState.set_segment(current_segment_label())
 	var count :=0
 	var shooter_chance :=0.0
 	var elite :=false
