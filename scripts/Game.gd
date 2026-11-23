@@ -146,11 +146,24 @@ func _ready() -> void:
 	var active_jar_host := get_node_or_null("/root/WorldV2ShipHost")
 	if active_jar_host != null and not active_jar_host.ShipWorldFaulted.is_connected(_on_ship_world_faulted):
 		active_jar_host.ShipWorldFaulted.connect(_on_ship_world_faulted)
-	if not GameFlow.mark_battle_running():
-		push_error("[Game] Application flow could not enter the running battle phase")
-		GameFlow.fault_battle()
-		process_mode = Node.PROCESS_MODE_DISABLED
-		return
+	if not _persisted_jar_execution_checkpoint_json.is_empty():
+		if not GameFlow.mark_battle_resume_ready():
+			push_error("[Game] Application flow could not enter resume-ready state")
+			GameFlow.fault_battle()
+			process_mode = Node.PROCESS_MODE_DISABLED
+			return
+		var pause_controller := get_node_or_null("PauseController")
+		if pause_controller == null or not pause_controller.has_method("enter_resume_ready") or not bool(pause_controller.call("enter_resume_ready")):
+			push_error("[Game] Restored battle could not acquire the mandatory resume-ready pause gates")
+			GameFlow.fault_battle()
+			process_mode = Node.PROCESS_MODE_DISABLED
+			return
+	else:
+		if not GameFlow.mark_battle_running():
+			push_error("[Game] Application flow could not enter the running battle phase")
+			GameFlow.fault_battle()
+			process_mode = Node.PROCESS_MODE_DISABLED
+			return
 	_camera_home = camera_2d.position
 	_scatter_asteroids()
 	if player:
