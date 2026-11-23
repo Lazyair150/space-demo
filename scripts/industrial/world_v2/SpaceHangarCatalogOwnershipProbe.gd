@@ -3,6 +3,8 @@ class_name SpaceHangarCatalogOwnershipProbe
 ## Synthetic ownership checks only; contains no production balance or world configuration.
 
 static func run() -> bool:
+	if not SpaceIndividualPowerEvaluatorProbe.run():
+		return false
 	var ship := SpaceShipDefinition.new()
 	ship.ship_id = &"probe.ship"
 	ship.definition_version = 2
