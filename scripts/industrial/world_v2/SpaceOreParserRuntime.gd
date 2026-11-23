@@ -9,6 +9,7 @@ class_name SpaceOreParserRuntime
 const MICRO: int = 1000000
 const RATE_DENOMINATOR: int = 100000
 const STATE_SCHEMA_VERSION: int = 1
+const MAX_INT64: int = 9223372036854775807
 
 var _definition: SpaceOreParserDefinition
 var _parser_instance_id: String = ""
@@ -94,8 +95,11 @@ func advance(delta_logical_milli: int) -> Dictionary:
 	for shape_value in shapes:
 		var shape := String(shape_value)
 		var base_rate_micro := int(round(float(_definition.shape_processing_rate_per_second[shape]) * MICRO))
-		var numerator := base_rate_micro * _definition.production_percentage * delta_logical_milli
-		numerator += int(_rate_remainder_by_shape[shape])
+		var rate_factor := _definition.production_percentage * delta_logical_milli
+		var rate_remainder := int(_rate_remainder_by_shape[shape])
+		if rate_factor > 0 and base_rate_micro > int((MAX_INT64 - rate_remainder) / rate_factor):
+			return _failure("ore parser processing arithmetic exceeds the supported fixed-point range")
+		var numerator := base_rate_micro * rate_factor + rate_remainder
 		var process_budget_micro := int(numerator / RATE_DENOMINATOR)
 		_rate_remainder_by_shape[shape] = numerator % RATE_DENOMINATOR
 		if process_budget_micro <= 0:
@@ -118,7 +122,10 @@ func advance(delta_logical_milli: int) -> Dictionary:
 
 		if consumed_micro <= 0:
 			continue
-		var progress := int(_progress_micro_by_shape[shape]) + consumed_micro
+		var previous_progress := int(_progress_micro_by_shape[shape])
+		if consumed_micro > MAX_INT64 - previous_progress:
+			return _failure("ore parser progress arithmetic exceeds the supported fixed-point range")
+		var progress := previous_progress + consumed_micro
 		var threshold := int(round(float(_definition.progress_per_jar_by_shape[shape]) * MICRO))
 		var produced := int(progress / threshold)
 		_progress_micro_by_shape[shape] = progress % threshold
@@ -183,6 +190,9 @@ func restore_state(state: Dictionary) -> Dictionary:
 	if not (queues is Dictionary) or not (seen is Dictionary) or not (progress is Dictionary) or not (remainders is Dictionary) or not (pending is Dictionary) or next_sequence <= 0:
 		return _failure("ore parser checkpoint has invalid top-level state")
 	var expected_shapes := _stone_queues_by_shape.keys()
+	if queues.size() != expected_shapes.size() or progress.size() != expected_shapes.size() or remainders.size() != expected_shapes.size():
+		return _failure("ore parser checkpoint shape maps do not match the selected parser")
+	var queued_pickup_ids := {}
 	for shape in expected_shapes:
 		if not queues.has(shape) or not (queues[shape] is Array):
 			return _failure("ore parser checkpoint is missing a shape queue: " + String(shape))
@@ -194,12 +204,35 @@ func restore_state(state: Dictionary) -> Dictionary:
 		if not remainders.has(shape) or int(remainders[shape]) < 0 or int(remainders[shape]) >= RATE_DENOMINATOR:
 			return _failure("ore parser checkpoint has invalid rate remainder: " + String(shape))
 		for raw_stone in queues[shape]:
-			if not (raw_stone is Dictionary) or String(raw_stone.get("pickupId", "")).is_empty() or int(raw_stone.get("remainingVolumeMicro", 0)) <= 0:
-				return _failure("ore parser checkpoint contains an invalid queued stone: " + String(shape))
+			if not (raw_stone is Dictionary):
+				return _failure("ore parser checkpoint contains a malformed queued stone: " + String(shape))
+			var pickup_id := String(raw_stone.get("pickupId", ""))
+			var remaining_volume := int(raw_stone.get("remainingVolumeMicro", 0))
+			if pickup_id.is_empty() or remaining_volume <= 0 or queued_pickup_ids.has(pickup_id) or not seen.has(pickup_id):
+				return _failure("ore parser checkpoint contains an invalid or repeated queued pickup: " + String(shape))
+			if String(seen[pickup_id]) != shape + ":" + str(remaining_volume) and not String(seen[pickup_id]).begins_with(shape + ":"):
+				return _failure("queued pickup identity does not match its stone type")
+			queued_pickup_ids[pickup_id] = true
+	for pickup_id in seen:
+		if String(pickup_id).strip_edges().is_empty() or not (seen[pickup_id] is String) or not String(seen[pickup_id]).contains(":"):
+			return _failure("ore parser checkpoint contains an invalid pickup identity")
+	var maximum_pending_sequence := 0
 	for operation_id in pending:
 		var batch: Variant = pending[operation_id]
 		if not (batch is Dictionary) or String(batch.get("operationId", "")) != String(operation_id) or not (batch.get("jarCounts", null) is Dictionary) or batch.jarCounts.is_empty():
 			return _failure("ore parser checkpoint contains an invalid pending output batch")
+		var parts := String(operation_id).split(":")
+		if parts.size() != 3 or parts[0] != "ore-parser" or parts[1] != _parser_token or not parts[2].is_valid_int():
+			return _failure("ore parser checkpoint contains an output batch from another parser")
+		var sequence := int(parts[2])
+		if sequence <= 0:
+			return _failure("ore parser checkpoint contains an invalid output sequence")
+		maximum_pending_sequence = maxi(maximum_pending_sequence, sequence)
+		for shape in batch.jarCounts:
+			if not _stone_queues_by_shape.has(shape) or int(batch.jarCounts[shape]) <= 0:
+				return _failure("ore parser checkpoint contains an invalid produced Jar shape/count")
+	if next_sequence <= maximum_pending_sequence:
+		return _failure("ore parser checkpoint next batch sequence is not monotonic")
 
 	_stone_queues_by_shape = queues.duplicate(true)
 	_seen_pickups = seen.duplicate(true)
