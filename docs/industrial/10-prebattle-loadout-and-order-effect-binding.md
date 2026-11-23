@@ -474,3 +474,19 @@ This controller/view-model layer is now connected to the first standalone Contro
 - 当前 UI 切片尚未提供设备槽位和技能订单绑定控件。只要真实目录中存在设备或技能定义，冻结按钮就保持禁用，避免把未配置的目录内容误当作完整装配。
 - 每次控制器发出 ViewModel 更新后，界面会按精确 `(id, version)` 恢复当前选择，避免刷新状态标签时意外清空用户选择。
 - MainMenu 路由保持不变；该场景可独立打开用于后续 UI 迭代。Godot 编译和场景运行尚未执行。
+
+
+### Sprite-authored Hangar presentation and slot binding UI
+
+The Hangar UI now presents the versioned catalog entries as visual choices without turning presentation assets into gameplay data:
+
+- `SpaceShipDefinition`, `SpaceProductionDeviceDefinition`, `SpaceOreParserDefinition`, `SpaceWorkshopCombinationDefinition`, `SpaceSkillDefinition`, and `BuffDefinition` each expose an optional editor-authored `display_icon: Texture2D`.
+- `SpaceHangarCatalogBundleResource.build_selection_inventory()` carries that texture reference to the UI as `iconTexture`. A missing icon is valid and does not affect catalog validity, selection identity, balance, or runtime semantics.
+- The standalone screen uses category SVG fallbacks in `assets/hangar/` for ship, parser, workshop, device, skill, and effect. An authored definition sprite replaces the category fallback for that exact entry. These SVGs are presentation-only and do not represent fabricated catalog definitions.
+- Device choice rows are generated only from `SpaceHangarScreen.device_slot_ids`, which must be supplied by the owning ship/loadout flow. The parser has its own explicit `parser_slot_id`; duplicate device slots and parser-slot collisions fail closed.
+- Skill binding rows are generated only from `skill_order_bindings` entries authored by the owning order flow. Each row selects an exact skill version and one of that definition's authored `allowedControlAreas`. The UI does not invent order keys or control areas.
+- Effect definitions are displayed as referenced catalog content; they are not independently equipped. Skill/effect binding semantics remain in the existing skill and effect catalog pipeline.
+- If a catalog contains devices or skills but the owning flow has not supplied the corresponding slot/order bindings, the freeze action remains disabled. Empty or missing production data is never filled with sample gameplay entries.
+- The UI preserves selection identity/version while rebuilding its view model, and the final selection still flows through `SpaceHangarSelectionController`, `SpaceHangarPreparation`, and `SpaceHangarLoadoutAssembler`.
+
+The SVG category assets are initial visual language, not a final art pass. Production definitions can replace them independently with their own SVG, PNG, or other Godot-supported Texture2D resource in the Inspector. Godot compilation and visual runtime inspection remain pending.
