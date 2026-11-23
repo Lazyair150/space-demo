@@ -220,6 +220,29 @@ public partial class WorldV2RuntimeNode : Node
         RequireOperationalSession().SetWorldSpeedRatio(ratio);
         EmitSignal(SignalName.SnapshotChanged);
     }
+    /// <summary>
+    /// Space-side production adapter: atomically replace the complete configured rate table
+    /// for one Jar producer. Jar retains ownership of production progress and inventory.
+    /// </summary>
+    public void UpdateProducerRates(string producerName, GDictionary rates)
+    {
+        if (string.IsNullOrWhiteSpace(producerName))
+            throw new ArgumentException("Producer name cannot be empty", nameof(producerName));
+        if (rates == null)
+            throw new ArgumentNullException(nameof(rates));
+
+        var copiedRates = new System.Collections.Generic.Dictionary<string, double>(StringComparer.Ordinal);
+        foreach (var key in rates.Keys)
+        {
+            var shape = key.AsString();
+            if (string.IsNullOrWhiteSpace(shape) || copiedRates.ContainsKey(shape))
+                throw new ArgumentException("Producer rate keys must be unique non-empty shape names", nameof(rates));
+            copiedRates.Add(shape, rates[key].AsDouble());
+        }
+
+        RequireOperationalSession().UpdateProducerRates(producerName, copiedRates);
+        EmitSignal(SignalName.SnapshotChanged);
+    }
 
     public GDictionary GetWorldSnapshot()
     {
