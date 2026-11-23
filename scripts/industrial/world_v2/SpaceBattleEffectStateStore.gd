@@ -31,7 +31,7 @@ func save(
         if not _valid_runtime_checkpoint(runtime_checkpoint, loadout_identity):
             push_error("Battle runtime checkpoint is incomplete or does not match the frozen loadout")
             return false
-        payload["schemaVersion"] = 2
+        payload["schemaVersion"] = 3
         payload["runtimeCheckpoint"] = runtime_checkpoint.duplicate(true)
     return _replace_snapshot(payload)
 
@@ -103,13 +103,13 @@ func _valid_snapshot(payload: Dictionary) -> bool:
         return false
     if version == 1:
         return not payload.has("runtimeCheckpoint")
-    if version != 2:
+    if version != 3:
         return false
     var runtime_checkpoint: Variant = payload.get("runtimeCheckpoint", null)
     return runtime_checkpoint is Dictionary and _valid_runtime_checkpoint(runtime_checkpoint, identity)
 
 func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity: Dictionary) -> bool:
-    if int(runtime_checkpoint.get("schemaVersion", 0)) != 1:
+    if int(runtime_checkpoint.get("schemaVersion", 0)) != 2:
         return false
     if runtime_checkpoint.get("loadoutIdentity", {}) != loadout_identity:
         return false
