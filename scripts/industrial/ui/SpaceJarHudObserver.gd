@@ -85,7 +85,7 @@ func _build() -> void:
 func _toggle_expanded() -> void:
 	_expanded = not _expanded
 	_panel.visible = _expanded
-	_toggle.text = _summary_base_text
+	_toggle.text = _summary_base_text + ("  ▲" if _expanded else "  ▼")
 	if _expanded:
 		_refresh_snapshot()
 
@@ -120,7 +120,7 @@ func _refresh_snapshot() -> void:
 	var slave: Variant = snapshot.get("slave", {})
 	var demands: Variant = snapshot.get("demands", [])
 	_summary_base_text = _build_hud_resource_line(jars, liquids, master, slave, String(snapshot.get("lifecycleState", "")))
-	_toggle.text = _summary_base_text
+	_toggle.text = _summary_base_text + ("  ▲" if _expanded else "  ▼")
 	_render_resource_jars(jars)
 	_render_resource_liquids(liquids)
 	_render_workshop(_master_box, "主台", master)
@@ -154,8 +154,7 @@ func _build_hud_resource_line(raw_jars: Variant, raw_liquids: Variant, master: V
 		" / ".join(liquid_parts) if not liquid_parts.is_empty() else "无",
 		_workshop_hud_summary(master),
 		_workshop_hud_summary(slave),
-		_lifecycle_text(lifecycle),
-		"▲" if _expanded else "▼"
+		_lifecycle_text(lifecycle)
 	]
 
 func _workshop_hud_summary(raw_workshop: Variant) -> String:
