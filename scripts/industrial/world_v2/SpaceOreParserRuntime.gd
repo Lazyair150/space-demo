@@ -92,25 +92,34 @@ func advance(delta_logical_milli: int) -> Dictionary:
 	if delta_logical_milli == 0:
 		return {"success": true, "newBatches": new_batches}
 
-	var shapes: Array = _stone_queues_by_shape.keys()
-	shapes.sort()
+	# Work on staged copies. Any arithmetic/bridge-limit rejection must leave queued
+	# stones, accumulated progress, and rate remainders exactly as they were.
+	var staged_queues: Dictionary = _stone_queues_by_shape.duplicate(true)
+	var staged_progress: Dictionary = _progress_micro_by_shape.duplicate(true)
+	var staged_remainders: Dictionary = _rate_remainder_by_shape.duplicate(true)
 	var output_counts: Dictionary = {}
+	var shapes: Array = staged_queues.keys()
+	shapes.sort()
 	for shape_value in shapes:
 		var shape := String(shape_value)
-		var base_rate_micro := int(round(float(_definition.shape_processing_rate_per_second[shape]) * MICRO))
-		if _definition.production_percentage > 0 and delta_logical_milli > int(MAX_INT64 / _definition.production_percentage):
+		var raw_rate := float(_definition.shape_processing_rate_per_second[shape])
+		if raw_rate > 9000000000000.0:
+			return _failure("ore parser processing rate exceeds the fixed-point representation limit: " + shape)
+		var base_rate_micro := int(round(raw_rate * MICRO))
+		var percentage := _definition.production_percentage
+		if percentage > 0 and delta_logical_milli > int(MAX_INT64 / percentage):
 			return _failure("ore parser logical time factor exceeds the supported fixed-point range")
-		var rate_factor := _definition.production_percentage * delta_logical_milli
-		var rate_remainder := int(_rate_remainder_by_shape[shape])
+		var rate_factor := percentage * delta_logical_milli
+		var rate_remainder := int(staged_remainders[shape])
 		if rate_factor > 0 and base_rate_micro > int((MAX_INT64 - rate_remainder) / rate_factor):
 			return _failure("ore parser processing arithmetic exceeds the supported fixed-point range")
 		var numerator := base_rate_micro * rate_factor + rate_remainder
 		var process_budget_micro := int(numerator / RATE_DENOMINATOR)
-		_rate_remainder_by_shape[shape] = numerator % RATE_DENOMINATOR
+		staged_remainders[shape] = numerator % RATE_DENOMINATOR
 		if process_budget_micro <= 0:
 			continue
 
-		var queue: Array = _stone_queues_by_shape[shape]
+		var queue: Array = staged_queues[shape]
 		var consumed_micro := 0
 		while process_budget_micro > 0 and not queue.is_empty():
 			var stone: Dictionary = queue[0]
@@ -127,25 +136,43 @@ func advance(delta_logical_milli: int) -> Dictionary:
 
 		if consumed_micro <= 0:
 			continue
-		var previous_progress := int(_progress_micro_by_shape[shape])
+		var previous_progress := int(staged_progress[shape])
 		if consumed_micro > MAX_INT64 - previous_progress:
 			return _failure("ore parser progress arithmetic exceeds the supported fixed-point range")
 		var progress := previous_progress + consumed_micro
-		var threshold := int(round(float(_definition.progress_per_jar_by_shape[shape]) * MICRO))
+		var raw_threshold := float(_definition.progress_per_jar_by_shape[shape])
+		if raw_threshold > 9000000000000.0:
+			return _failure("ore parser progress threshold exceeds the fixed-point representation limit: " + shape)
+		var threshold := int(round(raw_threshold * MICRO))
 		var produced := int(progress / threshold)
-		_progress_micro_by_shape[shape] = progress % threshold
+		staged_progress[shape] = progress % threshold
 		if produced > 0:
 			output_counts[shape] = produced
 
 	if not output_counts.is_empty():
+		# Jar's discrete import accepts positive Int32 counts per batch. Reject an
+		# unrepresentable step before committing any parser consumption/progress.
+		var total_output := 0
+		for count in output_counts.values():
+			if int(count) > 2147483647 - total_output:
+				return _failure("one parser step exceeds the Jar import batch count limit")
+			total_output += int(count)
+		if _next_batch_sequence >= MAX_INT64:
+			return _failure("ore parser output batch sequence is exhausted")
 		var operation_id := "ore-parser:" + _parser_token + ":" + str(_next_batch_sequence)
-		_next_batch_sequence += 1
 		var batch := {
 			"operationId": operation_id,
 			"jarCounts": output_counts.duplicate(true)
 		}
-		_pending_output_batches[operation_id] = batch
+		var staged_pending: Dictionary = _pending_output_batches.duplicate(true)
+		staged_pending[operation_id] = batch
 		new_batches.append(batch.duplicate(true))
+		_pending_output_batches = staged_pending
+		_next_batch_sequence += 1
+
+	_stone_queues_by_shape = staged_queues
+	_progress_micro_by_shape = staged_progress
+	_rate_remainder_by_shape = staged_remainders
 	return {"success": true, "newBatches": new_batches}
 
 func pending_output_batches() -> Array[Dictionary]:
