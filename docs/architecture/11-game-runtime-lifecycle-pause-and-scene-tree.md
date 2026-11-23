@@ -141,7 +141,7 @@ Implemented in this phase:
 Still requiring a later systematic migration/audit:
 
 - Every actor, projectile, pickup, effect, and animation scene must be checked for explicit process modes, timers, and callbacks that intentionally bypass pause.
-- MainMenu/Hangar/Industrial/GameOver navigation should eventually be driven by one application-flow coordinator, not unrelated direct scene changes.
+- `GameFlow` now records and validates the application screen and battle phase transitions for Menu, Industrial, Battle, and GameOver. Scene loading itself is still called by the current screen owners; consolidating all scene changes into a single navigation service remains a later migration.
 - The resumed-battle launch path should show a paused restore-ready state before authorizing simulation.
 - Industrial UI focus, application-level pause, and save/exit behavior need a unified policy without collapsing the separate IndustrialRuntime clock.
 - `SpaceBattlePauseControllerProbe` now checks the synchronous SceneTree pause/overlay/resume contract, but has not been executed. Add automated Godot probes for focus-loss behavior, gameplay timer freezing, Host lifecycle state, and no post-exit pause leakage.
@@ -154,3 +154,15 @@ Still requiring a later systematic migration/audit:
 - Do not allow UI visibility, node visibility, or scene-tree presence to become a time authority.
 - Do not add arbitrary `PROCESS_MODE_ALWAYS` to gameplay nodes to "fix" a timer; fix the owner and timer policy instead.
 - Do not let a UI component own World V2 Runtime lifecycle or Jar commands.
+
+
+## 10. Central state registry
+
+`GameFlow` is registered as an autoload and is the authoritative registry for application screen and battle lifecycle state. It exposes a versioned snapshot and `state_changed` signal. Current tracked values are:
+
+- Screen: `MENU`, `HANGAR`, `INDUSTRIAL`, `BATTLE`, `GAME_OVER`.
+- Battle phase: `INACTIVE`, `PREPARING`, `RUNNING`, `PAUSED`, `RESUMING`, `ENDED`, `FAULTED`.
+- Pause reason: `NONE`, `PLAYER`, `WINDOW_FOCUS_LOST`, `SYSTEM`.
+- Monotonic transition sequence for diagnostics.
+
+MainMenu, Game, IndustrialMain, GameOver, and the combat pause controller now publish their lifecycle transitions through GameFlow. GameFlow rejects leaving an active battle before it has been ended. It is currently a state registry/transition validator, not yet the owner of `change_scene_to_file`; screen owners still perform scene loading. The pause controller and GameFlow must transition together, and the SceneTree/Host remain the actual execution gates.
