@@ -10,7 +10,7 @@ func _init(path: String = "user://battle_effect_state.json") -> void:
     _path = path
 
 ## Legacy three-domain save remains supported. Supplying runtime_checkpoint upgrades the
-## snapshot to schema v2 and commits all cross-domain state in the same file replacement.
+## snapshot to schema v3 and commits all cross-domain state in the same file replacement.
 func save(
     effect_state: Dictionary,
     dispatcher_state: Dictionary,
