@@ -425,3 +425,4 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - This is intentionally a wave-restart policy, not exact mid-wave resume. Spawn timers/coroutines, live enemies, player state, and projectiles are not in the current checkpoint. `SpaceBattleRunStateProbe` covers wave/segment consistency and the initial-wave policy.
 
 - `SpaceEffectCatalog` now snapshots registered BuffDefinition Resources and returns detached exact-version copies, preventing source or consumer mutation from changing a registered effect definition. The effect restore probe checks both isolation boundaries.
+- Schema-v3 `SpaceBattleEffectStateStore.save/load` validates the complete effect-manager snapshot shape and wave/segment consistency before replacing or accepting a checkpoint; malformed effect payloads and inconsistent progression leave the previous valid snapshot intact.
