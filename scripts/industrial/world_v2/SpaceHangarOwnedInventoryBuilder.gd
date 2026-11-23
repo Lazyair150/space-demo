@@ -112,35 +112,41 @@ static func _build_owned_workshop_pairs(bundle: SpaceHangarCatalogBundleResource
 	for combination in bundle.workshop_combination_catalog.definitions:
 		if combination == null:
 			continue
-		var master_id := String(combination.workshop_pair.master_workshop_id)
-		var slave_id := String(combination.workshop_pair.slave_workshop_id)
-		var master_definition := _find_workshop_in_combination(combination, master_id)
-		var slave_definition := _find_workshop_in_combination(combination, slave_id)
-		if master_definition == null or slave_definition == null:
-			continue
-		var masters: Array = []
-		var slaves: Array = []
+		var available: Array[Dictionary] = []
 		for instance in progression.owned_instances:
 			if instance == null or instance.item_kind != "workshop":
 				continue
-			if String(instance.definition_id) == master_id and instance.definition_version == master_definition.definition_version:
-				masters.append(instance)
-			elif String(instance.definition_id) == slave_id and instance.definition_version == slave_definition.definition_version:
-				slaves.append(instance)
-		for master in masters:
-			for slave in slaves:
+			var definition := _find_workshop_in_combination(
+				combination, String(instance.definition_id), instance.definition_version
+			)
+			if definition == null:
+				continue
+			available.append({
+				"instance": instance,
+				"definition": definition
+			})
+		# Every ordered pair of distinct owned instances is a legal slot candidate.
+		# Definition identity may be equal: two independently owned copies remain distinct components.
+		for master_entry in available:
+			for slave_entry in available:
+				var master: SpaceOwnedProgressionInstance = master_entry.instance
+				var slave: SpaceOwnedProgressionInstance = slave_entry.instance
 				if master.instance_id == slave.instance_id:
 					continue
+				var master_definition: SpaceWorkshopDefinition = master_entry.definition
+				var slave_definition: SpaceWorkshopDefinition = slave_entry.definition
 				result.append({
 					"id": String(combination.combination_id),
 					"version": combination.definition_version,
 					"label": combination.display_name,
 					"masterInstanceId": String(master.instance_id),
 					"slaveInstanceId": String(slave.instance_id),
-					"masterWorkshopId": master_id,
-					"slaveWorkshopId": slave_id,
+					"masterWorkshopId": String(master.definition_id),
+					"slaveWorkshopId": String(slave.definition_id),
 					"masterLevel": master.level,
-					"slaveLevel": slave.level
+					"slaveLevel": slave.level,
+					"masterLabel": master_definition.display_name,
+					"slaveLabel": slave_definition.display_name
 				})
 	return result
 
