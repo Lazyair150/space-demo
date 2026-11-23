@@ -195,7 +195,9 @@ func launch_resumed_battle(
 	loadout: SpaceBattleLoadoutSnapshot,
 	saved_snapshot: Dictionary,
 	commit_callback: Callable,
-	effect_target_resolver: Callable
+	effect_target_resolver: Callable,
+	stage: SpaceStageDefinition = null,
+	protected_target: Node = null
 ) -> bool:
 	if parent == null or not parent.is_inside_tree() or game_scene == null:
 		return false
@@ -208,7 +210,7 @@ func launch_resumed_battle(
 		return false
 	if not SpaceHangarBattleLauncher.launch_resumed_battle(
 		parent, game, loadout, saved_snapshot, commit_callback,
-		resolved_effect_catalog, effect_target_resolver
+		resolved_effect_catalog, effect_target_resolver, stage, protected_target
 	):
 		if not game.is_inside_tree():
 			game.free()
