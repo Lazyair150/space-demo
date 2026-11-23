@@ -55,10 +55,11 @@ func set_workshop(definition_id: String, version: int, master_instance_id: Strin
 	var world_choice := _find_choice_in(world_choices, definition_id, version)
 	if world_choice.is_empty():
 		return false
-	if not master_instance_id.is_empty() and _find_workshop_instance(master_instance_id).is_empty():
-		return false
-	if not slave_instance_id.is_empty() and _find_workshop_instance(slave_instance_id).is_empty():
-		return false
+	var world_key := definition_id + "@" + str(version)
+	if not master_instance_id.is_empty() and _find_workshop_instance(master_instance_id, world_key).is_empty():
+		master_instance_id = ""
+	if not slave_instance_id.is_empty() and _find_workshop_instance(slave_instance_id, world_key).is_empty():
+		slave_instance_id = ""
 	if not master_instance_id.is_empty() and master_instance_id == slave_instance_id:
 		return false
 	_selection.workshopId = definition_id
@@ -75,7 +76,7 @@ func _find_choice_in(raw_choices: Variant, definition_id: String, version: int) 
 			return choice
 	return {}
 
-func _find_workshop_instance(instance_id: String) -> Dictionary:
+func _find_workshop_instance(instance_id: String, world_key: String = "") -> Dictionary:
 	if instance_id.is_empty():
 		return {}
 	var choices: Variant = _inventory.get("workshopInstanceChoices", [])
@@ -83,7 +84,9 @@ func _find_workshop_instance(instance_id: String) -> Dictionary:
 		return {}
 	for choice in choices:
 		if choice is Dictionary and String(choice.get("instanceId", "")) == instance_id:
-			return choice
+			var compatible_worlds: Array = choice.get("compatibleWorldKeys", [])
+			if world_key.is_empty() or compatible_worlds.has(world_key):
+				return choice
 	return {}
 
 func set_device(slot_id: String, definition_id: String, version: int, instance_id: String = "") -> bool:
