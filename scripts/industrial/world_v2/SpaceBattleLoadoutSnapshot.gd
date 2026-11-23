@@ -142,8 +142,8 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 				var threshold: Variant = progress[shape]
 				if (typeof(rate) != TYPE_INT and typeof(rate) != TYPE_FLOAT) or not is_finite(float(rate)) or float(rate) < 0.0 or float(rate) > 1000000000.0:
 					errors.append("ore parser shape rate is outside the supported fixed-point range: " + String(shape))
-				if (typeof(threshold) != TYPE_INT and typeof(threshold) != TYPE_FLOAT) or not is_finite(float(threshold)) or float(threshold) <= 0.0 or float(threshold) > 1000000000.0:
-					errors.append("ore parser progress-per-Jar is outside the supported fixed-point range: " + String(shape))
+				if (typeof(threshold) != TYPE_INT and typeof(threshold) != TYPE_FLOAT) or not is_finite(float(threshold)) or float(threshold) <= 0.0 or float(threshold) > 1000000000.0 or round(float(threshold) * 1000000.0) < 1.0:
+					errors.append("ore parser progress-per-Jar must be positive and representable in fixed-point: " + String(shape))
 	if ore_parser_count != 1:
 		errors.append("battle loadout must select exactly one universal ore parser")
 
