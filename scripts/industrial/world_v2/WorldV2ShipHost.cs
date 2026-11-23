@@ -216,6 +216,20 @@ public partial class WorldV2ShipHost : Node
         }
     }
 
+    /// <summary>
+    /// Submit Space-calculated Jar production rates before the next shared simulation advance.
+    /// The Runtime/Bridge validates the complete configured shape table and serializes the mutation.
+    /// </summary>
+    public bool UpdateJarProducerRates(string producerName, GDictionary rates)
+    {
+        if (_state != HostState.Active || _runtime == null ||
+            !_runtime.IsInitialized || _runtime.IsDisposed)
+            return false;
+
+        _runtime.UpdateProducerRates(producerName, rates);
+        return true;
+    }
+
     public GArray GetPendingOrderCycleEvents()
     {
         if (_runtime == null || !_runtime.IsInitialized || _runtime.IsDisposed)
