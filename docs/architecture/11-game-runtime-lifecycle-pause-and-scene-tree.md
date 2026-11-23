@@ -128,7 +128,7 @@ When the Industrial UI is open, the application flow must decide whether the com
 - Capture the coordinated runtime checkpoint only at a completed Space/Jar step boundary.
 - A pause state is a runtime gate and pause reason, not part of the authoritative Jar/Space resource checkpoint. Save the fact that a run is resumable; require an explicit resume action after restoration.
 - On terminal exit, dispose the Host-owned Jar session and clear the SceneTree pause gate. Do not leave a stale Host active behind another screen.
-- All Game-owned terminal paths converge on one idempotent shutdown method: player death ends; parser/ingress/Host/restore failures fault; unexpected removal of a still-live combat scene faults. Host disposal and SceneTree unpause occur before any transition.
+- All Game-owned terminal paths converge on one idempotent shutdown method: player death ends; parser/ingress/Host/restore failures fault; unexpected removal of a still-live combat scene faults. Host disposal and SceneTree unpause occur before any transition. Runtime faults are shown in an always-process fault panel with the latched reason and a Main Menu action; they are not reported as player death or routed through GameOver.
 - PauseController teardown only releases the engine-wide pause latch. It never resumes the Host merely because its UI node is leaving the tree; the owning Game teardown disposes that Host session.
 
 ## 8. Current implementation audit and known migration work
@@ -150,7 +150,7 @@ Still requiring a later systematic migration/audit:
 - `GameFlow` is now the sole application scene-navigation owner. Screen owners request a target screen and path; it validates the lifecycle transition, calls `change_scene_to_file`, and restores the prior registry snapshot if Godot rejects the request immediately. The bootstrap route, Menu, Industrial exit, GameOver retry/menu, and combat death route use this API. Hangar's embedded combat launcher enters the same battle lifecycle before attaching its preconfigured scene.
 - Resumed battles now enter `RESUME_READY`: the Host and SceneTree are paused before the ready overlay is exposed, and only the explicit Resume action authorizes `RUNNING`.
 - Industrial UI focus, application-level pause, and save/exit behavior need a unified policy without collapsing the separate IndustrialRuntime clock.
-- `SpaceBattlePauseControllerProbe` now checks the synchronous SceneTree pause/overlay/resume contract and the `RESUMING → RESUME_READY → RUNNING` state contract, but has not been executed. Add automated Godot probes for focus-loss behavior, gameplay timer freezing, Host lifecycle state, scene-load rejection, shutdown idempotence, and no post-exit pause leakage. The pause probe now also asserts that a duplicate battle launch is rejected while RUNNING.
+- `SpaceBattlePauseControllerProbe` now checks the synchronous SceneTree pause/overlay/resume contract, the `RESUMING → RESUME_READY → RUNNING` state contract, and distinct fault presentation/reason retention, but has not been executed. Add automated Godot probes for focus-loss behavior, gameplay timer freezing, Host lifecycle state, scene-load rejection, shutdown idempotence, and no post-exit pause leakage. The pause probe now also asserts that a duplicate battle launch is rejected while RUNNING.
 
 ## 9. Non-goals
 
@@ -164,7 +164,7 @@ Still requiring a later systematic migration/audit:
 
 ## 10. Central state registry
 
-`GameFlow` is registered as an autoload and is the authoritative registry for application screen and battle lifecycle state. It exposes a version 3 snapshot and `state_changed` signal; version 3 adds the externally observable `RESUME_READY` phase. Current tracked values are:
+`GameFlow` is registered as an autoload and is the authoritative registry for application screen and battle lifecycle state. It exposes a version 4 snapshot and `state_changed` signal; version 3 adds the externally observable `RESUME_READY` phase. Current tracked values are:
 
 - Screen: `MENU`, `HANGAR`, `INDUSTRIAL`, `BATTLE`, `GAME_OVER`.
 - Battle phase: `INACTIVE`, `PREPARING`, `RUNNING`, `PAUSED`, `RESUMING`, `RESUME_READY`, `ENDED`, `FAULTED`.
