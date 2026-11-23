@@ -4,7 +4,7 @@ Status: first implementation slice on the Hangar/UI development branch. This is 
 
 ## Player-facing information hierarchy
 
-The combat HUD keeps survival information (health, wave, score) in its existing fixed positions. A compact **JAR** summary is added below the upper-left HUD row. It shows the current ship-level Jar count, liquid total, and Host lifecycle state. Clicking it opens a read-only detail panel containing:
+The combat HUD keeps survival information (health, wave, score) in its existing fixed positions. Directly below the upper-left status row, a persistent **JAR resource strip** acts as the resource-bar counterpart to health/shield/energy HUD meters: it remains visible during combat without requiring a click. It shows exact ship-level Jar count split by shape glyph, exact liquid counts, concise Master/Slave Jar-and-liquid staging totals, the one-way Master → Slave direction, and Host lifecycle state. Ship-level capacity is not exposed by the snapshot, so this strip deliberately shows quantities and shape composition rather than inventing a percentage/fullness meter. Clicking the strip opens a read-only detail panel containing:
 
 - ship resource Jars rendered as individual compact tiles, each showing its shape glyph/color, exact Jar identity when exposed, liquid fill strip, empty/filled state, and marked indicator; inventories over the visible tile budget show an explicit remaining count;
 - ship resource liquids by exact liquid key;
