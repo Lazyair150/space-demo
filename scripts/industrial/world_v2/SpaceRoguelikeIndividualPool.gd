@@ -6,6 +6,8 @@ const SUPPORTED_KINDS := ["ore_parser", "workshop", "skill"]
 
 @export var pool_id: StringName = &""
 @export var definition_version: int = 1
+@export var power_model_id: StringName = &""
+@export var power_model_version: int = 1
 @export_enum("ore_parser", "workshop", "skill") var item_kind: String = "skill"
 ## rarity -> {"minimum": float, "maximum": float}; bounds are inclusive.
 @export var power_bands: Dictionary = {}
@@ -14,7 +16,7 @@ const SUPPORTED_KINDS := ["ore_parser", "workshop", "skill"]
 
 func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
-	if pool_id == &"" or definition_version <= 0 or not SUPPORTED_KINDS.has(item_kind):
+	if pool_id == &"" or definition_version <= 0 or power_model_id == &"" or power_model_version <= 0 or not SUPPORTED_KINDS.has(item_kind):
 		errors.append("individual pool requires a stable versioned supported item kind")
 	if power_bands.is_empty():
 		errors.append("individual pool requires at least one rarity power band")
@@ -87,6 +89,8 @@ func roll_candidate(rng: RandomNumberGenerator, allowed_rarities: PackedStringAr
 				"itemKind": item_kind,
 				"poolId": String(pool_id),
 				"poolVersion": definition_version,
+				"powerModelId": String(power_model_id),
+				"powerModelVersion": power_model_version,
 				"definitionId": String(entry.definitionId),
 				"definitionVersion": int(entry.definitionVersion),
 				"rarity": String(entry.rarity),
@@ -100,6 +104,8 @@ func roll_candidate(rng: RandomNumberGenerator, allowed_rarities: PackedStringAr
 		"itemKind": item_kind,
 		"poolId": String(pool_id),
 		"poolVersion": definition_version,
+		"powerModelId": String(power_model_id),
+		"powerModelVersion": power_model_version,
 		"definitionId": String(last.definitionId),
 		"definitionVersion": int(last.definitionVersion),
 		"rarity": String(last.rarity),
