@@ -94,7 +94,9 @@ func configure_battle_loadout_from_checkpoint(
 	saved_snapshot: Dictionary,
 	commit_callback: Callable = Callable(),
 	effect_catalog: SpaceEffectCatalog = null,
-	effect_target_resolver: Callable = Callable()
+	effect_target_resolver: Callable = Callable(),
+	stage: SpaceStageDefinition = null,
+	protected_target: Node = null
 ) -> bool:
 	if loadout == null or int(saved_snapshot.get("schemaVersion", 0)) != 3:
 		return false
@@ -111,7 +113,13 @@ func configure_battle_loadout_from_checkpoint(
 	var runtime_checkpoint: Variant = saved_snapshot.get("runtimeCheckpoint", null)
 	var dispatcher_state: Variant = saved_snapshot.get("dispatcherState", null)
 	var effect_state: Variant = saved_snapshot.get("effectState", null)
-	if not (runtime_checkpoint is Dictionary) or int(runtime_checkpoint.get("schemaVersion", 0)) != 2 or not (dispatcher_state is Dictionary) or not (effect_state is Dictionary):
+	if not (runtime_checkpoint is Dictionary) or int(runtime_checkpoint.get("schemaVersion", 0)) not in [2, 3] or not (dispatcher_state is Dictionary) or not (effect_state is Dictionary):
+		return false
+	var runtime_schema := int(runtime_checkpoint.get("schemaVersion", 0))
+	if (runtime_schema == 2 and stage != null) or (runtime_schema == 3 and stage == null):
+		return false
+	var stage_runtime: Variant = runtime_checkpoint.get("stageRuntime", {})
+	if runtime_schema == 3 and not (stage_runtime is Dictionary):
 		return false
 	if int(effect_state.get("schemaVersion", 0)) != 1 or not (effect_state.get("instances", null) is Array) or not (effect_state.get("processedOrderEventIds", null) is Array):
 		return false
@@ -141,6 +149,9 @@ func configure_battle_loadout_from_checkpoint(
 		return false
 	_persisted_run_state = run_state.duplicate(true)
 	_persisted_effect_state = effect_state.duplicate(true)
+	if runtime_schema == 3 and not restore_battle_stage_from_checkpoint(stage, stage_runtime, protected_target):
+		push_error("[Game] Finite-stage checkpoint identity/state restore failed")
+		return false
 	_effect_catalog = effect_catalog
 	_effect_target_resolver = effect_target_resolver
 	if commit_callback.is_valid() and not configure_order_effect_commit_callback(commit_callback):
@@ -619,7 +630,8 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 	}
 	var jar_checkpoint := String(jar_host.CaptureExecutionCheckpointJson())
 	var parser_checkpoint := capture_ore_parser_state()
-	if jar_checkpoint.is_empty() or int(parser_checkpoint.get("schemaVersion", 0)) != 2:
+	var stage_checkpoint := _capture_stage_runtime_checkpoint()
+	if (_selected_stage != null and stage_checkpoint.is_empty()) or jar_checkpoint.is_empty() or int(parser_checkpoint.get("schemaVersion", 0)) != 2:
 		push_error("[Game] Coordinated checkpoint is incomplete: Jar or ore-parser state is missing")
 		return {}
 	return {
@@ -629,7 +641,7 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 		"spaceClockRemainderMilli": jar_host.CaptureSpaceClockRemainderMilli(),
 		"oreParserState": parser_checkpoint,
 		"runState": GameState.capture_run_state(),
-		"stageRuntime": _capture_stage_runtime_checkpoint()
+		"stageRuntime": stage_checkpoint
 	}
 
 func _capture_stage_runtime_checkpoint() -> Dictionary:
