@@ -10,8 +10,11 @@ class_name SpaceHangarPreparation
 @export var skill_catalog: SpaceSkillCatalog
 @export var balance_profile: SpaceSkillBalanceProfile
 @export var effect_catalog: SpaceEffectCatalog
+@export var catalog_bundle_resource: SpaceHangarCatalogBundleResource
 
 func create_catalog_bundle() -> SpaceHangarCatalogBundle:
+	if catalog_bundle_resource != null:
+		return catalog_bundle_resource.create_runtime_bundle()
 	return SpaceHangarCatalogBundle.create(
 		ship_catalog, production_device_catalog, ore_parser_catalog,
 		workshop_combination_catalog, skill_catalog, balance_profile, effect_catalog
