@@ -13,6 +13,8 @@ static func run() -> bool:
 		return false
 	if runtime_catalog.skill_catalog == null or runtime_catalog.skill_catalog.is_empty() or runtime_catalog.effect_catalog == null or runtime_catalog.effect_catalog.is_empty():
 		return false
+	if runtime_catalog.ore_parser_catalog.resolve_definition("demo.parser.universal", 1) == null or runtime_catalog.ore_parser_catalog.resolve_definition("demo.parser.precision", 1) == null:
+		return false
 	if DEMO_BOARD == null or not DEMO_BOARD.get_validation_errors().is_empty():
 		return false
 	if not DEMO_BOARD.get_runtime_projection_errors().is_empty():
