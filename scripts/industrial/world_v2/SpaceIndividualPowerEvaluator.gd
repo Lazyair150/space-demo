@@ -79,7 +79,14 @@ static func evaluate_parser_in_encounter(
 	var context_errors := supply_context.get_validation_errors(shape_vocabulary)
 	if not context_errors.is_empty():
 		return _failure("; ".join(context_errors))
-	var base := evaluate_parser_profile(profile, shape_vocabulary, model)
+	# Score intrinsic metrics separately first: the encounter model has additional
+	# dimensions which cannot be satisfied until supply-context metrics are appended.
+	var intrinsic_model := model.duplicate(true) as SpaceIndividualPowerModelDefinition
+	for metric_key in intrinsic_model.metric_dimensions.keys():
+		var metric_name := String(metric_key)
+		if metric_name.begins_with("conditional_mean_stone_volume.") or metric_name.begins_with("expected_supply_volume_per_enemy.") or metric_name.begins_with("expected_supply_volume_per_second.") or metric_name.begins_with("stone_processing_seconds_per_drop."):
+			intrinsic_model.metric_dimensions.erase(metric_key)
+	var base := evaluate_parser_profile(profile, shape_vocabulary, intrinsic_model)
 	if not bool(base.get("success", false)):
 		return base
 	var parser := SpaceOreParserDefinition.from_runtime_profile(profile)
