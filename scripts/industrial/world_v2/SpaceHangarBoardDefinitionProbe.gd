@@ -7,6 +7,9 @@ const DEMO_BOARD: SpaceHangarBoardDefinition = preload("res://data/hangar/demo_b
 static func run() -> bool:
 	if DEMO_BOARD == null or not DEMO_BOARD.get_validation_errors().is_empty():
 		return false
+	var frozen_board := DEMO_BOARD.build_frozen_snapshot()
+	if String(frozen_board.get("boardId", "")) != "demo.circuit_board" or frozen_board.get("slots", []).size() != 4:
+		return false
 	var config := DEMO_BOARD.build_hangar_configuration()
 	if String(config.get("parserSlotId", "")) != "decomposition.parser.primary":
 		return false
