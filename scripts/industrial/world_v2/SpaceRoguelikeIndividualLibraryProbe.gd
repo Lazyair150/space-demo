@@ -42,6 +42,8 @@ static func _pool(id: String, kind: String) -> SpaceRoguelikeIndividualPool:
 	var pool := SpaceRoguelikeIndividualPool.new()
 	pool.pool_id = StringName(id)
 	pool.definition_version = 1
+	pool.power_model_id = StringName("probe.power." + kind)
+	pool.power_model_version = 1
 	pool.item_kind = kind
 	pool.power_bands = {
 		"common": {"minimum": 1.0, "maximum": 3.0},
