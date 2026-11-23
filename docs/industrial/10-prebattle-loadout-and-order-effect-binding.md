@@ -458,7 +458,7 @@ The draft is UI-independent and can be bound to either a Control-based scene or 
 - `refresh_inventory()` intentionally starts a new draft because the inventory's authored version set may have changed. A caller should explicitly confirm/discard current choices before invoking it in a live editor flow.
 - The ownership probe now verifies that a controller configured without an authored bundle fails closed and exposes no fabricated ship choices.
 
-This is the controller/view-model layer, not yet a concrete visual scene. It provides the stable UI binding API while leaving the existing MainMenu route untouched until production catalog assets and the actual Hangar experience are ready. Godot compilation and runtime probes remain pending.
+This controller/view-model layer is now connected to the first standalone Control-based Hangar scene described below. The scene remains outside the MainMenu route until production catalog assets, complete slot-binding controls, and the owning game-flow identity integration are ready. Godot compilation and runtime probes remain pending.
 
 - The controller also requires the owning game flow to supply stable `shipWorldId`, `loadoutId`, and positive `loadoutVersion`; it never generates identities. The view model keeps build disabled until both the selection and this identity contract are valid.
 
