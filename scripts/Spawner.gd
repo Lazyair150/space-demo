@@ -100,10 +100,11 @@ func _start_finite_stage() -> void:
 	if _stage_director == null:
 		_fault_stage("finite stage director is missing")
 		return
+	var resuming_interbeat := _stage_director.state() == SpaceStageEncounterDirector.State.ACTIVE
 	var beat: Dictionary
 	if _stage_director.state() == SpaceStageEncounterDirector.State.READY:
 		beat = _stage_director.begin()
-	elif _stage_director.state() == SpaceStageEncounterDirector.State.ACTIVE:
+	elif resuming_interbeat:
 		beat = _stage_director.current_beat()
 	else:
 		_fault_stage("finite stage director is not resumable")
@@ -113,6 +114,14 @@ func _start_finite_stage() -> void:
 		return
 	_stage_active = true
 	_stage_mode = true
+	if resuming_interbeat:
+		# A checkpoint is only captured in the inter-beat window. Reapply the
+		# authored break on resume rather than silently skipping pacing.
+		_stage_break_pending = true
+		await get_tree().create_timer(maxf(0.0, float(beat.get("break_seconds", 0.0))), false).timeout
+		if not is_inside_tree() or _stage_faulted:
+			return
+		_stage_break_pending = false
 	_start_stage_beat(beat)
 
 func _start_stage_beat(beat: Dictionary) -> void:
