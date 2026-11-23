@@ -12,6 +12,9 @@ func ingest_energy_stone(pickup_id: String, stone_type: String, volume: float) -
 func _ready() -> void:
     var parser_probe := SpaceOreParserRuntimeProbe.run()
     assert(bool(parser_probe.get("passed", false)), "Space ore parser unit probe must pass")
+    var save_store_probe := SpaceBattleEffectStateStoreProbe.run()
+    assert(bool(save_store_probe.get("passed", false)),
+        "unified battle checkpoint store probe must pass: " + String(save_store_probe.get("reason", "")))
     var catalog_probe := SpaceOreParserCatalogProbe.run()
     assert(bool(catalog_probe.get("passed", false)),
         "pre-battle ore parser catalog probe must pass: " + String(catalog_probe.get("reason", "")))
@@ -126,14 +129,40 @@ func _ready() -> void:
     assert(not bool(first_receipt.get("wasDuplicate", true)), "first Jar import must be new")
     assert(int(first_receipt.get("storedJarCount", 0)) == 1, "Jar must store the completed empty Jar")
 
-    # Retrying the same pending operation must receive Jar's durable duplicate receipt,
-    # acknowledge the Space batch, and never create a second physical Jar.
-    var retry := SpaceOreParserJarIngress.flush_pending(parser, jar_host)
-    assert(bool(retry.get("success", false)), "pending Jar import retry must succeed")
-    assert(int(retry.get("duplicateBatches", 0)) == 1, "retry must be recognized as duplicate")
+    # Simulate a process restart after Jar committed but before Space persisted the receipt.
+    # The Jar execution checkpoint must carry the import deduplication receipt; the Host's
+    # fractional millisecond remainder is a separate Space-owned checkpoint field.
+    var jar_checkpoint_json: String = jar_host.CaptureExecutionCheckpointJson()
+    var clock_remainder: float = jar_host.CaptureSpaceClockRemainderMilli()
+    assert(absf(clock_remainder - 0.5) < 0.000001, "Host clock remainder must be captured separately")
+    jar_host.EndShipWorld()
+
+    var restored_jar_host := WorldV2ShipHost.new()
+    add_child(restored_jar_host)
+    assert(restored_jar_host.BeginShipWorldFromJson(world_json), "restored Jar Host must initialize")
+    assert(restored_jar_host.RestoreExecutionCheckpointJson(jar_checkpoint_json),
+        "Jar execution checkpoint must restore before any new order/time mutation")
+    assert(restored_jar_host.RestoreSpaceClockRemainderMilli(clock_remainder),
+        "Space fractional-millisecond remainder must restore before the next step")
+
+    # Retrying the same pending operation after checkpoint restore must receive Jar's
+    # persisted duplicate receipt, acknowledge Space's outbox, and create no second Jar.
+    var retry := SpaceOreParserJarIngress.flush_pending(parser, restored_jar_host)
+    assert(bool(retry.get("success", false)), "pending Jar import retry must succeed after restore")
+    assert(int(retry.get("duplicateBatches", 0)) == 1, "restored Jar ledger must recognize the duplicate")
     assert(parser.pending_output_batches().is_empty(), "confirmed batch must leave the parser outbox")
 
-    var after: Dictionary = jar_host.GetWorldSnapshot()
+    # The restored Host must combine its 0.5ms remainder with the next 0.75ms Space step.
+    var resumed_delta: int = restored_jar_host.AccumulateSpaceSimulationDelta(0.00075)
+    assert(resumed_delta == 1, "restored fractional clock remainder must survive the restart")
+    var resumed_parse := parser.advance(resumed_delta)
+    assert(bool(resumed_parse.get("success", false)), "Space parser must use the exact restored whole-ms delta")
+    var resumed_flush := SpaceOreParserJarIngress.flush_pending(parser, restored_jar_host)
+    assert(bool(resumed_flush.get("success", false)), "parser outbox flush must remain valid after restore")
+    assert(restored_jar_host.AdvanceSpaceSimulationMilliseconds(resumed_delta),
+        "Jar must receive the exact same whole-ms delta after parser processing")
+
+    var after: Dictionary = restored_jar_host.GetWorldSnapshot()
     assert(
         after.get("resourceJars", []).size() == initial_warehouse_count + 1,
         "exactly one Jar must be present in the central warehouse"
@@ -143,6 +172,6 @@ func _ready() -> void:
         "external parser output must not bypass the central warehouse into Master"
     )
 
-    jar_host.EndShipWorld()
-    print("[SpaceOreParserJarIngressProbe] passed parsed=1 stored=1 retry_duplicate=1 workshop_bypass=0")
+    restored_jar_host.EndShipWorld()
+    print("[SpaceOreParserJarIngressProbe] passed parsed=1 stored=1 retry_after_restore=1 shared_clock=1 workshop_bypass=0")
     queue_free()
