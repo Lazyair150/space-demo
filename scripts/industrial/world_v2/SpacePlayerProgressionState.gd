@@ -59,6 +59,22 @@ func acquire_instance(instance: SpaceOwnedProgressionInstance) -> bool:
 	progression_changed.emit(state_revision)
 	return true
 
+
+## Atomically unlock the exact definition if needed and acquire one owned copy.
+func unlock_and_acquire_instance(instance: SpaceOwnedProgressionInstance) -> bool:
+	if instance == null or not instance.get_validation_errors().is_empty():
+		return false
+	var definition_key := _definition_key(instance.item_kind, String(instance.definition_id), instance.definition_version)
+	if definition_key.is_empty() or resolve_instance(String(instance.instance_id)) != null:
+		return false
+	var unlocked := unlocked_definition_keys.has(definition_key)
+	if not unlocked:
+		unlocked_definition_keys.append(definition_key)
+	owned_instances.append(instance.duplicate(true) as SpaceOwnedProgressionInstance)
+	state_revision += 1
+	progression_changed.emit(state_revision)
+	return get_validation_errors().is_empty()
+
 func resolve_instance(instance_id: String) -> SpaceOwnedProgressionInstance:
 	if instance_id.strip_edges().is_empty():
 		return null
