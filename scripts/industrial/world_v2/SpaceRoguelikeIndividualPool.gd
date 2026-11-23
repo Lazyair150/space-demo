@@ -22,7 +22,7 @@ func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
 	if pool_id == &"" or definition_version <= 0 or power_model_id == &"" or power_model_version <= 0 or not SUPPORTED_KINDS.has(item_kind):
 		errors.append("individual pool requires a stable versioned supported item kind")
-	if power_model == null or not power_model.get_validation_errors().is_empty() or String(power_model.model_id) != String(power_model_id) or power_model.definition_version != power_model_version or power_model.item_kind != item_kind:
+	if power_model == null or not power_model.get_production_validation_errors().is_empty() or String(power_model.model_id) != String(power_model_id) or power_model.definition_version != power_model_version or power_model.item_kind != item_kind:
 		errors.append("pool must reference its exact matching subsystem power model version")
 	if power_bands.is_empty():
 		errors.append("individual pool requires at least one rarity power band")
