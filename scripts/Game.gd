@@ -583,7 +583,7 @@ func _on_player_died()->void:
 	process_mode = Node.PROCESS_MODE_DISABLED
 	GameState.report_game_over()
 	await get_tree().create_timer(1.0, false).timeout
-	get_tree().change_scene_to_file("res://scenes/menus/GameOver.tscn")
+	GameFlow.request_scene_transition(GameFlow.Screen.GAME_OVER, "res://scenes/menus/GameOver.tscn")
 
 func _on_player_damaged()->void:
 	_shake_time=0.28
