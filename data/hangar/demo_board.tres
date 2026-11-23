@@ -35,6 +35,7 @@ component_kind = "skill"
 display_name = "主动订单槽位"
 role_id = "none"
 control_area = "Active"
+required = false
 
 [resource]
 script = ExtResource("1_board")
