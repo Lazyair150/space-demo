@@ -78,10 +78,10 @@
 ## 4. 执行顺序与完成定义
 
 ### Phase A — 事实审计与契约收敛（当前）
-- [ ] 审计 Game / Spawner / Boss / Hangar / GameState / Reward / Power Evaluator 的实际接口。
-- [ ] 核对新旧 Hangar 选择 UI 是否真的调用 owned selection controller；修复“类已存在但 UI 未接线”的断层。
-- [ ] 核对 new/resumed stage 的 durable settlement callback、exact stage identity、protected target identity。
-- [ ] 核对 OwnedLoadoutAssembler 是否将每个被选 instance 的增长属性写入最终冻结快照，尤其 Master/Slave Workshop、Skill、Parser、Ship、Device。
+- [x] 已审计 Game / Spawner / Boss / Hangar / GameState / Reward / Power Evaluator 的主要实际接口；仍需后续做完整调用链闭环审计。
+- [x] Hangar Screen 的选择控件确实使用 owned inventory，回调传递各槽位 instance ID；不存在“Controller 已写但 UI 未接线”的断层。MainMenu/Launch 仍未闭环。
+- [ ] 新/resumed stage 的 durable settlement callback 与 exact stage/loadout identity 已确认；protected target 仍缺持久化实例身份，需在 Protected Target 阶段补齐。
+- [x] OwnedLoadoutAssembler 已将 Ship、Parser、Master/Slave Workshop、Device、Skill 的独立 Owned Instance 快照及成长合成结果写入冻结快照。
 - 完成定义：调用链和所有权边界有源码证据；发现的问题形成修复提交，不以文档审计代替修复。
 
 ### Phase B — 子系统真实指标与强度模型
@@ -137,9 +137,9 @@
 
 - `SpaceHangarPreparation` 的生产分支在 `require_owned_instances` 或 progression state 存在时走 `build_owned_loadout_from_selection`；Definition-only path 有显式阻断，方向正确。
 - `SpaceHangarOwnedLoadoutAssembler` 以 Owned Instance ID 解析船、解析器、两台工作台、设备和技能，并检查重复 instance；随后调用 definition assembler 生成基础 snapshot，再叠加成长 profile。必须继续检查其余文件段，确认 Master/Slave 和 Skill 的成长后数据确实被写回冻结结果。
-- `SpaceHangarBattleLauncher` 的新开与恢复路径都注入 stage settlement callback；但必须继续检查 Game checkpoint restore 后 stage runtime 的 exact identity 检查，不能仅凭 callback 注入就判定完整。
+- `SpaceHangarBattleLauncher` 的新开与恢复路径都注入 stage settlement callback；`Game.restore_battle_stage_from_checkpoint` 检查 exact stage ID/version 与 frozen loadout identity/fingerprint，`SpaceStageEncounterDirector.restore_state` 也校验 stage version 和 difficulty profile。Protected Target 的 checkpoint 仍未保存 target instance identity，目前仅要求调用方重新提供一个带 Health 的 Node，不能证明它就是原目标。
 - `Spawner` 的 boss beat 将 boss 数量固定为 1，不随 encounter scale 复制；普通敌人数才缩放。
-- `SpaceStageBossActor.configure_stage_boss` 在入树前缩放 max_hp；Boss 物理逻辑重写接触处理，避免复用普通追击敌机的接触即死亡语义。仍需检查 EnemyChaser/Health 初始化时序及 Probe。
+- `SpaceStageBossActor.configure_stage_boss` 在入树前缩放 max_hp；`EnemyChaser._ready` 在入树后用该 max_hp 初始化 Health。Boss 重写接触处理，避免普通追击敌机接触即死亡。Probe 已覆盖 1.4 倍 HP 计算，但未运行。
 - `SpaceHangarScreen` 的 `_render_view_model` 从 owned inventory 填充选项，飞船/解析器/工作台/设备/技能的选择回调会把对应 `instanceId`（工作台为 Master/Slave 两个 instance ID）传给 SelectionController；因此 UI 已接入 Owned Instance draft，并非单纯 Definition picker。控件文案仍有“定义”旧称，后续可统一。
 - 当前分支没有可见的正式 `data/industrial` catalog 资源目录；只有 sandbox/invalid World V2 JSON。Stage catalog 已单独存在。
 
@@ -162,4 +162,9 @@
 - 额外确认：Hangar 的“检查并冻结装配快照”按钮目前只构建并显示 fingerprint，不负责启动战斗；MainMenu/Launch 路由仍未闭环。
 - 发现并修复：奖励服务曾将 `roguelike` 来源数据塞入 `growth_attributes`，与各子系统 composer 的严格属性白名单冲突。现新增独立 `acquisition_provenance`，RewardService 写入该字段；ProgressionState 导入时会把旧 `growthAttributes.roguelike` 迁移到新字段。
 - 已扩展 `SpaceRoguelikeIndividualLibraryProbe`：验证奖励实例的成长属性为空、来源信息单独保存、Skill composer 可以接受该实例、存档 round-trip 保留来源，以及旧格式迁移。Probe 仅已编写，未执行。
-- 待完成：继续审计 stage checkpoint exact identity / protected-target resume；审计 provenance 与冻结 Loadout 传播；随后进入子系统指标模型的真实契约设计。
+- 新增 `SpaceOwnedProgressionInstance.acquisition_provenance`，将奖励来源/池版本/模型版本/稀有度/基础强度/奖励 ID 与子系统 `growth_attributes` 分离；该字段进入持久化和非空 Owned Instance frozen snapshot。
+- `SpacePlayerProgressionState.from_data` 兼容旧 `growthAttributes.roguelike`，自动迁移到 `acquisitionProvenance`；若新旧字段冲突则拒绝加载，避免来源歧义。
+- `replace_instance_progression` 禁止通过成长更新篡改 acquisition provenance；普通无 provenance 个体不输出空字段，保持既有 frozen snapshot fingerprint 形状。
+- `SpaceRoguelikeIndividualLibraryProbe` 新增：奖励实例增长属性隔离、Skill composer 可用性、provenance round-trip、旧存档迁移和 provenance 篡改拒绝。Probe authored，未运行。
+- 相关实现提交：`481088c`、`eeae256`、`ae49248`、`693126b`、`500e21d`、`d76e315`、`70229b0`。
+- 待完成：继续审计 Protected Target identity / resume；检查 MainMenu launch route；随后推进 Core order template 唯一资源来源与真实子系统 power metric 契约。
