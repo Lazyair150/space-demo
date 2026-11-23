@@ -31,10 +31,35 @@ func get_validation_errors() -> PackedStringArray:
 			errors.append("power metric weight must be positive: " + String(metric))
 		else:
 			total_weight += float(weight)
-		if typeof(dimension.get("higherIsBetter", null)) != TYPE_BOOL:
-			errors.append("power metric dimension must declare higherIsBetter: " + String(metric))
+		var scoring_mode := String(dimension.get("scoringMode", ""))
+		if scoring_mode.is_empty():
+			if typeof(dimension.get("higherIsBetter", null)) != TYPE_BOOL:
+				errors.append("legacy directional metric must declare higherIsBetter: " + String(metric))
+		elif not ["higher_is_better", "lower_is_better", "target_value"].has(scoring_mode):
+			errors.append("power metric scoringMode is unsupported: " + String(metric))
+		elif scoring_mode == "target_value":
+			var target: Variant = dimension.get("targetValue", null)
+			if not _valid_number(target) or float(target) < float(minimum) or float(target) > float(maximum):
+				errors.append("target_value metric requires targetValue inside its model bounds: " + String(metric))
+		elif dimension.has("targetValue"):
+			errors.append("directional metric must not declare targetValue: " + String(metric))
 	if total_weight <= 0.0:
 		errors.append("power model requires positive total metric weight")
+	return errors
+
+## Production pools require explicit semantic direction/target and a configured model version.
+## This gate is intentionally stricter than structural validation used by tuning Probes.
+func get_production_validation_errors() -> PackedStringArray:
+	var errors := get_validation_errors()
+	if configuration_status != "configured":
+		errors.append("power model is unconfigured and cannot be referenced by a production pool")
+	for metric in metric_dimensions:
+		var dimension: Dictionary = metric_dimensions[metric]
+		var mode := String(dimension.get("scoringMode", ""))
+		if mode.is_empty():
+			errors.append("production power metric must explicitly declare scoringMode: " + String(metric))
+		if item_kind == "workshop" and ["max_jars", "max_liquids", "liquid_staging_capacity"].has(String(metric)) and mode != "target_value":
+			errors.append("workshop capacity metric must use target_value rather than assuming more is always better: " + String(metric))
 	return errors
 
 func calculate_power_score(metrics: Dictionary) -> Dictionary:
@@ -56,9 +81,20 @@ func calculate_power_score(metrics: Dictionary) -> Dictionary:
 		var maximum := float(dimension.maximum)
 		if float(value) < minimum or float(value) > maximum:
 			return {"success": false, "reason": "power metric is outside its subsystem model range: " + String(metric)}
+		var scoring_mode := String(dimension.get("scoringMode", ""))
 		var normalized := (float(value) - minimum) / (maximum - minimum)
-		if not bool(dimension.higherIsBetter):
-			normalized = 1.0 - normalized
+		match scoring_mode:
+			"higher_is_better":
+				pass
+			"lower_is_better":
+				normalized = 1.0 - normalized
+			"target_value":
+				var target := float(dimension.targetValue)
+				var maximum_distance := maxf(target - minimum, maximum - target)
+				normalized = 1.0 - absf(float(value) - target) / maximum_distance
+			_:
+				if not bool(dimension.higherIsBetter):
+					normalized = 1.0 - normalized
 		var weight := float(dimension.weight)
 		weighted_score += normalized * weight
 		total_weight += weight
