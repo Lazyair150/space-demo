@@ -14,6 +14,8 @@ static func calculate_update(
 		return null
 	if instance.item_kind != curve.item_kind or total_experience < instance.experience:
 		return null
+	if instance.growth_curve_id != &"" and (instance.growth_curve_id != curve.curve_id or instance.growth_curve_version != curve.definition_version):
+		return null # Existing curve provenance can only change through an explicit migration path.
 	var target_level := curve.level_for_experience(total_experience)
 	if target_level < instance.level:
 		return null
