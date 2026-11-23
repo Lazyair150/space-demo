@@ -19,6 +19,11 @@ static func assemble(
 		var assignment_error := _validate_board_assignment_snapshot(board_assignment_snapshot, progression, selection)
 		if not assignment_error.is_empty():
 			return _reject(assignment_error)
+	var board_rule_profile: Dictionary = {}
+	if not board_assignment_snapshot.is_empty():
+		board_rule_profile = SpaceRuleContributionResolver.resolve(board_assignment_snapshot, bundle, progression)
+		if board_rule_profile.is_empty():
+			return _reject("installed component Rule Contributions could not be resolved from exact Definition and Owned Instance versions")
 	var ship_instance := _resolve(progression, String(selection.shipInstanceId), "ship", String(selection.shipId), int(selection.shipVersion))
 	var parser_instance := _resolve(progression, String(selection.parserInstanceId), "ore_parser", String(selection.parserId), int(selection.parserVersion))
 	var master_instance := _resolve(progression, String(selection.masterWorkshopInstanceId), "workshop", "", 0)
@@ -153,6 +158,7 @@ static func assemble(
 		frozen.selectedOrderBindings[index] = composed_binding
 	if not board_assignment_snapshot.is_empty():
 		frozen["boardAssignmentSnapshot"] = board_assignment_snapshot.duplicate(true)
+		frozen["boardRuleProfile"] = board_rule_profile.duplicate(true)
 	frozen["progressionOwnerPlayerId"] = String(progression.player_id)
 	frozen["progressionStateRevision"] = progression.state_revision
 	var owned_snapshots: Array[Dictionary] = [
