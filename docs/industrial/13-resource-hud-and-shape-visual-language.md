@@ -67,7 +67,9 @@ Implemented on the branch:
 - color-coded shape tokens in the industrial presentation components;
 - optional Space-owned `primary_shape` metadata on skill/order definitions, shown in Hangar selection, frozen outside the Jar order payload and validated against its requirement shapes;
 - workshop tendency accent and per-liquid staging meters where capacity is explicit;
-- combat HUD observer for the active World V2 Host snapshot;\n- snapshot-delta feedback for Jar acquisition/consumption, fill changes, ship/workshop liquid changes, lifecycle transitions, order cooldown transitions, and active-session progress;\n- pure aggregation checks in `tests/space_jar_hud_feedback.gd`;
+- combat HUD observer for the active World V2 Host snapshot;
+- snapshot-delta feedback for Jar acquisition/consumption, fill changes, ship/workshop liquid changes, lifecycle transitions, order cooldown transitions, and active-session progress;
+- pure aggregation checks in `tests/space_jar_hud_feedback.gd`;
 - order requirement shape tokens and read-only demand/cooldown/session summary.
 
 Not yet authored:
