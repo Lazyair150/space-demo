@@ -27,8 +27,14 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 		return null
 	if workshop_combination_catalog != null:
 		for combination in workshop_combination_catalog.definitions:
-			if combination == null or not ability_shape_profile.validate_shape_vocabulary(combination.jar_world_options.get("shapes", [])).is_empty():
+			if combination == null or not combination.get_validation_errors().is_empty():
+				push_error("Selectable workshop world or its Core order-template catalog is invalid")
+				return null
+			if not ability_shape_profile.validate_shape_vocabulary(combination.jar_world_options.get("shapes", [])).is_empty():
 				push_error("Ability category shape mapping must exist in every selectable Jar world vocabulary")
+				return null
+			if combination.build_jar_world_options().is_empty():
+				push_error("Selectable workshop world could not materialize its World V2 options")
 				return null
 	var skill_catalog := SpaceSkillCatalog.new()
 	for definition in skill_definitions:
