@@ -503,3 +503,16 @@ The SVG category assets are initial visual language, not a final art pass. Produ
 - `SpaceHangarAssemblyPreviewProbe` is a synthetic scene-tree probe for the preview's selected-ship, device-slot, and skill-binding rendering. It is source-added but has not been executed in Godot.
 
 The preview is not a combat ship renderer and does not fabricate hardpoints, spatial attachment coordinates, device behavior, or ship geometry. Those require authored ship presentation/layout metadata from the owning ship definitions and should be added as a separate presentation contract when those assets exist. Godot compile and runtime visual inspection remain pending.
+
+
+### Ship-authored hull and component display anchors
+
+Ship definitions now have optional presentation-only `display_hull_texture` and `display_anchors` fields. Each `SpaceShipDisplayAnchor` maps one logical slot identity to a normalized 2D preview coordinate, component kind, rotation, and icon scale:
+
+- `logical_slot_id` remains the exact opaque slot ID supplied by the owning loadout flow. The anchor does not create or rename gameplay slots.
+- `normalized_position` is in the ship preview's [0, 1] coordinate space. It is not a physics transform, hardpoint, collision location, or gameplay mount position.
+- Device and parser anchors are separate component kinds. A parser anchor resolves only against the selected parser slot; a device anchor resolves only against the selected device slot.
+- Hull texture falls back to the category ship SVG. Component anchors display only the selected exact-version definition icon.
+- Display-anchor validation is deliberately separate from `SpaceShipDefinition.get_validation_errors()`: invalid optional presentation metadata is omitted from the preview and cannot invalidate a gameplay ship definition or frozen loadout.
+
+The ownership probe now checks that hull texture and display-anchor metadata survive detached exact-version catalog snapshots. No production ship hulls or anchor coordinates have been invented; those remain editor-authored per ship.
