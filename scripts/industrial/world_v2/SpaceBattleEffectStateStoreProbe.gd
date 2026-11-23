@@ -31,8 +31,17 @@ static func run() -> Dictionary:
             ]
         }
     }
-    var effects := {"schemaVersion": 1, "instances": [], "processedOrderEventIds": ["event-1"]}
-    var dispatcher := {"schemaVersion": 1, "processedEventIds": ["event-1"]}
+    var event_id := "probe-jar-world:1:1"
+    var effects := {"schemaVersion": 1, "instances": [], "processedOrderEventIds": [event_id]}
+    var dispatcher := {
+        "schemaVersion": 1,
+        "shipWorldId": identity.shipWorldId,
+        "loadoutId": identity.loadoutId,
+        "loadoutVersion": identity.loadoutVersion,
+        "loadoutFingerprint": identity.loadoutFingerprint,
+        "jarWorldInstanceId": "probe-jar-world",
+        "processedEventIds": [event_id]
+    }
 
     if not store.save(effects, dispatcher, identity, runtime_checkpoint):
         _cleanup(absolute_path)
@@ -68,7 +77,23 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("missing RNG rejection replaced the previous valid battle checkpoint")
 
-    var invalid_effect_state := {"activeEffects": [], "processedOrderEventIds": ["event-1"]}
+    var mismatched_dispatcher := dispatcher.duplicate(true)
+    mismatched_dispatcher["processedEventIds"] = []
+    if store.save(effects, mismatched_dispatcher, identity, runtime_checkpoint):
+        _cleanup(absolute_path)
+        return _failure("store accepted a dispatcher/effect processed-event ledger mismatch")
+    var after_dispatcher_rejection := store.load(identity)
+    if after_dispatcher_rejection.get("dispatcherState", {}) != dispatcher:
+        _cleanup(absolute_path)
+        return _failure("mismatched dispatcher ledger replaced the previous valid checkpoint")
+
+    var wrong_dispatcher_identity := dispatcher.duplicate(true)
+    wrong_dispatcher_identity["loadoutFingerprint"] = "b".repeat(64)
+    if store.save(effects, wrong_dispatcher_identity, identity, runtime_checkpoint):
+        _cleanup(absolute_path)
+        return _failure("store accepted a dispatcher from a different frozen loadout")
+
+    var invalid_effect_state := {"activeEffects": [], "processedOrderEventIds": [event_id]}
     if store.save(invalid_effect_state, dispatcher, identity, runtime_checkpoint):
         _cleanup(absolute_path)
         return _failure("store accepted an effect payload outside StatusEffectManager schema v1")
