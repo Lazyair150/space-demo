@@ -74,4 +74,42 @@ static func run() -> bool:
 		return false
 	if workshops.resolve_definition("probe.workshop", 4) != null:
 		return false
+
+	var valid_selection := SpaceHangarSelection.from_data({
+		"shipId": "probe.ship", "shipVersion": 2,
+		"deviceSelections": [{"slotId": "slot-a", "definitionId": "probe.device", "definitionVersion": 4}],
+		"parserId": "probe.parser", "parserVersion": 1, "parserSlotId": "parser-slot",
+		"workshopId": "probe.workshop", "workshopVersion": 5,
+		"skillSelections": [{"skillId": "probe.skill", "definitionVersion": 3, "orderDefinitionKey": "probe.order", "controlArea": "primary"}],
+		"expectedBattleDurationLogicalMilli": 60000.0
+	})
+	if not valid_selection.validate().is_empty():
+		return false
+	var detached_data := valid_selection.to_data()
+	detached_data.deviceSelections[0].slotId = "mutated"
+	if String(valid_selection.to_data().deviceSelections[0].slotId) != "slot-a":
+		return false
+	var duplicate_selection := SpaceHangarSelection.from_data({
+		"shipId": "probe.ship", "shipVersion": 2,
+		"deviceSelections": [
+			{"slotId": "same", "definitionId": "probe.a", "definitionVersion": 1},
+			{"slotId": "same", "definitionId": "probe.b", "definitionVersion": 1}
+		],
+		"parserId": "probe.parser", "parserVersion": 1, "parserSlotId": "same",
+		"workshopId": "probe.workshop", "workshopVersion": 5,
+		"skillSelections": [
+			{"skillId": "probe.skill", "definitionVersion": 3, "orderDefinitionKey": "duplicate", "controlArea": "primary"},
+			{"skillId": "probe.skill", "definitionVersion": 3, "orderDefinitionKey": "duplicate", "controlArea": "secondary"}
+		],
+		"expectedBattleDurationLogicalMilli": 60000.0
+	})
+	if duplicate_selection.validate().is_empty():
+		return false
+	var incomplete_bundle := SpaceHangarCatalogBundle.create(
+		SpaceShipCatalog.new(), SpaceProductionDeviceCatalog.new(),
+		SpaceOreParserCatalog.new(), SpaceWorkshopCombinationCatalog.new(),
+		null, null, null
+	)
+	if incomplete_bundle.validate_and_prepare().is_empty():
+		return false
 	return true
