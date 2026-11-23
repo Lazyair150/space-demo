@@ -475,6 +475,7 @@ static func _validate_assembly_board(source: Dictionary) -> PackedStringArray:
 	var slot_by_id := {}
 	var master_count := 0
 	var slave_count := 0
+	var parser_count := 0
 	var parser_slot_id := ""
 	for raw_slot in raw_slots:
 		if not (raw_slot is Dictionary):
@@ -503,8 +504,9 @@ static func _validate_assembly_board(source: Dictionary) -> PackedStringArray:
 		if area == "workshop" and role == "slave":
 			slave_count += 1
 		if component == "ore_parser":
+			parser_count += 1
 			parser_slot_id = slot_id
-	if master_count != 1 or slave_count != 1 or parser_slot_id.is_empty():
+	if master_count != 1 or slave_count != 1 or parser_count != 1:
 		errors.append("assemblyBoard must contain exactly one Master, one Slave, and one decomposition parser position")
 	var devices: Variant = source.get("productionDeviceSelections", [])
 	var selected_parser_slot := ""
