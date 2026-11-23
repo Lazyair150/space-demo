@@ -6,6 +6,10 @@ class_name SpaceHangarCatalogBundleResource
 @export var production_device_catalog: SpaceProductionDeviceCatalog
 @export var ore_parser_catalog: SpaceOreParserCatalog
 @export var workshop_combination_catalog: SpaceWorkshopCombinationCatalog
+## Global independent component definitions; each world profile receives a detached runtime view.
+@export var workshop_catalog: SpaceWorkshopCatalog
+## Legacy embedded workshop definitions are allowed only by isolated synthetic probes.
+@export var allow_legacy_embedded_workshops_for_probes: bool = false
 @export var skill_definitions: Array[SpaceSkillDefinition] = []
 @export var ability_shape_profile: SpaceAbilityShapeProfile
 @export var balance_profile: SpaceSkillBalanceProfile
@@ -23,19 +27,32 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 		push_error("Hangar bundle requires a valid ability category to Jar shape profile")
 		return null
 	if workshop_combination_catalog == null:
-		push_error("Hangar bundle requires a workshop combination catalog")
+		push_error("Hangar bundle requires a World V2 rules profile catalog")
 		return null
-	if workshop_combination_catalog != null:
-		for combination in workshop_combination_catalog.definitions:
-			if combination == null or not combination.get_validation_errors().is_empty():
-				push_error("Selectable workshop world or its Core order-template catalog is invalid")
-				return null
-			if not ability_shape_profile.validate_shape_vocabulary(combination.jar_world_options.get("shapes", [])).is_empty():
-				push_error("Ability category shape mapping must exist in every selectable Jar world vocabulary")
-				return null
-			if combination.build_jar_world_options().is_empty():
-				push_error("Selectable workshop world could not materialize its World V2 options")
-				return null
+	var resolved_workshop_catalog := _resolve_global_workshop_catalog()
+	if resolved_workshop_catalog == null or not resolved_workshop_catalog.is_valid():
+		push_error("Hangar bundle requires a valid global exact-version workshop component catalog")
+		return null
+	var runtime_world_catalog := SpaceWorkshopCombinationCatalog.new()
+	for authored_world in workshop_combination_catalog.definitions:
+		if authored_world == null:
+			push_error("Hangar bundle contains a null World V2 profile")
+			return null
+		var materialized_world := authored_world.duplicate(true) as SpaceWorkshopCombinationDefinition
+		materialized_world.workshop_definitions = resolved_workshop_catalog.definitions.duplicate(true)
+		if not runtime_world_catalog.register_definition(materialized_world):
+			push_error("World V2 profile or its globally sourced workshop component view is invalid")
+			return null
+	for world in runtime_world_catalog.definitions:
+		if world == null or not world.get_validation_errors().is_empty():
+			push_error("Selectable World V2 rules profile or Core template catalog is invalid")
+			return null
+		if not ability_shape_profile.validate_shape_vocabulary(world.jar_world_options.get("shapes", [])).is_empty():
+			push_error("Ability category shape mapping must exist in every selectable Jar world vocabulary")
+			return null
+		if world.build_jar_world_options().is_empty():
+			push_error("Selectable World V2 rules profile could not materialize its two workshop positions")
+			return null
 	var skill_catalog := SpaceSkillCatalog.new()
 	for definition in skill_definitions:
 		if definition == null or not ability_shape_profile.validate_skill(definition).is_empty():
@@ -44,8 +61,6 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 		if not skill_catalog.register_skill(definition):
 			push_error("Hangar bundle resource contains an invalid or duplicate skill definition")
 			return null
-	# A production skill's Core template must exist in every selectable world version.
-	# This keeps the template key resolvable regardless of the player's workshop choice.
 	for definition in skill_definitions:
 		if definition == null:
 			return null
@@ -55,23 +70,21 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 			push_error("Production Hangar skills must reference an exact Core order template; inline requirements are probe-only")
 			return null
 		var template_by_control_area := {}
-		for combination in workshop_combination_catalog.definitions:
-			if combination == null or not combination.get_validation_errors().is_empty():
-				push_error("Workshop world cannot be used to resolve Core order templates")
+		for world in runtime_world_catalog.definitions:
+			if world == null or not world.get_validation_errors().is_empty():
+				push_error("World V2 rules profile cannot be used to resolve Core order templates")
 				return null
-			var frozen_world_options := combination.build_jar_world_options()
+			var frozen_world_options := world.build_jar_world_options()
 			if frozen_world_options.is_empty():
-				push_error("Workshop world could not materialize its Core order template catalog")
+				push_error("World V2 rules profile could not materialize its Core order template catalog")
 				return null
 			for control_area in definition.allowed_control_areas:
-				var resolved := skill_catalog.resolve_order_template(
-					definition, frozen_world_options, control_area
-				)
+				var resolved := skill_catalog.resolve_order_template(definition, frozen_world_options, control_area)
 				if resolved.is_empty():
-					push_error("Skill Core order template is missing or incompatible with workshop world/control area: " + String(definition.skill_id))
+					push_error("Skill Core order template is missing or incompatible with world/control area: " + String(definition.skill_id))
 					return null
 				if template_by_control_area.has(control_area) and template_by_control_area[control_area] != resolved:
-					push_error("Exact skill template content must be identical across selectable workshop worlds: " + String(definition.skill_id))
+					push_error("Exact skill template content must be identical across selectable World V2 profiles: " + String(definition.skill_id))
 					return null
 				template_by_control_area[control_area] = resolved
 	var effect_catalog := SpaceEffectCatalog.new()
@@ -81,11 +94,31 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 			return null
 	var bundle := SpaceHangarCatalogBundle.create(
 		ship_catalog, production_device_catalog, ore_parser_catalog,
-		workshop_combination_catalog, skill_catalog, balance_profile, effect_catalog
+		runtime_world_catalog, skill_catalog, balance_profile, effect_catalog
 	)
 	if not bundle.validate_and_prepare().is_empty():
 		return null
 	return bundle
+
+func _resolve_global_workshop_catalog() -> SpaceWorkshopCatalog:
+	if workshop_catalog != null:
+		return workshop_catalog
+	if not allow_legacy_embedded_workshops_for_probes:
+		return null
+	var fallback := SpaceWorkshopCatalog.new()
+	if workshop_combination_catalog == null:
+		return null
+	for world in workshop_combination_catalog.definitions:
+		if world == null:
+			continue
+		for definition in world.workshop_definitions:
+			if definition == null:
+				return null
+			if fallback.resolve_definition(String(definition.workshop_id), definition.definition_version) != null:
+				continue
+			if not fallback.register_definition(definition):
+				return null
+	return fallback if fallback.is_valid() else null
 
 func build_selection_inventory() -> Dictionary:
 	var ships: Array[Dictionary] = []
