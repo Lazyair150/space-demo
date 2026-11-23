@@ -110,13 +110,16 @@ static func assemble(
 			devices[index] = composed
 	frozen.productionDeviceSelections = devices
 	var workshops: Array = jar_options.get("workshops", [])
+	if workshops.size() != combination.workshop_definitions.size():
+		return _reject("materialized workshop roster size differs from the exact combination definition")
 	for index in range(workshops.size()):
 		var authored: Dictionary = workshops[index]
-		var authored_definition_id := ""
-		for candidate in combination.workshop_definitions:
-			if candidate != null and String(candidate.display_name) == String(authored.get("name", "")):
-				authored_definition_id = String(candidate.workshop_id)
-				break
+		# build_jar_world_options preserves the authored roster order. Resolve by the
+		# exact definition at this index, never by a mutable/display-only label.
+		var authored_definition: SpaceWorkshopDefinition = combination.workshop_definitions[index]
+		if authored_definition == null or String(authored.get("name", "")) != authored_definition.display_name:
+			return _reject("materialized workshop roster identity/order differs from the exact combination")
+		var authored_definition_id := String(authored_definition.workshop_id)
 		var workshop_instance: SpaceOwnedProgressionInstance = null
 		if authored_definition_id == String(combination.workshop_pair.master_workshop_id):
 			workshop_instance = master_instance
