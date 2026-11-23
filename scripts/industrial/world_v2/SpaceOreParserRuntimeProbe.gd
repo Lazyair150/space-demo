@@ -78,6 +78,26 @@ static func run() -> Dictionary:
 		return _failure("parser checkpoint restore failed: " + String(restore_result.get("reason", "")))
 	if restored.pending_output_batches().size() != 3:
 		return _failure("pending output batches were not preserved by checkpoint")
+
+	# Corrupt a queued pickup's shape identity. Restore must reject the whole snapshot
+	# and leave the already-restored live parser state untouched.
+	var state_before_rejection := restored.capture_state()
+	var corrupt_pickup := checkpoint.duplicate(true)
+	corrupt_pickup.seenPickups["stone-circle-1"].stoneType = "方罐"
+	var rejected_pickup := restored.restore_state(corrupt_pickup)
+	if bool(rejected_pickup.get("success", false)):
+		return _failure("checkpoint restore accepted a pickup/queue shape mismatch")
+	if restored.capture_state() != state_before_rejection:
+		return _failure("rejected checkpoint partially mutated parser state")
+
+	var corrupt_batch := checkpoint.duplicate(true)
+	var corrupt_batch_id := String(corrupt_batch.pendingOutputBatches.keys()[0])
+	corrupt_batch.pendingOutputBatches[corrupt_batch_id].jarCounts["未知罐"] = 1
+	var rejected_batch := restored.restore_state(corrupt_batch)
+	if bool(rejected_batch.get("success", false)):
+		return _failure("checkpoint restore accepted an unknown pending output shape")
+	if restored.capture_state() != state_before_rejection:
+		return _failure("rejected pending batch checkpoint partially mutated parser state")
 	var pending_id := String(restored.pending_output_batches()[0].operationId)
 	if not restored.acknowledge_output_batch(pending_id) or restored.acknowledge_output_batch(pending_id):
 		return _failure("output batch acknowledgment must be one-shot")
