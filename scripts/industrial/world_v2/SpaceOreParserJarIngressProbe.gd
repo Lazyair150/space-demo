@@ -134,7 +134,20 @@ func _ready() -> void:
     # fractional millisecond remainder is a separate Space-owned checkpoint field.
     var jar_checkpoint_json: String = jar_host.CaptureExecutionCheckpointJson()
     var clock_remainder: float = jar_host.CaptureSpaceClockRemainderMilli()
+    var parser_checkpoint: Dictionary = parser.capture_state()
     assert(absf(clock_remainder - 0.5) < 0.000001, "Host clock remainder must be captured separately")
+
+    # Reconstruct the Space parser from its own checkpoint too; the pending operation ID
+    # must remain byte-identical so Jar's restored resource-ledger receipt can deduplicate it.
+    var restored_parser := SpaceOreParserRuntime.new()
+    var parser_reinitialized := restored_parser.initialize(
+        definition,
+        "space-jar-ingress-probe-ship",
+        ["圆罐", "方罐"]
+    )
+    assert(bool(parser_reinitialized.get("success", false)), "restored parser must initialize")
+    var parser_restored := restored_parser.restore_state(parser_checkpoint)
+    assert(bool(parser_restored.get("success", false)), "Space parser checkpoint must restore")
     jar_host.EndShipWorld()
 
     var restored_jar_host := WorldV2ShipHost.new()
@@ -147,17 +160,17 @@ func _ready() -> void:
 
     # Retrying the same pending operation after checkpoint restore must receive Jar's
     # persisted duplicate receipt, acknowledge Space's outbox, and create no second Jar.
-    var retry := SpaceOreParserJarIngress.flush_pending(parser, restored_jar_host)
+    var retry := SpaceOreParserJarIngress.flush_pending(restored_parser, restored_jar_host)
     assert(bool(retry.get("success", false)), "pending Jar import retry must succeed after restore")
     assert(int(retry.get("duplicateBatches", 0)) == 1, "restored Jar ledger must recognize the duplicate")
-    assert(parser.pending_output_batches().is_empty(), "confirmed batch must leave the parser outbox")
+    assert(restored_parser.pending_output_batches().is_empty(), "confirmed batch must leave the parser outbox")
 
     # The restored Host must combine its 0.5ms remainder with the next 0.75ms Space step.
     var resumed_delta: int = restored_jar_host.AccumulateSpaceSimulationDelta(0.00075)
     assert(resumed_delta == 1, "restored fractional clock remainder must survive the restart")
-    var resumed_parse := parser.advance(resumed_delta)
+    var resumed_parse := restored_parser.advance(resumed_delta)
     assert(bool(resumed_parse.get("success", false)), "Space parser must use the exact restored whole-ms delta")
-    var resumed_flush := SpaceOreParserJarIngress.flush_pending(parser, restored_jar_host)
+    var resumed_flush := SpaceOreParserJarIngress.flush_pending(restored_parser, restored_jar_host)
     assert(bool(resumed_flush.get("success", false)), "parser outbox flush must remain valid after restore")
     assert(restored_jar_host.AdvanceSpaceSimulationMilliseconds(resumed_delta),
         "Jar must receive the exact same whole-ms delta after parser processing")
