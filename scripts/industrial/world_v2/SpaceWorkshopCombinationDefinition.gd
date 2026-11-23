@@ -1,7 +1,7 @@
 extends Resource
 class_name SpaceWorkshopCombinationDefinition
-## Versioned world-level workshop configuration.
-## World profile and an independent workshop component roster. Runtime positions choose any two owned instances.
+## Versioned World V2 rules profile.
+## Workshop components are resolved from the global SpaceWorkshopCatalog and installed into board positions.
 
 @export var combination_id: StringName = &""
 @export var definition_version: int = 1
@@ -12,7 +12,7 @@ class_name SpaceWorkshopCombinationDefinition
 @export var jar_world_options: Dictionary = {}
 ## Exact-version Core-owned Jar order templates available in this World V2 vocabulary.
 @export var core_order_templates: Array[SpaceCoreOrderTemplateDefinition] = []
-## Runtime-injected view of the global SpaceWorkshopCatalog. Never author a role pair here.
+## Runtime-only detached view of the global SpaceWorkshopCatalog; not serialized as part of this world profile.
 var workshop_definitions: Array[SpaceWorkshopDefinition] = []
 @export var operation_cost_by_order_type: Dictionary = {}
 @export var liquid_handling_operation_cost: float = 0.0
@@ -20,15 +20,15 @@ var workshop_definitions: Array[SpaceWorkshopDefinition] = []
 func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
 	if combination_id == &"" or definition_version <= 0:
-		errors.append("workshop combination identity/version is invalid")
+		errors.append("World V2 profile identity/version is invalid")
 	if display_name.strip_edges().is_empty():
-		errors.append("workshop combination display name is required")
+		errors.append("World V2 profile display name is required")
 	for key in ["shapes", "liquids", "producers"]:
 		if not jar_world_options.has(key):
-			errors.append("workshop combination world options are missing " + key)
+			errors.append("World V2 profile options are missing " + key)
 	for forbidden_key in ["workshops", "masterWorkshopName", "slaveWorkshopName", "orderTemplates"]:
 		if jar_world_options.has(forbidden_key):
-			errors.append("workshop combination must author " + forbidden_key + " through the scoped workshop resources")
+			errors.append("World V2 profile must author " + forbidden_key + " through the scoped workshop resources")
 	var shapes: Variant = jar_world_options.get("shapes", null)
 	var shape_set := {}
 	if not (shapes is Array) or shapes.is_empty():
