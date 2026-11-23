@@ -51,14 +51,40 @@ func set_parser(definition_id: String, version: int, slot_id: String, instance_i
 	return true
 
 func set_workshop(definition_id: String, version: int, master_instance_id: String = "", slave_instance_id: String = "") -> bool:
-	var choice := _find_workshop_choice(definition_id, version, master_instance_id, slave_instance_id)
-	if choice.is_empty():
+	var world_choices: Variant = _inventory.get("workshopWorldChoices", _inventory.get("workshopChoices", []))
+	var world_choice := _find_choice_in(world_choices, definition_id, version)
+	if world_choice.is_empty():
 		return false
-	_selection.masterWorkshopInstanceId = String(choice.get("masterInstanceId", ""))
-	_selection.slaveWorkshopInstanceId = String(choice.get("slaveInstanceId", ""))
+	if not master_instance_id.is_empty() and _find_workshop_instance(master_instance_id).is_empty():
+		return false
+	if not slave_instance_id.is_empty() and _find_workshop_instance(slave_instance_id).is_empty():
+		return false
+	if not master_instance_id.is_empty() and master_instance_id == slave_instance_id:
+		return false
 	_selection.workshopId = definition_id
 	_selection.workshopVersion = version
+	_selection.masterWorkshopInstanceId = master_instance_id
+	_selection.slaveWorkshopInstanceId = slave_instance_id
 	return true
+
+func _find_choice_in(raw_choices: Variant, definition_id: String, version: int) -> Dictionary:
+	if not (raw_choices is Array):
+		return {}
+	for choice in raw_choices:
+		if choice is Dictionary and String(choice.get("id", "")) == definition_id and int(choice.get("version", 0)) == version:
+			return choice
+	return {}
+
+func _find_workshop_instance(instance_id: String) -> Dictionary:
+	if instance_id.is_empty():
+		return {}
+	var choices: Variant = _inventory.get("workshopInstanceChoices", [])
+	if not (choices is Array):
+		return {}
+	for choice in choices:
+		if choice is Dictionary and String(choice.get("instanceId", "")) == instance_id:
+			return choice
+	return {}
 
 func set_device(slot_id: String, definition_id: String, version: int, instance_id: String = "") -> bool:
 	if slot_id.strip_edges().is_empty() or slot_id == String(_selection.get("parserSlotId", "")):
