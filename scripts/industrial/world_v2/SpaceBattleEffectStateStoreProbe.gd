@@ -65,6 +65,16 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("missing RNG rejection replaced the previous valid battle checkpoint")
 
+    var missing_run_state := runtime_checkpoint.duplicate(true)
+    missing_run_state.erase("runState")
+    if store.save(effects, dispatcher, identity, missing_run_state):
+        _cleanup(absolute_path)
+        return _failure("store accepted a Jar/Space checkpoint without transient run progression")
+    var after_run_state_rejection := store.load(identity)
+    if after_run_state_rejection.get("runtimeCheckpoint", {}) != runtime_checkpoint:
+        _cleanup(absolute_path)
+        return _failure("missing run-state rejection replaced the previous valid battle checkpoint")
+
     _cleanup(absolute_path)
     return {"passed": true, "schemaVersion": 3, "domains": 6}
 
