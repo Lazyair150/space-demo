@@ -19,5 +19,6 @@ All files are editable SVG source assets. They are concept silhouettes, not yet 
 | `jar_support.svg` | Support-category Jar concept, circular mark |
 | `jar_recon.svg` | Reconnaissance-category Jar concept, diamond mark |
 | `jar_utility.svg` | Utility-category Jar concept, square mark |
+| `campaign_rift_frontier_map.svg` | Five-node first-sector campaign navigation concept |
 
 Art direction: deep navy base, cyan/ice highlights for player technology, amber energy accents, red-magenta enemy language. Keep the silhouette readable at 32 px and preserve generous negative space. The five Jar silhouettes visually echo the five Space ability categories; they are presentation concepts only and do not hardcode shape vocabulary into Jar Core. These are the first concept batch; final animation, hitbox and damage-state variants remain scene-level work.
