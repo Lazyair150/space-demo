@@ -435,7 +435,7 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 		var ban_names: Array[String] = []
 		for ban in bans:
 			ban_names.append(String(ban))
-		content.add_child(UiKit.label("⚠ 禁令：%s" % "、".join(ban_names), UiKit.FONT_SMALL, UiKit.WARN))
+		content.add_child(UiKit.label("⚠ 暂存区禁入：%s" % "、".join(ban_names), UiKit.FONT_SMALL, UiKit.WARN))
 
 func _render_demands(raw_demands: Variant, raw_sessions: Variant, order_presentation: Dictionary) -> void:
 	UiKit.clear_children(_demands_box)
