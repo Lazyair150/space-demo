@@ -7,6 +7,7 @@ extends PanelContainer
 signal picker_requested(role: String)
 
 const UiKit := preload("res://scripts/industrial/ui/UiKit.gd")
+const ShapeVisuals := preload("res://scripts/industrial/ui/ShapeVisuals.gd")
 
 var role := "master"
 ## 上一次 bind 时这台是不是空（主控用它判断"这个按钮是换台还是撤台"）。
@@ -19,6 +20,7 @@ var _marks: Label
 var _ban: Label
 var _jars: Label
 var _liquids: VBoxContainer
+var _mark_chips: HBoxContainer
 var _pick_button: Button
 
 
@@ -49,6 +51,8 @@ func _ready() -> void:
 
 	_marks = UiKit.wrap_label("", UiKit.FONT_SMALL, UiKit.MUTED)
 	box.add_child(_marks)
+	_mark_chips = UiKit.hbox(6)
+	box.add_child(_mark_chips)
 	_ban = UiKit.wrap_label("", UiKit.FONT_SMALL, UiKit.WARN)
 	box.add_child(_ban)
 	_jars = UiKit.label("", UiKit.FONT_BODY, UiKit.TEXT)
@@ -86,9 +90,17 @@ func bind(workshop: Dictionary) -> void:
 
 	var base: Array = workshop.get("baseMarks", [])
 	var extra: Array = workshop.get("additionalMarks", [])
-	_marks.text = "基础舱段：%s　·　附加舱段：%s" % [
-		_join(base), _join(extra) if not extra.is_empty() else "无"
-	]
+	_marks.text = "形状偏向 · 基础 ×2 / 附加 ×1"
+	UiKit.clear_children(_mark_chips)
+	for shape in base:
+		_mark_chips.add_child(_shape_label(String(shape), "基础"))
+	for shape in extra:
+		_mark_chips.add_child(_shape_label(String(shape), "附加"))
+	var tendency := ShapeVisuals.blend_marks(base, extra)
+	var panel_style := UiKit.panel_style(UiKit.PANEL, tendency.darkened(0.48))
+	panel_style.set_border_width_all(2)
+	add_theme_stylebox_override("panel", panel_style)
+	_head.add_theme_color_override("font_color", tendency)
 	var ban: Array = workshop.get("ban", [])
 	_ban.text = "禁装工质：%s（能存不能用）" % _join(ban) if not ban.is_empty() else ""
 
@@ -103,12 +115,22 @@ func bind(workshop: Dictionary) -> void:
 	var liquids: Dictionary = workshop.get("liquids", {})
 	var max_liquids := int(workshop.get("maxLiquids", 0))
 	for name_text in liquids.keys():
-		var line := "工质 %s：%d%s" % [
-			str(name_text),
-			int(liquids[name_text]),
-			" / %d" % max_liquids if max_liquids > 0 else "",
-		]
-		_liquids.add_child(UiKit.label(line, UiKit.FONT_SMALL, UiKit.TEXT))
+		var amount := int(liquids[name_text])
+		var line := "%s  %d%s" % [str(name_text), amount, " / %d" % max_liquids if max_liquids > 0 else ""]
+		var row := UiKit.hbox(8)
+		var liquid_label := UiKit.label(line, UiKit.FONT_SMALL, UiKit.TEXT)
+		liquid_label.custom_minimum_size.x = 150
+		row.add_child(liquid_label)
+		if max_liquids > 0:
+			var meter := ProgressBar.new()
+			meter.min_value = 0
+			meter.max_value = max_liquids
+			meter.value = clampi(amount, 0, max_liquids)
+			meter.show_percentage = false
+			meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			meter.custom_minimum_size.y = 10
+			row.add_child(meter)
+		_liquids.add_child(row)
 
 	# 舱段构成：按形状计数，带上"装了工质"的只数
 	var by_shape := {}
@@ -121,10 +143,16 @@ func bind(workshop: Dictionary) -> void:
 	if jars.size() > 0:
 		var parts: Array[String] = []
 		for shape in by_shape.keys():
-			parts.append("%s×%d" % [str(shape), int(by_shape[shape])])
+			parts.append("%s %s×%d" % [ShapeVisuals.glyph_for(str(shape)), str(shape), int(by_shape[shape])])
 		_liquids.add_child(UiKit.label("构成：%s" % "、".join(parts), UiKit.FONT_SMALL, UiKit.MUTED))
 		if filled > 0:
 			_liquids.add_child(UiKit.label("其中装了工质：%d 只" % filled, UiKit.FONT_SMALL, UiKit.MUTED))
+
+
+func _shape_label(shape: String, kind: String) -> Label:
+	var label := UiKit.label("%s %s · %s" % [ShapeVisuals.glyph_for(shape), shape, kind], UiKit.FONT_SMALL, ShapeVisuals.color_for(shape))
+	label.tooltip_text = "形状颜色仅用于识别，不代表额外规则。"
+	return label
 
 
 func _join(items: Array) -> String:
