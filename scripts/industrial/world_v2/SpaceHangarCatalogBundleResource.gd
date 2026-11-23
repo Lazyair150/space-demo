@@ -10,6 +10,8 @@ class_name SpaceHangarCatalogBundleResource
 @export var ability_shape_profile: SpaceAbilityShapeProfile
 @export var balance_profile: SpaceSkillBalanceProfile
 @export var effect_definitions: Array[BuffDefinition] = []
+## Explicitly enabled only by isolated source probes; production resources must leave this false.
+@export var allow_legacy_inline_skill_orders_for_probes: bool = false
 ## Optional until production exact-version pool assets are authored.
 @export var roguelike_individual_library: SpaceRoguelikeIndividualLibrary
 
@@ -42,6 +44,8 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 		if definition == null:
 			return null
 		if definition.jar_order_template_id == &"":
+			if allow_legacy_inline_skill_orders_for_probes:
+				continue
 			push_error("Production Hangar skills must reference an exact Core order template; inline requirements are probe-only")
 			return null
 		for combination in workshop_combination_catalog.definitions:
