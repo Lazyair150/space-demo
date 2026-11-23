@@ -29,8 +29,6 @@ const ELITE_SCORE := 60
 @export var pickup_chance:float=0.25
 ## 可掉的 Buff 定义；留空则不掉
 @export var pickup_effects:Array[BuffDefinition]=[]
-## Optional typed energy-stone pickup scene; no drops occur unless enemy profiles are assigned.
-@export var energy_stone_pickup_scene: PackedScene
 
 var _current_wave:int=0
 var _spawning:bool=false
@@ -130,42 +128,17 @@ func _on_enemy_died_with_source(at: Vector2, enemy: Node2D) -> void:
 	_spawn_energy_stone_pickup(at, enemy)
 
 func _spawn_energy_stone_pickup(at: Vector2, enemy: Node2D) -> void:
-	if energy_stone_pickup_scene == null or enemy == null:
+	if enemy == null:
 		return
 	var profile: Variant = enemy.get("energy_stone_drop_profile")
 	if not (profile is SpaceEnergyStoneDropProfile):
 		return
 	var game := get_parent()
-	if game == null or not game.has_method("get_ore_parser_shape_vocabulary") or not game.has_method("allocate_energy_stone_pickup_id"):
+	if game == null or not game.has_method("spawn_energy_stone_drop"):
 		return
-	var shape_names: Variant = game.call("get_ore_parser_shape_vocabulary")
-	if not (shape_names is Array) or shape_names.is_empty():
-		return
-	var rolled: Dictionary = profile.roll_drop(_energy_stone_rng, shape_names)
-	if not bool(rolled.get("success", false)):
-		push_error("[Spawner] Invalid energy-stone drop profile: " + String(rolled.get("reason", "")))
-		return
-	if not bool(rolled.get("dropped", false)):
-		return
-	var pickup_id := String(game.call("allocate_energy_stone_pickup_id"))
-	if pickup_id.is_empty():
-		push_error("[Spawner] Could not allocate a stable energy-stone pickup identity")
-		return
-	var pickup := energy_stone_pickup_scene.instantiate()
-	if not pickup.has_method("configure") or not bool(pickup.configure(
-		pickup_id,
-		String(rolled.get("stoneType", "")),
-		float(rolled.get("volume", 0.0))
-	)):
-		pickup.queue_free()
-		push_error("[Spawner] Energy-stone pickup rejected the configured drop payload")
-		return
-	var arena := get_parent().get_node_or_null("Arena")
-	if arena == null:
-		pickup.queue_free()
-		return
-	pickup.position = at
-	arena.add_child(pickup)
+	var result: Dictionary = game.call("spawn_energy_stone_drop", profile, at, _energy_stone_rng)
+	if not bool(result.get("success", false)):
+		push_error("[Spawner] Energy-stone drop failed: " + String(result.get("reason", "")))
 
 ## 胶囊染色：按定义 id 取色，避免每个 Buff 都要一份美术资源
 func _pickup_tint(definition)->Color:
