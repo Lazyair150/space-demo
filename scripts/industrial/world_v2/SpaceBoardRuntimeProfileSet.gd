@@ -86,7 +86,6 @@ static func build(
 							"effectBinding": effect_binding.duplicate(true)
 						}
 						skill_profile_found = true
-						break
 				if matched_count != 1 or not skill_profile_found:
 					return {}
 			"production_device":
