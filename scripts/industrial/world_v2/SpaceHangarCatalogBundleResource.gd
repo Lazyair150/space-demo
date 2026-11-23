@@ -29,10 +29,16 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 	if workshop_combination_catalog == null:
 		push_error("Hangar bundle requires a World V2 rules profile catalog")
 		return null
-	var resolved_workshop_catalog := _resolve_global_workshop_catalog()
-	if resolved_workshop_catalog == null or not resolved_workshop_catalog.is_valid():
+	var authored_workshop_catalog := _resolve_global_workshop_catalog()
+	if authored_workshop_catalog == null or not authored_workshop_catalog.is_valid():
 		push_error("Hangar bundle requires a valid global exact-version workshop component catalog")
 		return null
+	# Detach the runtime catalog from editor-authored resources before building any world view.
+	var resolved_workshop_catalog := SpaceWorkshopCatalog.new()
+	for authored_workshop in authored_workshop_catalog.definitions:
+		if not resolved_workshop_catalog.register_definition(authored_workshop):
+			push_error("Global workshop component catalog could not be frozen")
+			return null
 	var runtime_world_catalog := SpaceWorkshopCombinationCatalog.new()
 	for authored_world in workshop_combination_catalog.definitions:
 		if authored_world == null:
