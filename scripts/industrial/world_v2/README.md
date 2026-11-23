@@ -387,7 +387,7 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 
 ### 4.14d 敌机能量石掉落与拾取接线
 
-- EnemyChaser / EnemyShooter 现在可选持有版本化 SpaceEnergyStoneDropProfile；没有 profile 的敌机不会掉原石。
+- EnemyChaser / EnemyShooter 现在可选持有版本化 SpaceEnergyStoneDropProfile；Spawner 还可单独指定 elite_energy_stone_drop_profile，让精英波使用独立的类型/体积/权重配置；没有 profile 的敌机不会掉原石。
 - Spawner 将敌机死亡事件拆成独立 Buff 掉落和原石掉落通道；一个通道未配置不会屏蔽另一个。
 - Game.spawn_energy_stone_drop 冻结当前掉落 profile 的值，按当前 Jar 形状词表抽取类型/体积，分配战斗范围内稳定 pickup ID，并创建 SpaceEnergyStonePickup。
 - SpaceEnergyStonePickup 只把稳定 ID、原石类型和体积交给当前战斗 Game；解析器接受（包括同载荷重复确认）后才销毁拾取物，冲突或无解析器时保留拾取物。
