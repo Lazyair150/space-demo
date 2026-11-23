@@ -7,6 +7,7 @@ class_name SpaceProductionDeviceDefinition
 @export var definition_version: int = 1
 @export var device_kind: String = ""
 @export var display_name: String = ""
+@export var display_icon: Texture2D
 @export var runtime_profile: Dictionary = {}
 
 func is_valid() -> bool:
