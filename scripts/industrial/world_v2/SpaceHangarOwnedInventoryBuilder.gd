@@ -106,8 +106,8 @@ static func _build_owned_workshop_pairs(bundle: SpaceHangarCatalogBundleResource
 			continue
 		var master_id := String(combination.workshop_pair.master_workshop_id)
 		var slave_id := String(combination.workshop_pair.slave_workshop_id)
-		var master_definition := _resolve_workshop_definition(bundle, master_id, 0)
-		var slave_definition := _resolve_workshop_definition(bundle, slave_id, 0)
+		var master_definition := _find_workshop_in_combination(combination, master_id)
+		var slave_definition := _find_workshop_in_combination(combination, slave_id)
 		if master_definition == null or slave_definition == null:
 			continue
 		var masters: Array = []
@@ -141,3 +141,11 @@ static func _empty(reason: String) -> Dictionary:
 		"workshopChoices": [], "workshopInstanceChoices": [],
 		"skillChoices": [], "effectChoices": []
 	}
+
+static func _find_workshop_in_combination(combination: SpaceWorkshopCombinationDefinition, definition_id: String) -> SpaceWorkshopDefinition:
+	if combination == null:
+		return null
+	for definition in combination.workshop_definitions:
+		if definition != null and String(definition.workshop_id) == definition_id:
+			return definition.duplicate(true) as SpaceWorkshopDefinition
+	return null
