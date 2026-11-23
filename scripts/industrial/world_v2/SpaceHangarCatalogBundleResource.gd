@@ -50,9 +50,16 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 			return null
 		var template_by_control_area := {}
 		for combination in workshop_combination_catalog.definitions:
+			if combination == null or not combination.get_validation_errors().is_empty():
+				push_error("Workshop world cannot be used to resolve Core order templates")
+				return null
+			var frozen_world_options := combination.build_jar_world_options()
+			if frozen_world_options.is_empty():
+				push_error("Workshop world could not materialize its Core order template catalog")
+				return null
 			for control_area in definition.allowed_control_areas:
 				var resolved := skill_catalog.resolve_order_template(
-					definition, combination.jar_world_options, control_area
+					definition, frozen_world_options, control_area
 				)
 				if resolved.is_empty():
 					push_error("Skill Core order template is missing or incompatible with workshop world/control area: " + String(definition.skill_id))
