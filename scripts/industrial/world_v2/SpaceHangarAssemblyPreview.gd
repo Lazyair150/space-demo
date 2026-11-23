@@ -143,7 +143,9 @@ func render(view_model: Dictionary) -> void:
 	var parser := _find_choice(inventory.get("parserChoices", []), String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)))
 	var workshop := _find_choice(inventory.get("workshopChoices", []), String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)))
 
-	var hull: Variant = ship.get("hullTexture", ship.get("iconTexture"))
+	var hull: Variant = ship.get("hullTexture", null)
+	if not (hull is Texture2D):
+		hull = ship.get("iconTexture", null)
 	if hull is Texture2D:
 		_ship_hull.texture = hull
 	else:
