@@ -298,7 +298,7 @@ The parser is a Space-owned runtime, not a Jar time-driven Producer:
 - Parsing consumes only available stone volume. Unprocessed volume remains queued; incomplete Jar progress remains accumulated independently by shape.
 - A complete Jar creates a stable, pending batch ID. The parser retains that batch until Jar confirms it.
 - ImportProducedJars is a discrete handoff of already-completed empty Jars into the central warehouse. Jar validates shape vocabulary, enforces warehouse capacity, accounts for overflow discard, and persists operation-ID deduplication in its resource-ledger checkpoint.
-- The Game physics step asks WorldV2ShipHost for the exact whole-millisecond delta once. Space parses and imports with that delta before Jar advances by the same delta. There is one fractional-millisecond accumulator, owned by the Host.
+- The Game physics step asks WorldV2ShipHost for the exact whole-millisecond delta once. The Host records one prepared step and rejects a second accumulation or a mismatched/repeated consume. Space parses and imports with that delta before Jar advances by the same delta. There is one fractional-millisecond accumulator, owned by the Host.
 - Parser state capture includes pickup identity/deduplication, queued remaining volume, per-shape fractional progress/rate remainder, pending output batches, and the next batch sequence.
 
 The Godot end-to-end probe covers a synthetic stone becoming a Jar, a simulated lost import receipt, retry through the same operation ID, and the invariant that imported Jars enter the central warehouse rather than a workshop.
