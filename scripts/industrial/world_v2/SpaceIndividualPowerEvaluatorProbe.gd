@@ -192,7 +192,7 @@ static func _probe_skill() -> bool:
 		return false
 	var overgrown_instance := neutral_instance.duplicate(true) as SpaceOwnedProgressionInstance
 	overgrown_instance.instance_id = &"probe.skill.overgrown-instance"
-	overgrown_instance.growth_attributes = {"effectMul.damage": 10.0}
+	overgrown_instance.growth_attributes = {"effectMul.damage": 100.0}
 	var overgrown_effective := SpaceIndividualPowerEvaluator.evaluate_effective_skill(
 		growth_skill, overgrown_instance, benefit, context, balance, model, world_options
 	)
