@@ -203,7 +203,37 @@ static func _probe_assignments() -> bool:
 		return false
 	var wrong_kind := assignments.duplicate(true)
 	wrong_kind["decomposition.parser.primary"]["componentKind"] = "workshop"
-	return not SpaceHangarBoardAssignment.validate(DEMO_BOARD, wrong_kind, inventory).is_empty()
+	if SpaceHangarBoardAssignment.validate(DEMO_BOARD, wrong_kind, inventory).is_empty():
+		return false
+
+	# Changing a World profile that excludes installed workshop instances must be rejected,
+	# not silently converted into empty Master/Slave slots.
+	var compatibility_inventory := {
+		"isReady": true,
+		"workshopWorldChoices": [
+			{"id": "world.compatible", "version": 1},
+			{"id": "world.incompatible", "version": 1}
+		],
+		"workshopInstanceChoices": [
+			{"id": "workshop.alpha", "version": 1, "instanceId": "owned.compat.master", "progressionRevision": 1, "itemKind": "workshop", "compatibleWorldKeys": ["world.compatible@1"]},
+			{"id": "workshop.beta", "version": 1, "instanceId": "owned.compat.slave", "progressionRevision": 1, "itemKind": "workshop", "compatibleWorldKeys": ["world.compatible@1"]}
+		]
+	}
+	var compatibility_draft := SpaceHangarSelectionDraft.new()
+	if not compatibility_draft.configure(compatibility_inventory, DEMO_BOARD):
+		return false
+	if not compatibility_draft.set_workshop("world.compatible", 1):
+		return false
+	if not compatibility_draft.assign_instance("workshop.master", "owned.compat.master"):
+		return false
+	if not compatibility_draft.assign_instance("workshop.slave", "owned.compat.slave"):
+		return false
+	if compatibility_draft.set_workshop("world.incompatible", 1, "owned.compat.master", "owned.compat.slave"):
+		return false
+	return (
+		String(compatibility_draft.get_assignment("workshop.master").get("ownedInstanceId", "")) == "owned.compat.master"
+		and String(compatibility_draft.get_assignment("workshop.slave").get("ownedInstanceId", "")) == "owned.compat.slave"
+	)
 
 static func _probe_rule_contributions() -> bool:
 	var definition := SpaceRuleContributionDefinition.new()
