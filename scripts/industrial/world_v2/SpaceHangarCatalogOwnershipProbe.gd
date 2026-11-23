@@ -456,10 +456,23 @@ static func run() -> bool:
 	skill_growth_instance.item_kind = "skill"
 	skill_growth_instance.definition_id = skill.skill_id
 	skill_growth_instance.definition_version = skill.definition_version
-	skill_growth_instance.growth_attributes = {"effectMul.damage": 1.2}
+	skill_growth_instance.growth_attributes = {"effectMul.damage": 1.2, "benefitMul.power": 1.2}
 	var composed_skill := SpaceProgressionRuntimeProfileComposer.compose_skill(skill_for_growth, skill_growth_instance)
 	if composed_skill == null or absf(float(composed_skill.effect_parameters.damage) - 12.0) > 0.000001:
 		return false
+	var skill_binding := {
+		"benefitProfile": {"power": 10.0},
+		"jarOrder": {"type": "A", "area": "Active", "cooldownDurationLogicalMilli": 10000, "requirements": [{"shape": "square"}]},
+		"balanceContext": {"valid": true, "expectedBattleDurationLogicalMilli": 60000.0},
+		"effectBinding": {"effectParameters": {"damage": 10.0}}
+	}
+	var balanced_skill_binding := SpaceProgressionRuntimeProfileComposer.compose_skill_binding(
+		skill_binding, skill_for_growth, skill_growth_instance, SpaceSkillBalanceProfile.new()
+	)
+	if balanced_skill_binding.is_empty() or absf(float(balanced_skill_binding.benefitProfile.power) - 12.0) > 0.000001:
+		return false
+	if not bool(balanced_skill_binding.balanceReport.get("valid", false)):
+		return false # Skill growth must be re-evaluated against the benefit-to-Jar curve.
 	var cross_subsystem_growth := skill_growth_instance.duplicate(true) as SpaceOwnedProgressionInstance
 	cross_subsystem_growth.growth_attributes = {"maxJarsBonus": 2}
 	if SpaceProgressionRuntimeProfileComposer.compose_skill(skill_for_growth, cross_subsystem_growth) != null:
