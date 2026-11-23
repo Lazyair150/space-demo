@@ -124,10 +124,3 @@ static func _empty(reason: String) -> Dictionary:
 		"skillChoices": [], "effectChoices": []
 	}
 
-static func _find_workshop_in_combination(combination: SpaceWorkshopCombinationDefinition, definition_id: String) -> SpaceWorkshopDefinition:
-	if combination == null:
-		return null
-	for definition in combination.workshop_definitions:
-		if definition != null and String(definition.workshop_id) == definition_id:
-			return definition.duplicate(true) as SpaceWorkshopDefinition
-	return null
