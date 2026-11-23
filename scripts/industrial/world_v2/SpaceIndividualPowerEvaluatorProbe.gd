@@ -97,7 +97,30 @@ static func _probe_skill() -> bool:
 		return false
 	var pool := _pool_for_model("probe.skill.pool", "skill", model)
 	var built := SpaceRoguelikeIndividualPoolEntryBuilder.append_skill(pool, skill, benefit, context, balance, "common", 1.0)
-	return bool(built.get("success", false)) and pool.is_valid()
+	if not bool(built.get("success", false)) or not pool.is_valid():
+		return false
+
+	# Template-backed skill power must use the Core template's actual requirements and type.
+	var template_skill := skill.duplicate(true) as SpaceSkillDefinition
+	template_skill.jar_order_type = "A"
+	template_skill.jar_requirements.clear()
+	template_skill.jar_order_template_id = &"probe.skill.offense"
+	template_skill.jar_order_template_version = 2
+	var world_options := {
+		"shapes": ["round", "square"],
+		"liquids": ["water", "fuel"],
+		"orderTemplates": [{
+			"name": "probe.skill.offense@2",
+			"type": "B",
+			"requirements": [
+				{"shape": "round"}, {"shape": "square"}, {"shape": "round", "liquid": "water"}
+			]
+		}]
+	}
+	var template_report := SpaceIndividualPowerEvaluator.evaluate_skill(
+		template_skill, benefit, context, balance, model, world_options
+	)
+	return bool(template_report.get("success", false)) and float(template_report.powerMetrics.get("jar_count", 0.0)) == 3.0 and float(template_report.powerMetrics.get("order_type_b", 0.0)) == 1.0
 
 static func _model(id: String, kind: String, metrics: Dictionary) -> SpaceIndividualPowerModelDefinition:
 	var model := SpaceIndividualPowerModelDefinition.new()
