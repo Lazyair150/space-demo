@@ -44,7 +44,9 @@ func is_valid() -> bool:
 			return false
 	if effect_definition_id == &"" or effect_definition_version <= 0:
 		return false
-	var primary_shape_found := primary_shape == &""
+	if primary_shape == &"":
+		return false
+	var primary_shape_found := false
 	for requirement in jar_requirements:
 		var requirement_shape := String(requirement.get("shape", "")).strip_edges()
 		if requirement_shape == String(primary_shape):
@@ -56,6 +58,25 @@ func is_valid() -> bool:
 	if not primary_shape_found:
 		return false
 	return true
+
+func has_majority_shape(shape: String) -> bool:
+	if shape.strip_edges().is_empty():
+		return false
+	var total := 0
+	var matching := 0
+	for requirement in jar_requirements:
+		if not (requirement is Dictionary):
+			return false
+		var count := int(requirement.get("count", 1))
+		if count <= 0:
+			return false
+		total += count
+		if String(requirement.get("shape", "")).strip_edges() == shape:
+			matching += count
+	return total > 0 and matching * 2 > total
+
+func is_valid_for_shape_profile(profile: SpaceAbilityShapeProfile) -> bool:
+	return profile != null and profile.validate_skill(self).is_empty()
 
 func build_jar_order(selected_control_area: String) -> Dictionary:
 	if not is_valid() or not allowed_control_areas.has(selected_control_area):
