@@ -29,6 +29,20 @@ func shape_for_category(category: String) -> String:
 		return ""
 	return String(shape_by_ability_category[category]).strip_edges()
 
+func validate_shape_vocabulary(shape_names: Array) -> PackedStringArray:
+	var errors := PackedStringArray()
+	if not is_valid():
+		errors.append("ability shape profile is invalid")
+		return errors
+	var known_shapes := {}
+	for raw_shape in shape_names:
+		known_shapes[String(raw_shape).strip_edges()] = true
+	for category in ABILITY_CATEGORIES:
+		var mapped_shape := String(shape_by_ability_category[category]).strip_edges()
+		if not known_shapes.has(mapped_shape):
+			errors.append("ability category %s maps to a shape outside the selected Jar vocabulary: %s" % [category, mapped_shape])
+	return errors
+
 func validate_skill(skill: SpaceSkillDefinition) -> PackedStringArray:
 	var errors := PackedStringArray()
 	if not is_valid():
