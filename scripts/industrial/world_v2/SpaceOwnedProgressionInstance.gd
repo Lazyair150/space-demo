@@ -50,7 +50,7 @@ func apply_progression(experience_delta: int, target_level: int, new_growth_attr
 	level = target_level
 	growth_attributes = new_growth_attributes.duplicate(true)
 	progression_revision += 1
-	return not get_validation_errors().size() > 0
+	return get_validation_errors().is_empty()
 
 func _is_finite_tree(value: Variant) -> bool:
 	match typeof(value):
