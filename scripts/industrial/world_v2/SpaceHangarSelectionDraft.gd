@@ -70,7 +70,7 @@ func set_workshop(definition_id: String, version: int, master_instance_id: Strin
 		if slave_entry.is_empty():
 			return false
 		next[String(slave_slot.slot_id)] = slave_entry
-	if not _validate_assignment_map(next).is_empty():
+	if not _validate_assignment_map(next, false, world_key).is_empty():
 		return false
 	_assignments = next
 	_selection.workshopId = definition_id
@@ -180,10 +180,22 @@ func _assign(slot_id: String, expected_kind: String, choice: Dictionary) -> bool
 	_assignments = next
 	return true
 
-func _validate_assignment_map(assignments: Dictionary, require_complete: bool = false) -> PackedStringArray:
+func _validate_assignment_map(assignments: Dictionary, require_complete: bool = false, world_key_override: String = "") -> PackedStringArray:
 	if _board == null:
 		return PackedStringArray()
-	return SpaceHangarBoardAssignment.validate(_board, assignments, _inventory, require_complete)
+	var errors := SpaceHangarBoardAssignment.validate(_board, assignments, _inventory, require_complete)
+	if not errors.is_empty():
+		return errors
+	var world_key := world_key_override
+	if world_key.is_empty() and not String(_selection.get("workshopId", "")).is_empty():
+		world_key = String(_selection.workshopId) + "@" + str(int(_selection.workshopVersion))
+	if not world_key.is_empty():
+		for slot_id in assignments:
+			var entry: Dictionary = assignments[slot_id]
+			if String(entry.get("componentKind", "")) == "workshop":
+				if _find_workshop_instance(String(entry.get("ownedInstanceId", "")), world_key).is_empty():
+					errors.append("workshop instance is incompatible with selected World rules profile: " + String(slot_id))
+	return errors
 
 func _slot_by_id(slot_id: String) -> SpaceHangarBoardSlotDefinition:
 	return _board.resolve_slot(slot_id) if _board != null else null
