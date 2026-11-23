@@ -4,7 +4,7 @@
 
 ## 依赖
 
-当前依赖 jar-system-dotnet 的 World v2 Bridge：PR #58 提供离散原石解析产出导入，基于 PR #57；PR #57 基于 PR #55，PR #55 又依赖 PR #54。PR #54/#55/#57/#58 均保持 Draft，尚未合并。
+当前依赖 jar-system-dotnet 的 World v2 Bridge：PR #59 提供离散原石解析产出导入，基于 PR #57；PR #57 基于 PR #55，PR #55 又依赖 PR #54。PR #54/#55/#57/#59 均保持 Draft，尚未合并。
 
 本阶段使用两个并列仓库的本地工作副本：
 
@@ -13,7 +13,7 @@
     └── jar-system-dotnet/
         └── hosts/godot/WorldV2Bridge/
 
-jar-system-dotnet 工作副本需要包含 PR #58 的 world-v2/phase-4.11b-space-produced-jar-import 分支内容（该分支已包含 PR #57 的生产率入口及其上游依赖）。space-demo 的 space-demo.csproj 通过相对路径引用 Bridge，不引用旧 Core 项目路径。
+jar-system-dotnet 工作副本需要包含 PR #59 的 world-v2/phase-4.11b-space-produced-jar-import-v2 分支内容（该分支已包含 PR #57 的通用时间型生产率入口及其上游依赖）。space-demo 的 space-demo.csproj 通过相对路径引用 Bridge，不引用旧 Core 项目路径。
 
 ## 4.10a 职责
 
