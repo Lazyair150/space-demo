@@ -176,4 +176,10 @@
 - `SpaceProgressionRuntimeProfileComposer` 在成长后重新计算技能收益曲线时，从冻结 Core world options 按 exact templateName 解析实际需求，避免将仅含 templateName 的 runtime contract 误当成完整需求。
 - 新增 `SpaceSkillTemplateContractProbe`，覆盖 exact version、主形状严格多数、词表液体校验、运行时订单不复制需求、legacy inline 与 template 混用拒绝；已接入 `SpaceSkillCatalogProbe`。Probe authored，未在 Godot 执行。
 - 本轮 Space 模板接线提交：`161e2f5`、`781d056`、`c8c9e9a`、`bf07be1`、`f189541`、`17bd404`、`00f2d31`、`3bf71e9`、`84dfb10`、`f80e8ac`、`a83a6a2`、`c39da11`、`b4e4c65`、`87bf42a`、`1815aa6`、`f4b19f3`、`04d93cc`、`1e2dfa7`、`c008590`、`00872a4`、`de58577`。
+- 本轮补充修正：生产 Hangar bundle 默认拒绝 legacy inline skill requirements；仅当 `allow_legacy_inline_skill_orders_for_probes=true` 时，隔离 Probe 可继续使用旧格式。`SpaceHangarCatalogOwnershipProbe` 已显式开启该标记，生产资源默认关闭。
+- `SpaceProgressionRuntimeProfileComposer` 成长后从冻结 `jarWorldOptions.orderTemplates` 重新解析真实 Core 模板，再计算有效技能收益/成本；冻结快照和成长重算都验证 `templateId@version == templateName`，避免身份字段与实际模板错配。
+- `SpaceSkillTemplateContractProbe` 已接入 `SpaceSkillCatalogProbe`，覆盖 exact version、主形状多数、液体词表、模板最小 runtime payload、禁止 legacy/template 混搭。
+- Core PR #60 verify workflow run `45197432477` 已成功，且 run head 与 PR head 完全一致：`063e2b7151ea43e92cf6ba1d627b9c7d50819b5b`。
+- Space Demo 当前 head `d23d1cb061c3eaccac162cd485cb1794be210cc3`；compare `main...world-v2/phase-4.10b-hangar-ui` 为 ahead 555 / behind 0。当前 head 没有关联 workflow run；Godot/.NET/GDScript 验证未执行。
+- 本轮 Space 模板接线后续提交：`f4b19f3`、`04d93cc`、`1e2dfa7`、`c008590`、`00872a4`、`de58577`、`baf41ef`、`8274f9c`、`685442e`、`d23d1cb`。
 - 当前剩余：在真实 WorkshopCombination 配置中录入 versioned Core orderTemplates，并迁移生产 skill definitions；继续核对 MainMenu / Hangar launch route、Protected Target identity 和真实子系统 power metric 契约。
