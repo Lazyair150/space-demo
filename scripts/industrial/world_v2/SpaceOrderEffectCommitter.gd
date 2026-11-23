@@ -15,9 +15,9 @@ func configure(
 	store: SpaceBattleEffectStateStore,
 	loadout: SpaceBattleLoadoutSnapshot,
 	target_resolver: Callable,
-	runtime_checkpoint_provider: Callable = Callable()
+	runtime_checkpoint_provider: Callable
 ) -> bool:
-	if catalog == null or manager == null or store == null or loadout == null or not target_resolver.is_valid():
+	if catalog == null or manager == null or store == null or loadout == null or not target_resolver.is_valid() or not runtime_checkpoint_provider.is_valid():
 		return false
 	_catalog = catalog
 	_manager = manager
@@ -63,13 +63,11 @@ func commit(event: Dictionary, order_binding: Dictionary, next_dispatcher_state:
 		"loadoutVersion": _loadout.loadout_version(),
 		"loadoutFingerprint": _loadout.loadout_fingerprint()
 	}
-	var runtime_checkpoint: Dictionary = {}
-	if _runtime_checkpoint_provider.is_valid():
-		var captured: Variant = _runtime_checkpoint_provider.call()
-		if not (captured is Dictionary) or captured.is_empty():
-			push_error("Battle runtime checkpoint provider failed; Jar event must remain pending")
-			return false
-		runtime_checkpoint = captured
+	var captured: Variant = _runtime_checkpoint_provider.call()
+	if not (captured is Dictionary) or captured.is_empty():
+		push_error("Battle runtime checkpoint provider failed; Jar event must remain pending")
+		return false
+	var runtime_checkpoint: Dictionary = captured
 	return _store.save(
 		_manager.capture_runtime_state(),
 		next_dispatcher_state,
