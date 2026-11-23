@@ -126,7 +126,7 @@ func get_assignment(slot_id: String) -> Dictionary:
 	return _assignments.get(slot_id, {}).duplicate(true)
 
 func validate_assignments() -> PackedStringArray:
-	return _validate_assignment_map(_assignments)
+	return _validate_assignment_map(_assignments, true)
 
 func build_assignment_snapshot() -> Dictionary:
 	if _board == null or not validate_assignments().is_empty():
@@ -170,10 +170,10 @@ func _assign(slot_id: String, expected_kind: String, choice: Dictionary) -> bool
 	_assignments = next
 	return true
 
-func _validate_assignment_map(assignments: Dictionary) -> PackedStringArray:
+func _validate_assignment_map(assignments: Dictionary, require_complete: bool = false) -> PackedStringArray:
 	if _board == null:
 		return PackedStringArray()
-	return SpaceHangarBoardAssignment.validate(_board, assignments, _inventory, false)
+	return SpaceHangarBoardAssignment.validate(_board, assignments, _inventory, require_complete)
 
 func _slot_by_id(slot_id: String) -> SpaceHangarBoardSlotDefinition:
 	return _board.resolve_slot(slot_id) if _board != null else null
