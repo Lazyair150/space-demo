@@ -4,6 +4,7 @@ class_name SpaceHangarScreen
 ## this screen supplies category SVG fallbacks and delegates all domain decisions.
 
 @export var loadout_identity: Dictionary = {}
+@export var board_definition: SpaceHangarBoardDefinition
 @export var parser_slot_id: String = ""
 ## Slot identifiers are supplied by the owning ship/loadout flow, never inferred from device types.
 @export var device_slot_ids: PackedStringArray = PackedStringArray()
@@ -46,10 +47,14 @@ var _device_pickers: Dictionary = {}
 var _pending_skill_choices: Dictionary = {}
 var _primary_icons: Dictionary = {}
 var _suppress_picker_events: bool = false
+var _board_configuration_valid: bool = true
+var _master_workshop_slot_id: String = "workshop.master"
+var _slave_workshop_slot_id: String = "workshop.slave"
 
 func _ready() -> void:
 	GameFlow.enter_screen(GameFlow.Screen.HANGAR)
 	_preparation = get_node_or_null("Preparation") as SpaceHangarPreparation
+	_apply_board_definition()
 	_controller = SpaceHangarSelectionController.new()
 	if _preparation != null:
 		if GameState.space_progression_state == null:
@@ -65,6 +70,25 @@ func _ready() -> void:
 	_render_view_model(_controller.get_view_model())
 	if not ready:
 		_status_label.text = "机库目录尚未就绪：请在编辑器中为 Preparation 配置有效的目录资源包。"
+
+func _apply_board_definition() -> void:
+	if board_definition == null:
+		return # Explicit legacy scene configuration remains supported during migration.
+	var errors := board_definition.get_validation_errors()
+	if not errors.is_empty():
+		_board_configuration_valid = false
+		push_error("Hangar board definition rejected: " + "; ".join(errors))
+		return
+	var configuration := board_definition.build_hangar_configuration()
+	if configuration.is_empty():
+		_board_configuration_valid = false
+		return
+	_board_configuration_valid = true
+	parser_slot_id = String(configuration.get("parserSlotId", ""))
+	device_slot_ids = PackedStringArray(configuration.get("deviceSlotIds", PackedStringArray()))
+	skill_order_bindings = configuration.get("skillOrderBindings", [])
+	_master_workshop_slot_id = String(configuration.get("masterWorkshopSlotId", ""))
+	_slave_workshop_slot_id = String(configuration.get("slaveWorkshopSlotId", ""))
 
 func _build_interface() -> void:
 	var background := ColorRect.new()
@@ -117,10 +141,10 @@ func _build_interface() -> void:
 	selection_panel.add_child(selection_box)
 	_add_section_title(selection_box, "核心配置")
 	_ship_picker = _add_picker(selection_box, "飞船定义", "ship")
-	_parser_picker = _add_picker(selection_box, "原石解析器", "parser")
+	_parser_picker = _add_picker(selection_box, "分解区 · 原石解析器槽位", "parser")
 	_workshop_picker = _add_picker(selection_box, "工作区规则配置", "workshop")
-	_master_workshop_picker = _add_picker(selection_box, "主台位置 · 工作台元件", "workshop")
-	_slave_workshop_picker = _add_picker(selection_box, "从台位置 · 工作台元件", "workshop")
+	_master_workshop_picker = _add_picker(selection_box, "工作区 · 主台位置", "workshop")
+	_slave_workshop_picker = _add_picker(selection_box, "工作区 · 从台位置", "workshop")
 
 	_device_section = VBoxContainer.new()
 	_device_section.add_theme_constant_override("separation", 8)
@@ -527,11 +551,12 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 		if _array_size(skill_choices) > 0:
 			_add_section_title(_skill_section, "技能绑定（等待游戏流程提供订单键）")
 		return
-	_add_section_title(_skill_section, "技能 / 订单绑定")
+	_add_section_title(_skill_section, "订单区 · 技能元件槽位")
 	for binding in skill_order_bindings:
 		if not (binding is Dictionary):
 			continue
 		var order_key := String(binding.get("orderDefinitionKey", "")).strip_edges()
+		var slot_control_area := String(binding.get("controlArea", ""))
 		if order_key.is_empty():
 			continue
 		var row := VBoxContainer.new()
@@ -553,6 +578,8 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 		skill_picker.add_item("不装备技能")
 		for choice in skill_choices:
 			if choice is Dictionary:
+				if slot_control_area in ["Active", "Passive"] and not choice.get("allowedControlAreas", []).has(slot_control_area):
+					continue
 				var item_icon: Variant = choice.get("iconTexture")
 				if not (item_icon is Texture2D):
 					item_icon = load(FALLBACK_ICONS.skill)
@@ -589,10 +616,11 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 				skill_picker.select(item_index)
 				_set_icon_texture(icon, candidate.get("iconTexture"), "skill")
 				_set_primary_shape_label(primary_shape_label, candidate)
-				var selected_area := String(pending.get("controlArea", existing.get("controlArea", "")))
+				var selected_area := String(pending.get("controlArea", existing.get("controlArea", slot_control_area)))
 				_populate_control_areas(area_picker, candidate.get("allowedControlAreas", []), selected_area)
+				area_picker.disabled = slot_control_area in ["Active", "Passive"]
 				break
-		skill_picker.item_selected.connect(_on_skill_selected.bind(order_key, skill_picker, area_picker, icon, primary_shape_label))
+		skill_picker.item_selected.connect(_on_skill_selected.bind(order_key, skill_picker, area_picker, icon, primary_shape_label, slot_control_area))
 		area_picker.item_selected.connect(_on_skill_area_selected.bind(order_key, skill_picker, area_picker))
 		if skill_picker.selected == 0:
 			area_picker.disabled = true
@@ -614,7 +642,7 @@ func _populate_control_areas(area_picker: OptionButton, raw_areas: Variant, sele
 				area_picker.select(area_picker.item_count - 1)
 	area_picker.disabled = area_picker.item_count <= 1
 
-func _on_skill_selected(index: int, order_key: String, skill_picker: OptionButton, area_picker: OptionButton, icon: TextureRect, primary_shape_label: Label) -> void:
+func _on_skill_selected(index: int, order_key: String, skill_picker: OptionButton, area_picker: OptionButton, icon: TextureRect, primary_shape_label: Label, slot_control_area: String = "") -> void:
 	if index <= 0:
 		_pending_skill_choices.erase(order_key)
 		_controller.remove_skill(order_key)
@@ -624,10 +652,13 @@ func _on_skill_selected(index: int, order_key: String, skill_picker: OptionButto
 		return
 	var choice: Dictionary = skill_picker.get_item_metadata(index)
 	_pending_skill_choices[order_key] = choice.duplicate(true)
-	_populate_control_areas(area_picker, choice.get("allowedControlAreas", []))
-	area_picker.disabled = false
+	var selected_area := slot_control_area if slot_control_area in ["Active", "Passive"] else ""
+	_populate_control_areas(area_picker, choice.get("allowedControlAreas", []), selected_area)
+	area_picker.disabled = not selected_area.is_empty()
 	_set_icon_texture(icon, choice.get("iconTexture"), "skill")
 	_set_primary_shape_label(primary_shape_label, choice)
+	if not selected_area.is_empty():
+		_controller.set_skill(order_key, String(choice.get("id", "")), int(choice.get("version", 0)), selected_area, String(choice.get("instanceId", "")))
 
 func _set_primary_shape_label(label: Label, choice: Dictionary) -> void:
 	var primary_shape := String(choice.get("primaryShape", ""))
@@ -747,7 +778,8 @@ func _update_build_enabled(view_model: Dictionary) -> void:
 	var skills_exist := _array_size(inventory.get("skillChoices", [])) > 0
 	var binding_configuration_complete := (not devices_exist or not device_slot_ids.is_empty()) and (not skills_exist or not skill_order_bindings.is_empty())
 	_build_button.disabled = (
-		not bool(view_model.get("canBuild", false))
+		not _board_configuration_valid
+		or not bool(view_model.get("canBuild", false))
 		or _duration_picker.value <= 0.0
 		or not binding_configuration_complete
 		or not _slot_configuration_is_valid()
