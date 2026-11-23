@@ -47,7 +47,7 @@ static func _probe_workshop() -> bool:
 	var metrics := {
 		"max_jars": 4.0,
 		"max_liquids": 8.0,
-		"liquid_staging_capacity": -1.0,
+		"liquid_staging_capacity": 0.0,
 		"uses_core_staging_fallback": 1.0,
 		"base_mark_count": 1.0,
 		"additional_mark_count": 0.0,
@@ -105,7 +105,7 @@ static func _model(id: String, kind: String, metrics: Dictionary) -> SpaceIndivi
 	model.definition_version = 1
 	model.item_kind = kind
 	for key in metrics:
-		var minimum := -1.0 if String(key) == "liquid_staging_capacity" else 0.0
+		var minimum := 0.0
 		model.metric_dimensions[key] = {
 			"minimum": minimum,
 			"maximum": 100000.0,
