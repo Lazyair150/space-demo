@@ -202,6 +202,10 @@
 - 扩展 `SpaceIndividualPowerEvaluatorProbe` 与 `SpaceRoguelikeIndividualLibraryProbe`：合成模型显式配置 scoringMode；覆盖目标值评分、非对称边界两侧归零、未配置模型被 Pool 拒绝、Workshop 容量禁止单调高分、逐 shape/逐 liquid 指标和成长后重新评估。Probe 仅已编写，未运行。
 - 注意：这还不是生产 power model。没有擅自确定 Parser / Workshop / Skill 的正式指标权重、边界、目标工作负载或稀有度区间；所有真实模型仍需在有真实设计数据后从 `unconfigured` 变为 `configured`。
 - 本轮 power contract 新增提交：`0b07db6`、`c14562b`、`aa69080`、`96e3110`、`4623252`、`e1da0bd`、`611f930`、`d223cfa`、`d9f087c`、`8f84725`、`ca112f8`、`bf80d28`。
+- 新增 `SpaceIndividualPowerEvaluator.evaluate_effective_skill()`：按精确 Owned Instance 合成技能成长，重新解析冻结 World options 中的 Core 模板，再由 `SpaceProgressionRuntimeProfileComposer.compose_skill_binding()` 重新计算收益/Jar 成本；若成长导致技能 undercosted，则拒绝生成 effective power score。该路径与 Parser/Workshop 的 effective evaluator 一起覆盖三类实例成长后的重评估入口。
+- `SpaceIndividualPowerEvaluatorProbe` 增加 template-backed Skill 的 neutral instance 成功与过度成长被 cost curve 拒绝检查；Probe authored，未运行。
+- effective-skill evaluator 提交：`b34980d`、`cefe838`。
+
 - 当前剩余：在真实 WorkshopCombination 配置中录入 versioned Core orderTemplates，并迁移生产 skill definitions；继续核对 MainMenu / Hangar launch route、Protected Target identity 和真实子系统 power metric 契约。
 
 - 最新续接核对（文档提交前）：Space Demo PR #2 head `235e3a88e5ef778dc55d5959d058363e0003de4f`，ahead 597 / behind 0，Draft/Open/未合并；文档本次提交将继续更新 head。Jar Core PR #60 head `063e2b7151ea43e92cf6ba1d627b9c7d50819b5b`，verify run `45197432477` completed/success。Space Demo 仍无 Godot/.NET/GDScript 运行验证。
