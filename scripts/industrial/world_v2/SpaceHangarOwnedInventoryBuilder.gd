@@ -14,6 +14,7 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 		"deviceChoices": [],
 		"parserChoices": [],
 		"workshopChoices": [],
+		"workshopWorldChoices": [],
 		"workshopInstanceChoices": [],
 		"skillChoices": [],
 		"effectChoices": []
@@ -85,11 +86,18 @@ static func build(bundle: SpaceHangarCatalogBundleResource, progression: SpacePl
 				"id": String(effect.id), "version": effect.definition_version,
 				"label": effect.label, "iconTexture": effect.display_icon
 			})
-	var workshop_pairs := _build_owned_workshop_pairs(bundle, progression)
-	if workshop_pairs.is_empty():
-		result.workshopChoices = []
-	else:
-		result.workshopChoices = workshop_pairs
+	var world_choices: Array[Dictionary] = []
+	for combination in bundle.workshop_combination_catalog.definitions:
+		if combination == null:
+			continue
+		world_choices.append({
+			"id": String(combination.combination_id),
+			"version": combination.definition_version,
+			"label": combination.display_name,
+			"iconTexture": combination.display_icon
+		})
+	result.workshopChoices = world_choices
+	result.workshopWorldChoices = world_choices.duplicate(true)
 	return result
 
 static func _resolve_workshop_definition(bundle: SpaceHangarCatalogBundleResource, definition_id: String, version: int) -> SpaceWorkshopDefinition:
@@ -107,54 +115,12 @@ static func _resolve_skill_definition(bundle: SpaceHangarCatalogBundleResource, 
 			return definition.duplicate(true) as SpaceSkillDefinition
 	return null
 
-static func _build_owned_workshop_pairs(bundle: SpaceHangarCatalogBundleResource, progression: SpacePlayerProgressionState) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
-	for combination in bundle.workshop_combination_catalog.definitions:
-		if combination == null:
-			continue
-		var available: Array[Dictionary] = []
-		for instance in progression.owned_instances:
-			if instance == null or instance.item_kind != "workshop":
-				continue
-			var definition := _find_workshop_in_combination(
-				combination, String(instance.definition_id), instance.definition_version
-			)
-			if definition == null:
-				continue
-			available.append({
-				"instance": instance,
-				"definition": definition
-			})
-		# Every ordered pair of distinct owned instances is a legal slot candidate.
-		# Definition identity may be equal: two independently owned copies remain distinct components.
-		for master_entry in available:
-			for slave_entry in available:
-				var master: SpaceOwnedProgressionInstance = master_entry.instance
-				var slave: SpaceOwnedProgressionInstance = slave_entry.instance
-				if master.instance_id == slave.instance_id:
-					continue
-				var master_definition: SpaceWorkshopDefinition = master_entry.definition
-				var slave_definition: SpaceWorkshopDefinition = slave_entry.definition
-				result.append({
-					"id": String(combination.combination_id),
-					"version": combination.definition_version,
-					"label": combination.display_name,
-					"masterInstanceId": String(master.instance_id),
-					"slaveInstanceId": String(slave.instance_id),
-					"masterWorkshopId": String(master.definition_id),
-					"slaveWorkshopId": String(slave.definition_id),
-					"masterLevel": master.level,
-					"slaveLevel": slave.level,
-					"masterLabel": master_definition.display_name,
-					"slaveLabel": slave_definition.display_name
-				})
-	return result
 
 static func _empty(reason: String) -> Dictionary:
 	return {
 		"isReady": false, "unavailableReason": reason,
 		"shipChoices": [], "deviceChoices": [], "parserChoices": [],
-		"workshopChoices": [], "workshopInstanceChoices": [],
+		"workshopChoices": [], "workshopWorldChoices": [], "workshopInstanceChoices": [],
 		"skillChoices": [], "effectChoices": []
 	}
 
