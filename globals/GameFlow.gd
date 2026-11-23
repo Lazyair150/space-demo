@@ -16,7 +16,7 @@ var _transition_sequence: int = 0
 
 func snapshot() -> Dictionary:
 	return {
-		"schemaVersion": 2,
+		"schemaVersion": 3,
 		"screen": Screen.keys()[_screen],
 		"battlePhase": BattlePhase.keys()[_battle_phase],
 		"pauseReason": PauseReason.keys()[_pause_reason],
