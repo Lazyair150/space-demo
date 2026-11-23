@@ -24,30 +24,30 @@ The first sandbox vocabulary has four authored shape names and temporary present
 | 三棱舱段 | ▲ | violet |
 | 长条舱段 | ▬ | mint |
 
-\`ShapeVisuals.gd\` owns this mapping and a neutral fallback for unknown shapes. The helper is presentation-only. The same shape key uses the same color in resource inventory, workshop cards, production lines, and order requirement tokens. New shapes can be added to this mapping without changing Jar's shape vocabulary or solver.
+`ShapeVisuals.gd` owns this mapping and a neutral fallback for unknown shapes. The helper is presentation-only. The same shape key uses the same color in resource inventory, workshop cards, production lines, and order requirement tokens. New shapes can be added to this mapping without changing Jar's shape vocabulary or solver.
 
 Color is never the only carrier of meaning: each token also displays a distinct glyph and the shape's authored name. The current four-color set is provisional and can later move into an editor-authored palette Resource without changing the consuming UI components.
 
 ## Workshop tendency color
 
-A workshop card's accent is a weighted blend of its existing shape marks: each \`baseMarks\` entry has weight 2 and each \`additionalMarks\` entry has weight 1. This gives the player a fast visual impression of the workshop's shape bias while retaining the exact mark names beside it.
+A workshop card's accent is a weighted blend of its existing shape marks: each `baseMarks` entry has weight 2 and each `additionalMarks` entry has weight 1. This gives the player a fast visual impression of the workshop's shape bias while retaining the exact mark names beside it.
 
 This blend is not a new workshop stat and must never be consumed by compatibility checks, Jar operations, selection, or balancing. Ban remains a separate warning row and is never encoded as a shape color.
 
 ## Resource meters and truthful quantities
 
-- Workshop liquid staging is shown as a meter only against that workshop's own \`maxLiquids\`; each liquid is measured independently.
+- Workshop liquid staging is shown as a meter only against that workshop's own `maxLiquids`; each liquid is measured independently.
 - Ship-level liquid inventory is shown as exact counts. No capacity bar is shown unless the snapshot exposes the authoritative capacity.
 - Ship resource Jars and workshop Jars are separate groups; never combine their counts.
 - A Jar with liquid remains a Jar resource, and its fill state is shown as a secondary detail. This does not move liquid ownership or make Jar contents equivalent to free workshop/ship liquid.
 
 ## Order presentation
 
-Each order demand displays its exact required shape as a colored glyph token; a liquid-bearing requirement adds the exact liquid name. If an explicit \`primaryShape\` is present in a future snapshot, it may accent the order heading. The current Host DTO exposes requirement shapes but does not expose a separate primary-shape field, so the UI must not fabricate one or silently treat the first requirement as a domain-defined primary shape.
+Each order demand displays its exact required shape as a colored glyph token; a liquid-bearing requirement adds the exact liquid name. If an explicit `primaryShape` is present in a future snapshot, it may accent the order heading. The current Host DTO exposes requirement shapes but does not expose a separate primary-shape field, so the UI must not fabricate one or silently treat the first requirement as a domain-defined primary shape.
 
 ## Data ownership and update policy
 
-\`SpaceJarHudObserver\` reads only \`WorldV2ShipHost.GetWorldSnapshot()\`. It does not call Jar mutation APIs, infer feasibility, calculate costs, or advance time. It polls at a low UI cadence and rebuilds only when the detached snapshot changes. The component uses \`PROCESS_MODE_ALWAYS\` so the information remains inspectable while the combat SceneTree is paused; the underlying Host lifecycle remains the authority for whether simulation can advance.
+`SpaceJarHudObserver` reads only `WorldV2ShipHost.GetWorldSnapshot()`. It does not call Jar mutation APIs, infer feasibility, calculate costs, or advance time. It polls at a low UI cadence and rebuilds only when the detached snapshot changes. The component uses `PROCESS_MODE_ALWAYS` so the information remains inspectable while the combat SceneTree is paused; the underlying Host lifecycle remains the authority for whether simulation can advance.
 
 Unavailable, disposed, or not-yet-started worlds show an explicit unavailable state rather than fabricated zero inventory. The panel is hidden by default and toggled by the compact summary control.
 
