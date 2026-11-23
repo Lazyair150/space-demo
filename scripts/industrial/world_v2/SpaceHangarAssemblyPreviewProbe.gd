@@ -18,7 +18,10 @@ func run_probe() -> bool:
 		"isReady": true,
 		"canBuild": true,
 		"inventory": {
-			"shipChoices": [{"id": "probe.ship", "version": 2, "label": "Probe Ship", "iconTexture": ship_icon}],
+			"shipChoices": [{"id": "probe.ship", "version": 2, "label": "Probe Ship", "iconTexture": ship_icon, "hullTexture": ship_icon, "displayAnchors": [
+				{"anchorId": "device-anchor", "logicalSlotId": "probe-device-slot", "componentKind": "device", "normalizedPosition": Vector2(0.7, 0.5), "rotationDegrees": 0.0, "iconScale": 1.0},
+				{"anchorId": "parser-anchor", "logicalSlotId": "probe-parser-slot", "componentKind": "parser", "normalizedPosition": Vector2(0.3, 0.5), "rotationDegrees": 0.0, "iconScale": 1.0}
+			]}],
 			"parserChoices": [{"id": "probe.parser", "version": 1, "label": "Probe Parser"}],
 			"workshopChoices": [{"id": "probe.workshop", "version": 3, "label": "Probe Workshop"}],
 			"deviceChoices": [{"id": "probe.device", "version": 4, "label": "Probe Device", "iconTexture": device_icon}],
@@ -29,6 +32,7 @@ func run_probe() -> bool:
 			"shipVersion": 2,
 			"parserId": "probe.parser",
 			"parserVersion": 1,
+			"parserSlotId": "probe-parser-slot",
 			"workshopId": "probe.workshop",
 			"workshopVersion": 3,
 			"deviceSelections": [{"slotId": "probe-device-slot", "definitionId": "probe.device", "definitionVersion": 4}],
@@ -40,5 +44,6 @@ func run_probe() -> bool:
 		preview._ship_name.text == "Probe Ship  [v2]"
 		and preview._device_list.get_child_count() == 1
 		and preview._skill_list.get_child_count() == 1
+		and preview._anchor_icons.size() == 2
 		and preview._status.text.contains("跨目录兼容性")
 	)
