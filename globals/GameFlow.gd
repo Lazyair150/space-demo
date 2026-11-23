@@ -58,8 +58,12 @@ func enter_screen(next_screen: int) -> bool:
 	return true
 
 func begin_battle_preparation() -> bool:
-	if _battle_phase in [BattlePhase.PREPARING, BattlePhase.RUNNING, BattlePhase.PAUSED, BattlePhase.RESUMING, BattlePhase.RESUME_READY]:
+	# Re-entry is idempotent only while the same launch is still preparing.
+	# A second scene must never replace a live/paused/resuming battle.
+	if _battle_phase == BattlePhase.PREPARING:
 		return _screen == Screen.BATTLE
+	if _battle_phase in [BattlePhase.RUNNING, BattlePhase.PAUSED, BattlePhase.RESUMING, BattlePhase.RESUME_READY]:
+		return false
 	_battle_phase = BattlePhase.PREPARING
 	_pause_reason = PauseReason.NONE
 	_screen = Screen.BATTLE
