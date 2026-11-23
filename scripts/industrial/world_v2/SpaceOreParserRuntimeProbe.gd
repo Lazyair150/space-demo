@@ -35,8 +35,20 @@ static func run() -> Dictionary:
 	if not SpaceOreParserRuntime.build_runtime_instance_id("probe-ship-world", mismatched_owned_profile).is_empty():
 		return _failure("parser runtime identity accepted an Owned Instance from another Definition")
 	var definition_only_profile := definition.build_runtime_profile()
-	if SpaceOreParserRuntime.build_runtime_instance_id("probe-ship-world", definition_only_profile) != "probe-ship-world:definition:probe-universal-parser@1":
-		return _failure("definition-only development identity must remain stable and explicit")
+	if SpaceOreParserRuntime.build_runtime_instance_id("probe-ship-world", definition_only_profile) != "probe-ship-world:probe-universal-parser":
+		return _failure("definition-only development identity must remain stable")
+	var legacy_checkpoint_identity := {"parserInstanceId": "probe-ship-world:probe-universal-parser"}
+	if SpaceOreParserRuntime.build_runtime_instance_id("probe-ship-world", owned_profile_a, legacy_checkpoint_identity) != "probe-ship-world:probe-universal-parser":
+		return _failure("legacy checkpoint restore must preserve pending Core import operation IDs")
+
+	var owned_runtime_a := SpaceOreParserRuntime.new()
+	var owned_runtime_b := SpaceOreParserRuntime.new()
+	if not bool(owned_runtime_a.initialize(definition, owned_runtime_id_a, ["圆罐", "方罐"]).get("success", false)):
+		return _failure("first owned parser runtime could not initialize")
+	if not bool(owned_runtime_b.initialize(definition, owned_runtime_id_b, ["圆罐", "方罐"]).get("success", false)):
+		return _failure("second owned parser runtime could not initialize")
+	if bool(owned_runtime_b.restore_state(owned_runtime_a.capture_state()).get("success", false)):
+		return _failure("one Owned Instance parser checkpoint was accepted by another copy")
 
 	var runtime := SpaceOreParserRuntime.new()
 	var initialized := runtime.initialize(definition, "probe-ship-world-parser", ["圆罐", "方罐"])
