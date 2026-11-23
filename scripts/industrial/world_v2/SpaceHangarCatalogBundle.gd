@@ -40,6 +40,8 @@ func validate_and_prepare() -> PackedStringArray:
 	if workshop_combination_catalog == null: errors.append("workshop combination catalog is missing")
 	elif not workshop_combination_catalog.rebuild_index(): errors.append("workshop combination catalog index is invalid")
 	if skill_catalog == null: errors.append("skill catalog is missing")
+	elif skill_catalog.is_empty(): errors.append("skill catalog has no authored definitions")
 	if balance_profile == null or not balance_profile.is_valid(): errors.append("skill balance profile is missing or invalid")
 	if effect_catalog == null: errors.append("effect catalog is missing")
+	elif effect_catalog.is_empty(): errors.append("effect catalog has no authored definitions")
 	return errors
