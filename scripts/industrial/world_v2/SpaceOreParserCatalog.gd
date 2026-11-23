@@ -9,6 +9,8 @@ class_name SpaceOreParserCatalog
 var _definitions: Dictionary = {}
 
 func register_definition(definition: SpaceOreParserDefinition) -> bool:
+	if _definitions.is_empty() and not definitions.is_empty() and not rebuild_index():
+		return false
 	if not _register_definition_snapshot(definition):
 		return false
 	definitions.append(SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile()))
