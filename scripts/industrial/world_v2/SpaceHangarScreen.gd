@@ -15,6 +15,7 @@ var _build_button: Button
 var _status_label: Label
 var _inventory_label: Label
 var _refresh_button: Button
+var _refresh_confirmation: ConfirmationDialog
 var _suppress_picker_events: bool = false
 
 func _ready() -> void:
@@ -102,6 +103,10 @@ func _build_interface() -> void:
 	_refresh_button.text = "重新读取目录"
 	footer.add_child(_refresh_button)
 	_refresh_button.pressed.connect(_on_refresh_pressed)
+	_refresh_confirmation = ConfirmationDialog.new()
+	_refresh_confirmation.dialog_text = "重新读取目录会丢弃当前未冻结的选择草稿。是否继续？"
+	add_child(_refresh_confirmation)
+	_refresh_confirmation.confirmed.connect(_on_refresh_confirmed)
 	_build_button = Button.new()
 	_build_button.text = "检查并冻结装配快照"
 	_build_button.disabled = true
@@ -141,9 +146,10 @@ func _render_view_model(view_model: Dictionary) -> void:
 	var inventory: Dictionary = view_model.get("inventory", {})
 	var ready := bool(view_model.get("isReady", false))
 	_suppress_picker_events = true
-	_fill_picker(_ship_picker, inventory.get("shipChoices", []), "没有可用飞船定义")
-	_fill_picker(_parser_picker, inventory.get("parserChoices", []), "没有可用解析器定义")
-	_fill_picker(_workshop_picker, inventory.get("workshopChoices", []), "没有可用工作台组合")
+	var selectable_inventory: Dictionary = inventory if ready else {}
+	_fill_picker(_ship_picker, selectable_inventory.get("shipChoices", []), "没有可用飞船定义")
+	_fill_picker(_parser_picker, selectable_inventory.get("parserChoices", []), "没有可用解析器定义")
+	_fill_picker(_workshop_picker, selectable_inventory.get("workshopChoices", []), "没有可用工作台组合")
 	var selection: Dictionary = view_model.get("selection", {})
 	_select_exact(_ship_picker, String(selection.get("shipId", "")), int(selection.get("shipVersion", 0)))
 	_select_exact(_parser_picker, String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)))
@@ -223,6 +229,9 @@ func _on_duration_changed(value: float) -> void:
 		_update_build_enabled(_controller.get_view_model())
 
 func _on_refresh_pressed() -> void:
+	_refresh_confirmation.popup_centered()
+
+func _on_refresh_confirmed() -> void:
 	_controller.refresh_inventory()
 
 func _on_build_pressed() -> void:
