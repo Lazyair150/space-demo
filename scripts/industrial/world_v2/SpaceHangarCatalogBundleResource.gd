@@ -10,8 +10,13 @@ class_name SpaceHangarCatalogBundleResource
 @export var ability_shape_profile: SpaceAbilityShapeProfile
 @export var balance_profile: SpaceSkillBalanceProfile
 @export var effect_definitions: Array[BuffDefinition] = []
+## Optional until production exact-version pool assets are authored.
+@export var roguelike_individual_library: SpaceRoguelikeIndividualLibrary
 
 func create_runtime_bundle() -> SpaceHangarCatalogBundle:
+	if roguelike_individual_library != null and not roguelike_individual_library.is_valid():
+		push_error("Hangar bundle roguelike individual library has invalid power bands or exact-version entries")
+		return null
 	if ability_shape_profile == null or not ability_shape_profile.is_valid():
 		push_error("Hangar bundle requires a valid ability category to Jar shape profile")
 		return null
@@ -116,7 +121,9 @@ func build_selection_inventory() -> Dictionary:
 		"parserChoices": parsers,
 		"workshopChoices": workshops,
 		"skillChoices": skills,
-		"effectChoices": effects
+		"effectChoices": effects,
+		"individualPools": _build_individual_pool_inventory(),
+		"individualLibraryReady": roguelike_individual_library != null and roguelike_individual_library.is_valid()
 	}
 
 
@@ -136,5 +143,21 @@ func _build_display_anchor_inventory(anchors: Array[SpaceShipDisplayAnchor]) -> 
 			"normalizedPosition": anchor.normalized_position,
 			"rotationDegrees": anchor.rotation_degrees,
 			"iconScale": anchor.icon_scale
+		})
+	return result
+
+func _build_individual_pool_inventory() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if roguelike_individual_library == null:
+		return result
+	for pool in roguelike_individual_library.pools:
+		if pool == null:
+			continue
+		result.append({
+			"poolId": String(pool.pool_id),
+			"poolVersion": pool.definition_version,
+			"itemKind": pool.item_kind,
+			"entryCount": pool.entries.size(),
+			"powerBands": pool.power_bands.duplicate(true)
 		})
 	return result
