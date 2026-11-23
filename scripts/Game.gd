@@ -85,7 +85,7 @@ func configure_battle_loadout_from_checkpoint(
 		return false
 	if int(effect_state.get("schemaVersion", 0)) != 1 or not (effect_state.get("instances", null) is Array) or not (effect_state.get("processedOrderEventIds", null) is Array):
 		return false
-	if not _checkpoint_event_ledgers_match(effect_state, dispatcher_state):
+	if not _checkpoint_event_ledgers_match(effect_state, dispatcher_state, expected_identity):
 		push_error("[Game] Saved effect and dispatcher event ledgers do not match")
 		return false
 	if effect_catalog == null or not effect_target_resolver.is_valid():
@@ -117,10 +117,10 @@ func configure_battle_loadout_from_checkpoint(
 		return false
 	return true
 
-func _checkpoint_event_ledgers_match(effect_state: Dictionary, dispatcher_state: Dictionary) -> bool:
+func _checkpoint_event_ledgers_match(effect_state: Dictionary, dispatcher_state: Dictionary, expected_identity: Dictionary) -> bool:
 	if int(dispatcher_state.get("schemaVersion", 0)) != 1:
 		return false
-	if String(dispatcher_state.get("shipWorldId", "")) != String(_battle_loadout.ship_world_id()) or String(dispatcher_state.get("loadoutId", "")) != String(_battle_loadout.loadout_id()) or int(dispatcher_state.get("loadoutVersion", 0)) != _battle_loadout.loadout_version() or String(dispatcher_state.get("loadoutFingerprint", "")) != String(_battle_loadout.loadout_fingerprint()):
+	if String(dispatcher_state.get("shipWorldId", "")) != String(expected_identity.get("shipWorldId", "")) or String(dispatcher_state.get("loadoutId", "")) != String(expected_identity.get("loadoutId", "")) or int(dispatcher_state.get("loadoutVersion", 0)) != int(expected_identity.get("loadoutVersion", 0)) or String(dispatcher_state.get("loadoutFingerprint", "")) != String(expected_identity.get("loadoutFingerprint", "")):
 		return false
 	var effect_ids: Variant = effect_state.get("processedOrderEventIds", null)
 	var dispatcher_ids: Variant = dispatcher_state.get("processedEventIds", null)
