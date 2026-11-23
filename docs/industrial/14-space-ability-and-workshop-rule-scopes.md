@@ -82,3 +82,18 @@ Space-side Resources are authoring and freeze-time composition only. They must n
 - One battle simulation clock and one Host-owned time boundary.
 - Frozen exact-version loadout and idempotent cross-domain event/operation identities.
 - Do not claim full integration until typed effect executors, durable effect commit and Godot runtime validation are complete.
+
+
+## Player-owned progression instances
+
+Catalog definitions describe what an item type is; they are not the player's possessions and must not carry player-specific growth. `SpaceOwnedProgressionInstance` is the persistent identity of one acquired copy, and `SpacePlayerProgressionState` is the player-scoped aggregate of unlocks and owned instances.
+
+The same lifecycle applies to ships, universal energy-stone parsers, other production devices, individual workshops, and skills:
+- An exact definition version can be unlocked without being owned.
+- An owned instance can be acquired only after that exact item-kind/definition/version key is unlocked.
+- Multiple instances may reference the same definition version but have independent instance IDs, levels, experience, progression revisions, and growth attributes.
+- Growth attributes are opaque Space-owned data interpreted by the subsystem for that item kind. This progression layer does not invent upgrade curves or hardcode item-specific stats.
+- Instance updates are revision-checked; stale writes cannot overwrite a newer progression revision.
+- Catalog definitions remain immutable. A frozen battle loadout must eventually include both the exact definition identity and the selected owned-instance snapshot so an in-progress battle is insulated from later upgrades.
+
+The first implementation adds the persistent progression aggregate and contract probes. It deliberately does not yet connect the Hangar pickers or battle assembler to a player's progression save. Until that integration lands, the existing definition-only Hangar selection remains a development authoring flow, not a complete player progression flow. The next integration stage must make the player progression state the source of selectable owned instances, freeze the selected instance snapshots into loadouts, and resolve effective runtime profiles from definition + instance growth without mutating the catalog definition.
