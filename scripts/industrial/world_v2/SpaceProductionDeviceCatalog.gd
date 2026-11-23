@@ -49,6 +49,7 @@ func _copy_definition(source: SpaceProductionDeviceDefinition) -> SpaceProductio
 	copy.definition_version = source.definition_version
 	copy.device_kind = source.device_kind
 	copy.display_name = source.display_name
+	copy.display_icon = source.display_icon
 	copy.runtime_profile = source.runtime_profile.duplicate(true)
 	return copy
 
