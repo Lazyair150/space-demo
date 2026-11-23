@@ -108,6 +108,8 @@ func replace_instance_progression(updated: SpaceOwnedProgressionInstance) -> boo
 				return false
 			if current.growth_curve_id != &"" and (updated.growth_curve_id != current.growth_curve_id or updated.growth_curve_version != current.growth_curve_version):
 				return false # Curve provenance is immutable after first calculation; migration needs a separate explicit transaction.
+			if current.acquisition_provenance != updated.acquisition_provenance:
+				return false # Reward/source provenance is immutable; changing it would rewrite acquisition history.
 			if updated.progression_revision != current.progression_revision + 1 or updated.level < current.level or updated.experience < current.experience:
 				return false
 			owned_instances[index] = updated.duplicate(true) as SpaceOwnedProgressionInstance
