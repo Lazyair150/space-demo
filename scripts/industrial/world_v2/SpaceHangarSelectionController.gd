@@ -36,6 +36,18 @@ func refresh_inventory() -> bool:
 func set_ship(definition_id: String, version: int, instance_id: String = "") -> bool:
 	return _apply(_draft != null and _draft.set_ship(definition_id, version, instance_id))
 
+func assign_instance(slot_id: String, owned_instance_id: String) -> bool:
+	return _apply(_draft != null and _draft.assign_instance(slot_id, owned_instance_id))
+
+func unassign_slot(slot_id: String) -> bool:
+	return _apply(_draft != null and _draft.unassign_slot(slot_id))
+
+func get_assignment(slot_id: String) -> Dictionary:
+	return {} if _draft == null else _draft.get_assignment(slot_id)
+
+func validate_assignments() -> PackedStringArray:
+	return PackedStringArray(["Hangar draft is not configured"]) if _draft == null else _draft.validate_assignments()
+
 func set_parser(definition_id: String, version: int, slot_id: String, instance_id: String = "") -> bool:
 	return _apply(_draft != null and _draft.set_parser(definition_id, version, slot_id, instance_id))
 
