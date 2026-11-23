@@ -24,7 +24,10 @@ static func acquire_candidate(
 	var rarity := String(candidate.get("rarity", ""))
 	var power_score := float(candidate.get("powerScore", -1.0))
 	var power_metrics: Variant = candidate.get("powerMetrics", null)
-	if not (power_metrics is Dictionary) or not pool.validate_effective_metrics(definition_id, definition_version, rarity, power_metrics).is_empty():
+	if not (power_metrics is Dictionary):
+		return {"success": false, "reason": "candidate power metrics are missing"}
+	var calculated_power := pool.power_model.calculate_power_score(power_metrics)
+	if not bool(calculated_power.get("success", false)) or absf(float(calculated_power.get("powerScore", -1.0)) - power_score) > 0.000001 or not pool.validate_effective_metrics(definition_id, definition_version, rarity, power_metrics).is_empty() or not pool.validate_effective_power(definition_id, definition_version, rarity, power_score).is_empty():
 		return {"success": false, "reason": "candidate power metrics/score are outside the exact subsystem model and rarity budget"}
 	if not SpacePlayerProgressionCatalogService.validate_definition(bundle, item_kind, definition_id, definition_version):
 		return {"success": false, "reason": "candidate exact definition version is not present in the prepared catalog"}
