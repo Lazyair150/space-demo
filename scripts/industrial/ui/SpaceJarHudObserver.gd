@@ -595,13 +595,20 @@ func _render_order_skill_hud(raw_demands: Variant, raw_sessions: Variant, order_
 			tile_style.set_corner_radius_all(4)
 			tile_style.set_content_margin_all(5)
 			tile.add_theme_stylebox_override("panel", tile_style)
-			tile.custom_minimum_size = Vector2(112, 43) if area == "Active" else Vector2(104, 34)
-			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tile.custom_minimum_size = Vector2(148, 48) if area == "Active" else Vector2(104, 34)
 			var tile_box := UiKit.vbox(1)
 			tile.add_child(tile_box)
 			var title_row := UiKit.hbox(4)
 			tile_box.add_child(title_row)
-			title_row.add_child(UiKit.label("%s #%d" % [title, demand_id], UiKit.FONT_SMALL, accent))
+			var title_label := UiKit.label("%s #%d" % [title.left(13), demand_id], UiKit.FONT_SMALL, accent)
+			title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			title_row.add_child(title_label)
+			if area == "Active":
+				var trigger := UiKit.small_button("启动", 48)
+				trigger.disabled = cooling or not session.is_empty()
+				trigger.tooltip_text = "请求 Jar Core 启动此主动订单；资源可行性由 Core 最终判定。"
+				trigger.pressed.connect(func() -> void: _trigger_active_demand(demand_id))
+				title_row.add_child(trigger)
 			if not shape_text.is_empty():
 				tile_box.add_child(UiKit.label(shape_text, UiKit.FONT_SMALL, ShapeVisuals.color_for(primary_shape) if not primary_shape.is_empty() else UiKit.MUTED))
 			var state_text := ""
@@ -634,6 +641,22 @@ func _render_order_skill_hud(raw_demands: Variant, raw_sessions: Variant, order_
 		_active_order_slots.add_child(UiKit.label("暂无主动订单", UiKit.FONT_SMALL, UiKit.MUTED))
 	if passive_count == 0:
 		_passive_order_slots.add_child(UiKit.label("暂无被动订单", UiKit.FONT_SMALL, UiKit.MUTED))
+
+func _trigger_active_demand(demand_id: int) -> void:
+	if _host == null or not is_instance_valid(_host) or not _host.has_method("StartActiveDemand"):
+		_show_feedback("主动订单入口不可用", UiKit.WARN)
+		return
+	var raw_result: Variant = _host.call("StartActiveDemand", demand_id)
+	if not (raw_result is Dictionary):
+		_show_feedback("主动订单没有返回有效结果", UiKit.WARN)
+		return
+	var result: Dictionary = raw_result
+	if bool(result.get("success", false)):
+		_show_feedback("主动订单 #%d 已启动" % demand_id, UiKit.OK)
+	else:
+		var reason := String(result.get("reason", "Core 暂不允许启动"))
+		_show_feedback("主动订单 #%d 未启动：%s" % [demand_id, reason], UiKit.WARN)
+	_refresh_snapshot()
 
 func _demand_shape_summary(primary_shape: String, requirements: Array) -> String:
 	var parts: Array[String] = []
