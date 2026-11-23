@@ -120,6 +120,56 @@ static func run() -> bool:
 		return false
 	if frozen.to_dictionary().get("ownedInstanceSnapshots", []).size() != 6:
 		return false
+	if not _probe_assignments():
+		return false
+
 	var invalid := DEMO_BOARD.duplicate(true) as SpaceHangarBoardDefinition
 	invalid.slots.append(invalid.slots[0].duplicate(true) as SpaceHangarBoardSlotDefinition)
 	return not invalid.get_validation_errors().is_empty()
+
+static func _probe_assignments() -> bool:
+	var inventory := {
+		"isReady": true,
+		"parserChoices": [{"id": "parser.basic", "version": 1, "instanceId": "owned.parser", "itemKind": "ore_parser"}],
+		"deviceChoices": [{"id": "device.fabricator", "version": 2, "instanceId": "owned.device", "itemKind": "production_device"}],
+		"workshopInstanceChoices": [
+			{"id": "workshop.alpha", "version": 1, "instanceId": "owned.master", "itemKind": "workshop"},
+			{"id": "workshop.alpha", "version": 1, "instanceId": "owned.slave", "itemKind": "workshop"}
+		],
+		"skillChoices": [{"id": "skill.beam", "version": 3, "instanceId": "owned.skill", "itemKind": "skill"}]
+	}
+	var assignments := {
+		"workshop.master": {
+			"slotId": "workshop.master", "componentKind": "workshop",
+			"ownedInstanceId": "owned.master", "definitionId": "workshop.alpha", "definitionVersion": 1
+		},
+		"workshop.slave": {
+			"slotId": "workshop.slave", "componentKind": "workshop",
+			"ownedInstanceId": "owned.slave", "definitionId": "workshop.alpha", "definitionVersion": 1
+		},
+		"decomposition.parser.primary": {
+			"slotId": "decomposition.parser.primary", "componentKind": "ore_parser",
+			"ownedInstanceId": "owned.parser", "definitionId": "parser.basic", "definitionVersion": 1
+		}
+	}
+	if not SpaceHangarBoardAssignment.validate(DEMO_BOARD, assignments, inventory).is_empty():
+		return false
+	var first_snapshot := SpaceHangarBoardAssignment.build_snapshot(DEMO_BOARD, assignments)
+	var reversed := {}
+	var keys: Array = assignments.keys()
+	keys.reverse()
+	for key in keys:
+		reversed[key] = assignments[key]
+	var second_snapshot := SpaceHangarBoardAssignment.build_snapshot(DEMO_BOARD, reversed)
+	if String(first_snapshot.get("assignmentFingerprint", "")) != String(second_snapshot.get("assignmentFingerprint", "")):
+		return false
+	var duplicate_instance := assignments.duplicate(true)
+	duplicate_instance["orders.active.primary"] = {
+		"slotId": "orders.active.primary", "componentKind": "skill",
+		"ownedInstanceId": "owned.parser", "definitionId": "parser.basic", "definitionVersion": 1
+	}
+	if SpaceHangarBoardAssignment.validate(DEMO_BOARD, duplicate_instance, inventory).is_empty():
+		return false
+	var wrong_kind := assignments.duplicate(true)
+	wrong_kind["decomposition.parser.primary"]["componentKind"] = "workshop"
+	return not SpaceHangarBoardAssignment.validate(DEMO_BOARD, wrong_kind, inventory).is_empty()
