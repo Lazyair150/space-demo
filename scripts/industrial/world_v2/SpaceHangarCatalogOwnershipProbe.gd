@@ -167,6 +167,10 @@ static func run() -> bool:
 	}
 	if not ability_shapes.is_valid() or not ability_shapes.validate_skill(skill).is_empty():
 		return false
+	if ability_shapes.validate_shape_vocabulary(["round", "square", "diamond", "triangle", "hex"]).size() != 0:
+		return false
+	if ability_shapes.validate_shape_vocabulary(["round", "square"]).is_empty():
+		return false
 	var wrong_category_shape := skill.duplicate(true) as SpaceSkillDefinition
 	wrong_category_shape.primary_shape = &"round"
 	if ability_shapes.validate_skill(wrong_category_shape).is_empty():
