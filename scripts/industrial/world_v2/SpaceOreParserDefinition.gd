@@ -75,6 +75,15 @@ func build_runtime_profile() -> Dictionary:
 		"progressPerJarByShape": progress_per_jar_by_shape.duplicate(true)
 	}
 
+static func from_runtime_profile(profile: Dictionary) -> SpaceOreParserDefinition:
+	var definition := SpaceOreParserDefinition.new()
+	definition.parser_id = StringName(profile.get("parserId", ""))
+	definition.definition_version = int(profile.get("definitionVersion", 0))
+	definition.production_percentage = int(profile.get("productionPercentage", -1))
+	definition.shape_processing_rate_per_second = profile.get("shapeProcessingRatePerSecond", {}).duplicate(true)
+	definition.progress_per_jar_by_shape = profile.get("progressPerJarByShape", {}).duplicate(true)
+	return definition
+
 func build_device_selection(slot_id: String, shape_names: Array) -> Dictionary:
 	if slot_id.strip_edges().is_empty() or not is_valid_for_shapes(shape_names):
 		return {}
