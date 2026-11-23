@@ -82,6 +82,7 @@ func validate() -> PackedStringArray:
 		else:
 			slots[slot] = true
 		if device_id.is_empty() or version <= 0: errors.append("each production device must identify an exact definition version")
+		if has_owned_instance_selection() and String(raw.get("instanceId", "")).strip_edges().is_empty(): errors.append("owned production device selection requires an instance ID")
 	var order_keys := {}
 	for raw in skill_selections:
 		if not (raw is Dictionary):
@@ -93,6 +94,7 @@ func validate() -> PackedStringArray:
 		else: order_keys[key] = true
 		if skill_id.is_empty() or int(raw.get("definitionVersion", 0)) <= 0: errors.append("each skill must identify an exact definition version")
 		if String(raw.get("controlArea", "")).strip_edges().is_empty(): errors.append("each skill must select a control area")
+		if has_owned_instance_selection() and String(raw.get("instanceId", "")).strip_edges().is_empty(): errors.append("owned skill selection requires an instance ID")
 	return errors
 
 func has_owned_instance_selection() -> bool:
