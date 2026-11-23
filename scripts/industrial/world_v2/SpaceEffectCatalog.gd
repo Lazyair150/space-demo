@@ -12,14 +12,20 @@ func register_buff(definition: BuffDefinition) -> bool:
 	if _definitions.has(key):
 		push_error("Duplicate Space effect definition version: " + key)
 		return false
-	_definitions[key] = definition
+	var detached := definition.duplicate(true) as BuffDefinition
+	if detached == null or not detached.is_valid():
+		return false
+	_definitions[key] = detached
 	return true
 
 func resolve_buff(definition_id: String, version: int) -> BuffDefinition:
 	if definition_id.strip_edges().is_empty() or version <= 0:
 		return null
 	var result: Variant = _definitions.get(_key(definition_id, version), null)
-	return result as BuffDefinition
+	if not (result is BuffDefinition):
+		return null
+	# Never expose the catalog-owned Resource; callers receive an isolated exact-version copy.
+	return (result as BuffDefinition).duplicate(true) as BuffDefinition
 
 func resolve_balance_metrics(definition_id: String, version: int) -> Dictionary:
 	var definition := resolve_buff(definition_id, version)
