@@ -15,7 +15,7 @@ static func run() -> bool:
 	ship_anchor.component_kind = "device"
 	ship_anchor.normalized_position = Vector2(0.7, 0.5)
 	ship.display_anchors.append(ship_anchor)
-	ship.expected_stone_progress_per_second_by_shape = {"round": 2.0}
+	ship.expected_stone_progress_per_second_by_shape = {"round": 2.0, "square": 2.0, "diamond": 2.0, "triangle": 2.0, "hex": 2.0}
 	var ships := SpaceShipCatalog.new()
 	if not ships.register_definition(ship):
 		return false
@@ -91,9 +91,9 @@ static func run() -> bool:
 	workshop.display_name = "Probe Workshop"
 	workshop.display_icon = GradientTexture2D.new()
 	workshop.jar_world_options = {
-		"shapes": ["round", "square"],
+		"shapes": ["round", "square", "diamond", "triangle", "hex"],
 		"liquids": ["blocked-liquid", "other-liquid"],
-		"producers": [{"name": "probe", "rates": {"round": 1.0, "square": 0.0}}],
+		"producers": [{"name": "probe", "rates": {"round": 1.0, "square": 0.0, "diamond": 0.0, "triangle": 0.0, "hex": 0.0}}],
 		"initialLiquidStock": {"blocked-liquid": 3, "other-liquid": 0},
 		"jarFlowRatePerLogicalTime": 1.0,
 		"liquidFlowRatePerLogicalTime": 1.0,
@@ -140,8 +140,8 @@ static func run() -> bool:
 	parser.display_name = "Probe Parser"
 	parser.display_icon = GradientTexture2D.new()
 	parser.production_percentage = 100
-	parser.shape_processing_rate_per_second = {"round": 1.0}
-	parser.progress_per_jar_by_shape = {"round": 1.0}
+	parser.shape_processing_rate_per_second = {"round": 1.0, "square": 1.0, "diamond": 1.0, "triangle": 1.0, "hex": 1.0}
+	parser.progress_per_jar_by_shape = {"round": 1.0, "square": 1.0, "diamond": 1.0, "triangle": 1.0, "hex": 1.0}
 	var parsers := SpaceOreParserCatalog.new()
 	if not parsers.register_definition(parser):
 		return false
@@ -493,6 +493,63 @@ static func run() -> bool:
 		return false
 	if not bool(balanced_skill_binding.balanceReport.get("valid", false)):
 		return false # Skill growth must be re-evaluated against the benefit-to-Jar curve.
+	var owned_hangar_bundle := SpaceHangarCatalogBundleResource.new()
+	owned_hangar_bundle.ship_catalog = ships
+	owned_hangar_bundle.production_device_catalog = devices
+	owned_hangar_bundle.ore_parser_catalog = parsers
+	owned_hangar_bundle.workshop_combination_catalog = workshops
+	owned_hangar_bundle.skill_definitions = [skill]
+	owned_hangar_bundle.ability_shape_profile = ability_shapes
+	owned_hangar_bundle.balance_profile = SpaceSkillBalanceProfile.new()
+	owned_hangar_bundle.effect_definitions = [effect]
+	if owned_hangar_bundle.create_runtime_bundle() == null:
+		return false
+	var hangar_owned_state := SpacePlayerProgressionState.new()
+	hangar_owned_state.player_id = &"probe.hangar-player"
+	var owned_ship := SpaceOwnedProgressionInstance.new()
+	owned_ship.instance_id = &"hangar.ship.1"
+	owned_ship.item_kind = "ship"
+	owned_ship.definition_id = ship.ship_id
+	owned_ship.definition_version = ship.definition_version
+	var owned_device := SpaceOwnedProgressionInstance.new()
+	owned_device.instance_id = &"hangar.device.1"
+	owned_device.item_kind = "production_device"
+	owned_device.definition_id = device.device_id
+	owned_device.definition_version = device.definition_version
+	var owned_master := SpaceOwnedProgressionInstance.new()
+	owned_master.instance_id = &"hangar.workshop.master.1"
+	owned_master.item_kind = "workshop"
+	owned_master.definition_id = local_master.workshop_id
+	owned_master.definition_version = local_master.definition_version
+	var owned_slave := SpaceOwnedProgressionInstance.new()
+	owned_slave.instance_id = &"hangar.workshop.slave.1"
+	owned_slave.item_kind = "workshop"
+	owned_slave.definition_id = local_slave.workshop_id
+	owned_slave.definition_version = local_slave.definition_version
+	var owned_skill := SpaceOwnedProgressionInstance.new()
+	owned_skill.instance_id = &"hangar.skill.1"
+	owned_skill.item_kind = "skill"
+	owned_skill.definition_id = skill.skill_id
+	owned_skill.definition_version = skill.definition_version
+	for owned in [owned_ship, parser_instance, owned_device, owned_master, owned_slave, owned_skill]:
+		if not SpacePlayerProgressionCatalogService.unlock_definition(
+			hangar_owned_state, owned_hangar_bundle.create_runtime_bundle(),
+			owned.item_kind, String(owned.definition_id), owned.definition_version
+		):
+			return false
+		if not SpacePlayerProgressionCatalogService.acquire_instance(
+			hangar_owned_state, owned_hangar_bundle.create_runtime_bundle(), owned
+		):
+			return false
+	var owned_inventory := SpaceHangarOwnedInventoryBuilder.build(owned_hangar_bundle, hangar_owned_state)
+	if not bool(owned_inventory.get("isReady", false)):
+		return false
+	if owned_inventory.shipChoices.size() != 1 or owned_inventory.parserChoices.size() != 1 or owned_inventory.deviceChoices.size() != 1 or owned_inventory.skillChoices.size() != 1:
+		return false
+	if owned_inventory.workshopChoices.size() != 1 or owned_inventory.workshopInstanceChoices.size() != 2:
+		return false
+	if String(owned_inventory.workshopChoices[0].masterInstanceId) != String(owned_master.instance_id) or String(owned_inventory.workshopChoices[0].slaveInstanceId) != String(owned_slave.instance_id):
+		return false
 	var cross_subsystem_growth := skill_growth_instance.duplicate(true) as SpaceOwnedProgressionInstance
 	cross_subsystem_growth.growth_attributes = {"maxJarsBonus": 2}
 	if SpaceProgressionRuntimeProfileComposer.compose_skill(skill_for_growth, cross_subsystem_growth) != null:
