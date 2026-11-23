@@ -13,8 +13,6 @@ class_name SpaceWorkshopCombinationDefinition
 ## Exact-version Core-owned Jar order templates available in this World V2 vocabulary.
 @export var core_order_templates: Array[SpaceCoreOrderTemplateDefinition] = []
 @export var workshop_definitions: Array[SpaceWorkshopDefinition] = []
-## Deprecated authoring hint for definition-only development fixtures; production owned selection ignores it.
-@export var workshop_pair: SpaceWorkshopPairDefinition
 @export var operation_cost_by_order_type: Dictionary = {}
 @export var liquid_handling_operation_cost: float = 0.0
 
@@ -81,8 +79,6 @@ func get_validation_errors() -> PackedStringArray:
 			errors.append("workshop roster identities and names must be unique")
 		ids[id] = true
 		names[name] = true
-	if workshop_pair != null:
-		errors.append_array(workshop_pair.get_validation_errors(workshop_definitions))
 	if not operation_cost_by_order_type.has("A") or not operation_cost_by_order_type.has("B"):
 		errors.append("workshop combination must author operation costs for both A and B")
 	for order_type in ["A", "B"]:
@@ -98,10 +94,6 @@ func build_jar_world_options(master_workshop_id: String = "", slave_workshop_id:
 		return {}
 	var selected_master_id := master_workshop_id
 	var selected_slave_id := slave_workshop_id
-	# Legacy development fixtures may still use their authored default pair.
-	if selected_master_id.is_empty() and selected_slave_id.is_empty() and workshop_pair != null:
-		selected_master_id = String(workshop_pair.master_workshop_id)
-		selected_slave_id = String(workshop_pair.slave_workshop_id)
 	if selected_master_id.is_empty() and selected_slave_id.is_empty() and not workshop_definitions.is_empty():
 		# Validation/template inspection may materialize two positions from one definition.
 		# Production Hangar always passes the exact two selected Owned Instance definitions.
