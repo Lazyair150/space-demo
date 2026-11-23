@@ -15,4 +15,4 @@ recommended_loadout_level = 5
 estimated_minutes = 8
 wave_plans = Array[Dictionary]([{"segment":"pressure","chaser_count":3,"shooter_count":2,"elite_count":1,"break_seconds":3.0},{"segment":"boss","chaser_count":0,"shooter_count":0,"elite_count":1,"break_seconds":0.0,"boss_id":"rift_warden"}])
 completion_rewards = {}
-difficulty_profile = {"under_level_penalty_per_level":0.0,"over_level_pressure_per_level":0.0,"minimum_encounter_scale":1.0,"maximum_encounter_scale":1.0}
+difficulty_profile = {"under_level_assistance_per_level":0.06,"over_level_pressure_per_level":0.08,"minimum_encounter_scale":0.8,"maximum_encounter_scale":1.4}
