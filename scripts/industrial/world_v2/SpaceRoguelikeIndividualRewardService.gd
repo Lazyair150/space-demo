@@ -7,9 +7,10 @@ static func acquire_candidate(
 	bundle: SpaceHangarCatalogBundle,
 	library: SpaceRoguelikeIndividualLibrary,
 	candidate: Dictionary,
-	instance_id: String
+	instance_id: String,
+	reward_id: String
 ) -> Dictionary:
-	if state == null or bundle == null or library == null or instance_id.strip_edges().is_empty():
+	if state == null or bundle == null or library == null or instance_id.strip_edges().is_empty() or reward_id.strip_edges().is_empty():
 		return {"success": false, "reason": "reward acquisition dependencies are missing"}
 	if not state.get_validation_errors().is_empty() or not bundle.validate_and_prepare().is_empty() or not library.is_valid():
 		return {"success": false, "reason": "progression state, catalog bundle or individual library is invalid"}
@@ -66,10 +67,11 @@ static func acquire_candidate(
 			"powerModelVersion": pool.power_model_version,
 			"rarity": rarity,
 			"basePowerScore": power_score,
-			"powerMetrics": power_metrics.duplicate(true)
+			"powerMetrics": power_metrics.duplicate(true),
+			"rewardId": reward_id
 		}
 	}
-	if not state.unlock_and_acquire_instance(instance):
+	if not state.unlock_and_acquire_instance(instance, reward_id):
 		return {"success": false, "reason": "progression aggregate rejected atomic unlock/acquisition"}
 	return {
 		"success": true,
