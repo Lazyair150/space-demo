@@ -64,6 +64,13 @@ func get_production_validation_errors() -> PackedStringArray:
 			errors.append("production power metric must explicitly declare scoringMode: " + String(metric))
 		if item_kind == "workshop" and ["max_jars", "max_liquids", "liquid_staging_capacity"].has(String(metric)) and mode != "target_value":
 			errors.append("workshop capacity metric must use target_value rather than assuming more is always better: " + String(metric))
+		if item_kind == "workshop" and (
+			String(metric).begins_with("base_mark.") or
+			String(metric).begins_with("additional_mark.") or
+			String(metric).begins_with("ban.") or
+			String(metric) == "uses_core_staging_fallback"
+		) and mode != "target_value":
+			errors.append("workshop rule/fallback metric must use target_value against an authored workload context: " + String(metric))
 	return errors
 
 func calculate_power_score(metrics: Dictionary) -> Dictionary:
