@@ -53,6 +53,29 @@ static func run() -> bool:
 		return false
 	if absf(float(difficulty.encounterScale) - 1.16) > 0.000001:
 		return false
+
+	var collect_objective := SpaceStageObjectiveRuntime.new()
+	if not collect_objective.configure(ore_convoy):
+		return false
+	if not collect_objective.record_resource("wrong_resource", 5.0):
+		return false
+	if collect_objective.record_resource("energy_stone", 2.0) == false or collect_objective.is_complete():
+		return false
+	if not collect_objective.record_resource("energy_stone", 3.0) or not collect_objective.is_complete():
+		return false
+	var objective_checkpoint := collect_objective.capture_state()
+	var restored_objective := SpaceStageObjectiveRuntime.new()
+	if not restored_objective.restore_state(ore_convoy, objective_checkpoint) or not restored_objective.is_complete():
+		return false
+
+	var boss_objective := SpaceStageObjectiveRuntime.new()
+	if not boss_objective.configure(boss_stage) or boss_objective.record_boss_defeated("wrong_boss"):
+		return false
+	if not boss_objective.record_boss_defeated("rift_warden") or boss_objective.is_complete():
+		return false
+	if not boss_objective.mark_encounters_completed() or not boss_objective.is_complete():
+		return false
+
 	var director := SpaceStageEncounterDirector.new()
 	if not director.configure(first, loadout):
 		return false
