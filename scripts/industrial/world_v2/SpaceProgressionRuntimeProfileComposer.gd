@@ -110,11 +110,46 @@ static func compose_skill(definition: SpaceSkillDefinition, instance: SpaceOwned
 	if not _matches(definition, instance, "skill", String(definition.skill_id if definition != null else &""), definition.definition_version if definition != null else 0):
 		return null
 	var growth := instance.growth_attributes
+	for raw_key in growth:
+		var key := String(raw_key)
+		if not (key.begins_with("effectAdd.") or key.begins_with("effectMul.") or key.begins_with("benefitAdd.") or key.begins_with("benefitMul.")):
+			return null
 	var result := definition.duplicate(true) as SpaceSkillDefinition
 	var parameters := result.effect_parameters.duplicate(true)
-	if not _apply_flat_numeric_overlay(parameters, growth, "effectAdd.", "effectMul."):
+	if not _apply_flat_numeric_overlay(parameters, _filter_prefixes(growth, ["effectAdd.", "effectMul."]), "effectAdd.", "effectMul."):
 		return null
 	result.effect_parameters = parameters
+	return result
+
+static func compose_skill_binding(binding: Dictionary, definition: SpaceSkillDefinition, instance: SpaceOwnedProgressionInstance, balance_profile: SpaceSkillBalanceProfile) -> Dictionary:
+	var skill := compose_skill(definition, instance)
+	if skill == null or balance_profile == null or not balance_profile.is_valid():
+		return {}
+	var result := binding.duplicate(true)
+	var benefit: Variant = result.get("benefitProfile", null)
+	var jar_order: Variant = result.get("jarOrder", null)
+	var context: Variant = result.get("balanceContext", null)
+	if not (benefit is Dictionary) or not (jar_order is Dictionary) or not (context is Dictionary):
+		return {}
+	var adjusted_benefit: Dictionary = benefit.duplicate(true)
+	if not _apply_flat_numeric_overlay(adjusted_benefit, _filter_prefixes(instance.growth_attributes, ["benefitAdd.", "benefitMul."]), "benefitAdd.", "benefitMul."):
+		return {}
+	var report := SpaceSkillBalanceModel.evaluate(adjusted_benefit, jar_order, context, balance_profile)
+	if not bool(report.get("valid", false)):
+		return {}
+	result["benefitProfile"] = adjusted_benefit
+	result["balanceReport"] = report
+	result["effectBinding"] = result.get("effectBinding", {}).duplicate(true)
+	result["effectBinding"]["effectParameters"] = skill.effect_parameters.duplicate(true)
+	return result
+
+static func _filter_prefixes(source: Dictionary, prefixes: Array) -> Dictionary:
+	var result := {}
+	for key in source:
+		for prefix in prefixes:
+			if String(key).begins_with(String(prefix)):
+				result[key] = source[key]
+				break
 	return result
 
 static func _matches(definition: Resource, instance: SpaceOwnedProgressionInstance, kind: String, definition_id: String, version: int) -> bool:
