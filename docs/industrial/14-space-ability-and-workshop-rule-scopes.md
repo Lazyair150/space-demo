@@ -197,3 +197,18 @@ Each manifest entry carries exact slot, component kind, Owned Instance ID, Defin
 The manifest is assembled only after the parser, workshop, device, and skill runtime profiles have been composed. `SpaceBattleLoadoutSnapshot` rebuilds and validates it against those actual frozen profiles; a missing consumer profile or altered profile fingerprint rejects the loadout.
 
 This is a routing/identity contract, not permission to silently ignore authored Rule Contributions. The Core-facing Rule Profile remains workshop-only. Parser, Skill, and Production Device Rule Contributions still require explicit subsystem semantics and executors before they can be accepted. The manifest makes the consumer boundary explicit so future profile extensions cannot accidentally share the Core workshop execution context.
+
+
+## Board runtime profile provenance closure (2026-11-24)
+
+The consumer manifest now verifies more than slot-to-consumer routing. Before a frozen profile can be fingerprinted, its payload must match the exact Board Assignment provenance:
+
+- Workshop slots resolve through the frozen Master/Slave role selection; Owned Instance ID, Definition ID/version, and progression revision must match the assignment.
+- Parser slots require exactly one matching parser device selection. The device identity and parser profile identity must both match the assigned Definition, version, Owned Instance, and progression revision.
+- Skill slots require exactly one matching order binding. Skill Definition identity, frozen Owned Instance provenance, and control-area role must match the assigned slot.
+- Production-device slots require exactly one matching device selection with the exact assigned Definition and Owned Instance provenance.
+- Missing, duplicate, stale, or cross-instance consumer records fail closed before the manifest is accepted.
+
+This remains a routing/provenance contract, not a rule interpreter. It does not make Parser, Skill, or Production Device Rule Contributions executable, and it does not expand the current one-Parser/two-workshop runtime projection.
+
+The Board Definition Probe now includes direct rejection cases for parser Definition substitution, skill progression-revision drift, workshop Definition-version drift, and duplicate parser consumer entries. These checks are authored but have not been executed in Godot 4.7.1 .NET.
