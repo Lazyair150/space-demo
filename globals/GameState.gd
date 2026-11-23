@@ -152,7 +152,24 @@ func record_space_stage_clear(stage: SpaceStageDefinition, result: Dictionary, s
 
 func _load_space_campaign_progress_state() -> void:
 	var cfg := ConfigFile.new()
-	if cfg.load(SPACE_CAMPAIGN_SAVE_PATH) != OK:
+	var load_result := cfg.load(SPACE_CAMPAIGN_SAVE_PATH)
+	var backup_path := SPACE_CAMPAIGN_SAVE_PATH + ".previous"
+	if load_result != OK and FileAccess.file_exists(backup_path):
+		var backup_cfg := ConfigFile.new()
+		if backup_cfg.load(backup_path) == OK:
+			var absolute_target := ProjectSettings.globalize_path(SPACE_CAMPAIGN_SAVE_PATH)
+			var absolute_backup := ProjectSettings.globalize_path(backup_path)
+			if FileAccess.file_exists(SPACE_CAMPAIGN_SAVE_PATH):
+				DirAccess.remove_absolute(absolute_target)
+			if DirAccess.rename_absolute(absolute_backup, absolute_target) == OK:
+				cfg = backup_cfg
+				load_result = OK
+	if load_result == OK and FileAccess.file_exists(backup_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(backup_path))
+	var pending_path := SPACE_CAMPAIGN_SAVE_PATH + ".pending"
+	if FileAccess.file_exists(pending_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(pending_path))
+	if load_result != OK:
 		space_campaign_progress_state = SpaceCampaignProgressState.new()
 	else:
 		var raw: Variant = cfg.get_value("campaign", "state", null)
