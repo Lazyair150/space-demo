@@ -20,11 +20,14 @@ static func _probe_parser() -> bool:
 		"shape_count": 2.0,
 		"processing_rate.round": 2.0,
 		"progress_required_per_jar.round": 2.0,
-		"throughput_per_jar.round": 1.0,
+		"effective_processing_rate.round": 1.0,
+		"throughput_per_jar.round": 0.5,
 		"processing_rate.square": 4.0,
+		"effective_processing_rate.square": 2.0,
 		"progress_required_per_jar.square": 1.0,
-		"throughput_per_jar.square": 4.0,
+		"throughput_per_jar.square": 2.0,
 		"average_processing_rate": 3.0,
+		"average_effective_processing_rate": 1.5,
 		"average_progress_required_per_jar": 1.5
 	}
 	var model := _model("probe.parser.power", "ore_parser", metrics)
@@ -33,7 +36,28 @@ static func _probe_parser() -> bool:
 		return false
 	var pool := _pool_for_model("probe.parser.pool", "ore_parser", model)
 	var built := SpaceRoguelikeIndividualPoolEntryBuilder.append_parser(pool, parser, ["round", "square"], "common", 1.0)
-	return bool(built.get("success", false)) and pool.is_valid()
+	if not bool(built.get("success", false)) or not pool.is_valid():
+		return false
+	var owned_parser := SpaceOwnedProgressionInstance.new()
+	owned_parser.instance_id = &"probe.parser.owned"
+	owned_parser.item_kind = "ore_parser"
+	owned_parser.definition_id = parser.parser_id
+	owned_parser.definition_version = parser.definition_version
+	owned_parser.growth_attributes = {
+		"shapeProcessingRateMultiplier": 1.5,
+		"progressPerJarMultiplier": 0.5,
+		"productionPercentageBonus": 10
+	}
+	var effective := SpaceIndividualPowerEvaluator.evaluate_effective_parser(
+		parser, owned_parser, ["round", "square"], model
+	)
+	if not bool(effective.get("success", false)):
+		return false
+	var effective_metrics: Dictionary = effective.powerMetrics
+	return is_equal_approx(float(effective_metrics["production_percentage"]), 60.0) \
+		and is_equal_approx(float(effective_metrics["effective_processing_rate.round"]), 1.8) \
+		and is_equal_approx(float(effective_metrics["throughput_per_jar.round"]), 1.8) \
+		and is_equal_approx(float(effective_metrics["throughput_per_jar.square"]), 7.2)
 
 static func _probe_workshop() -> bool:
 	var workshop := SpaceWorkshopDefinition.new()
