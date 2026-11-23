@@ -73,6 +73,8 @@ func _build() -> void:
 	column.add_child(UiKit.title("工作台"))
 	_master_box = UiKit.vbox(3)
 	column.add_child(_master_box)
+	var transfer_hint := UiKit.label("资源方向  主台  ─────▶  从台   ·   从台只接收主台提供的液体", UiKit.FONT_SMALL, UiKit.ACCENT)
+	column.add_child(transfer_hint)
 	_slave_box = UiKit.vbox(3)
 	column.add_child(_slave_box)
 
@@ -365,10 +367,27 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 	var jars: Array = workshop.get("jars", [])
 	var liquids: Dictionary = workshop.get("liquids", {})
 	var accent := ShapeVisuals.blend_marks(base, extra)
-	var title := UiKit.label("%s · %s   舱段 %d / %d" % [role, String(workshop.get("name", "")), jars.size(), int(workshop.get("maxJars", 0))], UiKit.FONT_BODY, accent)
-	parent.add_child(title)
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var card_style := StyleBoxFlat.new()
+	card_style.bg_color = Color("151d28")
+	card_style.border_color = accent
+	card_style.set_border_width_all(2)
+	card_style.set_corner_radius_all(7)
+	card_style.set_content_margin_all(8)
+	card.add_theme_stylebox_override("panel", card_style)
+	parent.add_child(card)
+	var content := UiKit.vbox(4)
+	card.add_child(content)
+	var header := UiKit.hbox(8)
+	content.add_child(header)
+	var role_tag := UiKit.label("主台" if role == "主台" else "从台", UiKit.FONT_BODY, accent)
+	header.add_child(role_tag)
+	header.add_child(UiKit.label(String(workshop.get("name", "")), UiKit.FONT_BODY, UiKit.TEXT))
+	header.add_child(UiKit.spacer())
+	header.add_child(UiKit.label("Jar %d / %d" % [jars.size(), int(workshop.get("maxJars", 0))], UiKit.FONT_SMALL, accent))
 	var marks := UiKit.hbox(6)
-	parent.add_child(marks)
+	content.add_child(marks)
 	for shape in base:
 		marks.add_child(_shape_token(String(shape), "基础"))
 	for shape in extra:
@@ -377,7 +396,7 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 		var jar_row := HFlowContainer.new()
 		jar_row.add_theme_constant_override("h_separation", 5)
 		jar_row.add_theme_constant_override("v_separation", 5)
-		parent.add_child(jar_row)
+		content.add_child(jar_row)
 		var shown := 0
 		for jar in jars:
 			if shown >= 12:
@@ -389,7 +408,7 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 			jar_row.add_child(UiKit.label("+%d 只" % (jars.size() - shown), UiKit.FONT_SMALL, UiKit.MUTED))
 
 	var liquid_row := UiKit.vbox(3)
-	parent.add_child(liquid_row)
+	content.add_child(liquid_row)
 	var liquid_capacity := int(workshop.get("maxLiquids", 0))
 	for liquid in liquids:
 		var liquid_line := UiKit.hbox(6)
@@ -416,7 +435,7 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 		var ban_names: Array[String] = []
 		for ban in bans:
 			ban_names.append(String(ban))
-		parent.add_child(UiKit.label("禁令：%s" % "、".join(ban_names), UiKit.FONT_SMALL, UiKit.WARN))
+		content.add_child(UiKit.label("⚠ 禁令：%s" % "、".join(ban_names), UiKit.FONT_SMALL, UiKit.WARN))
 
 func _render_demands(raw_demands: Variant, raw_sessions: Variant, order_presentation: Dictionary) -> void:
 	UiKit.clear_children(_demands_box)
