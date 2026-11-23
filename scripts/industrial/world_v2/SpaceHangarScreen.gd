@@ -343,8 +343,13 @@ func _render_view_model(view_model: Dictionary) -> void:
 	_fill_picker(_ship_picker, selectable_inventory.get("shipChoices", []), "没有可用飞船定义", "ship")
 	_fill_picker(_parser_picker, selectable_inventory.get("parserChoices", []), "没有可用解析器定义", "parser")
 	_fill_picker(_workshop_picker, selectable_inventory.get("workshopWorldChoices", selectable_inventory.get("workshopChoices", [])), "没有可用工作区规则配置", "workshop")
-	_fill_picker(_master_workshop_picker, selectable_inventory.get("workshopInstanceChoices", []), "主台位置未安装元件", "workshop")
-	_fill_picker(_slave_workshop_picker, selectable_inventory.get("workshopInstanceChoices", []), "从台位置未安装元件", "workshop")
+	var selected_world_key := String(selection.get("workshopId", "")) + "@" + str(int(selection.get("workshopVersion", 0)))
+	var compatible_workshop_instances: Array = []
+	for choice in selectable_inventory.get("workshopInstanceChoices", []):
+		if choice is Dictionary and (selected_world_key == "@" or selected_world_key.ends_with("@0") or choice.get("compatibleWorldKeys", []).has(selected_world_key)):
+			compatible_workshop_instances.append(choice)
+	_fill_picker(_master_workshop_picker, compatible_workshop_instances, "主台位置未安装兼容元件", "workshop")
+	_fill_picker(_slave_workshop_picker, compatible_workshop_instances, "从台位置未安装兼容元件", "workshop")
 	_select_exact(_ship_picker, String(selection.get("shipId", "")), int(selection.get("shipVersion", 0)), String(selection.get("shipInstanceId", "")))
 	_select_exact(_parser_picker, String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)), String(selection.get("parserInstanceId", "")))
 	_select_exact(_workshop_picker, String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)))
