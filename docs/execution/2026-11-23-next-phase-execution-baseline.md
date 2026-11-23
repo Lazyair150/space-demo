@@ -418,3 +418,5 @@
 - Probe 增加 World A 安装两个工作台、切换到不兼容 World B 必须失败且两份 Owned Instance 仍保留的场景。
 - Probe 还增加完整 Board 上通过通用 `assign_instance` 安装工作台、Parser、Active/Passive Skill 的路径，并校验冻结 Assignment Snapshot 的五个槽位。
 - 上述 Probe 仍未在 Godot 中执行；属于已写入的自动验收代码，不代表运行通过。
+
+- 动态槽位面板现按 Board Slot 的 areaId 分组展示工作区、分解区、订单区和生产区；旧选择投影路径也必须与 Skill Slot 的 controlArea 完全一致，不再覆盖或猜测槽位属性。
