@@ -93,6 +93,14 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("store accepted a dispatcher from a different frozen loadout")
 
+    var malformed_event_dispatcher := dispatcher.duplicate(true)
+    malformed_event_dispatcher["processedEventIds"] = ["probe-jar-world:01:1"]
+    var malformed_event_effects := effects.duplicate(true)
+    malformed_event_effects["processedOrderEventIds"] = ["probe-jar-world:01:1"]
+    if store.save(malformed_event_effects, malformed_event_dispatcher, identity, runtime_checkpoint):
+        _cleanup(absolute_path)
+        return _failure("store accepted a non-canonical Jar event identity")
+
     var invalid_effect_state := {"activeEffects": [], "processedOrderEventIds": [event_id]}
     if store.save(invalid_effect_state, dispatcher, identity, runtime_checkpoint):
         _cleanup(absolute_path)
