@@ -22,6 +22,8 @@ func get_validation_errors(shape_vocabulary: Array, liquid_vocabulary: Array) ->
 		errors.append("Core order template type must be A or B")
 	if requirements.is_empty():
 		errors.append("Core order template must contain at least one Jar requirement")
+	if requirements.size() > 10:
+		errors.append("Core order template cannot exceed Jar Core maximum of 10 requirements")
 	var seen_full_jar := false
 	for index in range(requirements.size()):
 		var requirement: Dictionary = requirements[index]
