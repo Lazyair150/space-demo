@@ -64,7 +64,7 @@ func _ready() -> void:
 	GameState.space_campaign_progress_changed.connect(_on_campaign_progress_changed)
 	_build_interface()
 	_controller.view_model_changed.connect(_on_view_model_changed)
-	var ready := _controller.configure(_preparation, loadout_identity)
+	var ready := _controller.configure(_preparation, loadout_identity, board_definition)
 	if ready:
 		_controller.set_expected_battle_duration(_duration_picker.value)
 	_render_view_model(_controller.get_view_model())
