@@ -60,6 +60,10 @@ func build_loadout_snapshot() -> SpaceBattleLoadoutSnapshot:
 		_last_error = "Hangar controller has not been configured"
 		_emit_changed()
 		return null
+	if not _identity_is_valid():
+		_last_error = "Stable ship-world/loadout identity must be supplied by the owning game flow"
+		_emit_changed()
+		return null
 	var snapshot := _preparation.build_loadout_from_draft(_identity, _draft)
 	_last_error = "" if snapshot != null else "Current selection could not be assembled; check exact versions and cross-catalog compatibility"
 	_emit_changed()
@@ -71,11 +75,13 @@ func get_view_model() -> Dictionary:
 	var validation_errors: PackedStringArray = PackedStringArray()
 	if _draft != null and _draft.is_ready() and selection == null:
 		validation_errors.append("Selection is incomplete or invalid")
+	if not _identity_is_valid():
+		validation_errors.append("Stable ship-world/loadout identity has not been supplied")
 	return {
 		"isReady": _draft != null and _draft.is_ready(),
 		"inventory": _inventory.duplicate(true),
 		"selection": selection_data,
-		"canBuild": selection != null and _preparation != null,
+		"canBuild": selection != null and _preparation != null and _identity_is_valid(),
 		"validationErrors": validation_errors,
 		"lastError": _last_error
 	}
@@ -88,6 +94,13 @@ func _apply(accepted: bool) -> bool:
 	_last_error = ""
 	_emit_changed()
 	return true
+
+func _identity_is_valid() -> bool:
+	return (
+		String(_identity.get("shipWorldId", "")).strip_edges() != ""
+		and String(_identity.get("loadoutId", "")).strip_edges() != ""
+		and int(_identity.get("loadoutVersion", 0)) > 0
+	)
 
 func _emit_changed() -> void:
 	view_model_changed.emit(get_view_model())
