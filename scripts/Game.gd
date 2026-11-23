@@ -140,7 +140,7 @@ func _initialize_ore_parser() -> bool:
 		_ore_parser_runtime = null
 		return false
 	if not _persisted_ore_parser_state.is_empty():
-		if int(_persisted_ore_parser_state.get("schemaVersion", 0)) != 1:
+		if int(_persisted_ore_parser_state.get("schemaVersion", 0)) != 2:
 			push_error("[Game] Unsupported Space ore parser envelope schema")
 			return false
 		var parser_state: Variant = _persisted_ore_parser_state.get("parserRuntime", null)
@@ -151,12 +151,20 @@ func _initialize_ore_parser() -> bool:
 		if typeof(raw_next_pickup_sequence) != TYPE_INT or int(raw_next_pickup_sequence) <= 0:
 			push_error("[Game] Saved energy-stone pickup sequence is malformed")
 			return false
+		var raw_drop_rng_state: Variant = _persisted_ore_parser_state.get("dropRngState", null)
+		var spawner := get_node_or_null("Spawner")
+		if typeof(raw_drop_rng_state) != TYPE_INT or spawner == null or not spawner.has_method("restore_energy_stone_drop_rng_state"):
+			push_error("[Game] Saved energy-stone drop RNG state or Spawner owner is invalid")
+			return false
 		_next_energy_stone_pickup_sequence = int(raw_next_pickup_sequence)
+		if not _validate_energy_stone_pickup_sequence(_persisted_ore_parser_state, parser_state):
+			return false
 		var restored := _ore_parser_runtime.restore_state(parser_state)
 		if not bool(restored.get("success", false)):
 			push_error("[Game] Ore parser state restore failed: " + String(restored.get("reason", "")))
 			return false
-		if not _validate_energy_stone_pickup_sequence(_persisted_ore_parser_state, parser_state):
+		if not bool(spawner.call("restore_energy_stone_drop_rng_state", int(raw_drop_rng_state))):
+			push_error("[Game] Energy-stone drop RNG state restore failed")
 			return false
 		if not _restore_pending_energy_stone_pickups(_persisted_ore_parser_state, shape_names, parser_state):
 			return false
@@ -353,10 +361,15 @@ func capture_ore_parser_state() -> Dictionary:
 	pending_pickups.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		return String(a.pickupId) < String(b.pickupId)
 	)
+	var spawner := get_node_or_null("Spawner")
+	if spawner == null or not spawner.has_method("capture_energy_stone_drop_rng_state"):
+		push_error("[Game] Cannot capture parser checkpoint without the enemy drop RNG owner")
+		return {}
 	return {
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"parserRuntime": _ore_parser_runtime.capture_state(),
 		"nextPickupSequence": _next_energy_stone_pickup_sequence,
+		"dropRngState": int(spawner.call("capture_energy_stone_drop_rng_state")),
 		"pendingPickups": pending_pickups
 	}
 
