@@ -631,7 +631,11 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 	var jar_checkpoint := String(jar_host.CaptureExecutionCheckpointJson())
 	var parser_checkpoint := capture_ore_parser_state()
 	var stage_checkpoint := _capture_stage_runtime_checkpoint()
-	if (_selected_stage != null and stage_checkpoint.is_empty()) or jar_checkpoint.is_empty() or int(parser_checkpoint.get("schemaVersion", 0)) != 2:
+	var stage_spawner := get_node_or_null("Spawner")
+	if _selected_stage != null and (stage_checkpoint.is_empty() or stage_spawner == null or not stage_spawner.has_method("can_capture_finite_stage_checkpoint") or not bool(stage_spawner.call("can_capture_finite_stage_checkpoint"))):
+		push_warning("[Game] Finite-stage checkpoint is available only during an enemy-free inter-beat boundary")
+		return {}
+	if jar_checkpoint.is_empty() or int(parser_checkpoint.get("schemaVersion", 0)) != 2:
 		push_error("[Game] Coordinated checkpoint is incomplete: Jar or ore-parser state is missing")
 		return {}
 	return {
@@ -689,6 +693,8 @@ func restore_battle_stage_from_checkpoint(stage: SpaceStageDefinition, source: D
 		return false
 	var director := SpaceStageEncounterDirector.new()
 	if not director.restore_state(stage, _battle_loadout.to_dictionary(), director_state):
+		return false
+	if director.state() != SpaceStageEncounterDirector.State.ACTIVE or bool(source.get("completionEmitted", false)):
 		return false
 	var objective := SpaceStageObjectiveRuntime.new()
 	if not objective.restore_state(stage, objective_state, protected_target):
