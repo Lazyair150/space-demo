@@ -183,6 +183,58 @@ static func evaluate_skill(
 		scored["balanceContext"] = balance_context.duplicate(true)
 	return scored
 
+## Re-evaluate a skill after one exact Owned Instance's growth has been composed.
+## The composer re-runs the benefit-to-Jar balance contract; growth that makes the skill
+## undercosted is rejected before a power score can be assigned.
+static func evaluate_effective_skill(
+	definition: SpaceSkillDefinition,
+	instance: SpaceOwnedProgressionInstance,
+	benefit_metrics: Dictionary,
+	balance_context: Dictionary,
+	balance_profile: SpaceSkillBalanceProfile,
+	model: SpaceIndividualPowerModelDefinition,
+	jar_world_options: Dictionary = {}
+) -> Dictionary:
+	if definition == null or instance == null or instance.item_kind != "skill":
+		return _failure("effective skill evaluation requires its exact Owned Instance")
+	if instance.definition_id != definition.skill_id or instance.definition_version != definition.definition_version:
+		return _failure("skill Owned Instance definition identity does not match the evaluated Definition")
+	if definition.allowed_control_areas.is_empty():
+		return _failure("skill has no allowed control area for effective power evaluation")
+	var area := String(definition.allowed_control_areas[0])
+	var runtime_order := definition.build_jar_order(area)
+	if runtime_order.is_empty():
+		return _failure("skill runtime Jar order could not be built")
+	var balance_order := runtime_order
+	if definition.jar_order_template_id != &"":
+		balance_order = SpaceSkillCatalog.new().resolve_order_template(definition, jar_world_options, area)
+		if balance_order.is_empty():
+			return _failure("skill exact Core order template is missing from the frozen World options")
+	var binding := definition.create_order_binding(
+		"effective-power-evaluation", area, balance_profile,
+		balance_context, benefit_metrics, balance_order
+	)
+	if binding.is_empty():
+		return _failure("base skill binding failed its benefit-to-Jar balance contract")
+	var effective_binding := SpaceProgressionRuntimeProfileComposer.compose_skill_binding(
+		binding, definition, instance, balance_profile, jar_world_options
+	)
+	if effective_binding.is_empty():
+		return _failure("skill growth violates its subsystem attributes or benefit-to-Jar balance contract")
+	var evaluated := evaluate_skill(
+		definition,
+		effective_binding.get("benefitProfile", {}),
+		balance_context,
+		balance_profile,
+		model,
+		jar_world_options
+	)
+	if not bool(evaluated.get("success", false)):
+		return evaluated
+	evaluated["ownedInstance"] = instance.build_frozen_snapshot()
+	evaluated["effectiveBinding"] = effective_binding
+	return evaluated
+
 static func _score(model: SpaceIndividualPowerModelDefinition, metrics: Dictionary) -> Dictionary:
 	if model == null or not model.get_validation_errors().is_empty():
 		return _failure("subsystem power model is invalid or not authored")
