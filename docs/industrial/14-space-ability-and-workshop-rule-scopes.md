@@ -108,3 +108,34 @@ The first implementation adds the persistent progression aggregate and contract 
 Curve assets are authored separately for ships, parsers, production devices, workshops, and skills. They should expose only attributes understood by their owning subsystem. For example, a parser curve may define per-shape processing-rate growth or batch-capacity growth; a ship curve may define hull or mobility growth; a workshop curve may define capacity or capability growth; a skill curve may define effect parameters or order-cost adjustments. These are examples of attribute contracts, not default balance values. No universal level multiplier or upgrade formula is imposed.
 
 A curve version is part of the progression calculation input and must be recorded by the progression/upgrade transaction that applies it. Changing a curve for future progression must not silently rewrite the already stored growth attributes of existing instances. Battle loadouts freeze the resolved instance growth values, not a live reference to the curve asset.
+
+
+## Subsystem runtime growth adapters and owned Hangar selection
+
+Growth is now applied through `SpaceProgressionRuntimeProfileComposer`. It never mutates a Catalog Resource. Each adapter accepts only a narrow, explicit attribute vocabulary; an unknown key or a key from another item kind rejects composition instead of being silently ignored.
+
+| Owned item kind | Supported growth attributes | Runtime destination |
+|---|---|---|
+| `ship` | `stoneProgressRateMultiplier` | Multiplies the ship's authored expected stone progress rates for all configured shapes |
+| `ore_parser` | `shapeProcessingRateMultiplier`, `progressPerJarMultiplier`, `productionPercentageBonus` | Composes the parser's authored per-shape throughput, per-Jar progress requirement, and production percentage |
+| `workshop` | `maxJarsBonus`, `maxLiquidsBonus`, `liquidStagingCapacityBonus`, `additionalMark.<shape>` (0/1) | Composes local workshop capacities and unlocks valid additional marks; the original local Ban and base marks remain intact |
+| `production_device` | `runtimeAdd.<field>`, `runtimeMul.<field>` | Adjusts existing numeric root fields in that device's opaque runtime profile; it cannot create unknown fields |
+| `skill` | `effectAdd.<parameter>`, `effectMul.<parameter>`, `benefitAdd.<dimension>`, `benefitMul.<dimension>` | Composes Space effect parameters and recalculates the benefit-to-Jar balance report; undercosted growth is rejected |
+
+The key names above are subsystem contracts, not a universal upgrade formula. Curves authored for a particular object must use only attributes supported by its subsystem. Curve keyframes are numeric; discrete workshop mark unlocks use 0/1 keyframes. Capacity bonuses must resolve to integers. A workshop whose staging capacity uses Core's `-1` fallback cannot receive a staging-capacity bonus until its authored definition supplies an explicit capacity. Workshop growth does not change its Ban list or Core pair semantics.
+
+### Owned inventory and loadout freeze
+
+`SpaceHangarOwnedInventoryBuilder` projects the player's aggregate through the exact authored catalogs. Only owned instances with unlocked, resolvable definition versions appear in the production inventory. Repeated copies of the same definition remain separate choices with their own instance IDs, levels, and XP. A workshop combination appears only when the player owns two distinct workshop instances matching the exact Master and Slave workshop definition versions.
+
+`SpaceHangarSelection` and its draft now retain the selected ship/parser/device/skill instance IDs and the two workshop role instance IDs. The Hangar UI displays instance level and identity and passes the selected IDs through the controller. `SpaceHangarPreparation` can be injected with the active `SpacePlayerProgressionState`; when present, its production inventory and freeze path use the owned-instance builder/assembler. Without that state the legacy definition-only development path remains available, but it is not the owned-instance production path.
+
+`SpaceHangarOwnedLoadoutAssembler` re-resolves every selected instance from the player aggregate, checks exact definition identity/version, rejects reusing one owned instance in multiple slots, composes the subsystem runtime profiles, and freezes every selected instance snapshot plus player ID and progression-state revision into the loadout fingerprint. Ship, parser, both workshop instances, production devices, and skills are all included. The loadout snapshot validates that the ownership manifest matches the instances embedded in its selected slots.
+
+Space ownership metadata is deliberately kept outside Jar Core's workshop dictionary. Only the composed workshop's Core-facing local rules/capacities enter `jarWorldOptions.workshops`; the two owned workshop snapshots are stored in the Space-owned workshop-combination selection. The Core still owns all execution, Ban, and Master/Slave transfer semantics.
+
+### Balance and content-authoring constraints
+
+Skill growth can change effect parameters and benefit dimensions independently. The resulting benefit profile is re-evaluated by `SpaceSkillBalanceModel` against the exact Jar order and build context. If the grown effect becomes undercosted relative to its authored Jar requirements, loadout assembly rejects it. The progression layer does not fabricate extra Jar requirements: those must come from the skill's authored Jar order/template contract.
+
+No production curve values, XP rewards, level caps, or final balance progression have been invented in code. The engine supports exact-version curves and subsystem adapters, but production content still needs authored curve Resources and progression rewards chosen by game design. This is a deliberate separation between executable mechanics and balance data.
