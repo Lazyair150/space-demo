@@ -37,6 +37,9 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 @export var rule_contributions: Array[SpaceRuleContributionDefinition] = []
 
 func is_valid() -> bool:
+	for contribution in rule_contributions:
+		if contribution == null or not contribution.get_validation_errors().is_empty():
+			return false
 	if skill_id == &"" or definition_version <= 0 or display_name.strip_edges().is_empty():
 		return false
 	if not ["Offense", "Defense", "Support", "Reconnaissance", "Utility"].has(ability_category):
