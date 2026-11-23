@@ -24,30 +24,30 @@ func refresh_inventory() -> bool:
 		_last_error = "Hangar catalog bundle is not configured"
 		_emit_changed()
 		return false
-	_inventory = _preparation.catalog_bundle_resource.build_selection_inventory()
+	_inventory = _preparation.build_owned_selection_inventory() if _preparation.player_progression_state != null else _preparation.catalog_bundle_resource.build_selection_inventory()
 	_draft = SpaceHangarSelectionDraft.new()
 	var ready := _draft.configure(_inventory)
 	_last_error = "" if ready else "Authored Hangar catalogs are incomplete or invalid"
 	_emit_changed()
 	return ready
 
-func set_ship(definition_id: String, version: int) -> bool:
-	return _apply(_draft != null and _draft.set_ship(definition_id, version))
+func set_ship(definition_id: String, version: int, instance_id: String = "") -> bool:
+	return _apply(_draft != null and _draft.set_ship(definition_id, version, instance_id))
 
-func set_parser(definition_id: String, version: int, slot_id: String) -> bool:
-	return _apply(_draft != null and _draft.set_parser(definition_id, version, slot_id))
+func set_parser(definition_id: String, version: int, slot_id: String, instance_id: String = "") -> bool:
+	return _apply(_draft != null and _draft.set_parser(definition_id, version, slot_id, instance_id))
 
-func set_workshop(definition_id: String, version: int) -> bool:
-	return _apply(_draft != null and _draft.set_workshop(definition_id, version))
+func set_workshop(definition_id: String, version: int, master_instance_id: String = "", slave_instance_id: String = "") -> bool:
+	return _apply(_draft != null and _draft.set_workshop(definition_id, version, master_instance_id, slave_instance_id))
 
-func set_device(slot_id: String, definition_id: String, version: int) -> bool:
-	return _apply(_draft != null and _draft.set_device(slot_id, definition_id, version))
+func set_device(slot_id: String, definition_id: String, version: int, instance_id: String = "") -> bool:
+	return _apply(_draft != null and _draft.set_device(slot_id, definition_id, version, instance_id))
 
 func remove_device(slot_id: String) -> bool:
 	return _apply(_draft != null and _draft.remove_device(slot_id))
 
-func set_skill(order_key: String, skill_id: String, version: int, control_area: String) -> bool:
-	return _apply(_draft != null and _draft.set_skill(order_key, skill_id, version, control_area))
+func set_skill(order_key: String, skill_id: String, version: int, control_area: String, instance_id: String = "") -> bool:
+	return _apply(_draft != null and _draft.set_skill(order_key, skill_id, version, control_area, instance_id))
 
 func remove_skill(order_key: String) -> bool:
 	return _apply(_draft != null and _draft.remove_skill(order_key))
