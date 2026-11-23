@@ -74,7 +74,7 @@ func _build_reward_ui() -> void:
 	_hint_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	_hint_label.offset_left = 20.0
 	_hint_label.offset_top = -34.0
-	_hint_label.offset_right = 1000.0
+	_hint_label.offset_right = 640.0
 	_hint_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_hint_label)
 
@@ -85,7 +85,7 @@ func _build_reward_ui() -> void:
 	_buff_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	_buff_label.offset_left = 20.0
 	_buff_label.offset_top = -62.0
-	_buff_label.offset_right = 1000.0
+	_buff_label.offset_right = 640.0
 	_buff_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_buff_label)
 
