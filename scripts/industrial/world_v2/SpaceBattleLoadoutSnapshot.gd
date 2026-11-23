@@ -173,6 +173,15 @@ static func _validate_board_assignment_snapshot(source: Dictionary) -> PackedStr
 			errors.append("Board Assignment skill control area differs from its order position")
 		if _required_text(raw_entry, "definitionId").is_empty() or int(raw_entry.get("definitionVersion", 0)) <= 0:
 			errors.append("Board Assignment must retain exact component Definition identity/version")
+		if int(raw_entry.get("sourceRevision", 0)) <= 0:
+			errors.append("Board Assignment must retain exact Owned Instance progression revision")
+		var revision_found := false
+		for owned_snapshot in source.get("ownedInstanceSnapshots", []):
+			if owned_snapshot is Dictionary and _required_text(owned_snapshot, "instanceId") == instance_id:
+				revision_found = int(owned_snapshot.get("progressionRevision", 0)) == int(raw_entry.get("sourceRevision", 0))
+				break
+		if not revision_found:
+			errors.append("Board Assignment progression revision differs from frozen Owned Instance snapshot")
 	for slot_id in slot_index:
 		var slot: Dictionary = slot_index[slot_id]
 		if bool(slot.get("required", false)) and not seen_slots.has(slot_id):
@@ -281,6 +290,8 @@ static func _validate_board_rule_profile(source: Dictionary) -> PackedStringArra
 			errors.append("rule contribution source instance differs from installed Owned Instance")
 		if _required_text(contribution_source, "definitionId") != _required_text(installed, "definitionId") or int(contribution_source.get("definitionVersion", 0)) != int(installed.get("definitionVersion", 0)):
 			errors.append("rule contribution source Definition identity/version differs from Board Assignment")
+		if int(contribution_source.get("sourceRevision", 0)) != int(installed.get("sourceRevision", 0)):
+			errors.append("rule contribution progression revision differs from its Board Assignment")
 		if _required_text(contribution_source, "sourceKind") != "installed-component":
 			errors.append("rule contribution source kind must identify an installed component")
 		var owned_revision_found := false
