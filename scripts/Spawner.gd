@@ -51,7 +51,7 @@ func capture_energy_stone_drop_rng_state() -> int:
 	return int(_energy_stone_rng.state)
 
 func restore_energy_stone_drop_rng_state(state: int) -> bool:
-	if not is_inside_tree() or state == 0:
+	if not is_inside_tree():
 		return false
 	_energy_stone_rng.state = state
 	return true
