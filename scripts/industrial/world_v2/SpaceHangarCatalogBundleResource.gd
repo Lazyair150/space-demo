@@ -82,6 +82,7 @@ func build_selection_inventory() -> Dictionary:
 				"version": definition.definition_version,
 				"label": definition.display_name,
 				"description": definition.description,
+				"primaryShape": String(definition.primary_shape),
 				"allowedControlAreas": definition.allowed_control_areas.duplicate(),
 				"iconTexture": definition.display_icon
 			})
