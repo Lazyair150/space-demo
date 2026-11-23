@@ -67,6 +67,9 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 			return false
 		skill_pool.entries[0].definitionId = skill_id
 		skill_pool.entries[0].definitionVersion = skill_version
+		# The real-catalog acquisition fixture contains only the exact registered skill;
+		# the synthetic second entry is retained only for distinct-offer coverage above.
+		skill_pool.entries = [skill_pool.entries[0]]
 		var reward_library := SpaceRoguelikeIndividualLibrary.new()
 		reward_library.library_id = &"probe.reward-library"
 		reward_library.definition_version = 1
