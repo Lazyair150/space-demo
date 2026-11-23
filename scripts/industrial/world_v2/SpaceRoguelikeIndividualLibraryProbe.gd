@@ -38,7 +38,7 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 	})
 	var offer_rng := RandomNumberGenerator.new()
 	offer_rng.seed = 55421
-	var offer := SpaceRoguelikeIndividualOfferService.roll_offer(library, "skill", offer_rng, 2)
+	var offer := SpaceRoguelikeIndividualOfferService.roll_offer(library, "skill", offer_rng, 2, "probe.offer.distinct")
 	if not bool(offer.get("success", false)) or offer.offers.size() != 2:
 		return false
 	var offered_keys := {}
@@ -76,11 +76,15 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 		reward_library.pools = [parser_pool, workshop_pool, skill_pool]
 		var reward_rng := RandomNumberGenerator.new()
 		reward_rng.seed = 98231
-		var reward_offer := SpaceRoguelikeIndividualOfferService.roll_offer(reward_library, "skill", reward_rng, 3)
+		var reward_offer := SpaceRoguelikeIndividualOfferService.roll_offer(reward_library, "skill", reward_rng, 3, "probe.offer.real-acquisition")
 		if not bool(reward_offer.get("success", false)) or reward_offer.offers.size() != 1:
 			return false
 		var acquired := SpaceRoguelikeIndividualOfferService.acquire_selected(reward_offer, 0, state, bundle, reward_library, "probe.roguelike-owned-copy")
 		if not bool(acquired.get("success", false)) or state.resolve_instance("probe.roguelike-owned-copy") == null:
+			return false
+		var owned_count_after_reward := state.owned_instances.size()
+		var duplicate_acquire := SpaceRoguelikeIndividualOfferService.acquire_selected(reward_offer, 0, state, bundle, reward_library, "probe.roguelike-owned-copy-duplicate")
+		if bool(duplicate_acquire.get("success", false)) or state.owned_instances.size() != owned_count_after_reward:
 			return false
 	return true
 
