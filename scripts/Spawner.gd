@@ -4,7 +4,7 @@ extends Node
 ## 每段只回答一个问题——热身教走位，压力考清怪效率，精英考爆发与闪避，喘息留整理窗口。
 
 signal wave_cleared
-signal stage_completed(result: Dictionary)
+signal encounters_completed(result: Dictionary)
 signal stage_faulted(reason: String)
 
 const SEGMENT_WARMUP := 0
@@ -213,7 +213,7 @@ func _complete_stage_beat() -> void:
 		return
 	if bool(result.get("complete", false)):
 		_stage_active = false
-		stage_completed.emit({
+		encounters_completed.emit({
 			"stageIdentity": result,
 			"completedBeatCount": _current_wave,
 			"status": "encounters_complete"
