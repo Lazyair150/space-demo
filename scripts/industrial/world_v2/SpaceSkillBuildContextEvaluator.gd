@@ -27,9 +27,14 @@ static func evaluate(
 	if production_devices.is_empty():
 		return _failure("at least one selected production device is required")
 	var aggregate_rates := {}
+	var parser_progress_per_jar: Dictionary = {}
+	var ore_parser_count := 0
 	for raw_device in production_devices:
 		if not (raw_device is Dictionary):
 			return _failure("production device selection must be a dictionary")
+		if String(raw_device.get("deviceKind", "")) != "ore_parser" and not raw_device.has("oreParserProfile"):
+			continue
+		ore_parser_count += 1
 		var parser_profile: Variant = raw_device.get("oreParserProfile", raw_device)
 		if not (parser_profile is Dictionary):
 			return _failure("production device oreParserProfile must be a dictionary")
@@ -37,14 +42,18 @@ static func evaluate(
 		if typeof(raw_percentage) != TYPE_INT or int(raw_percentage) < 0 or int(raw_percentage) > 100:
 			return _failure("ore parser productionPercentage must be an integer from 0 to 100")
 		var rates: Variant = parser_profile.get("shapeProcessingRatePerSecond", null)
-		if not (rates is Dictionary) or rates.is_empty():
-			return _failure("ore parser must provide shapeProcessingRatePerSecond")
+		var parser_progress: Variant = parser_profile.get("progressPerJarByShape", null)
+		if not (rates is Dictionary) or rates.is_empty() or not (parser_progress is Dictionary) or parser_progress.is_empty():
+			return _failure("ore parser must provide per-shape processing rates and progressPerJarByShape")
+		parser_progress_per_jar = parser_progress.duplicate(true)
 		for shape in rates:
 			var raw_rate: Variant = rates[shape]
 			if (typeof(raw_rate) != TYPE_INT and typeof(raw_rate) != TYPE_FLOAT) or not is_finite(float(raw_rate)) or float(raw_rate) < 0.0:
 				return _failure("shape processing rates must be finite and non-negative")
 			var effective_rate := float(raw_rate) * float(raw_percentage) / 100.0
 			aggregate_rates[String(shape)] = float(aggregate_rates.get(String(shape), 0.0)) + effective_rate
+	if ore_parser_count != 1:
+		return _failure("exactly one selected universal ore parser is required for shape production")
 
 	var stone_rates: Variant = ship_resource_profile.get("expectedStoneProgressPerSecondByShape", null)
 	if not (stone_rates is Dictionary) or stone_rates.is_empty():
@@ -74,7 +83,9 @@ static func evaluate(
 	for shape in shape_demand:
 		var processor_rate := float(aggregate_rates.get(shape, 0.0))
 		var stone_rate := float(stone_rates.get(shape, 0.0))
-		var progress_per_jar := float(shape_progress_per_jar.get(shape, 0.0))
+		var progress_per_jar := float(parser_progress_per_jar.get(shape, 0.0))
+		if shape_progress_per_jar.has(shape) and absf(float(shape_progress_per_jar[shape]) - progress_per_jar) > 0.000001:
+			return _failure("shape progress-per-Jar must match the frozen selected ore parser profile: " + shape)
 		if processor_rate <= 0.0 or stone_rate <= 0.0 or progress_per_jar <= 0.0:
 			return _failure("ship drops, selected processors, and Jar conversion must all support shape: " + shape)
 		var effective_progress_rate := minf(processor_rate, stone_rate)
