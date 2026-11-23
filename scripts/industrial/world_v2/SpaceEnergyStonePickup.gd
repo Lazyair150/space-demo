@@ -34,6 +34,7 @@ func _ready() -> void:
 		monitoring = false
 		push_error("[SpaceEnergyStonePickup] pickup must be configured with stable identity/type/volume before use")
 		return
+	add_to_group("space_energy_stone_pickups")
 	if not body_entered.is_connected(_on_body_entered):
 		body_entered.connect(_on_body_entered)
 
