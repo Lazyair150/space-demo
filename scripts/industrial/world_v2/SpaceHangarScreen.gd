@@ -94,7 +94,7 @@ func _build_interface() -> void:
 	root.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "每项定义可配置独立精灵贴图；未配置时使用类别 SVG 图标。所有选项均来自真实目录。"
+	subtitle.text = "把拥有的独立元件安装到工作区位置；定义描述规则，实例保存成长，槽位决定当前角色。"
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	root.add_child(subtitle)
 	_build_stage_section(root)
@@ -134,10 +134,10 @@ func _build_interface() -> void:
 	duration_label.custom_minimum_size.x = 250
 	duration_row.add_child(duration_label)
 	_duration_picker = SpinBox.new()
-	_duration_picker.min_value = 0.0
+	_duration_picker.min_value = 1000.0
 	_duration_picker.max_value = 1000000000.0
 	_duration_picker.step = 1000.0
-	_duration_picker.value = 0.0
+	_duration_picker.value = 60000.0
 	_duration_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	duration_row.add_child(_duration_picker)
 	_duration_picker.value_changed.connect(_on_duration_changed)
