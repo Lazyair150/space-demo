@@ -120,8 +120,7 @@ func _flash_hit()->void:
 	sprite.modulate=Color(2.5,0.5,0.5,1.0)
 	tween.tween_property(sprite,"modulate",Color.WHITE,invuln_time)
 	
-# 属性读取：基础值仍由 @export（或 GameState 的永久成长）提供，
-# 临时修正由 Stats 汇总；这一层不做任何永久写入。
+# Attribute reads combine the ship baseline with temporary Space effect modifiers.
 func _stat_value(stat:StringName,base:float)->float:
 	if stats==null:
 		return base
@@ -133,11 +132,8 @@ func grant_buff(definition:BuffDefinition,duration:float=-1.0)->BuffInstance:
 		return null
 	return effects.apply(definition,self,duration)
 
-# 攻击力的两层：永久成长（GameState）→ 临时修正（Stats）
-func attack_base()->int:
-	var wallet:=get_node_or_null("/root/GameState")
-	if wallet!=null and wallet.has_method("attack_damage"):
-		return int(wallet.attack_damage())
+# Base weapon damage is currently one point. Future permanent weapon profiles belong to Space ship/loadout data.
+func attack_base() -> int:
 	return 1
 
 func attack_final()->float:
@@ -191,8 +187,7 @@ func spawn_bullet()->void:
 	if bullet_scene ==null:
 		return
 	var b:Node2D=bullet_scene.instantiate()
-	# 子弹伤害读玩家钱包里的攻击力等级（工业舱产出的产品换来的强化材料提升它）。
-	# 取不到 GameState 就用子弹自身的默认伤害，不让战斗因为工业侧缺席而崩。
+	# Resolve damage from the Space weapon baseline plus currently active Space effect modifiers.
 	var roll := roll_damage()
 	b.set("damage", int(roll["amount"]))
 	b.set("critical", bool(roll["critical"]))
