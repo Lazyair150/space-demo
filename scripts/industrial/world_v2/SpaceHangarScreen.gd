@@ -40,6 +40,8 @@ var _refresh_confirmation: ConfirmationDialog
 var _device_section: VBoxContainer
 var _skill_section: VBoxContainer
 var _effect_section: VBoxContainer
+var _board_slot_section: VBoxContainer
+var _board_slot_pickers: Dictionary = {}
 var _stage_picker: OptionButton
 var _stage_info_label: Label
 var _selected_stage: SpaceStageDefinition
@@ -153,6 +155,10 @@ func _build_interface() -> void:
 	_workshop_picker = _add_picker(selection_box, "工作区规则配置", "workshop")
 	_master_workshop_picker = _add_picker(selection_box, "工作区 · 主台位置", "workshop")
 	_slave_workshop_picker = _add_picker(selection_box, "工作区 · 从台位置", "workshop")
+
+	_board_slot_section = VBoxContainer.new()
+	_board_slot_section.add_theme_constant_override("separation", 10)
+	selection_box.add_child(_board_slot_section)
 
 	_device_section = VBoxContainer.new()
 	_device_section.add_theme_constant_override("separation", 8)
@@ -365,6 +371,7 @@ func _render_view_model(view_model: Dictionary) -> void:
 	_set_icon_for_selection(_primary_icons.workshop, _master_workshop_picker, "workshop")
 	_suppress_picker_events = false
 
+	_rebuild_board_slot_section(selectable_inventory, selection)
 	_rebuild_device_section(selectable_inventory.get("deviceChoices", []), selection.get("deviceSelections", []))
 	_rebuild_skill_section(selectable_inventory.get("skillChoices", []), selection.get("skillSelections", []))
 	_rebuild_effect_section(selectable_inventory.get("effectChoices", []))
@@ -485,13 +492,23 @@ func _on_slave_workshop_selected(index: int) -> void:
 
 func _apply_workshop_slot_selection() -> void:
 	var world := _selected_choice(_workshop_picker)
-	var master := _selected_choice(_master_workshop_picker)
-	var slave := _selected_choice(_slave_workshop_picker)
 	if world.is_empty():
 		return
+	var master_instance_id := ""
+	var slave_instance_id := ""
+	if board_definition != null:
+		var master_assignment := _controller.get_assignment(_master_workshop_slot_id)
+		var slave_assignment := _controller.get_assignment(_slave_workshop_slot_id)
+		master_instance_id = String(master_assignment.get("ownedInstanceId", ""))
+		slave_instance_id = String(slave_assignment.get("ownedInstanceId", ""))
+	else:
+		var master := _selected_choice(_master_workshop_picker)
+		var slave := _selected_choice(_slave_workshop_picker)
+		master_instance_id = String(master.get("instanceId", ""))
+		slave_instance_id = String(slave.get("instanceId", ""))
 	_controller.set_workshop(
 		String(world.get("id", "")), int(world.get("version", 0)),
-		String(master.get("instanceId", "")), String(slave.get("instanceId", ""))
+		master_instance_id, slave_instance_id
 	)
 
 func _rebuild_device_section(device_choices: Variant, selected_devices: Variant) -> void:
