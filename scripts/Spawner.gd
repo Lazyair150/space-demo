@@ -136,9 +136,12 @@ func _start_stage_beat(beat: Dictionary) -> void:
 	if not is_finite(scale) or scale <= 0.0:
 		_fault_stage("stage encounter scale is invalid")
 		return
+	var segment_name := String(beat.get("segment", ""))
+	var authored_elites := int(beat.get("elite_count", -1))
 	var chasers := _scaled_stage_count(int(beat.get("chaser_count", -1)), scale)
 	var shooters := _scaled_stage_count(int(beat.get("shooter_count", -1)), scale)
-	var elites := _scaled_stage_count(int(beat.get("elite_count", -1)), scale)
+	# A boss is one unique actor; encounter pressure must not duplicate the boss count.
+	var elites := 1 if segment_name == "boss" and authored_elites == 1 else _scaled_stage_count(authored_elites, scale)
 	if chasers < 0 or shooters < 0 or elites < 0:
 		_fault_stage("authored stage composition is malformed")
 		return
@@ -152,7 +155,6 @@ func _start_stage_beat(beat: Dictionary) -> void:
 	_segment_index = SEGMENT_WARMUP
 	_cycle = 0
 	GameState.set_wave(_current_wave)
-	var segment_name := String(beat.get("segment", "warmup"))
 	var segment_labels := {"warmup": "热身", "pressure": "压力", "elite": "精英", "rest": "喘息", "boss": "精英"}
 	GameState.set_segment(String(segment_labels.get(segment_name, "热身")))
 	_spawning = true
