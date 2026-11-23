@@ -10,6 +10,8 @@ class_name SpaceWorkshopCombinationDefinition
 ## World-level options only: shapes, liquids, producers, initial stock and world rates.
 ## Do not put workshops/masterWorkshopName/slaveWorkshopName in this dictionary.
 @export var jar_world_options: Dictionary = {}
+## Exact-version Core-owned Jar order templates available in this World V2 vocabulary.
+@export var core_order_templates: Array[SpaceCoreOrderTemplateDefinition] = []
 @export var workshop_definitions: Array[SpaceWorkshopDefinition] = []
 @export var workshop_pair: SpaceWorkshopPairDefinition
 @export var operation_cost_by_order_type: Dictionary = {}
@@ -44,6 +46,19 @@ func get_validation_errors() -> PackedStringArray:
 			if liquid_name.is_empty() or liquid_set.has(liquid_name):
 				errors.append("workshop combination liquid vocabulary contains an empty or duplicate name")
 			liquid_set[liquid_name] = true
+	var template_names := {}
+	for template in core_order_templates:
+		if template == null:
+			errors.append("Core order template catalog contains a null definition")
+			continue
+		var template_name := template.template_name()
+		if template_name.is_empty() or template_names.has(template_name):
+			errors.append("Core order template names must be non-empty and unique within a World")
+		template_names[template_name] = true
+		errors.append_array(template.get_validation_errors(
+			shapes if shapes is Array else [],
+			liquids if liquids is Array else []
+		))
 	if workshop_definitions.size() != 2:
 		errors.append("workshop combination must provide exactly two individual workshop definitions for its Master/Slave pair")
 	var ids := {}
@@ -91,6 +106,10 @@ func build_jar_world_options() -> Dictionary:
 	if role_assignment.is_empty():
 		return {}
 	result["workshops"] = workshop_entries
+	var core_templates: Array[Dictionary] = []
+	for template in core_order_templates:
+		core_templates.append(template.build_core_option())
+	result["orderTemplates"] = core_templates
 	result.merge(role_assignment, true)
 	return result
 
