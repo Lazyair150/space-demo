@@ -6,7 +6,7 @@ Status: first implementation slice on the Hangar/UI development branch. This is 
 
 The combat HUD keeps survival information (health, wave, score) in its existing fixed positions. A compact **JAR** summary is added below the upper-left HUD row. It shows the current ship-level Jar count, liquid total, and Host lifecycle state. Clicking it opens a read-only detail panel containing:
 
-- ship resource Jars grouped by shape;
+- ship resource Jars rendered as individual compact tiles, each showing its shape glyph/color, exact Jar identity when exposed, liquid fill strip, empty/filled state, and marked indicator; inventories over the visible tile budget show an explicit remaining count;
 - ship resource liquids by exact liquid key;
 - Master and Slave workshop names, Jar occupancy/capacity, shape marks, Jar shape counts and fill counts, liquid staging and Ban summary;
 - selected demand identity, required Jar shapes/liquid-bearing requirements, cooldown state, and active session step counts.
@@ -67,10 +67,10 @@ Implemented on the branch:
 - color-coded shape tokens in the industrial presentation components;
 - optional Space-owned `primary_shape` metadata on skill/order definitions, shown in Hangar selection, frozen outside the Jar order payload and validated against its requirement shapes;
 - workshop tendency accent and per-liquid staging meters where capacity is explicit;
-- combat HUD observer for the active World V2 Host snapshot;
+- combat HUD observer for the active World V2 Host snapshot;\n- individual responsive Jar tiles in ship inventory and each workshop, with a bounded visible count and an explicit overflow count;
 - snapshot-delta feedback for Jar acquisition/consumption, fill changes, ship/workshop liquid changes, lifecycle transitions, order cooldown transitions, and active-session progress;
 - clock-only snapshot updates no longer rebuild inventory controls; workshop meters add a presentation-only 80% caution state and explicit full-capacity label;
-- pure aggregation checks in `tests/space_jar_hud_feedback.gd`;
+- pure aggregation and shape-vocabulary checks in `tests/space_jar_hud_feedback.gd`;
 - order requirement shape tokens and read-only demand/cooldown/session summary.
 
 Not yet authored:
