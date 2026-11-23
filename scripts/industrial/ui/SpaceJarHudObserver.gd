@@ -17,6 +17,7 @@ var _slave_box: VBoxContainer
 var _demands_box: VBoxContainer
 var _status: Label
 var _last_signature := ""
+var _summary_base_text := "JAR  ·  等待世界"
 var _previous_snapshot: Dictionary = {}
 var _feedback_label: Label
 var _feedback_tween: Tween
@@ -80,6 +81,7 @@ func _build() -> void:
 func _toggle_expanded() -> void:
 	_expanded = not _expanded
 	_panel.visible = _expanded
+	_toggle.text = _summary_base_text + ("  ▲" if _expanded else "  ▼")
 	if _expanded:
 		_refresh_snapshot()
 
@@ -119,7 +121,8 @@ func _refresh_snapshot() -> void:
 		for value in liquids.values():
 			liquid_total += int(value)
 	var lifecycle := String(snapshot.get("lifecycleState", ""))
-	_toggle.text = "JAR  ·  %d 罐  ·  %d 份液体  ·  %s" % [jar_count, liquid_total, _lifecycle_text(lifecycle)]
+	_summary_base_text = "JAR  ·  %d 罐  ·  %d 份液体  ·  %s" % [jar_count, liquid_total, _lifecycle_text(lifecycle)]
+	_toggle.text = _summary_base_text + ("  ▲" if _expanded else "  ▼")
 	_render_resource_jars(jars)
 	_render_resource_liquids(liquids)
 	_render_workshop(_master_box, "主台", master)
@@ -129,7 +132,8 @@ func _refresh_snapshot() -> void:
 func _set_unavailable(message: String) -> void:
 	_last_signature = ""
 	_previous_snapshot.clear()
-	_toggle.text = "JAR  ·  " + message
+	_summary_base_text = "JAR  ·  " + message
+	_toggle.text = _summary_base_text + ("  ▲" if _expanded else "  ▼")
 	_status.text = message
 	UiKit.clear_children(_resource_jars)
 	UiKit.clear_children(_resource_liquids)
