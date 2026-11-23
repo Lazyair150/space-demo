@@ -116,7 +116,18 @@ func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity:
     var jar_json: Variant = runtime_checkpoint.get("jarExecutionCheckpointJson", null)
     var clock: Variant = runtime_checkpoint.get("spaceClockRemainderMilli", null)
     var parser: Variant = runtime_checkpoint.get("oreParserState", null)
+    var run_state: Variant = runtime_checkpoint.get("runState", null)
     if typeof(jar_json) != TYPE_STRING or String(jar_json).is_empty():
+        return false
+    if not (run_state is Dictionary) or int(run_state.get("schemaVersion", 0)) != 1:
+        return false
+    if typeof(run_state.get("score", null)) != TYPE_INT or int(run_state.get("score", -1)) < 0:
+        return false
+    if typeof(run_state.get("wave", null)) != TYPE_INT or int(run_state.get("wave", -1)) < 0:
+        return false
+    if typeof(run_state.get("segment", null)) != TYPE_STRING or not ["", "热身", "压力", "精英", "喘息"].has(String(run_state.get("segment", ""))):
+        return false
+    if int(run_state.get("wave", 0)) == 0 and not String(run_state.get("segment", "")).is_empty():
         return false
     if (typeof(clock) != TYPE_INT and typeof(clock) != TYPE_FLOAT) or not is_finite(float(clock)) or float(clock) < 0.0 or float(clock) >= 1.0:
         return false
