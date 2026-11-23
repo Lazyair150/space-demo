@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="SpaceHangarCatalogBundleResource" load_steps=32 format=3]
+[gd_resource type="Resource" script_class="SpaceHangarCatalogBundleResource" load_steps=35 format=3]
 
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceHangarCatalogBundleResource.gd" id="1_bundle"]
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceShipCatalog.gd" id="2_ship_catalog"]
@@ -76,6 +76,13 @@ template_version = 1
 order_type = "B"
 requirements = [{"shape": "圆罐"}, {"shape": "圆罐"}, {"shape": "方罐"}, {"shape": "圆罐", "liquid": "冷却液"}]
 
+[sub_resource type="Resource" script_class="SpaceCoreOrderTemplateDefinition" id="ReconOrderTemplate"]
+script = ExtResource("11_order_template")
+template_id = &"demo.recon.basic"
+template_version = 1
+order_type = "A"
+requirements = [{"shape": "长条罐"}, {"shape": "长条罐"}, {"shape": "长条罐", "liquid": "燃料"}]
+
 [sub_resource type="Resource" script_class="SpaceWorkshopCombinationDefinition" id="DemoWorld"]
 script = ExtResource("9_workshop_world")
 combination_id = &"demo.world.starter"
@@ -91,7 +98,7 @@ jar_world_options = {
 "liquidFlowRatePerLogicalTime": 1.0,
 "executionLogicalTimePerUnit": 1000
 }
-core_order_templates = Array[ExtResource("11_order_template")]([SubResource("OffenseOrderTemplate")])
+core_order_templates = Array[ExtResource("11_order_template")]([SubResource("OffenseOrderTemplate"), SubResource("ReconOrderTemplate")])
 operation_cost_by_order_type = {"A": 1.0, "B": 2.0}
 liquid_handling_operation_cost = 0.5
 
@@ -119,6 +126,22 @@ effect_definition_id = &"demo.effect.rapid_fire"
 effect_definition_version = 1
 effect_parameters = {"durationOverride": 6.0, "targetKey": "player"}
 
+[sub_resource type="Resource" script_class="SpaceSkillDefinition" id="ReconSkill"]
+script = ExtResource("12_skill_definition")
+skill_id = &"demo.skill.recon_scan"
+definition_version = 1
+display_name = "机动扫描"
+description = "通过 Core 被动订单周期维持短时机动增幅。"
+ability_category = "Reconnaissance"
+jar_order_template_id = &"demo.recon.basic"
+jar_order_template_version = 1
+jar_cooldown_logical_milli = 20000
+primary_shape = &"长条罐"
+allowed_control_areas = Array[String](["Passive"])
+effect_definition_id = &"demo.effect.recon_speed"
+effect_definition_version = 1
+effect_parameters = {"durationOverride": 8.0, "targetKey": "player"}
+
 [sub_resource type="Resource" script_class="SpaceAbilityShapeProfile" id="AbilityShapeProfile"]
 script = ExtResource("13_ability_profile")
 profile_id = &"demo.ability_shapes"
@@ -143,6 +166,19 @@ tick_interval = 0.0
 tick_damage = 0
 balance_metrics = {"power": 3.0, "coverage": 0.0, "control": 0.0, "survivability": 0.0, "utility": 0.0}
 
+[sub_resource type="Resource" script_class="BuffDefinition" id="ReconSpeedEffect"]
+script = ExtResource("15_buff_definition")
+id = &"demo.effect.recon_speed"
+definition_version = 1
+label = "机动扫描"
+duration = 8.0
+stack_policy = 2
+max_stacks = 1
+modifiers = [{"stat": &"speed", "stage": 1, "value": 1.2}]
+tick_interval = 0.0
+tick_damage = 0
+balance_metrics = {"power": 0.0, "coverage": 0.0, "control": 0.0, "survivability": 0.0, "utility": 2.0}
+
 [resource]
 script = ExtResource("1_bundle")
 ship_catalog = SubResource("ShipCatalog")
@@ -150,7 +186,7 @@ production_device_catalog = SubResource("DeviceCatalog")
 ore_parser_catalog = SubResource("ParserCatalog")
 workshop_combination_catalog = SubResource("WorkshopCatalog")
 workshop_catalog = SubResource("GlobalWorkshopCatalog")
-skill_definitions = Array[ExtResource("12_skill_definition")]([SubResource("StarterSkill")])
+skill_definitions = Array[ExtResource("12_skill_definition")]([SubResource("StarterSkill"), SubResource("ReconSkill")])
 ability_shape_profile = SubResource("AbilityShapeProfile")
 balance_profile = SubResource("SkillBalanceProfile")
-effect_definitions = Array[ExtResource("15_buff_definition")]([SubResource("RapidFireEffect")])
+effect_definitions = Array[ExtResource("15_buff_definition")]([SubResource("RapidFireEffect"), SubResource("ReconSpeedEffect")])
