@@ -68,7 +68,7 @@
 1. **正式生产目录为空缺**：当前 `data/` 下可见 `effects`、`industrial`、`stages`；`data/industrial` 仅有 World V2 sandbox/invalid JSON。需要核对各 Resource catalog 与 Hangar bundle 的生产资源绑定；不得凭空创建平衡值。
 2. **个体强度模型尚未生产化**：现有通用 evaluator / power model 框架不能代替解析器、工作台、技能各自真实指标的定义、归一化、权重与有效预算。
 3. **Hangar 正式路径未闭环**：`SpaceHangar.tscn` 目前绑定 stage catalog 与 Preparation；MainMenu Start 仍需核对是否绕过 Hangar；选择、冻结、Launch、恢复和战斗结算要形成一条真实路径。
-4. **订单资源需求来源重复（已证实）**：`WorldV2Options` 原先没有 `orderTemplates`；Core `AddJarDemand` 与 Space Host 都直接传递需求数组，`SpaceSkillDefinition.jar_requirements` 因而同时承担定义、预估和实际执行来源。Core 侧模板入口已在 Jar Core PR #60 建立；Space 侧尚待改为引用模板键。
+4. **订单资源需求来源重复（架构入口已打通，生产配置仍待作者录入）**：Core PR #60 已将 `orderTemplates` 纳入 World V2 options，并提供 `AddJarDemandFromTemplate`。Space Runtime / Host / ShipHost 已能按模板键物化；`SpaceSkillDefinition` 已支持 exact `template_id + version`，生产 Hangar bundle 强制技能引用模板，并从冻结 World options 解析实际需求用于平衡评估。仍缺真实 workshop combination 里的模板数据与实际技能 Definition 的迁移；legacy inline requirements 仅供隔离开发 Probe 使用。
 5. **Stage reward transaction 未完成**：Campaign clear 与 progression reward 尚无跨 aggregate 原子提交；Offer UI / 玩家选取 / durable receipt 仍需接通。
 6. **Protected Target 未完成**：有 objective contract，但真实可受攻击 Actor、敌人目标选择、被摧毁事件与 checkpoint identity 仍需实现。
 7. **Typed Effect 系统未完成**：当前 Buff-first；Beam / Projectile / Missile / Shield / SupportUnit / Recon 等需要真实类型化定义和执行器。
@@ -80,7 +80,7 @@
 ### Phase A — 事实审计与契约收敛（当前）
 - [x] 已审计 Game / Spawner / Boss / Hangar / GameState / Reward / Power Evaluator 的主要实际接口；仍需后续做完整调用链闭环审计。
 - [x] Hangar Screen 的选择控件确实使用 owned inventory，回调传递各槽位 instance ID；不存在“Controller 已写但 UI 未接线”的断层。MainMenu/Launch 仍未闭环。
-- [ ] 新/resumed stage 的 durable settlement callback 与 exact stage/loadout identity 已确认；protected target 仍缺持久化实例身份，需在 Protected Target 阶段补齐。
+- [x] 新/resumed stage 的 durable settlement callback 与 exact stage/loadout identity 已确认；protected target 仍缺持久化实例身份，需在 Protected Target 阶段补齐。
 - [x] OwnedLoadoutAssembler 已将 Ship、Parser、Master/Slave Workshop、Device、Skill 的独立 Owned Instance 快照及成长合成结果写入冻结快照。
 - 完成定义：调用链和所有权边界有源码证据；发现的问题形成修复提交，不以文档审计代替修复。
 
@@ -103,7 +103,8 @@
 ### Phase D — Hangar Owned Instance 装配闭环
 - [ ] Hangar UI 的 Parser / Master Workshop / Slave Workshop / Skills / Devices / Ship 均选择 Owned Instance ID。
 - [ ] Master 与 Slave 必须是两个不同 instance；两者可同 Definition 但各自成长独立。
-- [ ] 兼容性校验包括 exact version、shape vocabulary、shape affinity、order template、capacities 与 Core world options。
+- [x] 兼容性校验已接入 exact skill template ID/version、选中 Core world template、形状/液体词表、主形状严格多数；workshop capacity / role 继续由 owned composer 和 Core options 校验。
+- [ ] 为生产 WorkshopCombination 资源录入正式 orderTemplates，并把生产技能定义迁移到 template ID/version；未录入真实配置前不创建虚构模板配方。
 - [ ] 冻结 snapshot 包含所有选中 instance 的完整成长与 provenance；Battle runtime 只读取冻结快照。
 - 完成定义：UI 选择、Assembler、Snapshot、战斗 Host 之间无 Definition-only 漏洞。
 
@@ -168,6 +169,11 @@
 - `replace_instance_progression` 禁止通过成长更新篡改 acquisition provenance；普通无 provenance 个体不输出空字段，保持既有 frozen snapshot fingerprint 形状。
 - `SpaceRoguelikeIndividualLibraryProbe` 新增：奖励实例增长属性隔离、Skill composer 可用性、provenance round-trip、旧存档迁移和 provenance 篡改拒绝。Probe authored，未运行。
 - 相关实现提交：`481088c`、`eeae256`、`ae49248`、`693126b`、`500e21d`、`d76e315`、`70229b0`。
-- Jar Core 新增 Draft PR #60：`world-v2/phase-4.11c-order-template-demand-ingress`，base 为 PR #59 head `a52f9465ad4febdcfb821227f7b2e03b2ddc012c`。改动包括 WorldV2Options 可选模板配置（null 时不序列化以保持旧配置指纹）、Core OrderTemplateLibrary vocabulary validation、WorldV2Context 持有不可变模板库、ApplicationService/Bridge 的 `AddJarDemandFromTemplate`，以及模板深拷贝、未知模板拒绝、词表错误和 null entry 测试。PR #60 尚未执行 CI；仍为 Draft，不合并。
-- Core 模板入口的职责：Core 校验并实例化模板；Space 只提供模板键、控制区域、冷却和不透明 orderDefinitionKey，不再传递需求数组。接下来需要在 Space 增加独立模板 catalog，技能 Definition 只引用 exact template key，并将模板配置注入冻结的 WorldV2Options。
-- 待完成：继续审计 Protected Target identity / resume；检查 MainMenu launch route；然后完成 Space 对 Core 模板 API 的接线，再进入真实子系统 power metric 契约。
+- Jar Core Draft PR #60：`world-v2/phase-4.11c-order-template-demand-ingress`。`WorldV2Options` 可选模板配置（null 时不序列化以保持旧配置指纹）、Core `OrderTemplateLibrary` vocabulary validation、`WorldV2Context` 持有不可变模板库、ApplicationService/Bridge 的 `AddJarDemandFromTemplate`，以及模板深拷贝、未知模板拒绝、词表错误和 null entry 测试。PR #60 的 CI run `45197432477` 已对当前 PR head `063e2b7151ea43e92cf6ba1d627b9c7d50819b5b` 完成并成功；PR 仍为 Draft，不合并。
+- Core 模板入口的职责：Core 校验并实例化模板；Space 只提供模板键、控制区域、冷却和不透明 orderDefinitionKey，不再传递需求数组。Space skill exact template identity 使用 `template_id@version` 作为 Core template name，另在冻结 binding 中保存 templateId/version/name 三元组。模板要求和实际需求只从所选 WorkshopCombination 的 `jar_world_options.orderTemplates` 解析。
+- `SpaceSkillCatalog.resolve_order_template()` 校验模板 exact name、A/B 类型、非空需求、shape/liquid vocabulary、技能主形状严格多数；返回的展开需求只用于 Space 侧生产/难度/强度评估，不写进 runtime `jarOrder`。
+- `SpaceBattleLoadoutSnapshot` 拒绝模板订单附带重复 `type` 或 `requirements`，并验证冻结模板身份与 runtime `templateName` 一致；同时仍在冻结 `jarWorldOptions` 中保存 Core 模板原文。
+- `SpaceProgressionRuntimeProfileComposer` 在成长后重新计算技能收益曲线时，从冻结 Core world options 按 exact templateName 解析实际需求，避免将仅含 templateName 的 runtime contract 误当成完整需求。
+- 新增 `SpaceSkillTemplateContractProbe`，覆盖 exact version、主形状严格多数、词表液体校验、运行时订单不复制需求、legacy inline 与 template 混用拒绝；已接入 `SpaceSkillCatalogProbe`。Probe authored，未在 Godot 执行。
+- 本轮 Space 模板接线提交：`161e2f5`、`781d056`、`c8c9e9a`、`bf07be1`、`f189541`、`17bd404`、`00f2d31`、`3bf71e9`、`84dfb10`、`f80e8ac`、`a83a6a2`、`c39da11`、`b4e4c65`、`87bf42a`、`1815aa6`、`f4b19f3`、`04d93cc`、`1e2dfa7`、`c008590`、`00872a4`、`de58577`。
+- 当前剩余：在真实 WorkshopCombination 配置中录入 versioned Core orderTemplates，并迁移生产 skill definitions；继续核对 MainMenu / Hangar launch route、Protected Target identity 和真实子系统 power metric 契约。
