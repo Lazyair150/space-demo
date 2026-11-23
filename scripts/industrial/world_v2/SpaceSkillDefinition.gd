@@ -1,6 +1,6 @@
 extends Resource
 class_name SpaceSkillDefinition
-## Player-facing skill definition. Jar receives only the nested jarOrder contract.
+## Unified player-facing capability definition. All Space combat capabilities are skills; Jar receives only the nested jarOrder contract.
 
 enum ControlArea { ACTIVE, PASSIVE }
 enum ActivationPolicy { MANUAL, AUTOMATIC }
@@ -10,6 +10,7 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 @export var display_name: String = ""
 @export var display_icon: Texture2D
 @export_multiline var description: String = ""
+@export_enum("Offense", "Defense", "Support", "Reconnaissance", "Utility") var ability_category: String = "Offense"
 
 ## Jar-owned execution contract. Keep this data free of Space effect semantics.
 @export_enum("A", "B") var jar_order_type: String = "A"
@@ -30,6 +31,8 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 
 func is_valid() -> bool:
 	if skill_id == &"" or definition_version <= 0 or display_name.strip_edges().is_empty():
+		return false
+	if not ["Offense", "Defense", "Support", "Reconnaissance", "Utility"].has(ability_category):
 		return false
 	if not ["A", "B"].has(jar_order_type):
 		return false
@@ -56,7 +59,7 @@ func is_valid() -> bool:
 	return true
 
 func build_jar_order(selected_control_area: String) -> Dictionary:
-	if not is_valid():
+	if not is_valid() or not allowed_control_areas.has(selected_control_area):
 		return {}
 	var expanded_requirements: Array[Dictionary] = []
 	for requirement in jar_requirements:
@@ -96,6 +99,7 @@ func create_order_binding(order_definition_key: String, selected_control_area: S
 		"presentation": {"primaryShape": String(primary_shape)} if primary_shape != &"" else {},
 		"skillDefinitionId": String(skill_id),
 		"skillDefinitionVersion": definition_version,
+		"abilityCategory": ability_category,
 		"jarOrder": jar_order,
 		"skillControl": {
 			"area": selected_control_area,

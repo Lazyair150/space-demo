@@ -19,7 +19,6 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameState="*uid://1mrntfgt1sqh"
-IndustrialRuntime="*res://scripts/industrial/runtime/IndustrialRuntime.gd"
 GameFlow="*res://globals/GameFlow.gd"
 WorldV2ShipHost="*res://scripts/industrial/world_v2/WorldV2ShipHost.cs"
 

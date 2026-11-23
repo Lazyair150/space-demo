@@ -1,12 +1,17 @@
 extends Resource
 class_name SpaceWorkshopCombinationDefinition
-## Versioned workshop roster and authored cost profile. Values are design data, never defaults.
+## Versioned world-level workshop configuration.
+## Individual workshop rules and Master/Slave role assignment are authored separately.
 
 @export var combination_id: StringName = &""
 @export var definition_version: int = 1
 @export var display_name: String = ""
 @export var display_icon: Texture2D
+## World-level options only: shapes, liquids, producers, initial stock and world rates.
+## Do not put workshops/masterWorkshopName/slaveWorkshopName in this dictionary.
 @export var jar_world_options: Dictionary = {}
+@export var workshop_definitions: Array[SpaceWorkshopDefinition] = []
+@export var workshop_pair: SpaceWorkshopPairDefinition
 @export var operation_cost_by_order_type: Dictionary = {}
 @export var liquid_handling_operation_cost: float = 0.0
 
@@ -16,15 +21,35 @@ func get_validation_errors() -> PackedStringArray:
 		errors.append("workshop combination identity/version is invalid")
 	if display_name.strip_edges().is_empty():
 		errors.append("workshop combination display name is required")
-	for key in ["shapes", "liquids", "producers", "workshops", "masterWorkshopName"]:
+	for key in ["shapes", "liquids", "producers"]:
 		if not jar_world_options.has(key):
-			errors.append("workshop combination Jar options are missing " + key)
+			errors.append("workshop combination world options are missing " + key)
+	for forbidden_key in ["workshops", "masterWorkshopName", "slaveWorkshopName"]:
+		if jar_world_options.has(forbidden_key):
+			errors.append("workshop combination must author " + forbidden_key + " through the scoped workshop resources")
 	var shapes: Variant = jar_world_options.get("shapes", null)
 	if not (shapes is Array) or shapes.is_empty():
 		errors.append("workshop combination must provide a non-empty Jar shape vocabulary")
-	var workshops: Variant = jar_world_options.get("workshops", null)
-	if not (workshops is Array) or workshops.is_empty():
-		errors.append("workshop combination must provide a non-empty workshop roster")
+	if workshop_definitions.size() < 2:
+		errors.append("workshop combination must provide at least two individual workshop definitions")
+	var ids := {}
+	var names := {}
+	for workshop in workshop_definitions:
+		if workshop == null:
+			errors.append("workshop roster contains a null definition")
+			continue
+		for error in workshop.get_validation_errors():
+			errors.append("workshop %s: %s" % [String(workshop.workshop_id), error])
+		var id := String(workshop.workshop_id)
+		var name := workshop.display_name.strip_edges()
+		if ids.has(id) or names.has(name):
+			errors.append("workshop roster identities and names must be unique")
+		ids[id] = true
+		names[name] = true
+	if workshop_pair == null:
+		errors.append("Master/Slave pair definition is missing")
+	else:
+		errors.append_array(workshop_pair.get_validation_errors(workshop_definitions))
 	if not operation_cost_by_order_type.has("A") or not operation_cost_by_order_type.has("B"):
 		errors.append("workshop combination must author operation costs for both A and B")
 	for order_type in ["A", "B"]:
@@ -35,12 +60,40 @@ func get_validation_errors() -> PackedStringArray:
 		errors.append("liquid handling operation cost must be finite and non-negative")
 	return errors
 
+func build_jar_world_options() -> Dictionary:
+	if not get_validation_errors().is_empty():
+		return {}
+	var result := jar_world_options.duplicate(true)
+	var workshop_entries: Array[Dictionary] = []
+	for definition in workshop_definitions:
+		workshop_entries.append(definition.build_core_definition())
+	var role_assignment := workshop_pair.build_core_role_assignment(workshop_definitions)
+	if role_assignment.is_empty():
+		return {}
+	result["workshops"] = workshop_entries
+	result.merge(role_assignment, true)
+	return result
+
 func build_selection() -> Dictionary:
 	if not get_validation_errors().is_empty():
 		return {}
+	var roster: Array[Dictionary] = []
+	for definition in workshop_definitions:
+		roster.append({
+			"definitionId": String(definition.workshop_id),
+			"definitionVersion": definition.definition_version,
+			"name": definition.display_name
+		})
 	return {
 		"definitionId": String(combination_id),
 		"definitionVersion": definition_version,
+		"workshopRoster": roster,
+		"workshopPair": {
+			"definitionId": String(workshop_pair.pair_id),
+			"definitionVersion": workshop_pair.definition_version,
+			"masterWorkshopId": String(workshop_pair.master_workshop_id),
+			"slaveWorkshopId": String(workshop_pair.slave_workshop_id)
+		},
 		"workshopCombinationProfile": {
 			"operationCostByOrderType": operation_cost_by_order_type.duplicate(true),
 			"liquidHandlingOperationCost": liquid_handling_operation_cost

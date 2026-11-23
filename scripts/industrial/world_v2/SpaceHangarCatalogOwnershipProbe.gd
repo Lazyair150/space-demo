@@ -61,29 +61,66 @@ static func run() -> bool:
 	if devices.create_selection("probe.device", 3, "slot-a").size() != 0:
 		return false
 
+	var local_master := SpaceWorkshopDefinition.new()
+	local_master.workshop_id = &"probe.master"
+	local_master.definition_version = 1
+	local_master.display_name = "Probe Master"
+	local_master.base_marks = ["round"]
+	local_master.additional_marks = ["square"]
+	local_master.banned_liquids = ["blocked-liquid"]
+	local_master.max_jars = 8
+	local_master.max_liquids = 5
+	var local_slave := SpaceWorkshopDefinition.new()
+	local_slave.workshop_id = &"probe.slave"
+	local_slave.definition_version = 2
+	local_slave.display_name = "Probe Slave"
+	local_slave.base_marks = ["round"]
+	local_slave.max_jars = 4
+	local_slave.max_liquids = 2
+	var pair := SpaceWorkshopPairDefinition.new()
+	pair.pair_id = &"probe.pair"
+	pair.definition_version = 3
+	pair.display_name = "Probe Master/Slave Pair"
+	pair.master_workshop_id = local_master.workshop_id
+	pair.slave_workshop_id = local_slave.workshop_id
+
 	var workshop := SpaceWorkshopCombinationDefinition.new()
 	workshop.combination_id = &"probe.workshop"
 	workshop.definition_version = 5
 	workshop.display_name = "Probe Workshop"
 	workshop.display_icon = GradientTexture2D.new()
 	workshop.jar_world_options = {
-		"shapes": ["round"],
-		"liquids": [],
-		"producers": [],
-		"workshops": [{"name": "Probe Master"}],
-		"masterWorkshopName": "Probe Master"
+		"shapes": ["round", "square"],
+		"liquids": ["blocked-liquid"],
+		"producers": [{"name": "probe", "rates": {"round": 1.0}}],
+		"initialLiquidStock": {"blocked-liquid": 3},
+		"jarFlowRatePerLogicalTime": 1.0,
+		"liquidFlowRatePerLogicalTime": 1.0,
+		"executionLogicalTimePerUnit": 1000
 	}
+	workshop.workshop_definitions = [local_master, local_slave]
+	workshop.workshop_pair = pair
 	workshop.operation_cost_by_order_type = {"A": 1.0, "B": 2.0}
 	workshop.liquid_handling_operation_cost = 0.5
 	var workshops := SpaceWorkshopCombinationCatalog.new()
 	if not workshops.register_definition(workshop):
 		return false
+	local_master.base_marks[0] = "mutated"
+	local_master.banned_liquids[0] = "mutated"
+	pair.master_workshop_id = &"probe.slave"
 	workshop.jar_world_options.shapes[0] = "mutated"
 	workshop.operation_cost_by_order_type["A"] = 99.0
 	var resolved_workshop := workshops.resolve_definition("probe.workshop", 5)
 	if resolved_workshop == null or String(resolved_workshop.jar_world_options.shapes[0]) != "round" or resolved_workshop.display_icon == null:
 		return false
 	if float(resolved_workshop.operation_cost_by_order_type["A"]) != 1.0:
+		return false
+	var resolved_options := workshops.create_jar_world_options("probe.workshop", 5)
+	if String(resolved_options.workshops[0].baseMarks[0]) != "round" or String(resolved_options.workshops[0].ban[0]) != "blocked-liquid":
+		return false
+	if String(resolved_options.masterWorkshopName) != "Probe Master" or String(resolved_options.slaveWorkshopName) != "Probe Slave":
+		return false
+	if not workshops.create_selection("probe.workshop", 5).has("workshopPair"):
 		return false
 	resolved_workshop.jar_world_options.shapes[0] = "mutated-resolved"
 	resolved_workshop.operation_cost_by_order_type["A"] = 88.0
@@ -116,8 +153,9 @@ static func run() -> bool:
 	skill.display_icon = GradientTexture2D.new()
 	skill.jar_requirements = [{"shape": "round", "count": 1}]
 	skill.effect_definition_id = &"probe.effect"
+	skill.ability_category = "Support"
 	var skills := SpaceSkillCatalog.new()
-	if not skills.register_skill(skill) or skills.resolve_skill("probe.visual-skill", 1).display_icon == null:
+	if not skills.register_skill(skill) or skills.resolve_skill("probe.visual-skill", 1).display_icon == null or skills.resolve_skill("probe.visual-skill", 1).ability_category != "Support":
 		return false
 
 	var effect := BuffDefinition.new()

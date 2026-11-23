@@ -174,13 +174,15 @@ These are separate design/data tasks. The boundary is fixed: Jar reports success
 
 ## 9. Skill activation and Active/Passive assignment
 
-The loadout's Active/Passive area is a player-facing control assignment:
-- **Active**: the player chooses when to request the skill. The request still enters Jar's normal admission/execution path; unavailable resources, incompatible requirements, and cooldown prevent execution.
-- **Passive**: a Space-owned trigger/automation policy decides when to request the skill. Passive does not mean free, always-on, or continuously active; each execution still consumes its Jar-configured resources and observes Jar cooldown.
-- A skill's benefit type is independent of its area. Active skills may create timed effects; Passive skills may produce discrete triggered effects.
-- Exact trigger conditions, priorities, target policy, and automation behavior belong to versioned Space skill data, not Jar.
+Every player-configurable combat capability is a Space skill, regardless of whether its effect is a projectile, beam, missile, shield, support unit, reconnaissance action, or combat modifier. Effect category is independent of control area.
 
-The current code has the Active/Passive loadout area field and the effect-dispatch foundation. Manual activation commands and passive trigger scheduling are not yet implemented.
+- **Active**: the player requests the exact demand ID. The request enters Jar's normal admission/execution path; Core decides feasibility, resource availability and cooldown.
+- **Passive**: Jar Core's Passive demand scheduler owns automatic admission attempts. Passive is not free or continuously active; every successful cycle consumes the configured resources and observes the same Core cooldown rules.
+- Space owns the benefit/effect definition, target policy, duration, stacking, and the implementation that creates the projectile/beam/shield/drone/recon effect.
+- Any future battlefield-context trigger policy belongs to Space, but it may only decide whether to submit a request; it must not duplicate Jar feasibility or cooldown logic.
+- Active/Passive is independent of effect category. A shield, beam, missile or drone may occupy either lane.
+
+The current effect registry is Buff-first. Typed non-Buff effect definitions and executors remain implementation work; do not model a projectile or support unit as a fake BuffDefinition.
 
 Space effect implementation added on the current branch:
 - Buff definitions carry explicit positive versions and are resolved by exact version through SpaceEffectCatalog.
