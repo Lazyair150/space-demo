@@ -36,6 +36,7 @@ static func evaluate_parser(
 static func evaluate_workshop(
 	definition: SpaceWorkshopDefinition,
 	shape_vocabulary: Array,
+	liquid_vocabulary: Array,
 	model: SpaceIndividualPowerModelDefinition
 ) -> Dictionary:
 	if definition == null or model == null or model.item_kind != "workshop":
@@ -43,11 +44,14 @@ static func evaluate_workshop(
 	var errors := definition.get_validation_errors()
 	if not errors.is_empty():
 		return _failure("; ".join(errors))
-	if shape_vocabulary.is_empty():
-		return _failure("workshop evaluation requires the exact non-empty Jar shape vocabulary")
+	if shape_vocabulary.is_empty() or liquid_vocabulary.is_empty():
+		return _failure("workshop evaluation requires exact non-empty Jar shape and liquid vocabularies")
 	for mark in definition.base_marks + definition.additional_marks:
 		if not shape_vocabulary.has(mark):
 			return _failure("workshop marks contain a shape outside the evaluated world vocabulary: " + mark)
+	for banned_liquid in definition.banned_liquids:
+		if not liquid_vocabulary.has(banned_liquid):
+			return _failure("workshop Ban contains a liquid outside the evaluated world vocabulary: " + banned_liquid)
 	var metrics := {
 		"max_jars": float(definition.max_jars),
 		"max_liquids": float(definition.max_liquids),
