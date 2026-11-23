@@ -29,7 +29,11 @@ static func _probe_parser() -> bool:
 	}
 	var model := _model("probe.parser.power", "ore_parser", metrics)
 	var result := SpaceIndividualPowerEvaluator.evaluate_parser(parser, ["round", "square"], model)
-	return bool(result.get("success", false)) and result.get("powerMetrics", {}) == metrics
+	if not bool(result.get("success", false)) or result.get("powerMetrics", {}) != metrics:
+		return false
+	var pool := _pool_for_model("probe.parser.pool", "ore_parser", model)
+	var built := SpaceRoguelikeIndividualPoolEntryBuilder.append_parser(pool, parser, ["round", "square"], "common", 1.0)
+	return bool(built.get("success", false)) and pool.is_valid()
 
 static func _probe_workshop() -> bool:
 	var workshop := SpaceWorkshopDefinition.new()
@@ -51,7 +55,11 @@ static func _probe_workshop() -> bool:
 	}
 	var model := _model("probe.workshop.power", "workshop", metrics)
 	var result := SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, ["round"], ["water", "fuel"], model)
-	return bool(result.get("success", false)) and result.get("powerMetrics", {}) == metrics
+	if not bool(result.get("success", false)) or result.get("powerMetrics", {}) != metrics:
+		return false
+	var pool := _pool_for_model("probe.workshop.pool", "workshop", model)
+	var built := SpaceRoguelikeIndividualPoolEntryBuilder.append_workshop(pool, workshop, ["round"], ["water", "fuel"], "common", 1.0)
+	return bool(built.get("success", false)) and pool.is_valid()
 
 static func _probe_skill() -> bool:
 	var skill := SpaceSkillDefinition.new()
@@ -84,7 +92,11 @@ static func _probe_skill() -> bool:
 	}
 	var model := _model("probe.skill.power", "skill", model_metrics)
 	var result := SpaceIndividualPowerEvaluator.evaluate_skill(skill, benefit, context, balance, model)
-	return bool(result.get("success", false)) and result.get("powerMetrics", {}).size() == model_metrics.size()
+	if not bool(result.get("success", false)) or result.get("powerMetrics", {}).size() != model_metrics.size():
+		return false
+	var pool := _pool_for_model("probe.skill.pool", "skill", model)
+	var built := SpaceRoguelikeIndividualPoolEntryBuilder.append_skill(pool, skill, benefit, context, balance, "common", 1.0)
+	return bool(built.get("success", false)) and pool.is_valid()
 
 static func _model(id: String, kind: String, metrics: Dictionary) -> SpaceIndividualPowerModelDefinition:
 	var model := SpaceIndividualPowerModelDefinition.new()
@@ -100,3 +112,14 @@ static func _model(id: String, kind: String, metrics: Dictionary) -> SpaceIndivi
 			"higherIsBetter": true
 		}
 	return model
+
+static func _pool_for_model(id: String, kind: String, model: SpaceIndividualPowerModelDefinition) -> SpaceRoguelikeIndividualPool:
+	var pool := SpaceRoguelikeIndividualPool.new()
+	pool.pool_id = StringName(id)
+	pool.definition_version = 1
+	pool.power_model_id = model.model_id
+	pool.power_model_version = model.definition_version
+	pool.item_kind = kind
+	pool.power_model = model
+	pool.power_bands = {"common": {"minimum": 0.0, "maximum": 10.0}}
+	return pool
