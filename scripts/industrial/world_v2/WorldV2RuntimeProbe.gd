@@ -174,7 +174,7 @@ func _run_clock_control_probe() -> void:
         " 0x_logical_delta=", stopped_logical_delta
     )
 
-    await _run_ship_host_active_demand_probe()
+    _run_ship_host_active_demand_probe()
 
 func _run_ship_host_active_demand_probe() -> void:
     var host := ClassDB.instantiate("WorldV2ShipHost") as Node
