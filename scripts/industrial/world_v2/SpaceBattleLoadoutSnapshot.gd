@@ -234,6 +234,22 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 				if not ["Active", "Passive"].has(String(jar_order.get("area", ""))):
 					errors.append("order area must be Active or Passive")
 
+			var presentation: Variant = order.get("presentation", {})
+			if not (presentation is Dictionary):
+				errors.append("order presentation metadata must be a dictionary")
+			else:
+				var primary_shape := String(presentation.get("primaryShape", "")).strip_edges()
+				if not primary_shape.is_empty() and jar_order is Dictionary:
+					var presentation_requirements: Variant = jar_order.get("requirements", [])
+					var primary_shape_found := false
+					if presentation_requirements is Array:
+						for raw_requirement in presentation_requirements:
+							if raw_requirement is Dictionary and String(raw_requirement.get("shape", "")) == primary_shape:
+								primary_shape_found = true
+								break
+					if not primary_shape_found:
+						errors.append("order primaryShape must be present in its Jar requirements")
+
 			var skill_identity_present := order.has("skillDefinitionId") or order.has("skillDefinitionVersion")
 			if skill_identity_present and (_required_text(order, "skillDefinitionId").is_empty() or int(order.get("skillDefinitionVersion", 0)) <= 0):
 				errors.append("skill definition identity must be fully versioned")
