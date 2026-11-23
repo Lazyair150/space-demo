@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="SpaceHangarCatalogBundleResource" load_steps=30 format=3]
+[gd_resource type="Resource" script_class="SpaceHangarCatalogBundleResource" load_steps=32 format=3]
 
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceHangarCatalogBundleResource.gd" id="1_bundle"]
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceShipCatalog.gd" id="2_ship_catalog"]
@@ -15,6 +15,7 @@
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceAbilityShapeProfile.gd" id="13_ability_profile"]
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceSkillBalanceProfile.gd" id="14_balance_profile"]
 [ext_resource type="Script" path="res://scripts/player/effects/BuffDefinition.gd" id="15_buff_definition"]
+[ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceWorkshopCatalog.gd" id="16_global_workshop_catalog"]
 
 [sub_resource type="Resource" script_class="SpaceShipDefinition" id="ShipDefinition"]
 script = ExtResource("3_ship_definition")
@@ -91,9 +92,12 @@ jar_world_options = {
 "executionLogicalTimePerUnit": 1000
 }
 core_order_templates = Array[ExtResource("11_order_template")]([SubResource("OffenseOrderTemplate")])
-workshop_definitions = Array[ExtResource("10_workshop_definition")]([SubResource("WorkshopAlpha"), SubResource("WorkshopBeta")])
 operation_cost_by_order_type = {"A": 1.0, "B": 2.0}
 liquid_handling_operation_cost = 0.5
+
+[sub_resource type="Resource" script_class="SpaceWorkshopCatalog" id="GlobalWorkshopCatalog"]
+script = ExtResource("16_global_workshop_catalog")
+definitions = Array[ExtResource("10_workshop_definition")]([SubResource("WorkshopAlpha"), SubResource("WorkshopBeta")])
 
 [sub_resource type="Resource" script_class="SpaceWorkshopCombinationCatalog" id="WorkshopCatalog"]
 script = ExtResource("8_workshop_catalog")
@@ -145,6 +149,7 @@ ship_catalog = SubResource("ShipCatalog")
 production_device_catalog = SubResource("DeviceCatalog")
 ore_parser_catalog = SubResource("ParserCatalog")
 workshop_combination_catalog = SubResource("WorkshopCatalog")
+workshop_catalog = SubResource("GlobalWorkshopCatalog")
 skill_definitions = Array[ExtResource("12_skill_definition")]([SubResource("StarterSkill")])
 ability_shape_profile = SubResource("AbilityShapeProfile")
 balance_profile = SubResource("SkillBalanceProfile")
