@@ -110,7 +110,7 @@ static func compose_skill(definition: SpaceSkillDefinition, instance: SpaceOwned
 	if not _matches(definition, instance, "skill", String(definition.skill_id if definition != null else &""), definition.definition_version if definition != null else 0):
 		return null
 	var growth := instance.growth_attributes
-		var result := definition.duplicate(true) as SpaceSkillDefinition
+	var result := definition.duplicate(true) as SpaceSkillDefinition
 	var parameters := result.effect_parameters.duplicate(true)
 	if not _apply_flat_numeric_overlay(parameters, growth, "effectAdd.", "effectMul."):
 		return null
