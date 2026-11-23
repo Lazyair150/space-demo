@@ -21,6 +21,7 @@ var _locked := false
 var _lockable_buttons: Array[Button] = []
 
 const UiKit := preload("res://scripts/industrial/ui/UiKit.gd")
+const ShapeVisuals := preload("res://scripts/industrial/ui/ShapeVisuals.gd")
 
 ## 与 Web 调试页一致的四个快捷档位；不在档位上的速率显示成"当前 x.xx"。
 const RATES := [0.0, 0.2, 0.4, 0.6]
@@ -126,7 +127,7 @@ func _shape_card(generator: Dictionary, sources: Array) -> PanelContainer:
 	card.add_child(box)
 
 	var head := UiKit.hbox(8)
-	head.add_child(UiKit.label(shape, UiKit.FONT_BODY, UiKit.TEXT))
+	head.add_child(UiKit.label("%s %s" % [ShapeVisuals.glyph_for(shape), shape], UiKit.FONT_BODY, ShapeVisuals.color_for(shape)))
 	head.add_child(UiKit.spacer())
 	head.add_child(UiKit.label("合计 %s / 回合" % UiKit.rate_text(float(generator.get("rate", 0.0))),
 		UiKit.FONT_SMALL, UiKit.ACCENT))
