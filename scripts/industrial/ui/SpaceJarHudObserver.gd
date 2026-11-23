@@ -135,7 +135,7 @@ func _render_resource_liquids(raw_liquids: Variant) -> void:
 		_resource_liquids.add_child(UiKit.label("液体库存：0", UiKit.FONT_SMALL, UiKit.MUTED))
 		return
 	for liquid in raw_liquids:
-		_resource_liquids.add_child(UiKit.label("%s  %d" % [String(liquid), int(raw_liquids[liquid])], UiKit.FONT_SMALL, UiKit.ACCENT))
+		_resource_liquids.add_child(UiKit.label("%s  %d" % [String(liquid), int(raw_liquids[liquid])], UiKit.FONT_SMALL, ShapeVisuals.liquid_color_for(String(liquid))))
 
 func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant) -> void:
 	UiKit.clear_children(parent)
@@ -189,6 +189,7 @@ func _render_workshop(parent: VBoxContainer, role: String, raw_workshop: Variant
 			meter.show_percentage = false
 			meter.custom_minimum_size = Vector2(150, 9)
 			meter.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			ShapeVisuals.apply_meter_style(meter, ShapeVisuals.liquid_color_for(String(liquid)))
 			liquid_line.add_child(meter)
 	var bans: Array = workshop.get("ban", [])
 	if not bans.is_empty():
@@ -216,6 +217,8 @@ func _render_demands(raw_demands: Variant, raw_sessions: Variant) -> void:
 			for requirement in requirements:
 				if requirement is Dictionary:
 					row.add_child(_shape_token(String(requirement.get("shape", "")), "液体" if not String(requirement.get("liquid", "")).is_empty() else "空"))
+	if not (raw_sessions is Array):
+		return
 	for session in raw_sessions:
 		if session is Dictionary and not bool(session.get("isTerminal", false)):
 			_demands_box.add_child(UiKit.label("执行中 · %s · 主台步 %d / 从台步 %d" % [String(session.get("stage", "")), int(session.get("completedMasterSteps", 0)), int(session.get("completedSlaveSteps", 0))], UiKit.FONT_SMALL, UiKit.ACCENT))
