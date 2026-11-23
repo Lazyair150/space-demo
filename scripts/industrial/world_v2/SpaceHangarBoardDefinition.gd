@@ -75,3 +75,25 @@ func resolve_slot(slot_id: String) -> SpaceHangarBoardSlotDefinition:
 		if slot != null and String(slot.slot_id) == slot_id:
 			return slot.duplicate(true) as SpaceHangarBoardSlotDefinition
 	return null
+
+func build_frozen_snapshot() -> Dictionary:
+	if not get_validation_errors().is_empty():
+		return {}
+	var frozen_slots: Array[Dictionary] = []
+	for slot in slots:
+		frozen_slots.append({
+			"slotId": String(slot.slot_id),
+			"areaId": slot.area_id,
+			"componentKind": slot.component_kind,
+			"displayName": slot.display_name,
+			"roleId": slot.role_id,
+			"controlArea": slot.control_area,
+			"required": slot.required
+		})
+	return {
+		"schemaVersion": 1,
+		"boardId": String(board_id),
+		"definitionVersion": definition_version,
+		"displayName": display_name,
+		"slots": frozen_slots
+	}
