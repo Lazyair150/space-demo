@@ -22,6 +22,53 @@ static func create(source: Dictionary) -> SpaceBattleLoadoutSnapshot:
 	snapshot._data = staged
 	return snapshot
 
+## Preferred Hangar construction path for the required universal ore parser.
+## The exact catalog version is materialized into the device slot before the full
+## immutable loadout is fingerprinted and validated.
+static func create_with_ore_parser(
+	source: Dictionary,
+	parser_catalog: SpaceOreParserCatalog,
+	parser_id: String,
+	parser_version: int,
+	parser_slot_id: String
+) -> SpaceBattleLoadoutSnapshot:
+	if parser_catalog == null:
+		return null
+	var staged := source.duplicate(true)
+	var jar_options: Variant = staged.get("jarWorldOptions", null)
+	if not (jar_options is Dictionary) or not (jar_options.get("shapes", null) is Array):
+		return null
+	var devices: Variant = staged.get("productionDeviceSelections", null)
+	if not (devices is Array):
+		return null
+	var used_slots := {}
+	for raw_device in devices:
+		if not (raw_device is Dictionary):
+			return null
+		var slot_id := String(raw_device.get("slotId", ""))
+		if slot_id.is_empty() or used_slots.has(slot_id) or String(raw_device.get("deviceKind", "")) == "ore_parser":
+			push_error("Loadout builder requires unique non-parser slots and exactly one catalog-selected ore parser")
+			return null
+		used_slots[slot_id] = true
+	if used_slots.has(parser_slot_id):
+		push_error("Ore parser slot collides with another selected production device")
+		return null
+	var parser_selection := parser_catalog.create_device_selection(
+		parser_id,
+		parser_version,
+		parser_slot_id,
+		jar_options.shapes
+	)
+	if parser_selection.is_empty() or not parser_catalog.validate_device_selection(
+		parser_selection,
+		parser_slot_id,
+		jar_options.shapes
+	).is_empty():
+		return null
+	devices.append(parser_selection)
+	staged["productionDeviceSelections"] = devices
+	return create(staged)
+
 static func compute_fingerprint(source: Dictionary) -> String:
 	var canonical_source := source.duplicate(true)
 	canonical_source.erase("loadoutFingerprint")
