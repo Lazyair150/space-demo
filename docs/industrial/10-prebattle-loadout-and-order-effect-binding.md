@@ -444,3 +444,5 @@ This establishes the editor-authored data-loading seam. It does not create a pro
 - This class is intentionally not a compatibility oracle: ship/device/workshop/skill cross-constraints and the final immutable loadout remain the responsibility of `SpaceHangarLoadoutAssembler`.
 
 The draft is UI-independent and can be bound to either a Control-based scene or a later UI framework. No scene, MainMenu route, default build, or production catalog data is introduced by this increment. Godot compilation and runtime probes remain pending.
+
+- `SpaceHangarPreparation.build_loadout_from_draft(identity, draft)` now closes the UI-state-to-domain boundary: it rejects an unavailable/incomplete draft, materializes its validated `SpaceHangarSelection`, and delegates to the existing selection-based preparation path. It does not bypass bundle validation or assembler compatibility checks.
