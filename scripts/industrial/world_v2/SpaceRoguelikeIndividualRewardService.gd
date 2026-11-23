@@ -71,8 +71,15 @@ static func acquire_candidate(
 			"rewardId": reward_id
 		}
 	}
-	if not state.unlock_and_acquire_instance(instance, reward_id):
-		return {"success": false, "reason": "progression aggregate rejected atomic unlock/acquisition"}
+	var acquired := false
+	if GameState.space_progression_state == state:
+		acquired = GameState.acquire_space_reward_instance(state, instance, reward_id)
+	else:
+		# Detached test/simulation aggregates have no durable owner; production state
+		# must always pass through GameState's persist-before-publish transaction.
+		acquired = state.unlock_and_acquire_instance(instance, reward_id)
+	if not acquired:
+		return {"success": false, "reason": "progression aggregate rejected durable atomic unlock/acquisition"}
 	return {
 		"success": true,
 		"instanceId": instance_id,
