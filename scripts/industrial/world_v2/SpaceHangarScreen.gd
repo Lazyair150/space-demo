@@ -237,6 +237,8 @@ func _render_view_model(view_model: Dictionary) -> void:
 	]
 	if not ready:
 		_status_label.text = String(inventory.get("unavailableReason", view_model.get("lastError", "目录不可用")))
+	elif _preparation != null and _preparation.player_progression_state == null:
+		_status_label.text = "玩家成长存档尚未注入 Preparation；当前不能使用生产机库实例库存。"
 	elif not _identity_is_supplied():
 		_status_label.text = "目录已加载。等待所属游戏流程提供 shipWorldId / loadoutId / loadoutVersion。"
 	elif parser_slot_id.strip_edges().is_empty():
@@ -264,7 +266,8 @@ func _fill_picker(picker: OptionButton, raw_choices: Variant, empty_text: String
 		var version := int(choice.get("version", 0))
 		if definition_id.is_empty() or version <= 0:
 			continue
-		var label := String(choice.get("label", definition_id))
+		var instance_suffix := " · Lv%d · %s" % [int(choice.get("level", 1)), String(choice.get("instanceId", ""))] if choice.has("instanceId") else ""
+		var label := String(choice.get("label", definition_id)) + instance_suffix
 		var icon_texture: Variant = choice.get("iconTexture")
 		if not (icon_texture is Texture2D):
 			icon_texture = load(String(FALLBACK_ICONS.get(category, FALLBACK_ICONS.effect)))
@@ -351,7 +354,7 @@ func _rebuild_device_section(device_choices: Variant, selected_devices: Variant)
 				var item_icon: Variant = choice.get("iconTexture")
 				if not (item_icon is Texture2D):
 					item_icon = load(FALLBACK_ICONS.device)
-				picker.add_icon_item(item_icon, "%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))])
+				picker.add_icon_item(item_icon, "%s  [v%d] · Lv%d · %s" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0)), int(choice.get("level", 1)), String(choice.get("instanceId", ""))])
 				picker.set_item_metadata(picker.item_count - 1, choice.duplicate())
 		row.add_child(picker)
 		var existing := _find_device_selection(selected_devices, slot_id)
@@ -429,7 +432,8 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 					"Utility": "辅助"
 				}.get(category, category))
 				var choice_name := String(choice.get("label", choice.get("id", "")))
-				var choice_text := "【%s】%s  [v%d]" % [category_label, choice_name, int(choice.get("version", 0))] if not category_label.is_empty() else "%s  [v%d]" % [choice_name, int(choice.get("version", 0))]
+				var owned_suffix := " · Lv%d · %s" % [int(choice.get("level", 1)), String(choice.get("instanceId", ""))] if choice.has("instanceId") else ""
+				var choice_text := "【%s】%s  [v%d]%s" % [category_label, choice_name, int(choice.get("version", 0)), owned_suffix] if not category_label.is_empty() else "%s  [v%d]%s" % [choice_name, int(choice.get("version", 0)), owned_suffix]
 				if not primary_shape.is_empty():
 					choice_text += "  ·  主形 %s %s" % [ShapeVisuals.glyph_for(primary_shape), primary_shape]
 				skill_picker.add_icon_item(item_icon, choice_text)
