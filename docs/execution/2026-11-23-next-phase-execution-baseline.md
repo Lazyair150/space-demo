@@ -461,3 +461,12 @@
 - `SpaceHangarBoardDefinitionProbe` now checks the expected 2 workshop / 1 parser / 2 skill consumer routes and verifies tamper rejection. Probe is authored, not executed; Godot runtime validation remains pending.
 
 - Probe extension: the Hangar Board probe now temporarily authors a `scope=parser` contribution on the installed Parser Definition and verifies that the Core-facing resolver rejects it rather than leaking it into workshop scope. It restores the catalog fixture after the check.
+
+
+## 2026-11-24 continuation — Board consumer provenance
+
+- Tightened `SpaceBoardRuntimeProfileSet` so each consumer profile is checked against the exact assigned Owned Instance, Definition ID/version, and progression revision before its fingerprint is accepted.
+- Workshop provenance is cross-checked against the frozen Master/Slave owned-instance selection; Parser device and nested parser profile identities are both checked; Skill binding identity and control-area role are checked; Production Device identity is checked.
+- Duplicate or missing consumer records are rejected, including duplicate skill bindings and duplicate parser selections for one slot.
+- Extended `SpaceHangarBoardDefinitionProbe` with direct fail-closed provenance/tamper cases.
+- Godot 4.7.1 .NET compile/runtime and Probe execution remain unverified in this environment. No Space integration pass is claimed.
