@@ -39,4 +39,4 @@ static func run() -> bool:
 		return false
 	if catalog.resolve_skill("probe.skill", 2) != null:
 		return false
-	return true
+	return SpaceSkillTemplateContractProbe.run()
