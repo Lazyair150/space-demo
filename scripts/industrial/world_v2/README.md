@@ -4,14 +4,16 @@
 
 ## 依赖
 
-当前 jar-system-dotnet 的 World v2 Bridge 位于 PR #26（Draft，尚未合并）。本阶段使用两个并列仓库的本地工作副本：
+当前依赖 jar-system-dotnet 的 World v2 Bridge，生产率入口正在 PR #57（Draft，尚未合并）；PR #57 以 PR #55 为基础，PR #55 又依赖 PR #54。三个 PR 均未合并。
+
+本阶段使用两个并列仓库的本地工作副本：
 
     D:/godot/programs/
     ├── space-demo/
     └── jar-system-dotnet/
         └── hosts/godot/WorldV2Bridge/
 
-先在 jar-system-dotnet 工作副本切换到 world-v2/phase-4-godot-host-project。space-demo 的 space-demo.csproj 通过相对路径引用 Bridge，不引用旧 Core 项目路径。
+jar-system-dotnet 工作副本需要包含 PR #57 的 world-v2/phase-4.11a-space-production-ingress-v2 分支内容。space-demo 的 space-demo.csproj 通过相对路径引用 Bridge，不引用旧 Core 项目路径。
 
 ## 4.10a 职责
 
@@ -112,11 +114,12 @@ Runtime 将故障分为两类：
 
 该探针使用真实 Core WorldClock 溢出制造 sticky fault，并在 C# 中直接调用 Runtime API、捕获并检查异常。选择 C# 捕获是为了避免把 GDScript 对托管异常的日志行为误当成断言结果。
 
-逐项验证六个当前公开的控制/命令入口：
+逐项验证七个当前公开的控制/命令入口：
 
 - `PauseWorld`
 - `ResumeWorld`
 - `SetWorldSpeedRatio`
+- `UpdateProducerRates`
 - `AddSingleRequirementDemand`
 - `MoveDemand`
 - `StartActiveDemand`
@@ -126,8 +129,8 @@ Runtime 将故障分为两类：
 预期关键输出：
 
 ```text
-[WorldV2FaultedCommandsProbe] all six operations rejected fault_signal_count=1 snapshot_readable=true fault_reason_stable=true
-[WorldV2FaultedCommandsProbe] passed operations=6 disposed=true
+[WorldV2FaultedCommandsProbe] all seven operations rejected fault_signal_count=1 snapshot_readable=true fault_reason_stable=true
+[WorldV2FaultedCommandsProbe] passed operations=7 disposed=true
 ```
 
 本地验收已通过：六个入口均抛出预期的故障态 `InvalidOperationException`；单次故障信号、稳定诊断快照、世界时间不变和会话释放均得到验证。
@@ -150,7 +153,7 @@ Runtime 将故障分为两类：
 - `GetWorldSnapshot`
 - `InitializeWorld` 必须返回 false，不能复活已终止节点。
 
-该场景还检查正常 Dispose 不应产生 RuntimeFaulted signal，也不应把“已释放”错误地标记为运行期故障。本地验收已通过：7 个退出后入口均被拒绝，重新初始化被拒绝，`fault_signal_count=0`。
+该场景还检查正常 Dispose 不应产生 RuntimeFaulted signal，也不应把“已释放”错误地标记为运行期故障。本地验收已通过：8 个退出后入口均被拒绝，重新初始化被拒绝，`fault_signal_count=0`。
 
 
 ## 4.12a Runtime 对外 API 边界审查
@@ -328,3 +331,12 @@ Runtime 将故障分为两类：
 ### 审计限制
 
 GitHub 仓库文件树和本次逐文件检查覆盖了当前可见的 World v2 Runtime、探针、工业主场景、旧工业 UI/Runtime 与项目 Autoload 配置。该结果不代表未来本地未提交文件或分支外部消费者。当前仓库没有正式 World v2 UI 消费者这一结论，以本次审计的 PR head 为准。
+
+
+## 4.14a Space 生产率接入边界
+
+jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支的 WorldV2RuntimeNode 与 WorldV2ShipHost 已提供对应的 Godot 适配入口。Godot Runtime 探针验证有效完整速率表可提交；故障态和 Dispose 后探针也覆盖该命令的拒绝边界。
+
+这只打通“Space 计算产率 → Jar Core 生产器”的命令通道。它没有把能量石模型放进 Jar，也没有宣称能量石解析已完成。下一步由 Space 侧建立 typed 能量石库存/解析模型，再在每个共享模拟步前提交完整的形状速率表。Jar 的形状进度累加、满 1 产罐、中央仓库存储和仓库到主台流入仍由 Core 负责。
+
+以下数值和语义不在本接口中决定：能量石大小单位、各类型转换率、百分比生产选择方式、解析速率、战机液体生产率和液库容量。它们必须由 Space 侧版本化构筑配置明确提供；不得从 sandbox 值推导生产平衡。
