@@ -14,12 +14,19 @@ static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleR
 	var starting_instances: Array[SpaceOwnedProgressionInstance] = [
 		_instance("demo.ship.starter.01", "ship", "demo.ship.starter", 1),
 		_instance("demo.parser.universal.01", "ore_parser", "demo.parser.universal", 1),
+		_instance("demo.parser.precision.01", "ore_parser", "demo.parser.precision", 1),
 		_instance("demo.workshop.alpha.01", "workshop", "demo.workshop.alpha", 1),
 		_instance("demo.workshop.beta.01", "workshop", "demo.workshop.beta", 1),
 		_instance("demo.skill.rapid_fire.01", "skill", "demo.skill.rapid_fire", 1),
 		_instance("demo.skill.recon_scan.01", "skill", "demo.skill.recon_scan", 1)
 	]
 	for instance in starting_instances:
+		if String(instance.definition_id) == "demo.parser.precision":
+			instance.growth_attributes = {
+				"shapeProcessingRateMultiplier": 1.1,
+				"progressPerJarMultiplier": 0.95,
+				"productionPercentageBonus": 5
+			}
 		if not state.unlock_and_acquire_instance(instance, "demo-start:" + String(instance.instance_id)):
 			push_error("Demo starting inventory could not acquire exact prototype instance: " + String(instance.instance_id))
 			return false
