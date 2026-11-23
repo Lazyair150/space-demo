@@ -68,6 +68,25 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("missing RNG rejection replaced the previous valid battle checkpoint")
 
+    var invalid_effect_state := {"activeEffects": [], "processedOrderEventIds": ["event-1"]}
+    if store.save(invalid_effect_state, dispatcher, identity, runtime_checkpoint):
+        _cleanup(absolute_path)
+        return _failure("store accepted an effect payload outside StatusEffectManager schema v1")
+    var after_effect_rejection := store.load(identity)
+    if after_effect_rejection.get("effectState", {}) != effects:
+        _cleanup(absolute_path)
+        return _failure("invalid effect state replaced the previous valid battle checkpoint")
+
+    var mismatched_wave_runtime := runtime_checkpoint.duplicate(true)
+    mismatched_wave_runtime.runState.segment = "压力"
+    if store.save(effects, dispatcher, identity, mismatched_wave_runtime):
+        _cleanup(absolute_path)
+        return _failure("store accepted a wave/segment mismatch")
+    var after_wave_rejection := store.load(identity)
+    if after_wave_rejection.get("runtimeCheckpoint", {}) != runtime_checkpoint:
+        _cleanup(absolute_path)
+        return _failure("wave/segment mismatch replaced the previous valid battle checkpoint")
+
     var missing_run_state := runtime_checkpoint.duplicate(true)
     missing_run_state.erase("runState")
     if store.save(effects, dispatcher, identity, missing_run_state):
