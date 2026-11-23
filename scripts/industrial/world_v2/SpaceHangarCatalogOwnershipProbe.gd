@@ -154,9 +154,27 @@ static func run() -> bool:
 	skill.definition_version = 1
 	skill.display_name = "Probe Visual Skill"
 	skill.display_icon = GradientTexture2D.new()
-	skill.jar_requirements = [{"shape": "round", "count": 1}]
+	skill.jar_requirements = [{"shape": "square", "count": 2}, {"shape": "round", "count": 1}]
 	skill.effect_definition_id = &"probe.effect"
 	skill.ability_category = "Support"
+	skill.primary_shape = &"square"
+	var ability_shapes := SpaceAbilityShapeProfile.new()
+	ability_shapes.profile_id = &"probe.ability-shapes"
+	ability_shapes.profile_version = 1
+	ability_shapes.shape_by_ability_category = {
+		"Offense": "round", "Defense": "diamond", "Support": "square",
+		"Reconnaissance": "triangle", "Utility": "hex"
+	}
+	if not ability_shapes.is_valid() or not ability_shapes.validate_skill(skill).is_empty():
+		return false
+	var wrong_category_shape := skill.duplicate(true) as SpaceSkillDefinition
+	wrong_category_shape.primary_shape = &"round"
+	if ability_shapes.validate_skill(wrong_category_shape).is_empty():
+		return false
+	var no_majority_shape := skill.duplicate(true) as SpaceSkillDefinition
+	no_majority_shape.jar_requirements = [{"shape": "square", "count": 1}, {"shape": "round", "count": 1}]
+	if ability_shapes.validate_skill(no_majority_shape).is_empty():
+		return false
 	var skills := SpaceSkillCatalog.new()
 	if not skills.register_skill(skill) or skills.resolve_skill("probe.visual-skill", 1).display_icon == null or skills.resolve_skill("probe.visual-skill", 1).ability_category != "Support":
 		return false
@@ -213,6 +231,7 @@ static func run() -> bool:
 	empty_authored_bundle.ore_parser_catalog = SpaceOreParserCatalog.new()
 	empty_authored_bundle.workshop_combination_catalog = SpaceWorkshopCombinationCatalog.new()
 	empty_authored_bundle.balance_profile = SpaceSkillBalanceProfile.new()
+	empty_authored_bundle.ability_shape_profile = ability_shapes
 	if empty_authored_bundle.create_runtime_bundle() != null:
 		return false
 	var empty_inventory := empty_authored_bundle.build_selection_inventory()
