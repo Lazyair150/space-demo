@@ -3,6 +3,9 @@ extends Node
 ## All numeric values are synthetic fixtures, not production balance settings.
 
 func _ready() -> void:
+    var parser_probe := SpaceOreParserRuntimeProbe.run()
+    assert(bool(parser_probe.get("passed", false)), "Space ore parser unit probe must pass")
+
     var jar_host := WorldV2ShipHost.new()
     add_child(jar_host)
 
