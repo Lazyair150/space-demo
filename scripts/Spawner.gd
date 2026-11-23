@@ -209,11 +209,12 @@ func _complete_stage_beat() -> void:
 	if not _stage_active or _stage_faulted or _stage_break_pending:
 		return
 	_stage_break_pending = true
+	var completed_beat := _stage_director.current_beat()
 	var result := _stage_director.complete_current_beat()
 	if not bool(result.get("success", false)):
 		_fault_stage("stage director rejected beat completion")
 		return
-	var break_seconds := maxf(0.0, float(_stage_director.current_beat().get("break_seconds", wave_break_seconds))) if not bool(result.get("complete", false)) else wave_break_seconds
+	var break_seconds := maxf(0.0, float(completed_beat.get("break_seconds", wave_break_seconds)))
 	await get_tree().create_timer(break_seconds, false).timeout
 	if not is_inside_tree() or _stage_faulted:
 		return
