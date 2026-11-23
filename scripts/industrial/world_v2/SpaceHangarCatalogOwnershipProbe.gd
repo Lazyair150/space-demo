@@ -98,8 +98,8 @@ static func run() -> bool:
 	core_template.order_type = "B"
 	core_template.requirements = [
 		{"shape": "round"},
-		{"shape": "round", "liquid": "other-liquid"},
-		{"shape": "square"}
+		{"shape": "square"},
+		{"shape": "round", "liquid": "other-liquid"}
 	]
 	workshop.core_order_templates = [core_template]
 	workshop.jar_world_options = {
@@ -136,7 +136,7 @@ static func run() -> bool:
 		return false
 	if resolved_options.orderTemplates.size() != 1 or String(resolved_options.orderTemplates[0].name) != "probe.offense@1":
 		return false
-	if String(resolved_options.orderTemplates[0].requirements[0].shape) != "round" or String(resolved_options.orderTemplates[0].requirements[1].liquid) != "other-liquid":
+	if String(resolved_options.orderTemplates[0].requirements[0].shape) != "round" or String(resolved_options.orderTemplates[0].requirements[2].liquid) != "other-liquid":
 		return false # Core template metadata is deeply copied and materialized into the frozen World options.
 	if int(resolved_options.workshops[0].maxLiquids) != 5 or int(resolved_options.workshops[0].liquidStagingCapacity) != 3:
 		return false
@@ -168,7 +168,7 @@ static func run() -> bool:
 	)
 	if resolved_template_order.is_empty() or String(resolved_template_order.type) != "B" or resolved_template_order.requirements.size() != 3:
 		return false
-	if String(resolved_template_order.requirements[0].shape) != "round" or String(resolved_template_order.requirements[1].liquid) != "other-liquid" or String(resolved_template_order.requirements[2].shape) != "square":
+	if String(resolved_template_order.requirements[0].shape) != "round" or String(resolved_template_order.requirements[1].shape) != "square" or String(resolved_template_order.requirements[2].liquid) != "other-liquid":
 		return false
 	var template_runtime_order := template_skill.build_jar_order("Active")
 	if template_runtime_order.has("type") or template_runtime_order.has("requirements") or String(template_runtime_order.templateName) != "probe.offense@1":
