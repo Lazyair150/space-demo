@@ -160,10 +160,23 @@ func _valid_dispatcher_state(dispatcher: Dictionary, identity: Dictionary, effec
     return true
 
 func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity: Dictionary) -> bool:
-    if int(runtime_checkpoint.get("schemaVersion", 0)) != 2:
+    var runtime_schema := int(runtime_checkpoint.get("schemaVersion", 0))
+    if runtime_schema not in [2, 3]:
         return false
     if runtime_checkpoint.get("loadoutIdentity", {}) != loadout_identity:
         return false
+    if runtime_schema == 3:
+        var stage_runtime: Variant = runtime_checkpoint.get("stageRuntime", null)
+        if not (stage_runtime is Dictionary) or int(stage_runtime.get("schemaVersion", 0)) != 1:
+            return false
+        if String(stage_runtime.get("stageId", "")).strip_edges().is_empty() or int(stage_runtime.get("definitionVersion", 0)) <= 0:
+            return false
+        if stage_runtime.get("loadoutIdentity", {}) != loadout_identity:
+            return false
+        if not (stage_runtime.get("directorState", null) is Dictionary) or not (stage_runtime.get("objectiveState", null) is Dictionary):
+            return false
+        if typeof(stage_runtime.get("encountersCompleted", null)) != TYPE_BOOL or typeof(stage_runtime.get("completionEmitted", null)) != TYPE_BOOL:
+            return false
     var jar_json: Variant = runtime_checkpoint.get("jarExecutionCheckpointJson", null)
     var clock: Variant = runtime_checkpoint.get("spaceClockRemainderMilli", null)
     var parser: Variant = runtime_checkpoint.get("oreParserState", null)
