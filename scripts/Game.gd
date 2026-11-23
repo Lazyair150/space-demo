@@ -213,8 +213,6 @@ func _begin_ship_world() -> bool:
 		# The checkpoint already contains selected demands, sessions, resources and
 		# ledger receipts. Never materialize the frozen orders a second time.
 		if not jar_host.RestoreExecutionCheckpointJson(_persisted_jar_execution_checkpoint_json):
-			if jar_host.IsShipWorldActive:
-				jar_host.EndShipWorld()
 			push_error("[Game] Jar execution checkpoint restore failed")
 			return false
 	else:
@@ -222,8 +220,6 @@ func _begin_ship_world() -> bool:
 			_battle_loadout.selected_order_bindings()
 		)
 		if not bool(materialized.get("success", false)):
-			if jar_host.IsShipWorldActive:
-				jar_host.EndShipWorld()
 			push_error("[Game] Selected order materialization failed: " + str(materialized.get("error", "")))
 			return false
 
