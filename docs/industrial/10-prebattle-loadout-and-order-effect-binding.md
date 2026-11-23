@@ -412,3 +412,12 @@ The prior positional build API remains temporarily available for existing caller
 - `SpaceHangarPreparation` can now consume this single Resource through its exported `catalog_bundle_resource`; the previous individual dependency exports remain as a compatibility path.
 
 This establishes the editor-authored data-loading seam. It does not create a production `.tres` asset, invent a ship/device/parser/workshop roster, or fabricate skill/effect balance. The next UI increment can load one bundle Resource and expose only definitions actually present in it.
+
+
+### Catalog bundle readiness and resume consistency
+
+- Runtime skill/effect registries now expose definition counts and explicit empty-state checks. A structurally present but empty catalog is not considered a usable Hangar dependency.
+- The editor-authored bundle Resource now fails materialization when required skill/effect content is absent, rather than presenting an apparently valid but unbuildable configuration.
+- The selection-based builder rejects a failed bundle materialization before attempting to access its registries.
+- Resume launch now resolves the effect catalog from the same bundle dependency source used by the Hangar, instead of accidentally depending on a separately assigned legacy export. This keeps restored effect definition versions aligned with the authored bundle.
+- The ownership probe covers empty authored bundle rejection. No production catalog entries are supplied by the probe or runtime.
