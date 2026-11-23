@@ -223,7 +223,7 @@ func capture_runtime_state() -> Dictionary:
 ## Stage and validate the entire snapshot before mutating the live manager.
 ## definition_resolver(id, version) -> BuffDefinition; target_resolver(target_key) -> Node.
 func restore_runtime_state(snapshot: Dictionary, definition_resolver: Callable, target_resolver: Callable) -> bool:
-	if int(snapshot.get("schemaVersion", 0)) != 1 or not definition_resolver.is_valid() or not target_resolver.is_valid():
+	if typeof(snapshot.get("schemaVersion", null)) != TYPE_INT or int(snapshot.get("schemaVersion", 0)) != 1 or not definition_resolver.is_valid() or not target_resolver.is_valid():
 		return false
 	var raw_entries: Variant = snapshot.get("instances", null)
 	var raw_ids: Variant = snapshot.get("processedOrderEventIds", null)
@@ -232,6 +232,8 @@ func restore_runtime_state(snapshot: Dictionary, definition_resolver: Callable, 
 	var staged_instances: Array = []
 	var staged_ids := {}
 	for raw_id in raw_ids:
+		if typeof(raw_id) != TYPE_STRING:
+			return false
 		var event_id := String(raw_id)
 		if event_id.is_empty() or staged_ids.has(event_id):
 			return false
@@ -240,11 +242,15 @@ func restore_runtime_state(snapshot: Dictionary, definition_resolver: Callable, 
 		if not (raw_entry is Dictionary):
 			return false
 		var entry: Dictionary = raw_entry
-		var definition: Variant = definition_resolver.call(String(entry.get("definitionId", "")), int(entry.get("definitionVersion", 0)))
-		if not (definition is BuffDefinition):
+		var raw_definition_id: Variant = entry.get("definitionId", null)
+		var raw_definition_version: Variant = entry.get("definitionVersion", null)
+		var raw_target_key: Variant = entry.get("targetKey", null)
+		if typeof(raw_definition_id) != TYPE_STRING or typeof(raw_definition_version) != TYPE_INT or int(raw_definition_version) <= 0 or typeof(raw_target_key) != TYPE_STRING:
 			return false
-		var target_key := String(entry.get("targetKey", ""))
-		var target: Variant = target_resolver.call(target_key)
+		var definition: Variant = definition_resolver.call(String(raw_definition_id), int(raw_definition_version))
+		if not (definition is BuffDefinition) or String(definition.id) != String(raw_definition_id) or definition.definition_version != int(raw_definition_version):
+			return false
+		var target: Variant = target_resolver.call(String(raw_target_key))
 		if target != null and not (target is Node):
 			return false
 		var instance := _new_instance(definition)
