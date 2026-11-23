@@ -255,6 +255,22 @@ public partial class WorldV2ShipHost : Node
     }
 
     /// <summary>
+    /// Explicit player-facing trigger for an Active-area demand. The Host owns the command
+    /// boundary; Core decides whether the demand can actually start.
+    /// </summary>
+    public GDictionary StartActiveDemand(int demandId)
+    {
+        if (_state != HostState.Active || _runtime == null ||
+            !_runtime.IsInitialized || _runtime.IsDisposed)
+            return new GDictionary
+            {
+                ["success"] = false,
+                ["reason"] = "Jar 世界当前不可执行主动订单"
+            };
+        return _runtime.StartActiveDemand(demandId);
+    }
+
+    /// <summary>
     /// Update a configured time-driven Jar Producer. This is not the finite energy-stone parser
     /// ingress; completed parser output must use ImportProducedJars.
     /// </summary>
