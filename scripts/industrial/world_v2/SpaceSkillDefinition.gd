@@ -13,9 +13,13 @@ enum ActivationPolicy { MANUAL, AUTOMATIC }
 @export_enum("Offense", "Defense", "Support", "Reconnaissance", "Utility") var ability_category: String = "Offense"
 
 ## Jar-owned execution contract. Keep this data free of Space effect semantics.
-@export_enum("A", "B") var jar_order_type: String = "A"
+## Exact versioned Core order template identity. Core receives only the canonical template key.
+## A non-empty template ID selects the production path; legacy inline requirements are then forbidden.
+@export var jar_order_template_id: StringName = &""
+@export var jar_order_template_version: int = 0
+@export_enum("A", "B") var jar_order_type: String = "A" # Legacy development-only fallback.
 @export_range(0, 2147483647, 1) var jar_cooldown_logical_milli: int = 0
-@export var jar_requirements: Array[Dictionary] = []
+@export var jar_requirements: Array[Dictionary] = [] # Legacy development-only fallback.
 
 ## Space-side visual identity for the order's principal Jar shape; never sent inside jarOrder.
 @export var primary_shape: StringName = &""
@@ -35,10 +39,14 @@ func is_valid() -> bool:
 		return false
 	if not ["Offense", "Defense", "Support", "Reconnaissance", "Utility"].has(ability_category):
 		return false
-	if not ["A", "B"].has(jar_order_type):
+	if jar_cooldown_logical_milli < 0:
 		return false
-	if jar_cooldown_logical_milli < 0 or jar_requirements.is_empty():
-		return false
+	if jar_order_template_id != &"":
+		if jar_order_template_version <= 0 or not jar_requirements.is_empty():
+			return false
+	else:
+		if not ["A", "B"].has(jar_order_type) or jar_requirements.is_empty():
+			return false
 	if allowed_control_areas.is_empty():
 		return false
 	for area in allowed_control_areas:
@@ -51,6 +59,8 @@ func is_valid() -> bool:
 			return false
 	if primary_shape == &"":
 		return false
+	if jar_order_template_id != &"":
+		return true # Actual template shape mix is validated against the selected World vocabulary by SkillCatalog.
 	var primary_shape_found := false
 	for requirement in jar_requirements:
 		var requirement_shape := String(requirement.get("shape", "")).strip_edges()
@@ -83,9 +93,20 @@ func has_majority_shape(shape: String) -> bool:
 func is_valid_for_shape_profile(profile: SpaceAbilityShapeProfile) -> bool:
 	return profile != null and profile.validate_skill(self).is_empty()
 
+func core_order_template_name() -> String:
+	if jar_order_template_id == &"" or jar_order_template_version <= 0:
+		return ""
+	return "%s@%d" % [String(jar_order_template_id), jar_order_template_version]
+
 func build_jar_order(selected_control_area: String) -> Dictionary:
 	if not is_valid() or not allowed_control_areas.has(selected_control_area):
 		return {}
+	if jar_order_template_id != &"":
+		return {
+			"templateName": core_order_template_name(),
+			"area": selected_control_area,
+			"cooldownDurationLogicalMilli": jar_cooldown_logical_milli
+		}
 	var expanded_requirements: Array[Dictionary] = []
 	for requirement in jar_requirements:
 		var count := int(requirement.get("count", 1))
@@ -102,7 +123,7 @@ func build_jar_order(selected_control_area: String) -> Dictionary:
 		"requirements": expanded_requirements
 	}
 
-func create_order_binding(order_definition_key: String, selected_control_area: String, balance_profile: SpaceSkillBalanceProfile, balance_context: Dictionary, benefit_metrics: Dictionary) -> Dictionary:
+func create_order_binding(order_definition_key: String, selected_control_area: String, balance_profile: SpaceSkillBalanceProfile, balance_context: Dictionary, benefit_metrics: Dictionary, balance_jar_order: Dictionary = {}) -> Dictionary:
 	if not is_valid() or order_definition_key.strip_edges().is_empty():
 		return {}
 	if not allowed_control_areas.has(selected_control_area):
@@ -115,7 +136,8 @@ func create_order_binding(order_definition_key: String, selected_control_area: S
 	var jar_order := build_jar_order(selected_control_area)
 	if benefit_metrics.is_empty():
 		return {}
-	var balance_report := SpaceSkillBalanceModel.evaluate(benefit_metrics, jar_order, balance_context, balance_profile)
+	var evaluated_order := balance_jar_order if not balance_jar_order.is_empty() else jar_order
+	var balance_report := SpaceSkillBalanceModel.evaluate(benefit_metrics, evaluated_order, balance_context, balance_profile)
 	if not balance_report.get("valid", false):
 		push_error("Skill balance evaluation failed: " + String(balance_report.get("reason", "unknown")))
 		return {}
