@@ -393,3 +393,19 @@
 - Core Actions run 45224300866 对应提交 52c2537，主项目与 Godot Host build 阶段通过；新增工厂测试因两处 nullable Rules 访问导致测试项目编译失败，xUnit 未执行。
 - Core 后续提交 4808ea4 已修正两处可空访问，但修复提交尚无新的 Actions run。不得把该轮标记为通过。
 - Space 的 GDScript Probe 仍未执行；PR #2 保持 Draft/Open。
+
+### 14.2 Hangar Board 动态槽位安装面板（2026-11-24）
+
+- Board 模式下，Hangar 不再把 Parser、Master/Slave、Device、Skill 的旧专用 Picker 作为玩家安装入口；改为遍历 Board Definition 的 Slots 动态创建槽位面板。
+- 每个槽位按 `componentKind` 从 Owned Inventory 取实例：workshop / parser / skill / production device。显示 Definition 版本、Owned Instance、等级；同 Definition 的不同 Owned Instance 保持独立选项。
+- 选择实例调用 Controller `assign_instance(slotId, ownedInstanceId)`；选择未安装项调用 `unassign_slot(slotId)`。重复实例、错误类别、成长 revision 不一致和工作台 World compatibility 仍由 Draft/Assignment 校验拒绝。
+- 工作台 World rules profile Picker 保留为独立选择；改变 World 时保留当前主/从槽位安装实例，并由 Draft 重新验证兼容性。主/从角色来自 Board Slot，不来自工作台 Definition。
+- Skill controlArea 修正为来自 Board Slot Definition，不再从 Owned Choice 中猜测。
+- `SpaceHangarBoardDefinitionProbe` 增加通用 Draft 安装路径：通过 assign_instance 安装两台工作台、解析器、Active/Passive 技能，并检查完整 Assignment Snapshot；另增加 Skill Slot controlArea 检查。
+- 旧 Picker 仅保留给无 Board Definition 的显式迁移兼容场景；Board 模式的隐藏兼容投影仍供当前 Core runtime adapter 使用，不是独立数据源。
+
+### 当前验证边界
+
+- 本轮仅提交 GDScript 与 Probe 代码；未运行 Godot、GDScript parser 或 Probe。Space PR #2 最新 head 为 `0fa247b49d5fb53b84af647084eef01542013cb4`，仍 Draft/Open。
+- Core PR #60 最新 head `fda4a40` 的 Actions run `45224859217` 已通过；不代表 Space GDScript 已验证。
+- 多 Parser、额外组件 kind 的 Core runtime 执行器、Skill/Parser/Device scope 的 Rule Contribution 消费仍未完成。
