@@ -80,12 +80,32 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 		if not bool(reward_offer.get("success", false)) or reward_offer.offers.size() != 1:
 			return false
 		var acquired := SpaceRoguelikeIndividualOfferService.acquire_selected(reward_offer, 0, state, bundle, reward_library, "probe.roguelike-owned-copy")
-		if not bool(acquired.get("success", false)) or state.resolve_instance("probe.roguelike-owned-copy") == null:
+		if not bool(acquired.get("success", false)):
 			return false
+		var acquired_instance := state.resolve_instance("probe.roguelike-owned-copy")
+		if acquired_instance == null or not acquired_instance.growth_attributes.is_empty():
+			return false # Reward provenance must never pollute subsystem growth attributes.
+		if String(acquired_instance.acquisition_provenance.get("source", "")) != "roguelike_reward" or String(acquired_instance.acquisition_provenance.get("rewardId", "")) != String(reward_offer.offerId):
+			return false
+		var acquired_skill := bundle.skill_catalog.resolve_skill(skill_id, skill_version)
+		if acquired_skill == null or SpaceProgressionRuntimeProfileComposer.compose_skill(acquired_skill, acquired_instance) == null:
+			return false # A newly rewarded skill must remain usable by the subsystem composer.
 		if not state.reward_acquisition_ids.has(String(reward_offer.offerId)):
 			return false
 		var restored_reward_state := SpacePlayerProgressionState.from_data(state.to_data())
 		if restored_reward_state == null or not restored_reward_state.reward_acquisition_ids.has(String(reward_offer.offerId)):
+			return false
+		var restored_instance := restored_reward_state.resolve_instance("probe.roguelike-owned-copy")
+		if restored_instance == null or restored_instance.acquisition_provenance != acquired_instance.acquisition_provenance or not restored_instance.growth_attributes.is_empty():
+			return false
+		# Backward compatibility: saves written before provenance had its own field
+		# stored it under growthAttributes.roguelike. Import must migrate it once.
+		var legacy_reward_data := state.to_data()
+		legacy_reward_data.ownedInstances[0].growthAttributes = {"roguelike": acquired_instance.acquisition_provenance.duplicate(true)}
+		legacy_reward_data.ownedInstances[0].erase("acquisitionProvenance")
+		var migrated_reward_state := SpacePlayerProgressionState.from_data(legacy_reward_data)
+		var migrated_instance := migrated_reward_state.resolve_instance("probe.roguelike-owned-copy") if migrated_reward_state != null else null
+		if migrated_instance == null or not migrated_instance.growth_attributes.is_empty() or migrated_instance.acquisition_provenance != acquired_instance.acquisition_provenance:
 			return false
 		var owned_count_after_reward := state.owned_instances.size()
 		var duplicate_acquire := SpaceRoguelikeIndividualOfferService.acquire_selected(reward_offer, 0, state, bundle, reward_library, "probe.roguelike-owned-copy-duplicate")
