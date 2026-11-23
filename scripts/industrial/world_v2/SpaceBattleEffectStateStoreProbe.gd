@@ -91,8 +91,20 @@ static func _probe_effect_manager_restore() -> Dictionary:
     if not definition.is_valid():
         return {"passed": false, "reason": "synthetic exact-version Buff definition is invalid"}
 
+    var catalog := SpaceEffectCatalog.new()
+    if not catalog.register_buff(definition):
+        return {"passed": false, "reason": "effect catalog rejected the exact-version probe definition"}
+    definition.duration = 20.0
+    var exposed_definition := catalog.resolve_buff("checkpoint_probe_effect", 2)
+    if exposed_definition == null or absf(exposed_definition.duration - 10.0) > 0.000001:
+        return {"passed": false, "reason": "catalog registration was not isolated from source Resource mutation"}
+    exposed_definition.duration = 1.0
+    var frozen_definition := catalog.resolve_buff("checkpoint_probe_effect", 2)
+    if frozen_definition == null or absf(frozen_definition.duration - 10.0) > 0.000001:
+        return {"passed": false, "reason": "catalog leaked its owned Resource to a caller"}
+
     var source := StatusEffectManager.new()
-    var applied := source.apply_order_event("checkpoint-probe-event", definition)
+    var applied := source.apply_order_event("checkpoint-probe-event", frozen_definition)
     if applied == null:
         return {"passed": false, "reason": "source manager could not apply probe event"}
     applied.remaining = 3.5
@@ -101,9 +113,7 @@ static func _probe_effect_manager_restore() -> Dictionary:
 
     var restored := StatusEffectManager.new()
     var definition_resolver := func(definition_id: String, version: int) -> BuffDefinition:
-        if definition_id == String(definition.id) and version == definition.definition_version:
-            return definition
-        return null
+        return catalog.resolve_buff(definition_id, version)
     var target_resolver := func(_target_key: String) -> Node:
         return null
     if not restored.restore_runtime_state(snapshot, definition_resolver, target_resolver):
