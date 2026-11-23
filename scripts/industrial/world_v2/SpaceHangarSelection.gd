@@ -12,18 +12,27 @@ var workshop_id: String = ""
 var workshop_version: int = 0
 var skill_selections: Array = []
 var expected_battle_duration_logical_milli: float = 0.0
+var _source_errors: PackedStringArray = PackedStringArray()
 
 static func from_data(data: Dictionary) -> SpaceHangarSelection:
 	var selection := SpaceHangarSelection.new()
 	selection.ship_id = String(data.get("shipId", ""))
 	selection.ship_version = int(data.get("shipVersion", 0))
-	selection.device_selections = data.get("deviceSelections", []).duplicate(true)
+	var raw_devices: Variant = data.get("deviceSelections", [])
+	if raw_devices is Array:
+		selection.device_selections = raw_devices.duplicate(true)
+	else:
+		selection._source_errors.append("deviceSelections must be an array")
 	selection.parser_id = String(data.get("parserId", ""))
 	selection.parser_version = int(data.get("parserVersion", 0))
 	selection.parser_slot_id = String(data.get("parserSlotId", ""))
 	selection.workshop_id = String(data.get("workshopId", ""))
 	selection.workshop_version = int(data.get("workshopVersion", 0))
-	selection.skill_selections = data.get("skillSelections", []).duplicate(true)
+	var raw_skills: Variant = data.get("skillSelections", [])
+	if raw_skills is Array:
+		selection.skill_selections = raw_skills.duplicate(true)
+	else:
+		selection._source_errors.append("skillSelections must be an array")
 	selection.expected_battle_duration_logical_milli = float(data.get("expectedBattleDurationLogicalMilli", 0.0))
 	return selection
 
@@ -42,7 +51,7 @@ func to_data() -> Dictionary:
 	}
 
 func validate() -> PackedStringArray:
-	var errors := PackedStringArray()
+	var errors := _source_errors.duplicate()
 	if ship_id.strip_edges().is_empty() or ship_version <= 0: errors.append("a versioned ship selection is required")
 	if parser_id.strip_edges().is_empty() or parser_version <= 0 or parser_slot_id.strip_edges().is_empty(): errors.append("a versioned universal parser and its slot are required")
 	if workshop_id.strip_edges().is_empty() or workshop_version <= 0: errors.append("a versioned workshop combination is required")
