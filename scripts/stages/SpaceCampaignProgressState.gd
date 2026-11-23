@@ -54,10 +54,26 @@ func cleared_stage_ids() -> Array:
 			result.append(stage_id)
 	return result
 
+func cleared_stage_keys() -> Array:
+	var result: Array = []
+	for record in cleared_stage_records:
+		var key := "%s@%d" % [String(record.get("stageId", "")), int(record.get("definitionVersion", 0))]
+		if not result.has(key):
+			result.append(key)
+	return result
+
+func _has_settlement_id(settlement_id: String) -> bool:
+	if reward_settlement_ids.has(settlement_id):
+		return true
+	for record in cleared_stage_records:
+		if String(record.get("rewardSettlementId", "")) == settlement_id:
+			return true
+	return false
+
 func record_stage_clear(stage: SpaceStageDefinition, result: Dictionary, settlement_id: String) -> bool:
 	if stage == null or not stage.is_valid() or settlement_id.strip_edges().is_empty() or result.is_empty():
 		return false
-	if not get_validation_errors().is_empty() or is_stage_cleared(String(stage.stage_id), stage.definition_version) or reward_settlement_ids.has(settlement_id):
+	if not get_validation_errors().is_empty() or is_stage_cleared(String(stage.stage_id), stage.definition_version) or _has_settlement_id(settlement_id):
 		return false
 	cleared_stage_records.append({
 		"stageId": String(stage.stage_id),
