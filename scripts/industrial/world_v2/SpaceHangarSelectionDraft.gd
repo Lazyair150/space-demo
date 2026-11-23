@@ -233,6 +233,8 @@ func _rebuild_legacy_projection() -> void:
 					"controlArea": slot.control_area if slot != null else "none",
 					"instanceId": String(entry.ownedInstanceId)
 				})
+	_selection.deviceSelections.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return String(a.get("slotId", "")) < String(b.get("slotId", "")))
+	_selection.skillSelections.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return String(a.get("orderDefinitionKey", "")) < String(b.get("orderDefinitionKey", "")))
 
 func _find_choice_in(raw_choices: Variant, definition_id: String, version: int) -> Dictionary:
 	if not (raw_choices is Array):
