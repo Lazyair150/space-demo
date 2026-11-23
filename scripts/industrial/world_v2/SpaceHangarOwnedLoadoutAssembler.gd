@@ -24,7 +24,7 @@ static func assemble(
 		board_rule_profile = SpaceRuleContributionResolver.resolve(board_assignment_snapshot, bundle, progression)
 		if board_rule_profile.is_empty():
 			return _reject("installed component Rule Contributions could not be resolved from exact Definition and Owned Instance versions")
-		board_rule_profile["assignmentSnapshot"] = board_assignment_snapshot.duplicate(true)
+		# Keep the profile hash payload unchanged; the exact assignment snapshot travels as its sibling option.
 	var ship_instance := _resolve(progression, String(selection.shipInstanceId), "ship", String(selection.shipId), int(selection.shipVersion))
 	var parser_instance := _resolve(progression, String(selection.parserInstanceId), "ore_parser", String(selection.parserId), int(selection.parserVersion))
 	var master_instance := _resolve(progression, String(selection.masterWorkshopInstanceId), "workshop", "", 0)
@@ -147,6 +147,7 @@ static func assemble(
 	jar_options.workshops = workshops
 	if not board_rule_profile.is_empty():
 		jar_options["boardRuleProfile"] = board_rule_profile.duplicate(true)
+		jar_options["boardAssignmentSnapshot"] = board_assignment_snapshot.duplicate(true)
 	frozen.jarWorldOptions = jar_options
 	var workshop_selection: Dictionary = frozen.workshopCombinationSelection
 	workshop_selection.masterWorkshopDefinitionId = String(master_instance.definition_id)
