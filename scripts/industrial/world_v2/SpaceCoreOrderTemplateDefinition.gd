@@ -22,14 +22,19 @@ func get_validation_errors(shape_vocabulary: Array, liquid_vocabulary: Array) ->
 		errors.append("Core order template type must be A or B")
 	if requirements.is_empty():
 		errors.append("Core order template must contain at least one Jar requirement")
+	var seen_full_jar := false
 	for index in range(requirements.size()):
 		var requirement: Dictionary = requirements[index]
 		var shape := String(requirement.get("shape", "")).strip_edges()
 		if shape.is_empty() or not shape_vocabulary.has(shape):
 			errors.append("Core order template requirement %d uses an unknown or empty shape" % (index + 1))
 		var liquid := String(requirement.get("liquid", "")).strip_edges()
-		if not liquid.is_empty() and not liquid_vocabulary.has(liquid):
-			errors.append("Core order template requirement %d uses an unknown liquid" % (index + 1))
+		if not liquid.is_empty():
+			seen_full_jar = true
+			if not liquid_vocabulary.has(liquid):
+				errors.append("Core order template requirement %d uses an unknown liquid" % (index + 1))
+		elif seen_full_jar:
+			errors.append("Core order template empty Jar requirements must precede all liquid-filled requirements")
 		for key in requirement:
 			if not ["shape", "liquid"].has(String(key)):
 				errors.append("Core order template requirement %d contains unsupported field %s" % [index + 1, String(key)])
