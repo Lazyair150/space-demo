@@ -178,6 +178,20 @@ static func run() -> bool:
 	if invalid_template_world.get_validation_errors().is_empty():
 		return false
 
+	var invalid_template_order := workshop.duplicate(true) as SpaceWorkshopCombinationDefinition
+	invalid_template_order.core_order_templates[0].requirements = [
+		{"shape": "round", "liquid": "other-liquid"},
+		{"shape": "round"}
+	]
+	if invalid_template_order.get_validation_errors().is_empty():
+		return false # Core's empty-before-full ordering invariant must be caught before world creation.
+	var oversized_template := workshop.duplicate(true) as SpaceWorkshopCombinationDefinition
+	oversized_template.core_order_templates[0].requirements.clear()
+	for _index in range(11):
+		oversized_template.core_order_templates[0].requirements.append({"shape": "round"})
+	if oversized_template.get_validation_errors().is_empty():
+		return false # Keep Space authoring aligned with Core's maximum of ten requirements.
+
 	var parser := SpaceOreParserDefinition.new()
 	parser.parser_id = &"probe.parser"
 	parser.definition_version = 1
