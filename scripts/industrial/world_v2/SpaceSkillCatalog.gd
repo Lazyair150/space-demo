@@ -35,7 +35,8 @@ func create_order_binding_for_build(
 	ship_resource_profile: Dictionary,
 	shape_progress_per_jar: Dictionary,
 	expected_battle_duration_logical_milli: float,
-	effect_catalog: SpaceEffectCatalog
+	effect_catalog: SpaceEffectCatalog,
+	jar_world_options: Dictionary = {}
 ) -> Dictionary:
 	var definition := resolve_skill(skill_id, version)
 	if definition == null:
@@ -50,8 +51,43 @@ func create_order_binding_for_build(
 	var jar_order := definition.build_jar_order(selected_control_area)
 	if jar_order.is_empty():
 		return {}
+	var balance_jar_order := jar_order.duplicate(true)
+	if definition.jar_order_template_id != &"":
+		var template_name := definition.core_order_template_name()
+		var raw_templates: Variant = jar_world_options.get("orderTemplates", null)
+		if not (raw_templates is Array):
+			push_error("Selected workshop world has no Core orderTemplates array")
+			return {}
+		var matched_template: Dictionary = {}
+		for raw_template in raw_templates:
+			if raw_template is Dictionary and String(raw_template.get("name", "")) == template_name:
+				matched_template = raw_template
+				break
+		if matched_template.is_empty():
+			push_error("Skill exact Core order template is missing: " + template_name)
+			return {}
+		var requirements: Variant = matched_template.get("requirements", null)
+		var order_type := String(matched_template.get("type", ""))
+		if not ["A", "B"].has(order_type) or not (requirements is Array) or requirements.is_empty():
+			return {}
+		var total_count := requirements.size()
+		var primary_count := 0
+		for requirement in requirements:
+			if not (requirement is Dictionary) or String(requirement.get("shape", "")).strip_edges().is_empty():
+				return {}
+			if String(requirement.get("shape", "")).strip_edges() == String(definition.primary_shape):
+				primary_count += 1
+		if primary_count * 2 <= total_count:
+			push_error("Core order template must give the skill primary shape a strict majority")
+			return {}
+		balance_jar_order = {
+			"type": order_type,
+			"area": selected_control_area,
+			"cooldownDurationLogicalMilli": definition.jar_cooldown_logical_milli,
+			"requirements": requirements.duplicate(true)
+		}
 	var context := SpaceSkillBuildContextEvaluator.evaluate(
-		jar_order,
+		balance_jar_order,
 		production_devices,
 		workshop_combination,
 		ship_resource_profile,
@@ -62,7 +98,7 @@ func create_order_binding_for_build(
 	if not context.get("valid", false):
 		push_error("Skill build difficulty context rejected: " + String(context.get("reason", "unknown")))
 		return {}
-	return definition.create_order_binding(order_definition_key, selected_control_area, balance_profile, context, benefit_metrics)
+	return definition.create_order_binding(order_definition_key, selected_control_area, balance_profile, context, benefit_metrics, balance_jar_order)
 
 func is_empty() -> bool:
 	return _definitions.is_empty()
