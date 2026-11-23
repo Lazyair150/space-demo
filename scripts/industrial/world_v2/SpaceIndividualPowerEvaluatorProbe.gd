@@ -71,8 +71,8 @@ static func _probe_skill() -> bool:
 	var model_metrics := {
 		"benefit_score": 0.2,
 		"target_difficulty": 1.0 + pow(0.2, 1.25),
-		"actual_difficulty": 2.0,
-		"difficulty_ratio": 2.0 / (1.0 + pow(0.2, 1.25)),
+		"actual_difficulty": 2.5,
+		"difficulty_ratio": 2.5 / (1.0 + pow(0.2, 1.25)),
 		"activation_frequency_multiplier": 1.0,
 		"expected_activations": 6.0,
 		"jar_count": 1.0,
