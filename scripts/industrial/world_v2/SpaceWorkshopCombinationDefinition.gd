@@ -32,10 +32,13 @@ func get_validation_errors() -> PackedStringArray:
 	var shapes: Variant = jar_world_options.get("shapes", null)
 	var shape_set := {}
 	if not (shapes is Array) or shapes.is_empty():
-		errors.append("workshop combination must provide a non-empty Jar shape vocabulary")
+		errors.append("World V2 profile must provide a non-empty Jar shape vocabulary")
 	elif shapes is Array:
 		for shape in shapes:
-			shape_set[String(shape)] = true
+			var shape_name := String(shape).strip_edges()
+			if shape_name.is_empty() or shape_set.has(shape_name):
+				errors.append("World V2 shape vocabulary contains an empty or duplicate name")
+			shape_set[shape_name] = true
 	var liquids: Variant = jar_world_options.get("liquids", null)
 	var liquid_set := {}
 	if not (liquids is Array) or liquids.size() != 2:
