@@ -123,4 +123,35 @@ static func run() -> bool:
 	var empty_inventory := empty_authored_bundle.build_selection_inventory()
 	if bool(empty_inventory.get("isReady", true)) or not empty_inventory.get("shipChoices", []).is_empty():
 		return false
+	var draft := SpaceHangarSelectionDraft.new()
+	var draft_inventory := {
+		"isReady": true,
+		"shipChoices": [{"id": "probe.ship", "version": 2}],
+		"deviceChoices": [{"id": "probe.device", "version": 4}],
+		"parserChoices": [{"id": "probe.parser", "version": 1}],
+		"workshopChoices": [{"id": "probe.workshop", "version": 5}],
+		"skillChoices": [{"id": "probe.skill", "version": 3, "allowedControlAreas": ["primary"]}]
+	}
+	if not draft.configure(draft_inventory):
+		return false
+	if draft.set_ship("probe.ship", 1) or not draft.set_ship("probe.ship", 2):
+		return false
+	if not draft.set_parser("probe.parser", 1, "parser-slot"):
+		return false
+	if draft.set_device("parser-slot", "probe.device", 4):
+		return false
+	if not draft.set_device("device-slot", "probe.device", 4):
+		return false
+	if draft.set_skill("probe.order", "probe.skill", 3, "secondary"):
+		return false
+	if not draft.set_skill("probe.order", "probe.skill", 3, "primary"):
+		return false
+	if not draft.set_workshop("probe.workshop", 5) or not draft.set_expected_battle_duration(60000.0):
+		return false
+	var drafted_selection := draft.build_selection()
+	if drafted_selection == null or not drafted_selection.validate().is_empty():
+		return false
+	var unavailable_draft := SpaceHangarSelectionDraft.new()
+	if unavailable_draft.configure({"isReady": false}) or unavailable_draft.set_ship("probe.ship", 2):
+		return false
 	return true
