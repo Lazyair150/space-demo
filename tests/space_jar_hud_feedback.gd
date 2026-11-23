@@ -42,6 +42,8 @@ func _run() -> void:
 	_check("酒 2" in hud_line and "蜜 1" in hud_line, "persistent HUD strip exposes exact ship liquid counts")
 	_check("主台 1罐/1液  →  从台 2罐/2液" in hud_line, "persistent HUD strip preserves one-way master-to-slave presentation")
 	_check(not ("%" in hud_line), "ship resource strip does not invent an unavailable capacity percentage")
+	_check(observer._demand_shape_summary("方罐", [{"shape": "圆罐"}, {"shape": "长条舱段"}]) == "■ 主形 ● ▬", "order HUD uses explicit primary shape plus separate requirement shapes")
+	_check(observer._demand_shape_summary("", [{"shape": "圆罐"}]) == "●", "order HUD does not infer primary shape from first requirement")
 	var cooling := observer._cooling_demand_ids([
 		{"id": 7, "isCoolingDown": true},
 		{"id": 8, "isCoolingDown": false},
