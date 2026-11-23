@@ -61,6 +61,14 @@ static func evaluate(
 			aggregate_rates[String(shape)] = float(aggregate_rates.get(String(shape), 0.0)) + effective_rate
 	if ore_parser_count != 1:
 		return _failure("exactly one selected universal ore parser is required for shape production")
+	if shape_progress_per_jar.size() != parser_progress_per_jar.size():
+		return _failure("build-context Jar thresholds must exactly match the selected frozen parser profile")
+	for shape in parser_progress_per_jar:
+		if not shape_progress_per_jar.has(shape):
+			return _failure("build-context thresholds are missing a selected parser shape: " + String(shape))
+		var supplied_threshold: Variant = shape_progress_per_jar[shape]
+		if (typeof(supplied_threshold) != TYPE_INT and typeof(supplied_threshold) != TYPE_FLOAT) or not is_finite(float(supplied_threshold)) or absf(float(supplied_threshold) - float(parser_progress_per_jar[shape])) > 0.000001:
+			return _failure("build-context Jar threshold differs from the selected frozen parser profile: " + String(shape))
 
 	var stone_rates: Variant = ship_resource_profile.get("expectedStoneProgressPerSecondByShape", null)
 	if not (stone_rates is Dictionary) or stone_rates.is_empty():
@@ -109,8 +117,6 @@ static func evaluate(
 	var shape_pressure := {}
 	for shape in shape_demand:
 		var progress_per_jar := float(parser_progress_per_jar.get(shape, 0.0))
-		if shape_progress_per_jar.has(shape) and absf(float(shape_progress_per_jar[shape]) - progress_per_jar) > 0.000001:
-			return _failure("shape progress-per-Jar must match the frozen selected ore parser profile: " + shape)
 		var output_jar_rate := float(effective_jar_output_rates.get(shape, 0.0))
 		if output_jar_rate <= 0.0:
 			return _failure("ship drops, selected processors, and Jar conversion must all support shape: " + shape)
