@@ -83,10 +83,15 @@ func _run_command_probe() -> void:
     var after_domain_rejection: Dictionary = runtime.GetWorldSnapshot()
     assert(not after_domain_rejection.get("runtimeFaulted", true), "domain rejection must remain distinct from runtime fault")
 
+    # Space may update the complete rate table of a configured Jar producer.
+    # Jar retains the fractional production accumulator and owns all actual Jar creation.
+    runtime.UpdateProducerRates("陶工", {"圆罐": 2.0, "方罐": 0.0})
+    assert(not runtime.IsFaulted, "a valid producer-rate update must not fault the Runtime")
+
     # Missing IDs are a normal negative result for MoveDemand, not a runtime fault.
     var missing_move: bool = runtime.MoveDemand(-1, "Passive")
     assert(not missing_move, "moving a missing demand must return false")
-    assert(_snapshot_changed_count >= 3, "successful commands must emit SnapshotChanged")
+    assert(_snapshot_changed_count >= 4, "successful commands must emit SnapshotChanged")
 
     print(
         "[WorldV2Probe] command probe passed",
