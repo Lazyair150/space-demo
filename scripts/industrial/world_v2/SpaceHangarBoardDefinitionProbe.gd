@@ -185,6 +185,16 @@ static func run() -> bool:
 		wrong_parser_identity.workshopCombinationSelection
 	).is_empty():
 		return false
+	var wrong_parser_instance := frozen_data.duplicate(true)
+	wrong_parser_instance.productionDeviceSelections[0].oreParserProfile.ownedInstance.instanceId = "parser.foreign.copy"
+	if not SpaceBoardRuntimeProfileSet.build(
+		wrong_parser_instance.boardAssignmentSnapshot,
+		wrong_parser_instance.jarWorldOptions,
+		wrong_parser_instance.productionDeviceSelections,
+		wrong_parser_instance.selectedOrderBindings,
+		wrong_parser_instance.workshopCombinationSelection
+	).is_empty():
+		return false
 	var wrong_skill_provenance := frozen_data.duplicate(true)
 	wrong_skill_provenance.selectedOrderBindings[0].ownedInstance.progressionRevision += 1
 	if not SpaceBoardRuntimeProfileSet.build(
@@ -214,6 +224,16 @@ static func run() -> bool:
 		duplicate_parser_profile.productionDeviceSelections,
 		duplicate_parser_profile.selectedOrderBindings,
 		duplicate_parser_profile.workshopCombinationSelection
+	).is_empty():
+		return false
+	var duplicate_skill_binding := frozen_data.duplicate(true)
+	duplicate_skill_binding.selectedOrderBindings.append(duplicate_skill_binding.selectedOrderBindings[0].duplicate(true))
+	if not SpaceBoardRuntimeProfileSet.build(
+		duplicate_skill_binding.boardAssignmentSnapshot,
+		duplicate_skill_binding.jarWorldOptions,
+		duplicate_skill_binding.productionDeviceSelections,
+		duplicate_skill_binding.selectedOrderBindings,
+		duplicate_skill_binding.workshopCombinationSelection
 	).is_empty():
 		return false
 
