@@ -315,3 +315,26 @@
 - Jar Core 文档已提交至 PR #60 分支 `world-v2/phase-4.11c-order-template-demand-ingress`，提交：`4bf7ba67662b4e214c81b85063bb3da6d28cc2e7`。
 - Space Demo 本节只记录跨仓库审查结论与执行约束，不表示 Rule Contribution 或统一 Board Assignment 已经实现。
 - 本次为源码静态审查；没有运行 .NET/Godot/GDScript/Probe。PR #2 仍保持 Draft/Open，不合并。
+
+
+## 12. 第一轮电路板装配实现（2026-11-24）
+
+### 已提交实现
+- 新增 `SpaceHangarBoardAssignment.gd`：玩家的槽位安装关系独立于 Board Definition，精确记录 `slotId / componentKind / ownedInstanceId / definitionId / definitionVersion`。
+- Assignment 校验覆盖未知槽位、槽位类别不兼容、实例不属于玩家库存、Definition/version 不匹配、同一 Owned Instance 重复安装、必需槽空缺。
+- 新增规范化 Assignment snapshot：包含 Board Definition 冻结数据、排序后的 assignment entries 和 SHA-256 assignment fingerprint。
+- `SpaceHangarSelectionDraft` 已将 Assignment Map 作为 Parser、主/从工作台、生产设备和技能的主数据源。旧 `parserInstanceId/masterWorkshopInstanceId/slaveWorkshopInstanceId/deviceSelections/skillSelections` 均由 Assignment Map 生成，作为旧 Runtime Projection。
+- 原有 Picker 选择接口暂时保留，但所有元件安装/替换操作都通过统一 `_assign` 入口执行。Controller 新增通用 `assign_instance`、`unassign_slot`、`get_assignment` 与 `validate_assignments`。
+- Hangar Screen 初始化 Controller 时传入 Board Definition；冻结生产 Owned Loadout 前强制验证 required slots。
+- `SpaceHangarOwnedLoadoutAssembler` 重新检查 Assignment snapshot 中的 exact Board Slot、Owned Instance、Definition/version 和 runtime projection 身份一致性，并将 Assignment snapshot 放入 Loadout fingerprint。
+- `SpaceBattleLoadoutSnapshot` 验证 Assignment snapshot 的 Board identity、required slot、component kind、重复 slot/instance、内容 fingerprint，并要求其 Board Definition 与 `assemblyBoard` 一致。
+- `SpaceHangarBoardDefinitionProbe` 新增 Assignment exact ownership、同 Definition 不同 Owned copies、重复实例、错误类别与顺序无关 fingerprint 场景。
+
+### 当前边界
+- 目前 Board Assignment 已成为 Draft 的元件选择主数据源，但 Hangar UI 还没有完成完全通用的 Board Slot 动态面板；现有 Picker 仍按 Parser、Master/Slave、Device、Skill 分类显示。
+- 主台/从台与单 Parser 仍由当前 Runtime Projection 限制；Board Definition 不再承担这些运行时数量限制。
+- Assignment snapshot 进入 Space Loadout，但每个 Owned Instance 尚未携带其可序列化 Rule Contribution Definition；跨仓库 Rule Contribution 精确来源还需下一轮打通。
+- 本轮不宣称多 Parser 可运行，也不清理仍被引用的旧 Runtime Projection 字段。
+
+### 验证
+- 本轮新增/修改的 GDScript Probe 仅为 authored；未运行 Godot、GDScript parser、.NET 集成或 runtime Probe。
