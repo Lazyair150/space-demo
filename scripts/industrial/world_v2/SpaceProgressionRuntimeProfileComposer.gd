@@ -111,7 +111,7 @@ static func compose_skill(definition: SpaceSkillDefinition, instance: SpaceOwned
 	var growth := instance.growth_attributes
 	for raw_key in growth:
 		var key := String(raw_key)
-		if not (key.begins_with("effectAdd.") or key.begins_with("effectMul.") or key.begins_with("benefitAdd.") or key.begins_with("benefitMul.")):
+		if not (key.begins_with("effectAdd.") or key.begins_with("effectMul.")):
 			return null
 	var result := definition.duplicate(true) as SpaceSkillDefinition
 	var parameters := result.effect_parameters.duplicate(true)
@@ -131,8 +131,23 @@ static func compose_skill_binding(binding: Dictionary, definition: SpaceSkillDef
 	if not (benefit is Dictionary) or not (jar_order is Dictionary) or not (context is Dictionary):
 		return {}
 	var adjusted_benefit: Dictionary = benefit.duplicate(true)
-	if not _apply_flat_numeric_overlay(adjusted_benefit, _filter_prefixes(instance.growth_attributes, ["benefitAdd.", "benefitMul."]), "benefitAdd.", "benefitMul."):
-		return {}
+	for raw_key in instance.growth_attributes:
+		var growth_key := String(raw_key)
+		var prefix := "effectAdd." if growth_key.begins_with("effectAdd.") else "effectMul." if growth_key.begins_with("effectMul.") else ""
+		if prefix.is_empty():
+			return {}
+		var parameter_name := growth_key.trim_prefix(prefix)
+		if not definition.effect_parameter_benefit_dimensions.has(parameter_name):
+			return {} # Every balance-relevant grown parameter needs an explicit effect-to-benefit mapping.
+		var dimension := String(definition.effect_parameter_benefit_dimensions[parameter_name])
+		var growth_value: Variant = instance.growth_attributes[raw_key]
+		if not adjusted_benefit.has(dimension) or typeof(adjusted_benefit[dimension]) not in [TYPE_INT, TYPE_FLOAT]:
+			return {}
+		if typeof(growth_value) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(growth_value)):
+			return {}
+		adjusted_benefit[dimension] = float(adjusted_benefit[dimension]) + float(growth_value) if prefix == "effectAdd." else float(adjusted_benefit[dimension]) * float(growth_value)
+		if not is_finite(float(adjusted_benefit[dimension])):
+			return {}
 	var report := SpaceSkillBalanceModel.evaluate(adjusted_benefit, jar_order, context, balance_profile)
 	if not bool(report.get("valid", false)) or String(report.get("balanceStatus", "")) == "undercosted":
 		return {} # Growth may not increase skill benefit beyond its authored Jar cost curve.
