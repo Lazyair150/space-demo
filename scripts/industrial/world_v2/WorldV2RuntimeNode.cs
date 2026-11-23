@@ -205,6 +205,30 @@ public partial class WorldV2RuntimeNode : Node
         return demandId;
     }
 
+    /// <summary>Move an existing demand between the explicit Active and Passive areas.</summary>
+    public bool MoveDemand(int demandId, string targetArea)
+    {
+        if (!Enum.TryParse<DemandAreaKind>(targetArea, ignoreCase: false, out var area) ||
+            !Enum.IsDefined(area))
+            return false;
+        var moved = RequireOperationalSession().MoveDemand(demandId, area);
+        if (moved)
+            EmitSignal(SignalName.SnapshotChanged);
+        return moved;
+    }
+
+    /// <summary>Request Core to start one Active-area demand; feasibility remains Core-owned.</summary>
+    public GDictionary StartActiveDemand(int demandId)
+    {
+        var result = RequireOperationalSession().StartActiveDemand(demandId);
+        EmitSignal(SignalName.SnapshotChanged);
+        return new GDictionary
+        {
+            ["success"] = result.Success,
+            ["reason"] = result.Reason ?? ""
+        };
+    }
+
     /// <summary>
     /// Imports completed empty Jars produced by a Space-owned parser. The batch ID is
     /// idempotent in Jar Core and survives its execution checkpoint.
