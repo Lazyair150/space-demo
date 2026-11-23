@@ -33,11 +33,12 @@ The authoritative in-scene gate is `SceneTree.paused`.
 - `PROCESS_MODE_ALWAYS` continues processing. Reserve it for pause controls and UI that must remain interactive.
 - `PROCESS_MODE_WHEN_PAUSED` is for narrowly scoped paused-only UI/diagnostics.
 - `PROCESS_MODE_DISABLED` stops processing regardless of tree pause.
+- The SceneTree root defaults to `PROCESS_MODE_PAUSABLE`; autoloads and the active scene normally inherit that policy unless they explicitly override it. Thus the combat pause also suspends pausable autoload processing such as the IndustrialRuntime accumulator. This is intentional for the current single-active-screen application.
 - Physics simulation and collision callbacks for the paused gameplay tree stop with the tree pause.
 - A `Timer` node must inherit the gameplay pause policy. Do not enable its process-while-paused behavior for combat scheduling.
 - `SceneTree.create_timer(seconds)` defaults to processing while paused. Combat delays must explicitly use `create_timer(seconds, false)`. A UI-only animation may deliberately use an always-processing timer, but it must be owned by UI and documented.
 - Tweens/AnimationPlayers attached to gameplay nodes inherit their owner process policy. Pause-menu animation is UI-owned and may continue.
-- Audio pause/fade policy must be explicit per bus/player; do not infer it from physics pause.
+- Standard Godot audio player nodes pause their current stream with SceneTree pause and resume automatically. Bus effects, externally managed audio, or deliberate UI audio that must continue need an explicit policy.
 
 Changing `Engine.time_scale` is not a pause API. Keep it at the normal global scale for this architecture. Jar logical speed ratios are owned by the Jar WorldClock; they must not alter Space physics or the Space-to-Jar delta. A true combat pause uses the pause gate and Host lifecycle transition, not a zero speed ratio.
 
@@ -134,7 +135,8 @@ Implemented in this phase:
 - Added `SpaceBattlePauseController` to the combat scene. Escape pauses/resumes; focus loss pauses without auto-resume.
 - Pause controller calls the Host's pause/resume lifecycle methods as well as the SceneTree gate.
 - HUD presentation continues while paused.
-- Combat wave spawn, wave-break, and death-transition timers now opt out of process-while-paused behavior.
+- Combat wave spawn, wave-break, death-transition, and explosion-lifetime timers now opt out of process-while-paused behavior.
+- The Industrial screen's restart-confirmation countdown also explicitly respects SceneTree pause; the isolated World V2 Core clock probe explicitly keeps its test timers running so it can verify Jar's internal pause independently of Godot pause.
 - Combat scene teardown clears the SceneTree pause gate.
 - Production Host already constructs its Runtime with `AutoAdvance = false`, and its own HostState gate rejects advances unless Active.
 
