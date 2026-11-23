@@ -50,6 +50,47 @@ func configure_order_effect_commit_callback(callback: Callable) -> bool:
 	_order_effect_commit_callback = callback
 	return true
 
+## Configure a resumed battle from one atomic effect/dispatcher/Jar/Space snapshot.
+## The caller must still restore the saved player effect state into StatusEffectManager.
+func configure_battle_loadout_from_checkpoint(
+	loadout: SpaceBattleLoadoutSnapshot,
+	saved_snapshot: Dictionary,
+	commit_callback: Callable = Callable()
+) -> bool:
+	if loadout == null or int(saved_snapshot.get("schemaVersion", 0)) != 2:
+		return false
+	var expected_identity := {
+		"shipWorldId": loadout.ship_world_id(),
+		"loadoutId": loadout.loadout_id(),
+		"loadoutVersion": loadout.loadout_version(),
+		"loadoutFingerprint": loadout.loadout_fingerprint()
+	}
+	if saved_snapshot.get("loadoutIdentity", {}) != expected_identity:
+		return false
+	var runtime_checkpoint: Variant = saved_snapshot.get("runtimeCheckpoint", null)
+	var dispatcher_state: Variant = saved_snapshot.get("dispatcherState", null)
+	var effect_state: Variant = saved_snapshot.get("effectState", null)
+	if not (runtime_checkpoint is Dictionary) or not (dispatcher_state is Dictionary) or not (effect_state is Dictionary):
+		return false
+	if runtime_checkpoint.get("loadoutIdentity", {}) != expected_identity:
+		return false
+	var jar_checkpoint: Variant = runtime_checkpoint.get("jarExecutionCheckpointJson", null)
+	var clock_remainder: Variant = runtime_checkpoint.get("spaceClockRemainderMilli", null)
+	var parser_state: Variant = runtime_checkpoint.get("oreParserState", null)
+	if typeof(jar_checkpoint) != TYPE_STRING or String(jar_checkpoint).is_empty() or (typeof(clock_remainder) != TYPE_INT and typeof(clock_remainder) != TYPE_FLOAT) or not is_finite(float(clock_remainder)) or float(clock_remainder) < 0.0 or float(clock_remainder) >= 1.0 or not (parser_state is Dictionary):
+		return false
+	if not configure_battle_loadout(
+		loadout,
+		dispatcher_state,
+		parser_state,
+		String(jar_checkpoint),
+		float(clock_remainder)
+	):
+		return false
+	if commit_callback.is_valid() and not configure_order_effect_commit_callback(commit_callback):
+		return false
+	return true
+
 func _ready() -> void:
 	GameState.reset_run()
 	# Buff durations consume the same combat simulation delta as Jar and actors.
@@ -377,15 +418,20 @@ func capture_ore_parser_state() -> Dictionary:
 ## completed step boundary. The caller must persist this object as one save transaction.
 func capture_jar_space_runtime_checkpoint() -> Dictionary:
 	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
-	if jar_host == null or not jar_host.IsShipWorldActive:
+	if jar_host == null or not jar_host.IsShipWorldActive or _battle_loadout == null:
 		return {}
+	var identity := {
+		"shipWorldId": _battle_loadout.ship_world_id(),
+		"loadoutId": _battle_loadout.loadout_id(),
+		"loadoutVersion": _battle_loadout.loadout_version(),
+		"loadoutFingerprint": _battle_loadout.loadout_fingerprint()
+	}
 	return {
 		"schemaVersion": 1,
-		"shipWorldId": _battle_loadout.ship_world_id() if _battle_loadout != null else "",
+		"loadoutIdentity": identity,
 		"jarExecutionCheckpointJson": jar_host.CaptureExecutionCheckpointJson(),
 		"spaceClockRemainderMilli": jar_host.CaptureSpaceClockRemainderMilli(),
-		"oreParserState": capture_ore_parser_state(),
-		"orderDispatcherState": capture_order_dispatcher_state()
+		"oreParserState": capture_ore_parser_state()
 	}
 
 func _fail_ore_parser(jar_host: WorldV2ShipHost, reason: String) -> void:
