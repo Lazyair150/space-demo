@@ -92,6 +92,16 @@ static func run() -> bool:
 	workshop.definition_version = 5
 	workshop.display_name = "Probe Workshop"
 	workshop.display_icon = GradientTexture2D.new()
+	var core_template := SpaceCoreOrderTemplateDefinition.new()
+	core_template.template_id = &"probe.offense"
+	core_template.template_version = 1
+	core_template.order_type = "B"
+	core_template.requirements = [
+		{"shape": "round"},
+		{"shape": "round", "liquid": "other-liquid"},
+		{"shape": "square"}
+	]
+	workshop.core_order_templates = [core_template]
 	workshop.jar_world_options = {
 		"shapes": ["round", "square", "diamond", "triangle", "hex"],
 		"liquids": ["blocked-liquid", "other-liquid"],
@@ -112,6 +122,7 @@ static func run() -> bool:
 	local_master.banned_liquids[0] = "mutated"
 	pair.master_workshop_id = &"probe.slave"
 	workshop.jar_world_options.shapes[0] = "mutated"
+	core_template.requirements[0].shape = "mutated-template-shape"
 	workshop.operation_cost_by_order_type["A"] = 99.0
 	var resolved_workshop := workshops.resolve_definition("probe.workshop", 5)
 	if resolved_workshop == null or String(resolved_workshop.jar_world_options.shapes[0]) != "round" or resolved_workshop.display_icon == null:
@@ -123,6 +134,10 @@ static func run() -> bool:
 		return false
 	if String(resolved_options.masterWorkshopName) != "Probe Master" or String(resolved_options.slaveWorkshopName) != "Probe Slave":
 		return false
+	if resolved_options.orderTemplates.size() != 1 or String(resolved_options.orderTemplates[0].name) != "probe.offense@1":
+		return false
+	if String(resolved_options.orderTemplates[0].requirements[0].shape) != "round" or String(resolved_options.orderTemplates[0].requirements[1].liquid) != "other-liquid":
+		return false # Core template metadata is deeply copied and materialized into the frozen World options.
 	if int(resolved_options.workshops[0].maxLiquids) != 5 or int(resolved_options.workshops[0].liquidStagingCapacity) != 3:
 		return false
 	if not workshops.create_selection("probe.workshop", 5).has("workshopPair"):
@@ -134,6 +149,33 @@ static func run() -> bool:
 	if float(workshops.create_balance_profile("probe.workshop", 5).operationCostByOrderType["A"]) != 1.0:
 		return false
 	if workshops.resolve_definition("probe.workshop", 4) != null:
+		return false
+
+	var template_skill := SpaceSkillDefinition.new()
+	template_skill.skill_id = &"probe.template-skill"
+	template_skill.definition_version = 1
+	template_skill.display_name = "Probe Template Skill"
+	template_skill.ability_category = "Offense"
+	template_skill.primary_shape = &"round"
+	template_skill.jar_order_template_id = &"probe.offense"
+	template_skill.jar_order_template_version = 1
+	template_skill.effect_definition_id = &"probe.effect"
+	var template_skill_catalog := SpaceSkillCatalog.new()
+	if not template_skill_catalog.register_skill(template_skill):
+		return false
+	var resolved_template_order := template_skill_catalog.resolve_order_template(
+		template_skill, resolved_options, "Active"
+	)
+	if resolved_template_order.is_empty() or String(resolved_template_order.type) != "B" or resolved_template_order.requirements.size() != 3:
+		return false
+	if int(resolved_template_order.requirements.count({"shape": "round"})) < 0:
+		return false
+	var template_runtime_order := template_skill.build_jar_order("Active")
+	if template_runtime_order.has("type") or template_runtime_order.has("requirements") or String(template_runtime_order.templateName) != "probe.offense@1":
+		return false # Runtime sends only the Core template key, never a copied requirement array.
+	var invalid_template_world := workshop.duplicate(true) as SpaceWorkshopCombinationDefinition
+	invalid_template_world.core_order_templates[0].requirements[0].shape = "not-in-world"
+	if invalid_template_world.get_validation_errors().is_empty():
 		return false
 
 	var parser := SpaceOreParserDefinition.new()
