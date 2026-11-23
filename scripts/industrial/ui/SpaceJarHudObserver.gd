@@ -669,34 +669,51 @@ func _demand_shape_summary(primary_shape: String, requirements: Array) -> String
 
 func _render_demands(raw_demands: Variant, raw_sessions: Variant, order_presentation: Dictionary) -> void:
 	UiKit.clear_children(_demands_box)
-	if not (raw_demands is Array) or raw_demands.is_empty():
-		_demands_box.add_child(UiKit.label("当前没有订单", UiKit.FONT_SMALL, UiKit.MUTED))
-		return
-	for demand in raw_demands:
-		if not (demand is Dictionary):
-			continue
-		var row := UiKit.hbox(6)
-		_demands_box.add_child(row)
-		var cooling := bool(demand.get("isCoolingDown", false))
-		var remaining := int(demand.get("cooldownRemainingLogicalMilli", 0))
-		var order_key := String(demand.get("orderDefinitionKey", ""))
-		var metadata: Dictionary = order_presentation.get(order_key, {})
-		var primary_shape := String(metadata.get("primaryShape", ""))
-		var heading := UiKit.label("%s  #%d" % [order_key if not order_key.is_empty() else String(demand.get("type", "订单")), int(demand.get("id", 0))], UiKit.FONT_SMALL, ShapeVisuals.color_for(primary_shape) if not primary_shape.is_empty() else (UiKit.WARN if cooling else UiKit.TEXT))
-		row.add_child(heading)
-		if not primary_shape.is_empty():
-			row.add_child(_shape_token(primary_shape, "主形"))
-		row.add_child(UiKit.label("冷却 %d ms" % remaining if cooling else "就绪", UiKit.FONT_SMALL, UiKit.MUTED if cooling else UiKit.OK))
-		var requirements: Variant = demand.get("requirements", [])
-		if requirements is Array:
-			for requirement in requirements:
-				if requirement is Dictionary:
-					row.add_child(_shape_token(String(requirement.get("shape", "")), "液体" if not String(requirement.get("liquid", "")).is_empty() else "空"))
-	if not (raw_sessions is Array):
-		return
-	for session in raw_sessions:
-		if session is Dictionary and not bool(session.get("isTerminal", false)):
-			_demands_box.add_child(UiKit.label("执行中 · %s · 主台步 %d / 从台步 %d" % [String(session.get("stage", "")), int(session.get("completedMasterSteps", 0)), int(session.get("completedSlaveSteps", 0))], UiKit.FONT_SMALL, UiKit.ACCENT))
+	var active_group := UiKit.vbox(3)
+	var passive_group := UiKit.vbox(3)
+	var active_count := 0
+	var passive_count := 0
+	if raw_demands is Array:
+		for demand in raw_demands:
+			if not (demand is Dictionary):
+				continue
+			var area := String(demand.get("area", ""))
+			if area != "Active" and area != "Passive":
+				continue
+			var row := UiKit.hbox(6)
+			var cooling := bool(demand.get("isCoolingDown", false))
+			var remaining := int(demand.get("cooldownRemainingLogicalMilli", 0))
+			var order_key := String(demand.get("orderDefinitionKey", ""))
+			var metadata: Dictionary = order_presentation.get(order_key, {})
+			var primary_shape := String(metadata.get("primaryShape", ""))
+			var title := order_key if not order_key.is_empty() else String(demand.get("type", "订单"))
+			row.add_child(UiKit.label("%s  #%d" % [title, int(demand.get("id", 0))], UiKit.FONT_SMALL, ShapeVisuals.color_for(primary_shape) if not primary_shape.is_empty() else UiKit.TEXT))
+			if not primary_shape.is_empty():
+				row.add_child(_shape_token(primary_shape, "主形"))
+			row.add_child(UiKit.label("冷却 %d ms" % remaining if cooling else ("可触发" if area == "Active" else "被动位"), UiKit.FONT_SMALL, UiKit.WARN if cooling else UiKit.MUTED))
+			var requirements: Variant = demand.get("requirements", [])
+			if requirements is Array:
+				for requirement in requirements:
+					if requirement is Dictionary:
+						row.add_child(_shape_token(String(requirement.get("shape", "")), "液体" if not String(requirement.get("liquid", "")).is_empty() else "空"))
+			if area == "Active":
+				active_group.add_child(row)
+				active_count += 1
+			else:
+				passive_group.add_child(row)
+				passive_count += 1
+	_demands_box.add_child(UiKit.label("主动技能 / 主动订单", UiKit.FONT_SMALL, UiKit.ACCENT))
+	_demands_box.add_child(active_group)
+	if active_count == 0:
+		active_group.add_child(UiKit.label("暂无主动订单", UiKit.FONT_SMALL, UiKit.MUTED))
+	_demands_box.add_child(UiKit.label("被动技能 / 被动订单", UiKit.FONT_SMALL, Color("b69af7")))
+	_demands_box.add_child(passive_group)
+	if passive_count == 0:
+		passive_group.add_child(UiKit.label("暂无被动订单", UiKit.FONT_SMALL, UiKit.MUTED))
+	if raw_sessions is Array:
+		for session in raw_sessions:
+			if session is Dictionary and not bool(session.get("isTerminal", false)):
+				_demands_box.add_child(UiKit.label("执行中 · 订单 #%d · %s · 主台步 %d / 从台步 %d" % [int(session.get("demandId", 0)), String(session.get("stage", "")), int(session.get("completedMasterSteps", 0)), int(session.get("completedSlaveSteps", 0))], UiKit.FONT_SMALL, UiKit.ACCENT))
 
 func _shape_token(shape: String, detail: String) -> Label:
 	var label := UiKit.label("%s %s %s" % [ShapeVisuals.glyph_for(shape), shape, detail], UiKit.FONT_SMALL, ShapeVisuals.color_for(shape))
