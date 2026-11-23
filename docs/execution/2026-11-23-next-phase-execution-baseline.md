@@ -445,3 +445,6 @@
 - Code and Probe changes are committed to the Space development branch; the Probe is authored, not executed. Godot 4.7.1 is not available in this environment.
 - Core PR #60 latest known verification run `45225916923` completed successfully, including its `verify` job.
 - PR #2 and PR #60 remain Draft/Open and are not merged.
+
+
+- Follow-up hardening: parser identity derivation accepts the old `shipWorldId:parserDefinitionId` only when the restored checkpoint carries that exact legacy identity. This preserves pending operation IDs across an ambiguous Core import receipt; new battles still use exact Owned Instance IDs. The Probe covers legacy namespace preservation and cross-copy checkpoint rejection.
