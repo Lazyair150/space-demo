@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" uid="uid://bmar716cbuob6" path="res://scenes/ui/HUD.tscn" id="7_gg4pt"]
 [ext_resource type="Script" uid="uid://dnxrwdiunwvuh" path="res://scripts/Spawner.gd" id="8_wnrko"]
 [ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceBattlePauseController.gd" id="15_pause"]
+[ext_resource type="Resource" path="res://data/hangar/demo_energy_stone_drops.tres" id="17_demo_stones"]
 [ext_resource type="PackedScene" path="res://scenes/pickups/BuffPickup.tscn" id="9_pickup"]
 [ext_resource type="Resource" path="res://data/effects/haste.tres" id="10_haste"]
 [ext_resource type="Resource" path="res://data/effects/attack_boost.tres" id="11_boost"]
@@ -77,6 +78,7 @@ boss_scene = ExtResource("16_stage_boss")
 pickup_scene = ExtResource("9_pickup")
 pickup_chance = 0.3
 pickup_effects = [ExtResource("10_haste"), ExtResource("11_boost"), ExtResource("12_poison"), ExtResource("13_aim"), ExtResource("14_lifesteal")]
+energy_stone_drop_profile = ExtResource("17_demo_stones")
 
 [node name="PauseController" type="CanvasLayer" parent="."]
 process_mode = 3
