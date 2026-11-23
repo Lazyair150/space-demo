@@ -152,10 +152,14 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 	if not (jar_options is Dictionary):
 		errors.append("jarWorldOptions must be a fully materialized WorldV2Options dictionary")
 	else:
-		for required_key in ["shapes", "liquids", "producers", "workshops", "masterWorkshopName"]:
+		for required_key in ["shapes", "liquids", "producers", "workshops", "masterWorkshopName", "slaveWorkshopName"]:
 			if not jar_options.has(required_key):
 				errors.append("jarWorldOptions is missing " + required_key)
-
+		var active_workshops: Variant = jar_options.get("workshops", null)
+		if not (active_workshops is Array) or active_workshops.size() != 2:
+			errors.append("jarWorldOptions must materialize exactly two player-selected workshop positions")
+		elif String(jar_options.get("masterWorkshopName", "")) == String(jar_options.get("slaveWorkshopName", "")):
+			errors.append("Master and Slave workspace positions require distinct Core role names")
 
 	if source.has("assemblyBoard"):
 		errors.append_array(_validate_assembly_board(source))
