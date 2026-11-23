@@ -70,6 +70,7 @@ static func build_snapshot(board: SpaceHangarBoardDefinition, assignments: Dicti
 		"schemaVersion": 1,
 		"boardId": String(board.board_id),
 		"definitionVersion": board.definition_version,
+		"boardDefinition": board.build_frozen_snapshot(),
 		"assignments": canonical
 	}
 	var hashing := HashingContext.new()
