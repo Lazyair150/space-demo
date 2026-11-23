@@ -66,6 +66,11 @@ static func compose_device(definition: SpaceProductionDeviceDefinition, instance
 static func compose_workshop(definition: SpaceWorkshopDefinition, instance: SpaceOwnedProgressionInstance, shape_vocabulary: Array) -> Dictionary:
 	if not _matches(definition, instance, "workshop", String(definition.workshop_id if definition != null else &""), definition.definition_version if definition != null else 0):
 		return {}
+	if not definition.get_validation_errors().is_empty():
+		return {}
+	for mark in definition.base_marks + definition.additional_marks:
+		if not shape_vocabulary.has(mark):
+			return {}
 	var growth := instance.growth_attributes
 	if not _only_workshop_keys(growth):
 		return {}
