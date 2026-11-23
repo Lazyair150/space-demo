@@ -15,14 +15,14 @@ The compact state remains visible without opening a menu; the detail panel is on
 
 ## Shared shape language
 
-The first sandbox vocabulary has four authored shape names and temporary presentation colors:
+The current World V2 sandbox authors two shape names (圆罐 and 方罐). The provisional palette also reserves two additional archetypes (三棱 and 长条) so later authored shapes can be colored without changing the presentation system:
 
 | Shape | Glyph | Color |
 | --- | --- | --- |
-| 圆形舱段 | ● | cyan-blue |
-| 方形舱段 | ■ | amber |
-| 三棱舱段 | ▲ | violet |
-| 长条舱段 | ▬ | mint |
+| 圆罐 / 圆形舱段 | ● | cyan-blue |
+| 方罐 / 方形舱段 | ■ | amber |
+| 三棱类形状 | ▲ | violet |
+| 长条类形状 | ▬ | mint |
 
 `ShapeVisuals.gd` owns this mapping and a neutral fallback for unknown shapes. The helper is presentation-only. The same shape key uses the same color in resource inventory, workshop cards, production lines, and order requirement tokens. New shapes can be added to this mapping without changing Jar's shape vocabulary or solver.
 
@@ -65,7 +65,7 @@ Unavailable, disposed, or not-yet-started worlds show an explicit unavailable st
 Implemented on the branch:
 - shared shape glyph/color palette;
 - color-coded shape tokens in the industrial presentation components;
-- optional Space-owned `primary_shape` metadata on skill/order definitions, frozen outside the Jar order payload and validated against its requirement shapes;
+- optional Space-owned `primary_shape` metadata on skill/order definitions, shown in Hangar selection, frozen outside the Jar order payload and validated against its requirement shapes;
 - workshop tendency accent and per-liquid staging meters where capacity is explicit;
 - combat HUD observer for the active World V2 Host snapshot;
 - order requirement shape tokens and read-only demand/cooldown/session summary.
