@@ -24,6 +24,9 @@ var _next_energy_stone_pickup_sequence: int = 1
 var _persisted_jar_execution_checkpoint_json: String = ""
 var _persisted_space_clock_remainder_milli: float = -1.0
 var _persisted_run_state: Dictionary = {}
+var _persisted_effect_state: Dictionary = {}
+var _effect_catalog: SpaceEffectCatalog
+var _effect_target_resolver: Callable
 
 @export var allow_sandbox_world_for_development: bool = true
 
@@ -52,11 +55,13 @@ func configure_order_effect_commit_callback(callback: Callable) -> bool:
 	return true
 
 ## Configure a resumed battle from one atomic effect/dispatcher/Jar/Space snapshot.
-## The caller must still restore the saved player effect state into StatusEffectManager.
+## The exact effect catalog and target resolver are required to reconstruct saved Buff instances.
 func configure_battle_loadout_from_checkpoint(
 	loadout: SpaceBattleLoadoutSnapshot,
 	saved_snapshot: Dictionary,
-	commit_callback: Callable = Callable()
+	commit_callback: Callable = Callable(),
+	effect_catalog: SpaceEffectCatalog = null,
+	effect_target_resolver: Callable = Callable()
 ) -> bool:
 	if loadout == null or int(saved_snapshot.get("schemaVersion", 0)) != 3:
 		return false
@@ -74,6 +79,11 @@ func configure_battle_loadout_from_checkpoint(
 	var dispatcher_state: Variant = saved_snapshot.get("dispatcherState", null)
 	var effect_state: Variant = saved_snapshot.get("effectState", null)
 	if not (runtime_checkpoint is Dictionary) or int(runtime_checkpoint.get("schemaVersion", 0)) != 2 or not (dispatcher_state is Dictionary) or not (effect_state is Dictionary):
+		return false
+	if int(effect_state.get("schemaVersion", 0)) != 1 or not (effect_state.get("instances", null) is Array) or not (effect_state.get("processedOrderEventIds", null) is Array):
+		return false
+	if effect_catalog == null or not effect_target_resolver.is_valid():
+		push_error("[Game] Resuming a battle requires the exact effect catalog and target resolver")
 		return false
 	if runtime_checkpoint.get("loadoutIdentity", {}) != expected_identity:
 		return false
@@ -94,6 +104,9 @@ func configure_battle_loadout_from_checkpoint(
 	):
 		return false
 	_persisted_run_state = run_state.duplicate(true)
+	_persisted_effect_state = effect_state.duplicate(true)
+	_effect_catalog = effect_catalog
+	_effect_target_resolver = effect_target_resolver
 	if commit_callback.is_valid() and not configure_order_effect_commit_callback(commit_callback):
 		return false
 	return true
@@ -110,6 +123,10 @@ func _ready() -> void:
 	# Buff durations consume the same combat simulation delta as Jar and actors.
 	if player != null and player.effects != null:
 		player.effects.external_time_authority = true
+	if not _restore_saved_effect_state():
+		push_error("[Game] Saved Space effect state could not be restored")
+		process_mode = Node.PROCESS_MODE_DISABLED
+		return
 	if not _begin_ship_world():
 		push_error("[Game] Ship world initialization failed; combat build is not allowed to proceed")
 		process_mode = Node.PROCESS_MODE_DISABLED
@@ -121,6 +138,20 @@ func _ready() -> void:
 			player.died.connect(_on_player_died)
 		if not player.damaged.is_connected(_on_player_damaged):
 			player.damaged.connect(_on_player_damaged)
+
+func _restore_saved_effect_state() -> bool:
+	if _persisted_effect_state.is_empty():
+		return true
+	if player == null or player.effects == null or _effect_catalog == null or not _effect_target_resolver.is_valid():
+		push_error("[Game] Saved effect state has no StatusEffectManager/catalog/target resolver")
+		return false
+	var definition_resolver := func(definition_id: String, version: int) -> BuffDefinition:
+		return _effect_catalog.resolve_buff(definition_id, version)
+	return player.effects.restore_runtime_state(
+		_persisted_effect_state,
+		definition_resolver,
+		_effect_target_resolver
+	)
 
 func _begin_ship_world() -> bool:
 	if not _persisted_jar_execution_checkpoint_json.is_empty() and _persisted_run_state.is_empty():
