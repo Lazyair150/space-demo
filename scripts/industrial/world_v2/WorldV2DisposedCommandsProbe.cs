@@ -41,6 +41,12 @@ public partial class WorldV2DisposedCommandsProbe : Node
             ExpectDisposed("PauseWorld", runtime.PauseWorld);
             ExpectDisposed("ResumeWorld", runtime.ResumeWorld);
             ExpectDisposed("SetWorldSpeedRatio", () => runtime.SetWorldSpeedRatio(1.0));
+            ExpectDisposed("UpdateProducerRates", () => runtime.UpdateProducerRates(
+                "陶工", new Godot.Collections.Dictionary
+                {
+                    ["圆罐"] = 1.0,
+                    ["方罐"] = 0.0
+                }));
             ExpectDisposed("AddSingleRequirementDemand",
                 () => runtime.AddSingleRequirementDemand("圆罐", "酒", "A", "Passive", 0));
             ExpectDisposed("MoveDemand", () => runtime.MoveDemand(1, "Active"));
@@ -58,7 +64,7 @@ public partial class WorldV2DisposedCommandsProbe : Node
 
             GD.Print(
                 "[WorldV2DisposedCommandsProbe] all post-disposal operations rejected",
-                " operation_count=7 disposed=true reinitialize_rejected=true fault_signal_count=0");
+                " operation_count=8 disposed=true reinitialize_rejected=true fault_signal_count=0");
             GD.Print("[WorldV2DisposedCommandsProbe] passed");
         }
         catch (Exception ex)
