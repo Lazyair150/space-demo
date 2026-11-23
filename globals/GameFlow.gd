@@ -14,15 +14,19 @@ var _battle_phase: int = BattlePhase.INACTIVE
 var _pause_reason: int = PauseReason.NONE
 var _transition_sequence: int = 0
 var _fault_reason: String = ""
+var _fault_world_time_milli: int = -1
+var _fault_logical_time_milli: int = -1
 
 func snapshot() -> Dictionary:
 	return {
-		"schemaVersion": 4,
+		"schemaVersion": 5,
 		"screen": Screen.keys()[_screen],
 		"battlePhase": BattlePhase.keys()[_battle_phase],
 		"pauseReason": PauseReason.keys()[_pause_reason],
 		"transitionSequence": _transition_sequence,
-		"faultReason": _fault_reason
+		"faultReason": _fault_reason,
+		"lastCompletedWorldTimeMilli": _fault_world_time_milli,
+		"lastCompletedLogicalTimeMilli": _fault_logical_time_milli
 	}
 
 func request_scene_transition(next_screen: int, scene_path: String) -> bool:
@@ -69,6 +73,8 @@ func begin_battle_preparation() -> bool:
 	_battle_phase = BattlePhase.PREPARING
 	_pause_reason = PauseReason.NONE
 	_fault_reason = ""
+	_fault_world_time_milli = -1
+	_fault_logical_time_milli = -1
 	_screen = Screen.BATTLE
 	_emit_state()
 	return true
@@ -129,12 +135,14 @@ func end_battle() -> bool:
 	_emit_state()
 	return true
 
-func fault_battle(reason: String = "") -> bool:
+func fault_battle(reason: String = "", last_completed_world_time_milli: int = -1, last_completed_logical_time_milli: int = -1) -> bool:
 	if _battle_phase in [BattlePhase.INACTIVE, BattlePhase.ENDED, BattlePhase.FAULTED]:
 		return false
 	_battle_phase = BattlePhase.FAULTED
 	_pause_reason = PauseReason.NONE
 	_fault_reason = reason.strip_edges()
+	_fault_world_time_milli = last_completed_world_time_milli
+	_fault_logical_time_milli = last_completed_logical_time_milli
 	_emit_state()
 	return true
 
