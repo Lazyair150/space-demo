@@ -99,8 +99,7 @@ static func compose_workshop(definition: SpaceWorkshopDefinition, instance: Spac
 		"additionalMarks": marks,
 		"ban": definition.banned_liquids.duplicate(),
 		"maxJars": max_jars,
-		"maxLiquids": max_liquids,
-		"ownedInstance": instance.build_frozen_snapshot()
+		"maxLiquids": max_liquids
 	}
 	if staging >= 0:
 		result["liquidStagingCapacity"] = staging
