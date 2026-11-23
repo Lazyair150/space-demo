@@ -131,12 +131,24 @@ func _on_space_progression_changed(_revision: int) -> void:
 	_save_space_progression_state()
 
 func record_space_stage_clear(stage: SpaceStageDefinition, result: Dictionary, settlement_id: String) -> bool:
-	if space_campaign_progress_state == null:
-		space_campaign_progress_state = SpaceCampaignProgressState.new()
-		space_campaign_progress_state.changed.connect(_on_space_campaign_progress_changed)
-	if not space_campaign_progress_state.record_stage_clear(stage, result, settlement_id):
+	if stage == null or result.is_empty() or settlement_id.strip_edges().is_empty():
 		return false
-	return _save_space_campaign_progress_state()
+	var candidate := SpaceCampaignProgressState.from_data(
+		space_campaign_progress_state.to_data()
+	) if space_campaign_progress_state != null else SpaceCampaignProgressState.new()
+	if candidate == null or not candidate.record_stage_clear(stage, result, settlement_id):
+		return false
+	# Persist the detached candidate before publishing it. A disk failure must not
+	# mutate the live unlock ledger or make a retry look like a duplicate clear.
+	if not _save_campaign_progress_candidate(candidate):
+		push_error("Campaign stage clear was not committed because its durable save failed")
+		return false
+	if space_campaign_progress_state != null and space_campaign_progress_state.changed.is_connected(_on_space_campaign_progress_changed):
+		space_campaign_progress_state.changed.disconnect(_on_space_campaign_progress_changed)
+	space_campaign_progress_state = candidate
+	space_campaign_progress_state.changed.connect(_on_space_campaign_progress_changed)
+	space_campaign_progress_changed.emit(space_campaign_progress_state)
+	return true
 
 func _load_space_campaign_progress_state() -> void:
 	var cfg := ConfigFile.new()
@@ -159,11 +171,39 @@ func _on_space_campaign_progress_changed(_revision: int) -> void:
 	_save_space_campaign_progress_state()
 
 func _save_space_campaign_progress_state() -> bool:
-	if space_campaign_progress_state == null or not space_campaign_progress_state.get_validation_errors().is_empty():
+	return _save_campaign_progress_candidate(space_campaign_progress_state)
+
+func _save_campaign_progress_candidate(candidate: SpaceCampaignProgressState) -> bool:
+	if candidate == null or not candidate.get_validation_errors().is_empty():
+		return false
+	var payload := candidate.to_data()
+	if payload.is_empty():
 		return false
 	var cfg := ConfigFile.new()
-	cfg.set_value("campaign", "state", space_campaign_progress_state.to_data())
-	return cfg.save(SPACE_CAMPAIGN_SAVE_PATH) == OK
+	cfg.set_value("campaign", "state", payload)
+	var pending_path := SPACE_CAMPAIGN_SAVE_PATH + ".pending"
+	if cfg.save(pending_path) != OK:
+		return false
+	var absolute_pending := ProjectSettings.globalize_path(pending_path)
+	var absolute_target := ProjectSettings.globalize_path(SPACE_CAMPAIGN_SAVE_PATH)
+	if FileAccess.file_exists(SPACE_CAMPAIGN_SAVE_PATH):
+		var backup_path := SPACE_CAMPAIGN_SAVE_PATH + ".previous"
+		var absolute_backup := ProjectSettings.globalize_path(backup_path)
+		if FileAccess.file_exists(backup_path):
+			DirAccess.remove_absolute(absolute_backup)
+		if DirAccess.rename_absolute(absolute_target, absolute_backup) != OK:
+			DirAccess.remove_absolute(absolute_pending)
+			return false
+		if DirAccess.rename_absolute(absolute_pending, absolute_target) != OK:
+			DirAccess.rename_absolute(absolute_backup, absolute_target)
+			DirAccess.remove_absolute(absolute_pending)
+			return false
+		DirAccess.remove_absolute(absolute_backup)
+		return true
+	if DirAccess.rename_absolute(absolute_pending, absolute_target) != OK:
+		DirAccess.remove_absolute(absolute_pending)
+		return false
+	return true
 
 func _save_space_progression_state() -> bool:
 	if space_progression_state == null or not space_progression_state.get_validation_errors().is_empty():
