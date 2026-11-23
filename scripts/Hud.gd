@@ -11,6 +11,7 @@ extends CanvasLayer
 ## 参考 tiny-wizard 的做法：奖励要立刻看得见，且要告诉玩家"攒它干什么"。
 const GAIN_COLOR := Color(0.941, 0.706, 0.353)
 const HINT_COLOR := Color(0.549, 0.573, 0.651)
+const SpaceJarHudObserver := preload("res://scripts/industrial/ui/SpaceJarHudObserver.gd")
 
 var _gain_label: Label
 var _hint_label: Label
@@ -25,6 +26,11 @@ var _bound_effects: StatusEffectManager
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	var jar_observer := SpaceJarHudObserver.new()
+	jar_observer.name = "JarResourceObserver"
+	var root := get_node_or_null("Root") as Control
+	if root != null:
+		root.add_child(jar_observer)
 	_build_reward_ui()
 	_last_ore = GameState.ore
 	_last_materials = GameState.materials
