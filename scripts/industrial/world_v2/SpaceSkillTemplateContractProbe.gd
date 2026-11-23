@@ -42,7 +42,9 @@ static func run() -> bool:
 		return false
 	if runtime_order.has("type") or runtime_order.has("requirements"):
 		return false
-	if not catalog.resolve_order_template(definition, world_options, "Passive").is_empty() and not definition.allowed_control_areas.has("Passive"):
+	if definition.allowed_control_areas.has("Passive") and catalog.resolve_order_template(
+		definition, world_options, "Passive"
+	).is_empty():
 		return false
 
 	var wrong_version := world_options.duplicate(true)
