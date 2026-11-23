@@ -148,6 +148,11 @@ func create_order_binding(order_definition_key: String, selected_control_area: S
 		"skillDefinitionVersion": definition_version,
 		"abilityCategory": ability_category,
 		"jarOrder": jar_order,
+		"jarOrderTemplate": {
+			"templateId": String(jar_order_template_id),
+			"templateVersion": jar_order_template_version,
+			"templateName": core_order_template_name()
+		} if jar_order_template_id != &"" else {},
 		"skillControl": {
 			"area": selected_control_area,
 			"activationPolicy": activation_policy
