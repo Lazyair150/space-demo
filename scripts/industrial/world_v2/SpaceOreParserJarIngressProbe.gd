@@ -91,6 +91,20 @@ func _ready() -> void:
     add_child(fake_player)
     collected_pickup._on_body_entered(fake_player)
     assert(collected_pickup.is_queued_for_deletion(), "accepted pickup must be consumed by the actual pickup adapter")
+
+    var duplicate_pickup: SpaceEnergyStonePickup = pickup_scene.instantiate()
+    assert(duplicate_pickup.configure("probe-stone-001", "圆罐", 1.0), "duplicate pickup fixture must configure")
+    add_child(duplicate_pickup)
+    duplicate_pickup._on_body_entered(fake_player)
+    assert(duplicate_pickup.is_queued_for_deletion(), "same identity and payload must be consumed idempotently")
+
+    var conflicting_pickup: SpaceEnergyStonePickup = pickup_scene.instantiate()
+    assert(conflicting_pickup.configure("probe-stone-001", "圆罐", 2.0), "conflicting pickup fixture must configure")
+    add_child(conflicting_pickup)
+    conflicting_pickup._on_body_entered(fake_player)
+    assert(not conflicting_pickup.is_queued_for_deletion(),
+        "reusing an identity with changed volume must leave the pickup unconsumed")
+    conflicting_pickup.free()
     fake_player.queue_free()
 
     var parsed := parser.advance(1000)
