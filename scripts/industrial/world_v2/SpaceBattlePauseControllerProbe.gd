@@ -21,6 +21,17 @@ func _ready() -> void:
 		return
 	GameFlow.end_battle()
 	GameFlow.enter_screen(GameFlow.Screen.MENU)
+	if not GameFlow.begin_battle_preparation() or not GameFlow.begin_battle_resuming() or not GameFlow.mark_battle_resume_ready():
+		_fail_probe(controller, "restored battle must pass through RESUMING into RESUME_READY")
+		return
+	if String(GameFlow.snapshot().get("battlePhase", "")) != "RESUME_READY":
+		_fail_probe(controller, "resume-ready state must be externally observable")
+		return
+	if not GameFlow.confirm_resume_battle() or String(GameFlow.snapshot().get("battlePhase", "")) != "RUNNING":
+		_fail_probe(controller, "only explicit confirmation may authorize restored battle time")
+		return
+	GameFlow.end_battle()
+	GameFlow.enter_screen(GameFlow.Screen.MENU)
 	print("[SpaceBattlePauseControllerProbe] passed")
 	controller.queue_free()
 
