@@ -240,3 +240,47 @@
 - 为模板和目录验证场景，只有一个 workshop Definition 的 World 也可使用该 Definition 临时物化两个空白验证位置；生产 Owned assembler 仍必须显式提供两个真实且不同的 Owned Instance IDs。
 - 本轮不再建立 Workshop role power model；角色是工作区位置，不是个体属性。订单区和分解区将按相同的 Definition / Owned Instance / Board Slot 分离原则继续统一。
 - Space Demo Godot/GDScript/.NET 验证仍未执行；本轮所有 Probe 均为 authored-only。
+
+
+## 10. 工作区装配语义复审与 Board/runtime 边界纠正（2026-11-24）
+
+### 已确认的正确领域模型
+- 工作台、分解器、订单/技能、生产设备都是独立元件 Definition；玩家持有的是各自独立的 Owned Instance，成长数据只属于具体实例。
+- Board Slot 表示工作区上的位置/插槽。槽位决定元件当前所在区域及其角色；元件 Definition 不固化主台/从台身份。
+- 玩家可以把同类别的不同元件实例安装到不同槽位；同 Definition 的不同 Owned Instance 也可分别安装，不能因为 Definition 相同而合并成长状态。
+- 主台/从台是当前 World V2 工作台区的两个角色位置，不是固定 WorkshopPair 资产。Core 继续拥有实际单向资源流和执行语义。
+- 订单区与分解区必须沿用同样的 Definition / Owned Instance / Slot Assignment 分离，不可保留“技能绑定数组”和“单 Parser 字段”作为永久领域模型。
+
+### 当前代码审计结论
+- `SpaceHangarBoardDefinition` / `SpaceHangarBoardSlotDefinition` 已表达槽位位置，但此前 Board validation 把恰好一个主台、一个从台、一个 Parser 写成 Board 本身的结构规则；这是把当前 runtime 限制错误地提升为 Board 领域规则。
+- `SpaceHangarScreen` 仍然维护专用 Parser、Master、Slave picker；`SpaceHangarSelectionDraft` 仍以 parser/master/slave 专用字段和 deviceSelections/skillSelections 两个平行数组表达选择。Board Slot 还没有成为统一 assignment 数据源。
+- `SpaceHangarOwnedLoadoutAssembler` 仍接收专用 `parserInstanceId`、`masterWorkshopInstanceId`、`slaveWorkshopInstanceId` 字段；它会正确冻结当前两个工作台 Owned Instance 的独立成长，但尚未遍历统一 Board assignment。
+- `SpaceBattleLoadoutSnapshot` 当前仍要求单个 Parser slot，并将 Parser 物化为生产设备数组中的一个设备；多个 Parser 的资源输入、处理调度、产出归属尚未定义。因此不能把多个 Parser 槽位展示成已支持的可运行功能。
+- 生产设备和技能可有多个槽位；当前 adapter 已将它们投影为设备槽位数组和订单 binding 数组。该实现可作为迁移适配层，不应继续成为 Board 的主数据模型。
+- MainMenu Start 已转入 Hangar；Hangar 的“装配并进入战斗”按钮会冻结 Owned loadout、附加 Board snapshot，并调用 `SpaceHangarBattleLauncher.launch_new_battle`。所以“启动路由完全未接通”的旧描述已经过时。真实生产 catalog/owned inventory 和端到端实测仍是阻塞项。
+- `SpaceHangarLoadoutAssembler` 的 Definition-only 路径仍存在；Preparation 默认 `require_owned_instances=true`，生产入口会拒绝 definition-only，但旧路径仍被隔离开发/Probe 使用。删除前必须查明所有调用方并迁移 Probe，不能按文件名直接清理。
+- 目前 Board frozen snapshot 只冻结槽位定义，不包含一个统一的 `slotId -> ownedInstanceId` assignment map；实例身份分散保存在旧 selection / subsystem snapshot 字段中。
+
+### 本轮已提交的纠正
+- `SpaceHangarBoardDefinition.get_validation_errors()` 现在只验证 Board 本身：版本身份、非空槽位、槽位结构、唯一 slot ID；不再把 Core 当前只能执行两个工作台角色和单 Parser 的限制当作 Board 的定义约束。
+- 新增 `get_runtime_projection_errors()`，单独表达当前 World V2 adapter 的执行边界：必须恰好一个 Master、一个 Slave、一个 Parser。多 Parser 会明确拒绝投影，不会再被旧字段静默覆盖。
+- `build_hangar_configuration()` 在结构无效或 runtime projection 不支持时返回空配置，避免错误装配。
+- 新增 `get_slots_for_area()` 和 `build_slot_index()`，让 UI/控制器能按区域遍历槽位，而不必复制固定字段。
+- 扩展 `SpaceHangarBoardDefinitionProbe`：验证多个订单槽和生产槽可共存；多个 Parser 虽是结构合法 Board，但当前 runtime projection 明确拒绝；重复 slot ID 仍然被结构校验拒绝。
+- 提醒：Probe 仅写入，未在 Godot 执行；这是领域/适配层纠正，不代表已完成通用 Owned Slot Assignment 或多 Parser runtime。
+
+### 下一步执行顺序（不得倒退）
+1. 引入统一的 Board Assignment 数据模型：`slotId + exact itemKind + ownedInstanceId + exact definitionId/version`。assignment 必须检查 Board Slot 的 componentKind、Owned Instance 类型、重复 instance、必填槽位和空槽规则。
+2. 将 Hangar Draft / Controller / Screen 的选择行为迁移到统一的 slot assignment API。UI 按 Board area 分区渲染；主从位置只影响工作台 role projection，不写回实例 Definition/成长。
+3. Owned assembler 从 assignment map 解析实例，并将 assignment map 与所有 Owned Instance frozen snapshots 一起写入 loadout fingerprint。旧 subsystem fields 仅作为 World V2 runtime adapter 的投影结果。
+4. 先保持单 Parser runtime gate；只有在定义多个 Parser 的输入分配、调度、能量石消耗、产出归属和失败处理后，才扩展 Parser 数量。不能只改 Board 限制。
+5. 为订单区建立多个 slot 的稳定 key/ControlArea 绑定，继续由 Core 创建模板需求、执行 feasibility/cooldown/passive scheduling。
+6. 建立生产可运行的 versioned catalog + 初始 Owned Inventory，完成 Hangar → Battle → Stage Settlement → Reward Acquisition → Save/Reload 的完整循环。
+7. 最后按调用图清理 Definition-only assembler、过期 Pair 资源、旧文档和无引用文件。每个删除都必须先证明无运行时/Probe/资源引用。
+
+### 当前禁止事项
+- 不要把 Board 定义成只能有 1 Master + 1 Slave + 1 Parser 的固定结构。
+- 不要声称通用 Slot Assignment 已完成；当前只有槽位定义与旧专用选择字段。
+- 不要声称多 Parser 已支持；当前 adapter 明确限制为一个 Parser。
+- 不要恢复 WorkshopPair 作为固定玩家选择配方。
+- 不要因为“垃圾文件清理”而删除尚被 Probe、Resource 或 scene 引用的 Definition-only 路径。
