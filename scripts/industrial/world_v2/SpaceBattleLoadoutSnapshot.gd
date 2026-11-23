@@ -149,6 +149,32 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 			if not jar_options.has(required_key):
 				errors.append("jarWorldOptions is missing " + required_key)
 
+	if source.has("progressionOwnerPlayerId") or source.has("ownedInstanceSnapshots"):
+		var referenced_ids := {}
+		if ship is Dictionary and ship.get("ownedInstance", null) is Dictionary:
+			referenced_ids[String(ship.ownedInstance.get("instanceId", ""))] = true
+		if devices is Array:
+			for device in devices:
+				if device is Dictionary and device.get("ownedInstance", null) is Dictionary:
+					referenced_ids[String(device.ownedInstance.get("instanceId", ""))] = true
+		if workshop is Dictionary:
+			for key in ["masterWorkshopInstance", "slaveWorkshopInstance"]:
+				var workshop_instance: Variant = workshop.get(key, null)
+				if workshop_instance is Dictionary:
+					referenced_ids[String(workshop_instance.get("instanceId", ""))] = true
+		if orders is Array:
+			for order in orders:
+				if order is Dictionary and order.get("ownedInstance", null) is Dictionary:
+					referenced_ids[String(order.ownedInstance.get("instanceId", ""))] = true
+		var owned_snapshot_ids := {}
+		for raw_instance in source.get("ownedInstanceSnapshots", []):
+			if raw_instance is Dictionary:
+				owned_snapshot_ids[String(raw_instance.get("instanceId", ""))] = true
+		if referenced_ids.size() != owned_snapshot_ids.size():
+			errors.append("owned instance snapshots must exactly match the instances embedded in selected loadout slots")
+		for instance_id in referenced_ids:
+			if not owned_snapshot_ids.has(instance_id):
+				errors.append("selected loadout slot references an instance missing from ownedInstanceSnapshots: " + String(instance_id))
 	# The selected ore parser is part of the frozen pre-battle production-device build.
 	# Its percentage is a parser attribute and scales that parser's own throughput;
 	# it is not a per-shape output allocation.
@@ -320,6 +346,10 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 					errors.append("owned instance snapshot must identify an exact definition version")
 				if int(raw_instance.get("level", 0)) <= 0 or int(raw_instance.get("experience", -1)) < 0 or int(raw_instance.get("progressionRevision", 0)) <= 0:
 					errors.append("owned instance snapshot progression counters are invalid")
+				var curve_id := _required_text(raw_instance, "growthCurveId")
+				var curve_version := int(raw_instance.get("growthCurveVersion", 0))
+				if (curve_id.is_empty() and curve_version != 0) or (not curve_id.is_empty() and curve_version <= 0):
+					errors.append("owned instance snapshot growth curve provenance is inconsistent")
 				if not (raw_instance.get("growthAttributes", null) is Dictionary):
 					errors.append("owned instance snapshot growthAttributes must be a dictionary")
 	return errors
