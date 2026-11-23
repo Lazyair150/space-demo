@@ -8,7 +8,7 @@ extends Node2D
 func _ready()->void:
 	particles.emitting=true
 	_load_and_play_sfx()
-	await get_tree().create_timer(lifetime).timeout
+	await get_tree().create_timer(lifetime, false).timeout
 	queue_free()
 	
 func _load_and_play_sfx()->void:
