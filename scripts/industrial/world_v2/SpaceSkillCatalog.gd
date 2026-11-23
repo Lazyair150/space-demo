@@ -98,11 +98,15 @@ func resolve_order_template(
 	if not ["A", "B"].has(order_type) or not (requirements is Array) or requirements.is_empty():
 		return {}
 	var allowed_shapes: Variant = jar_world_options.get("shapes", null)
-	if not (allowed_shapes is Array):
+	var allowed_liquids: Variant = jar_world_options.get("liquids", null)
+	if not (allowed_shapes is Array) or not (allowed_liquids is Array):
 		return {}
 	var shape_vocabulary := {}
 	for raw_shape in allowed_shapes:
 		shape_vocabulary[String(raw_shape)] = true
+	var liquid_vocabulary := {}
+	for raw_liquid in allowed_liquids:
+		liquid_vocabulary[String(raw_liquid)] = true
 	var total_count := requirements.size()
 	var primary_count := 0
 	for requirement in requirements:
@@ -114,7 +118,7 @@ func resolve_order_template(
 		if shape == String(definition.primary_shape):
 			primary_count += 1
 		var liquid := String(requirement.get("liquid", "")).strip_edges()
-		if not liquid.is_empty() and not (jar_world_options.get("liquids", []) as Array).has(liquid):
+		if not liquid.is_empty() and not liquid_vocabulary.has(liquid):
 			return {}
 	if primary_count * 2 <= total_count:
 		push_error("Core order template must give the skill primary shape a strict majority")
