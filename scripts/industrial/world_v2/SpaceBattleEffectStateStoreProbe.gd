@@ -54,6 +54,16 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("rejected save replaced the previous valid battle checkpoint")
 
+    var missing_rng_runtime := runtime_checkpoint.duplicate(true)
+    missing_rng_runtime.oreParserState.erase("dropRngState")
+    if store.save(effects, dispatcher, identity, missing_rng_runtime):
+        _cleanup(absolute_path)
+        return _failure("store accepted parser checkpoint without deterministic drop RNG state")
+    var after_rng_rejection := store.load(identity)
+    if after_rng_rejection.get("runtimeCheckpoint", {}) != runtime_checkpoint:
+        _cleanup(absolute_path)
+        return _failure("missing RNG rejection replaced the previous valid battle checkpoint")
+
     _cleanup(absolute_path)
     return {"passed": true, "schemaVersion": 2, "domains": 5}
 
