@@ -440,11 +440,20 @@ static func run() -> bool:
 	workshop_growth_instance.item_kind = "workshop"
 	workshop_growth_instance.definition_id = local_master.workshop_id
 	workshop_growth_instance.definition_version = local_master.definition_version
-	workshop_growth_instance.growth_attributes = {"maxJarsBonus": 2, "additionalMark.square": 1}
+	workshop_growth_instance.growth_attributes = {"maxJarsBonus": 2}
 	var composed_workshop := SpaceProgressionRuntimeProfileComposer.compose_workshop(local_master, workshop_growth_instance, ["round", "square"])
-	if composed_workshop.is_empty() or int(composed_workshop.maxJars) != 10 or not composed_workshop.additionalMarks.has("square"):
+	if composed_workshop.is_empty() or int(composed_workshop.maxJars) != 10:
 		return false
 	if not composed_workshop.ban.has("blocked-liquid") or int(composed_workshop.maxLiquids) != 5:
+		return false
+	var workshop_mark_instance := SpaceOwnedProgressionInstance.new()
+	workshop_mark_instance.instance_id = &"probe.workshop.mark-growth"
+	workshop_mark_instance.item_kind = "workshop"
+	workshop_mark_instance.definition_id = local_slave.workshop_id
+	workshop_mark_instance.definition_version = local_slave.definition_version
+	workshop_mark_instance.growth_attributes = {"additionalMark.square": 1}
+	var composed_workshop_marks := SpaceProgressionRuntimeProfileComposer.compose_workshop(local_slave, workshop_mark_instance, ["round", "square"])
+	if composed_workshop_marks.is_empty() or not composed_workshop_marks.additionalMarks.has("square"):
 		return false
 
 	var device_growth_instance := SpaceOwnedProgressionInstance.new()
