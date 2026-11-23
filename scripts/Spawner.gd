@@ -34,6 +34,8 @@ const ELITE_SCORE := 60
 @export var pickup_effects:Array[BuffDefinition]=[]
 ## Optional elite-only profile. Its authored stone volumes can differ from ordinary enemies;
 ## null leaves the enemy scene's own optional profile unchanged.
+## Prototype/demo encounter supply; null leaves ordinary enemies without stone drops.
+@export var energy_stone_drop_profile: SpaceEnergyStoneDropProfile
 @export var elite_energy_stone_drop_profile: SpaceEnergyStoneDropProfile
 
 var _current_wave:int=0
@@ -238,6 +240,8 @@ func _spawn_stage_enemy(use_shooter: bool, elite: bool) -> bool:
 	var enemy := scene.instantiate() as Node2D
 	if enemy == null:
 		return false
+	if energy_stone_drop_profile != null and enemy.get("energy_stone_drop_profile") == null:
+		enemy.set("energy_stone_drop_profile", energy_stone_drop_profile)
 	if elite:
 		enemy.set("max_hp", ELITE_BASE_HP)
 		enemy.set("speed", ELITE_SPEED)
@@ -340,6 +344,8 @@ func _spawn_one(shooter_chance:float, elite:bool)->void:
 	if scene == null:
 		return
 	var e:Node2D=scene.instantiate()
+	if energy_stone_drop_profile != null and e.get("energy_stone_drop_profile") == null:
+		e.set("energy_stone_drop_profile", energy_stone_drop_profile)
 	if elite:
 		e.set("max_hp", ELITE_BASE_HP + ELITE_HP_PER_CYCLE * _cycle)
 		e.set("speed", ELITE_SPEED)
