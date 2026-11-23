@@ -490,3 +490,16 @@ The Hangar UI now presents the versioned catalog entries as visual choices witho
 - The UI preserves selection identity/version while rebuilding its view model, and the final selection still flows through `SpaceHangarSelectionController`, `SpaceHangarPreparation`, and `SpaceHangarLoadoutAssembler`.
 
 The SVG category assets are initial visual language, not a final art pass. Production definitions can replace them independently with their own SVG, PNG, or other Godot-supported Texture2D resource in the Inspector. Godot compilation and visual runtime inspection remain pending.
+
+
+### Live assembly preview
+
+`SpaceHangarAssemblyPreview` is a presentation-only view driven by the controller's current inventory and exact-version selection snapshot:
+
+- It renders the selected ship as the visual anchor, then shows the exact selected parser and workshop combination, installed production devices by their owning slot IDs, and skill bindings by their authored order-definition keys and selected control areas.
+- Every item resolves its display texture from the same exact-version inventory entry used by the selectors. Missing textures use the category SVG fallback; missing or stale exact-version selections render as unavailable rather than silently substituting another version.
+- The preview reports incomplete core selections and whether the controller considers the selection structurally buildable. It does not claim cross-catalog compatibility, balance validity, or runtime readiness.
+- The only authoritative compatibility/freeze path remains `SpaceHangarSelectionController.build_loadout_snapshot()` → `SpaceHangarPreparation.build_loadout_from_draft()` → `SpaceHangarLoadoutAssembler.assemble()`.
+- `SpaceHangarAssemblyPreviewProbe` is a synthetic scene-tree probe for the preview's selected-ship, device-slot, and skill-binding rendering. It is source-added but has not been executed in Godot.
+
+The preview is not a combat ship renderer and does not fabricate hardpoints, spatial attachment coordinates, device behavior, or ship geometry. Those require authored ship presentation/layout metadata from the owning ship definitions and should be added as a separate presentation contract when those assets exist. Godot compile and runtime visual inspection remain pending.
