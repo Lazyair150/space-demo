@@ -361,8 +361,8 @@ static func run() -> bool:
 			{"level": 3, "value": 1.6}
 		],
 		"progressPerJarMultiplier": [
-			{"level": 1, "value": 0.0},
-			{"level": 3, "value": 4.0}
+			{"level": 1, "value": 1.0},
+			{"level": 3, "value": 3.0}
 		]
 	}
 	if not parser_curve.get_validation_errors().is_empty():
