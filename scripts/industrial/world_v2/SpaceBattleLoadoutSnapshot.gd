@@ -94,6 +94,71 @@ static func _canonicalize(value: Variant) -> Variant:
 		return result
 	return value
 
+
+static func _validate_board_assignment_snapshot(source: Dictionary) -> PackedStringArray:
+	var errors := PackedStringArray()
+	var snapshot: Variant = source.get("boardAssignmentSnapshot", null)
+	if not (snapshot is Dictionary):
+		errors.append("boardAssignmentSnapshot must be a dictionary")
+		return errors
+	if int(snapshot.get("schemaVersion", 0)) != 1 or _required_text(snapshot, "assignmentFingerprint").is_empty():
+		errors.append("boardAssignmentSnapshot requires schema version and assignment fingerprint")
+	var board: Variant = snapshot.get("boardDefinition", null)
+	if not (board is Dictionary):
+		errors.append("boardAssignmentSnapshot must freeze its Board Definition")
+		return errors
+	if _required_text(board, "boardId") != _required_text(snapshot, "boardId") or int(board.get("definitionVersion", 0)) != int(snapshot.get("definitionVersion", 0)):
+		errors.append("board assignment and Board Definition identities differ")
+	var slots: Variant = board.get("slots", null)
+	var assignments: Variant = snapshot.get("assignments", null)
+	if not (slots is Array) or not (assignments is Array):
+		errors.append("board assignment requires slot and assignment arrays")
+		return errors
+	var slot_index := {}
+	for raw_slot in slots:
+		if not (raw_slot is Dictionary):
+			errors.append("Board Definition contains an invalid slot")
+			continue
+		var slot_id := _required_text(raw_slot, "slotId")
+		if slot_id.is_empty() or slot_index.has(slot_id):
+			errors.append("Board Definition slot identity is empty or duplicated")
+		else:
+			slot_index[slot_id] = raw_slot
+	var seen_slots := {}
+	var seen_instances := {}
+	for raw_entry in assignments:
+		if not (raw_entry is Dictionary):
+			errors.append("Board Assignment entry must be a dictionary")
+			continue
+		var slot_id := _required_text(raw_entry, "slotId")
+		var instance_id := _required_text(raw_entry, "ownedInstanceId")
+		if not slot_index.has(slot_id) or seen_slots.has(slot_id) or instance_id.is_empty() or seen_instances.has(instance_id):
+			errors.append("Board Assignment contains an unknown slot or duplicate identity")
+			continue
+		seen_slots[slot_id] = true
+		seen_instances[instance_id] = true
+		var slot: Dictionary = slot_index[slot_id]
+		if _required_text(raw_entry, "componentKind") != _required_text(slot, "componentKind"):
+			errors.append("Board Assignment component kind differs from slot compatibility")
+		if _required_text(raw_entry, "definitionId").is_empty() or int(raw_entry.get("definitionVersion", 0)) <= 0:
+			errors.append("Board Assignment must retain exact component Definition identity/version")
+	for slot_id in slot_index:
+		var slot: Dictionary = slot_index[slot_id]
+		if bool(slot.get("required", false)) and not seen_slots.has(slot_id):
+			errors.append("required Board Slot is empty: " + slot_id)
+	var expected_count := 3
+	var devices: Variant = source.get("productionDeviceSelections", [])
+	var orders: Variant = source.get("selectedOrderBindings", [])
+	if devices is Array:
+		for device in devices:
+			if device is Dictionary and String(device.get("deviceKind", "")) != "ore_parser":
+				expected_count += 1
+	if orders is Array:
+		expected_count += orders.size()
+	if assignments.size() != expected_count:
+		errors.append("Board Assignment count differs from frozen runtime projection")
+	return errors
+
 static func validate_data(source: Dictionary) -> PackedStringArray:
 	var errors := PackedStringArray()
 	if int(source.get("schemaVersion", 0)) != CURRENT_SCHEMA_VERSION:
@@ -163,6 +228,8 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 
 	if source.has("assemblyBoard"):
 		errors.append_array(_validate_assembly_board(source))
+	if source.has("boardAssignmentSnapshot"):
+		errors.append_array(_validate_board_assignment_snapshot(source))
 
 	if source.has("progressionOwnerPlayerId") or source.has("ownedInstanceSnapshots"):
 		var referenced_ids := {}
