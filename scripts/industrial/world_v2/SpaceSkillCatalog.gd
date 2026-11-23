@@ -1,6 +1,7 @@
 extends RefCounted
 class_name SpaceSkillCatalog
 ## Exact-version registry for player-facing, equipable skills.
+## Registered Resources are detached snapshots; callers never receive the catalog's instance.
 
 var _definitions: Dictionary = {}
 
@@ -12,13 +13,16 @@ func register_skill(definition: SpaceSkillDefinition) -> bool:
 	if _definitions.has(key):
 		push_error("Duplicate skill definition version: " + key)
 		return false
-	_definitions[key] = definition
+	_definitions[key] = definition.duplicate(true) as SpaceSkillDefinition
 	return true
 
 func resolve_skill(skill_id: String, version: int) -> SpaceSkillDefinition:
 	if skill_id.strip_edges().is_empty() or version <= 0:
 		return null
-	return _definitions.get(_key(skill_id, version), null) as SpaceSkillDefinition
+	var definition := _definitions.get(_key(skill_id, version), null) as SpaceSkillDefinition
+	if definition == null:
+		return null
+	return definition.duplicate(true) as SpaceSkillDefinition
 
 func create_order_binding_for_build(
 	skill_id: String,
