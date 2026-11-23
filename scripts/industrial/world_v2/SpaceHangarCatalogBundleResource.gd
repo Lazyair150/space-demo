@@ -96,7 +96,7 @@ func build_selection_inventory() -> Dictionary:
 				"description": definition.description,
 				"category": definition.ability_category,
 				"primaryShape": String(definition.primary_shape),
-				"categoryShape": ability_shape_profile.shape_for_category(definition.ability_category),
+				"categoryShape": ability_shape_profile.shape_for_category(definition.ability_category) if ability_shape_profile != null else "",
 				"allowedControlAreas": definition.allowed_control_areas.duplicate(),
 				"iconTexture": definition.display_icon
 			})
