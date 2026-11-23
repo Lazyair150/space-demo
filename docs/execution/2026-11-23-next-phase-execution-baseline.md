@@ -459,3 +459,5 @@
 - `SpaceBattleLoadoutSnapshot` rebuilds and validates the manifest against the frozen workshop, parser, skill, and device profiles. Missing or tampered profile bindings reject the loadout.
 - The manifest is a routing/identity contract, not a generic rule executor. Core ingress remains workshop-only; unsupported Parser/Skill/Device Rule Contributions remain rejected until their subsystem semantics exist.
 - `SpaceHangarBoardDefinitionProbe` now checks the expected 2 workshop / 1 parser / 2 skill consumer routes and verifies tamper rejection. Probe is authored, not executed; Godot runtime validation remains pending.
+
+- Probe extension: the Hangar Board probe now temporarily authors a `scope=parser` contribution on the installed Parser Definition and verifies that the Core-facing resolver rejects it rather than leaking it into workshop scope. It restores the catalog fixture after the check.
