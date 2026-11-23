@@ -347,3 +347,21 @@ The transient run checkpoint stores score, wave number, and segment label, but i
 On loading such a checkpoint, Spawner now restarts the saved wave from its beginning without incrementing or rewriting the saved wave/segment. A new run (wave 0) still starts at wave 1. This prevents the previous bug where Spawner unconditionally started wave 1 and overwrote the restored progression. It is an explicit wave-restart policy, not a claim that already-killed enemies or elapsed spawn delays are restored. `GameState.restore_run_state` also rejects a segment label inconsistent with its wave number before mutating live state. `SpaceBattleRunStateProbe` covers mismatched wave/segment rejection and the pure initial-wave selection policy.
 
 Exact battle continuation remains blocked on a separate encounter checkpoint contract for spawn phase/timers, enemy identities and runtime state, player state, and projectiles. Until that exists, callers/UI must describe this path as **restart current wave from checkpoint**, not seamless combat resume.
+
+
+## 16. Hangar domain catalogs and first assembler boundary
+
+The Hangar domain layer now has the first exact-version catalog set:
+
+- `SpaceShipDefinition/Catalog`: a ship definition owns its author-authored expected stone-progress rate by Jar shape. Selection fails unless the map covers the selected workshop's exact Jar shape vocabulary. The catalog stores and returns detached definitions.
+- `SpaceProductionDeviceDefinition/Catalog`: versioned non-parser device identity, slot selection, and an opaque device-owned runtime profile. It deliberately does not invent device execution semantics; device-specific behavior and compatibility rules remain owned by the corresponding subsystem. The universal ore parser remains exclusively resolved through `SpaceOreParserCatalog`.
+- `SpaceWorkshopCombinationDefinition/Catalog`: versioned complete Jar World options plus the workshop operation-cost profile used by the skill difficulty evaluator. It requires the core World V2 option keys, a non-empty shape vocabulary and workshop roster, and authored A/B plus liquid-handling costs. It does not supply a default roster or balance values.
+- `SpaceHangarLoadoutAssembler`: resolves the exact ship, non-parser device, parser, workshop, skill, balance-profile, and effect versions; derives each skill binding from the selected ship/device/workshop/parser data; then delegates to `SpaceBattleLoadoutSnapshot.create_with_ore_parser` for the single immutable fingerprinted snapshot.
+
+The assembler accepts the stable battle/loadout identity from its caller and does not generate IDs, select defaults, or silently substitute newer catalog versions. Any unresolved dependency, unsupported shape, duplicate slot/order key, or failed skill balance binding rejects the whole build before a battle Runtime is created.
+
+`SpaceHangarCatalogOwnershipProbe` covers source and resolved-copy mutation isolation plus exact-version lookup for ship, device, and workshop catalogs. It is included in the existing cross-domain integration probe entry point. These probes are committed but have not been executed in Godot/CL in this continuation.
+
+### Explicit limits of this increment
+
+This is the domain/catalog and assembly boundary, not the finished Hangar feature. No production catalog assets or numeric balance values have been authored. Non-parser production-device profiles are currently opaque data; their operational semantics and compatibility matrix must be supplied by the relevant device subsystem rather than guessed by the assembler. Workshop options are carried as the exact authored World V2 options dictionary; deeper option validation remains with the Jar World V2 options/host boundary. The next integration increment is to wire the assembler into the real pre-battle entry point and then connect the resulting snapshot to the existing Game frozen-loadout startup path. UI remains downstream of that boundary.
