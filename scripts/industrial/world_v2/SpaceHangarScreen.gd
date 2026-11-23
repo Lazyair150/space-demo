@@ -10,6 +10,8 @@ class_name SpaceHangarScreen
 ## Each entry is authored by the owning order flow: { "orderDefinitionKey": "...", "label": "..." }.
 @export var skill_order_bindings: Array[Dictionary] = []
 
+const ShapeVisuals := preload("res://scripts/industrial/ui/ShapeVisuals.gd")
+
 const FALLBACK_ICONS := {
 	"ship": "res://assets/hangar/ship.svg",
 	"parser": "res://assets/hangar/parser.svg",
@@ -400,6 +402,9 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 		row.add_child(controls)
 		var icon := _make_icon("skill", 48)
 		controls.add_child(icon)
+		var primary_shape_label := Label.new()
+		primary_shape_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		controls.add_child(primary_shape_label)
 		var skill_picker := OptionButton.new()
 		skill_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		skill_picker.add_item("不装备技能")
@@ -408,7 +413,11 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 				var item_icon: Variant = choice.get("iconTexture")
 				if not (item_icon is Texture2D):
 					item_icon = load(FALLBACK_ICONS.skill)
-				skill_picker.add_icon_item(item_icon, "%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))])
+				var primary_shape := String(choice.get("primaryShape", ""))
+				var choice_text := "%s  [v%d]" % [String(choice.get("label", choice.get("id", ""))), int(choice.get("version", 0))]
+				if not primary_shape.is_empty():
+					choice_text += "  ·  主形 %s %s" % [ShapeVisuals.glyph_for(primary_shape), primary_shape]
+				skill_picker.add_icon_item(item_icon, choice_text)
 				skill_picker.set_item_metadata(skill_picker.item_count - 1, choice.duplicate())
 				skill_picker.set_item_tooltip(skill_picker.item_count - 1, String(choice.get("description", "")))
 		controls.add_child(skill_picker)
@@ -425,10 +434,11 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 			if String(candidate.get("id", "")) == wanted_id and int(candidate.get("version", 0)) == wanted_version:
 				skill_picker.select(item_index)
 				_set_icon_texture(icon, candidate.get("iconTexture"), "skill")
+				_set_primary_shape_label(primary_shape_label, candidate)
 				var selected_area := String(pending.get("controlArea", existing.get("controlArea", "")))
 				_populate_control_areas(area_picker, candidate.get("allowedControlAreas", []), selected_area)
 				break
-		skill_picker.item_selected.connect(_on_skill_selected.bind(order_key, skill_picker, area_picker, icon))
+		skill_picker.item_selected.connect(_on_skill_selected.bind(order_key, skill_picker, area_picker, icon, primary_shape_label))
 		area_picker.item_selected.connect(_on_skill_area_selected.bind(order_key, skill_picker, area_picker))
 		if skill_picker.selected == 0:
 			area_picker.disabled = true
@@ -450,18 +460,25 @@ func _populate_control_areas(area_picker: OptionButton, raw_areas: Variant, sele
 				area_picker.select(area_picker.item_count - 1)
 	area_picker.disabled = area_picker.item_count <= 1
 
-func _on_skill_selected(index: int, order_key: String, skill_picker: OptionButton, area_picker: OptionButton, icon: TextureRect) -> void:
+func _on_skill_selected(index: int, order_key: String, skill_picker: OptionButton, area_picker: OptionButton, icon: TextureRect, primary_shape_label: Label) -> void:
 	if index <= 0:
 		_pending_skill_choices.erase(order_key)
 		_controller.remove_skill(order_key)
 		_populate_control_areas(area_picker, [])
 		_set_icon_texture(icon, null, "skill")
+		_set_primary_shape_label(primary_shape_label, {})
 		return
 	var choice: Dictionary = skill_picker.get_item_metadata(index)
 	_pending_skill_choices[order_key] = choice.duplicate(true)
 	_populate_control_areas(area_picker, choice.get("allowedControlAreas", []))
 	area_picker.disabled = false
 	_set_icon_texture(icon, choice.get("iconTexture"), "skill")
+	_set_primary_shape_label(primary_shape_label, choice)
+
+func _set_primary_shape_label(label: Label, choice: Dictionary) -> void:
+	var primary_shape := String(choice.get("primaryShape", ""))
+	label.text = "" if primary_shape.is_empty() else "%s 主形" % ShapeVisuals.glyph_for(primary_shape) + " " + primary_shape
+	label.add_theme_color_override("font_color", ShapeVisuals.color_for(primary_shape))
 
 func _on_skill_area_selected(index: int, order_key: String, skill_picker: OptionButton, area_picker: OptionButton) -> void:
 	if index > 0:
