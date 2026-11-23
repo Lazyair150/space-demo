@@ -203,6 +203,8 @@
 - 注意：这还不是生产 power model。没有擅自确定 Parser / Workshop / Skill 的正式指标权重、边界、目标工作负载或稀有度区间；所有真实模型仍需在有真实设计数据后从 `unconfigured` 变为 `configured`。
 - 本轮 power contract 新增提交：`0b07db6`、`c14562b`、`aa69080`、`96e3110`、`4623252`、`e1da0bd`、`611f930`、`d223cfa`、`d9f087c`、`8f84725`、`ca112f8`、`bf80d28`。
 - 新增 `SpaceIndividualPowerEvaluator.evaluate_effective_skill()`：按精确 Owned Instance 合成技能成长，重新解析冻结 World options 中的 Core 模板，再由 `SpaceProgressionRuntimeProfileComposer.compose_skill_binding()` 重新计算收益/Jar 成本；若成长导致技能 undercosted，则拒绝生成 effective power score。该路径与 Parser/Workshop 的 effective evaluator 一起覆盖三类实例成长后的重评估入口。
+- Parser 指标边界审计：`SpaceOreParserRuntime` 的输入是有限体积 energy stone，按 parser 的 per-shape processing rate / production percentage 消耗体积，再按 progress-per-Jar 产出；`SpaceEnergyStoneDropProfile` 单独拥有 drop chance 与各 stone volume 分布。当前 parser power evaluator 已能算有效处理速率、每形状吞吐量和每 Jar 进度成本，但没有绑定参考掉落供给分布，因此不能把“每颗石头可维持多久”伪装成 Parser 固有属性。后续必须明确是用 exact drop profile 作为评估上下文，还是将其作为 encounter economy 指标；未确定前 Parser 生产模型保持 unconfigured。
+
 - `SpaceIndividualPowerEvaluatorProbe` 增加 template-backed Skill 的 neutral instance 成功与过度成长被 cost curve 拒绝检查；Probe authored，未运行。
 - effective-skill evaluator 提交：`b34980d`、`cefe838`。
 
