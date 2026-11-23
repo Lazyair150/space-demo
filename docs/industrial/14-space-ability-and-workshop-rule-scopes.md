@@ -174,3 +174,8 @@ This identity is stored in parser checkpoint state and seeds the parser operatio
 - The Board may describe additional decomposition slots, but the current runtime adapter and battle Game own exactly one parser runtime. Multi-parser requires deterministic pickup routing, independent per-instance queues/progress/outboxes/checkpoints, update ordering, and central-warehouse settlement before the count gate can be relaxed.
 
 The matching Core contract is documented in `docs/world-v2/parser-board-slot-runtime-boundary.md` in the Jar Core repository. The identity code and Probe are authored; Godot execution is not claimed.
+
+
+### Checkpoint migration safety
+
+The identity correction also preserves the old `shipWorldId:parserDefinitionId` identity when restoring a checkpoint that already contains that exact legacy parser runtime ID. This is necessary because a pending batch may already have been committed by Jar Core while its receipt was lost by Space; changing the operation-ID namespace during restore would defeat Core's deduplication and could create a second Jar. The legacy identity is retained only for that restored battle. New battles use the exact Owned Instance namespace. The parser restore path still validates the frozen parser profile and checkpoint contents before accepting state.
