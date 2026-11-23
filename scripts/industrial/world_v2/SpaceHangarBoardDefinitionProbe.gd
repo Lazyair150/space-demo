@@ -137,7 +137,7 @@ static func _probe_assignments() -> bool:
 			{"id": "workshop.alpha", "version": 1, "instanceId": "owned.master", "progressionRevision": 4, "itemKind": "workshop"},
 			{"id": "workshop.alpha", "version": 1, "instanceId": "owned.slave", "progressionRevision": 5, "itemKind": "workshop"}
 		],
-		"skillChoices": [{"id": "skill.beam", "version": 3, "instanceId": "owned.skill", "progressionRevision": 6, "itemKind": "skill"}]
+		"skillChoices": [{"id": "skill.beam", "version": 3, "instanceId": "owned.skill", "progressionRevision": 6, "itemKind": "skill", "allowedControlAreas": ["Active", "Passive"]}]
 	}
 	var assignments := {
 		"workshop.master": {
@@ -154,6 +154,10 @@ static func _probe_assignments() -> bool:
 		}
 	}
 	if not SpaceHangarBoardAssignment.validate(DEMO_BOARD, assignments, inventory).is_empty():
+		return false
+	var active_skill_slot := DEMO_BOARD.resolve_slot("orders.active.primary")
+	var skill_entry := SpaceHangarBoardAssignment.create_entry(active_skill_slot, inventory.skillChoices[0])
+	if String(skill_entry.get("controlArea", "")) != "Active":
 		return false
 	var first_snapshot := SpaceHangarBoardAssignment.build_snapshot(DEMO_BOARD, assignments)
 	var reversed := {}
