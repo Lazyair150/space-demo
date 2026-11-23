@@ -297,6 +297,7 @@ func _jar_tile(jar: Dictionary) -> PanelContainer:
 	if bool(jar.get("isMarked", false)):
 		head.add_child(UiKit.label("◆", UiKit.FONT_SMALL, UiKit.WARN))
 	content.add_child(head)
+	content.add_child(UiKit.label(shape, 10, tint))
 	var id_text := "#" + str(jar_id) if jar_id != null else "无编号"
 	content.add_child(UiKit.label(id_text, 10, UiKit.MUTED))
 	var fill := PanelContainer.new()
