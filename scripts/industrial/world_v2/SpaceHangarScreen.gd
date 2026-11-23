@@ -86,7 +86,10 @@ func _apply_board_definition() -> void:
 	_board_configuration_valid = true
 	parser_slot_id = String(configuration.get("parserSlotId", ""))
 	device_slot_ids = PackedStringArray(configuration.get("deviceSlotIds", PackedStringArray()))
-	skill_order_bindings = configuration.get("skillOrderBindings", [])
+	skill_order_bindings.clear()
+	for raw_binding in configuration.get("skillOrderBindings", []):
+		if raw_binding is Dictionary:
+			skill_order_bindings.append(raw_binding.duplicate(true))
 	_master_workshop_slot_id = String(configuration.get("masterWorkshopSlotId", ""))
 	_slave_workshop_slot_id = String(configuration.get("slaveWorkshopSlotId", ""))
 
@@ -563,7 +566,7 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 		row.add_theme_constant_override("separation", 4)
 		_skill_section.add_child(row)
 		var row_title := Label.new()
-		row_title.text = String(binding.get("label", order_key))
+		row_title.text = String(binding.get("label", order_key)) + (" · 可选槽位" if not bool(binding.get("required", true)) else "")
 		row.add_child(row_title)
 		var controls := HBoxContainer.new()
 		controls.add_theme_constant_override("separation", 8)
