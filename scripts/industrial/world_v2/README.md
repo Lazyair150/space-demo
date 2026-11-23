@@ -339,4 +339,19 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 
 `UpdateProducerRates` 只服务于真正的时间型 Jar Producer，不是能量石解析器入口。能量石是 Space 持有的有限、typed 输入；Space 解析器消费原石并独立累计各形状进度，满 1 后产生完整空 Jar，再通过 Jar Core 的 `ImportProducedJars(operationId, shapeCounts)` 离散批次入口进入中央仓库。该入口具备操作 ID 去重、检查点持久化和仓库容量/丢弃账目。Jar 继续负责中央仓库到主台流入和后续订单规则。
 
-以下数值和语义不在本接口中决定：能量石大小单位、各类型转换率、百分比生产选择方式、解析速率、战机液体生产率和液库容量。它们必须由 Space 侧版本化构筑配置明确提供；不得从 sandbox 值推导生产平衡。
+时间型 Producer 接口不决定能量石大小单位、解析器属性、原石处理进度或战机液体生产率/容量。能量石与解析器配置由 Space 侧版本化构筑配置提供；不得从 sandbox 值推导生产平衡。
+
+
+## 4.14b 战前原石解析器与离散 Jar 产出链
+
+- `SpaceOreParserDefinition.gd` 是战前选定解析器的版本化定义，包含 `productionPercentage`、每形状处理速率、每形状产出一只 Jar 所需进度。
+- `productionPercentage` 属于解析器本身，按百分比缩放该解析器自己的各形状处理吞吐；它不把产出比例分配给不同形状，也不属于能量石类型。
+- `SpaceBattleLoadoutSnapshot` 要求构筑中恰好选择一个通用 `ore_parser`，并把完整解析器属性纳入冻结快照与指纹。
+- `SpaceOreParserRuntime.gd` 无条件接受当前世界词表中的所有原石类型；类型决定目标 Jar 形状，体积是有限可解析资源量。各形状队列、进度和速率余数独立；未解析完的原石体积不会丢失。
+- 达到每形状的完整 Jar 进度阈值后，解析器创建稳定 operationId 的待交付批次。批次在确认前留在解析器状态中。
+- `SpaceOreParserJarIngress.gd` 通过 `WorldV2ShipHost.ImportProducedJars` 提交批次；Jar 的资源账本持久去重，中央仓库容量溢出按 Jar Core 规则丢弃。
+- `WorldV2ShipHost.AccumulateSpaceSimulationDelta` 是唯一的毫秒余数持有者。Game 先取出本步精确整数毫秒，让 Space 解析器处理并提交 Jar，再把同一整数毫秒交给 Jar Core 推进；避免两套时间余数逐步漂移。
+- `Game.gd` 暴露 `ingest_energy_stone`、`capture_ore_parser_state`，并在战斗步进前推进解析器、提交待产 Jar。解析器检查点包括拾取身份、待解析体积、独立进度、速率余数和未确认输出批次。
+- `SpaceOreParserRuntimeProbe.gd` 覆盖百分比吞吐、并行独立进度、重复拾取去重、身份冲突、输出批次检查点和单次确认。
+
+当前仍缺少实际 Hangar/敌机掉落资产对解析器配置与拾取入口的连接；没有填写任何正式生产百分比、速率、体积或进度阈值。Godot 4.7.1 .NET 对本轮最新 C#/GDScript 的实际编译和运行尚未完成，不能把静态提交视为已通过本机验收。
