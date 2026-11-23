@@ -405,3 +405,14 @@ jar-system-dotnet PR #57 增加了通用 UpdateProducerRates 命令；本分支�
 - `SpaceSkillBuildContextEvaluator` 现在要求 Ship 原石进度表与解析器形状集合精确一致；不允许缺形状后静默按 0 产能处理。进度阈值必须能表示为至少一个固定点微单位。
 - Space parser envelope schema v2 在原有 parser 状态、pickup ID 序号和未拾取实体列表之外，加入 Spawner 的 `RandomNumberGenerator.state`。恢复时必须同时恢复该 RNG 状态，避免同一战斗检查点之后重新抽取出不同掉落序列。
 - `capture_jar_space_runtime_checkpoint` 仍把 Jar execution checkpoint、Host 时钟余数、Space parser envelope 和订单事件 dispatcher 状态放入同一个 checkpoint 对象；调用方必须把它作为一次保存事务持久化。
+
+### 4.14e Jar/Space 跨域检查点与一次性事件提交
+
+- `WorldV2RuntimeNode` 通过 Bridge 捕获/恢复 Jar execution checkpoint JSON；恢复时使用初始化该世界的同一份 `WorldV2Options`，由 Core 校验配置指纹。
+- `WorldV2ShipHost` 只允许在完整 Space 步边界捕获检查点；恢复必须发生在首次时间推进、订单物化或其他 Host 操作之前。Jar 检查点中的订单/会话已存在时，不会再次物化 loadout orders。
+- Host 的 fractional-millisecond remainder 是 Space 时钟状态，不属于 Jar Core checkpoint；两者分别捕获，并在恢复时先还原 Jar、再还原 Host remainder。
+- `Game.capture_jar_space_runtime_checkpoint()` 把 Jar checkpoint、Host clock remainder、Space parser state、未拾取的 energy-stone 节点和 loadout identity 组成一个 runtime payload。`Game.configure_battle_loadout_from_checkpoint()` 校验相同 loadout identity 后恢复。
+- `SpaceBattleEffectStateStore` schema v2 把 effect state、下一份 dispatcher EventId state 和 Jar/Space runtime payload 写进同一个 pending/previous 原子替换快照；schema v1 仅保留旧版 effect/dispatcher 兼容读取。
+- `SpaceOrderEffectCommitter` 现在要求提供 runtime checkpoint callback。提交顺序是先应用 Space effect、捕获 Jar/Space runtime、原子保存 effect+dispatcher-next+Jar+parser+clock+pending pickups，成功后 Dispatcher 才在 Jar 中 acknowledge outbox event。保存失败时事件保持 pending。
+- `SpaceBattleEffectStateStoreProbe` 验证 schema v2 联合快照、loadout identity、无效 checkpoint 拒绝且不覆盖上一份有效快照。
+- `SpaceOreParserJarIngressProbe` 额外模拟进程重启：分别恢复 Jar resource-ledger checkpoint、Space parser outbox 和 Host clock remainder，再以同一批次 ID 重试，验证 Jar 返回持久化 duplicate receipt 且只存在一只 Jar。
