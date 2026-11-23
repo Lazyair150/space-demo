@@ -2,6 +2,9 @@ extends RefCounted
 class_name SpaceStageModelProbe
 ## Contract probe for finite campaign data, progression-aware recommendations and durable clear records.
 
+class ProbeHealth extends Node:
+	var current: float = 10.0
+
 static func run() -> bool:
 	var catalog := load("res://data/stages/campaign_01/catalog.tres") as SpaceStageCatalog
 	if catalog == null or not catalog.get_validation_errors().is_empty():
@@ -75,6 +78,33 @@ static func run() -> bool:
 		return false
 	if not boss_objective.mark_encounters_completed() or not boss_objective.is_complete():
 		return false
+
+	var protect_stage := SpaceStageDefinition.new()
+	protect_stage.stage_id = &"probe.protect-target"
+	protect_stage.definition_version = 1
+	protect_stage.campaign_id = &"probe.campaign"
+	protect_stage.display_name = "Protect Target Probe"
+	protect_stage.objective = "protect_target"
+	protect_stage.objective_parameters = {"target_definition_id": "probe.relay"}
+	protect_stage.wave_plans = [{"segment": "warmup", "chaser_count": 1, "shooter_count": 0, "elite_count": 0, "break_seconds": 0.0}]
+	var protected_target := Node.new()
+	var protected_health := ProbeHealth.new()
+	protected_health.name = "Health"
+	protected_target.add_child(protected_health)
+	var protect_objective := SpaceStageObjectiveRuntime.new()
+	if not protect_objective.configure(protect_stage, protected_target):
+		protected_target.free()
+		return false
+	protected_health.current = 0.0
+	if not protect_objective.advance(0.016) or not protect_objective.is_failed() or protect_objective.is_complete():
+		protected_target.free()
+		return false
+	var failed_checkpoint := protect_objective.capture_state()
+	var failed_restore := SpaceStageObjectiveRuntime.new()
+	if failed_restore.restore_state(protect_stage, failed_checkpoint, protected_target):
+		protected_target.free()
+		return false
+	protected_target.free()
 
 	var director := SpaceStageEncounterDirector.new()
 	if not director.configure(first, loadout):
