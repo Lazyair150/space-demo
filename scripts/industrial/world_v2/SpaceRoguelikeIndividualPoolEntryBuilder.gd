@@ -22,16 +22,19 @@ static func append_parser(
 static func append_workshop(
 	pool: SpaceRoguelikeIndividualPool,
 	definition: SpaceWorkshopDefinition,
+	shape_vocabulary: Array,
 	rarity: String,
 	weight: float,
 	tags: Array = []
 ) -> Dictionary:
 	if pool == null or pool.item_kind != "workshop":
 		return _failure("workshop entry requires a workshop pool")
-	var evaluated := SpaceIndividualPowerEvaluator.evaluate_workshop(definition, pool.power_model)
+	var evaluated := SpaceIndividualPowerEvaluator.evaluate_workshop(definition, shape_vocabulary, pool.power_model)
 	if not bool(evaluated.get("success", false)):
 		return evaluated
-	return _append(pool, definition.workshop_id, definition.definition_version, rarity, weight, tags, evaluated, {})
+	return _append(pool, definition.workshop_id, definition.definition_version, rarity, weight, tags, evaluated, {
+		"shapeVocabulary": shape_vocabulary.duplicate(true)
+	})
 
 static func append_skill(
 	pool: SpaceRoguelikeIndividualPool,
