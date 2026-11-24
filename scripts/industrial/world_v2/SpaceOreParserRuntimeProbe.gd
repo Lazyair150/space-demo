@@ -148,6 +148,30 @@ static func run() -> Dictionary:
 	wrong_target_definition.rule_contributions = [wrong_target_rule]
 	if not SpaceProgressionRuntimeProfileComposer.compose_parser(wrong_target_definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary").is_empty():
 		return _failure("Parser executor accepted an unsupported target contract")
+	var duplicate_rule_definition := SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
+	duplicate_rule_definition.rule_contributions = [rate_rule, rate_rule.duplicate(true)]
+	if not SpaceProgressionRuntimeProfileComposer.compose_parser(duplicate_rule_definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary").is_empty():
+		return _failure("Parser executor accepted duplicate Rule identities")
+	var overflow_rule_definition := SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
+	var overflow_rule := SpaceRuleContributionDefinition.new()
+	overflow_rule.rule_id = &"probe.parser.overflow.rate"
+	overflow_rule.effect = "ModifyIntensity"
+	overflow_rule.target = "shape_processing_rate"
+	overflow_rule.scope = "parser"
+	overflow_rule.parameters = {"shape": "圆罐", "multiplier": 1000000000.0}
+	overflow_rule_definition.rule_contributions = [overflow_rule]
+	if not SpaceProgressionRuntimeProfileComposer.compose_parser(overflow_rule_definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary").is_empty():
+		return _failure("Parser executor accepted a rate beyond the fixed-point range")
+	var underflow_rule_definition := SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
+	var underflow_rule := SpaceRuleContributionDefinition.new()
+	underflow_rule.rule_id = &"probe.parser.underflow.threshold"
+	underflow_rule.effect = "RetimeProcess"
+	underflow_rule.target = "progress_per_jar"
+	underflow_rule.scope = "parser"
+	underflow_rule.parameters = {"shape": "圆罐", "multiplier": 0.000000001}
+	underflow_rule_definition.rule_contributions = [underflow_rule]
+	if not SpaceProgressionRuntimeProfileComposer.compose_parser(underflow_rule_definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary").is_empty():
+		return _failure("Parser executor accepted a threshold below fixed-point precision")
 
 	# Two owned copies of one exact parser Definition must never share runtime state identity.
 	var owned_profile_a := definition.build_runtime_profile()
