@@ -566,3 +566,13 @@
 5. Verify Parser completion imports only completed empty Jar counts with stable idempotent operation IDs/receipts; test replay, checkpoint restore and repeated import.
 6. End-to-end: Parser completion → Core Jar inventory → Core template demand → A/B execution → Space skill/effect dispatch → battle checkpoint/restore.
 7. Repository cleanup only after the cross-repository build and end-to-end scenario are green.
+
+## 2026-11-24 Board Assignment validation hardening and cross-repository gate
+
+- `SpaceHangarOwnedLoadoutAssembler` no longer treats a non-empty assignment fingerprint as sufficient. It recomputes SHA-256 over the frozen Board Definition + canonical assignment payload and rejects mismatches.
+- The assembler now validates the frozen Board Definition schema/version/display identity, slot uniqueness and area/component/role/control-area compatibility, exactly one Master/Slave/parser runtime slot, required-slot occupancy, exact Owned Instance + Definition identity/version, and `sourceRevision == progression_revision`.
+- The assignment map is checked against the runtime projection slot-by-slot: parser slot/instance, Master and Slave role/instance, each production-device slot/instance/definition, and each skill order slot/instance/definition/control area. A same-kind instance cannot be silently swapped into another slot.
+- `SpaceHangarBoardDefinitionProbe.gd` now exercises fingerprint tampering, a rehashed but wrong workshop role, stale progression revision, and swapped Master/Slave instances. These probes are authored, not executed.
+- Cross-repo project dependency remains explicit: `space-demo.csproj` references `..\\jar-system-dotnet\\hosts\\godot\\WorldV2Bridge\\JarSystem.WorldV2Bridge.csproj`. The integration checkout must place the Space and Core repositories as siblings and use Core PR #60's branch, not Core `main` or an unrelated base.
+- Parser -> Core ingress remains a discrete idempotent batch handoff: Space parser outbox retains stable operation IDs, Host calls `ImportProducedJars`, and Core checkpoint receipts deduplicate retries. `SpaceOreParserJarIngressProbe.tscn` covers ambiguous transport outcome and restore/retry, but has not been run in Godot.
+- Environment limitation: this execution environment has neither `dotnet` nor Godot installed. No GDScript parse, Godot 4.7.1 .NET build, SceneTree probe, or battle runtime result is claimed. Core PR #60 latest polarity parity/fixed-seed verification is still running at the time of this update.
