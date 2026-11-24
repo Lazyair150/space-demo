@@ -122,7 +122,7 @@ func _valid_dispatcher_state(dispatcher: Dictionary, identity: Dictionary, effec
         return false
     if String(dispatcher.get("loadoutId", "")) != String(identity.get("loadoutId", "")):
         return false
-    if typeof(dispatcher.get("loadoutVersion", null)) != TYPE_INT or int(dispatcher.get("loadoutVersion", 0)) != int(identity.get("loadoutVersion", 0)):
+    if not _is_exact_integer(dispatcher.get("loadoutVersion", null)) or int(dispatcher.get("loadoutVersion", 0)) != int(identity.get("loadoutVersion", 0)):
         return false
     if String(dispatcher.get("loadoutFingerprint", "")) != String(identity.get("loadoutFingerprint", "")):
         return false
@@ -185,9 +185,9 @@ func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity:
         return false
     if not (run_state is Dictionary) or int(run_state.get("schemaVersion", 0)) != 1:
         return false
-    if typeof(run_state.get("score", null)) != TYPE_INT or int(run_state.get("score", -1)) < 0:
+    if not _is_exact_integer(run_state.get("score", null)) or int(run_state.get("score", -1)) < 0:
         return false
-    if typeof(run_state.get("wave", null)) != TYPE_INT or int(run_state.get("wave", -1)) < 0:
+    if not _is_exact_integer(run_state.get("wave", null)) or int(run_state.get("wave", -1)) < 0:
         return false
     if typeof(run_state.get("segment", null)) != TYPE_STRING or not ["", "热身", "压力", "精英", "喘息"].has(String(run_state.get("segment", ""))):
         return false
@@ -209,13 +209,23 @@ func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity:
     var drop_rng_state: Variant = parser.get("dropRngState", null)
     if not (parser_runtime is Dictionary) or int(parser_runtime.get("schemaVersion", 0)) != 2:
         return false
-    if typeof(next_pickup_sequence) != TYPE_INT or int(next_pickup_sequence) <= 0:
+    if not _is_exact_integer(next_pickup_sequence) or int(next_pickup_sequence) <= 0:
         return false
-    if typeof(drop_rng_state) != TYPE_INT:
+    if not _is_exact_integer(drop_rng_state):
         return false
     if not (parser.get("pendingPickups", null) is Array):
         return false
     return true
+
+static func _is_exact_integer(value: Variant) -> bool:
+	if typeof(value) == TYPE_INT:
+		return true
+	if typeof(value) != TYPE_FLOAT:
+		return false
+	var numeric := float(value)
+	# JSON round-trips integral GDScript numbers as floats. Accept only the exact
+	# IEEE-754 integer range so counters/versions cannot silently lose precision.
+	return is_finite(numeric) and absf(numeric) <= 9007199254740991.0 and floor(numeric) == numeric
 
 func _valid_loadout_identity(identity: Variant) -> bool:
     if not (identity is Dictionary):
@@ -223,6 +233,6 @@ func _valid_loadout_identity(identity: Variant) -> bool:
     return (
         not String(identity.get("shipWorldId", "")).is_empty()
         and not String(identity.get("loadoutId", "")).is_empty()
-        and int(identity.get("loadoutVersion", 0)) > 0
+        and _is_exact_integer(identity.get("loadoutVersion", null)) and int(identity.get("loadoutVersion", 0)) > 0
         and String(identity.get("loadoutFingerprint", "")).length() == 64
     )
