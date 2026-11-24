@@ -287,6 +287,9 @@ func restore_state(state: Dictionary) -> Dictionary:
 
 	# Pending output IDs and counts are validated against this parser instance and shape vocabulary.
 	var batch_sequences := {}
+	var pending_output_count_by_shape := {}
+	for shape_value in expected_shapes:
+		pending_output_count_by_shape[String(shape_value)] = 0
 	var maximum_pending_sequence := 0
 	var operation_prefix := "ore-parser:" + _parser_token + ":"
 	for raw_operation_id in pending:
@@ -311,6 +314,10 @@ func restore_state(state: Dictionary) -> Dictionary:
 			submitted_count += int(count)
 			if submitted_count > 2147483647:
 				return _failure("ore parser checkpoint pending batch exceeds the Jar import count limit")
+			var shape_name := String(shape_key)
+			if int(count) > MAX_INT64 - int(pending_output_count_by_shape[shape_name]):
+				return _failure("ore parser checkpoint pending output ledger exceeds the supported range: " + shape_name)
+			pending_output_count_by_shape[shape_name] = int(pending_output_count_by_shape[shape_name]) + int(count)
 		batch_sequences[sequence] = true
 		maximum_pending_sequence = maxi(maximum_pending_sequence, sequence)
 
@@ -365,6 +372,8 @@ func restore_state(state: Dictionary) -> Dictionary:
 		var produced_count := int(restored_produced[shape])
 		if consumed_for_output % threshold != 0 or produced_count != int(consumed_for_output / threshold):
 			return _failure("ore parser checkpoint violates accepted-stone resource conservation: " + shape)
+		if int(pending_output_count_by_shape[shape]) > produced_count:
+			return _failure("ore parser checkpoint pending batches exceed cumulative completed Jars: " + shape)
 
 	# Publish only after every nested structure has passed validation.
 	_stone_queues_by_shape = queues.duplicate(true)
