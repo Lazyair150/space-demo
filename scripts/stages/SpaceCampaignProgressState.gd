@@ -2,7 +2,7 @@ extends Resource
 class_name SpaceCampaignProgressState
 ## Durable campaign clear ledger. Reward application is a separate idempotent settlement transaction.
 
-signal changed(revision: int)
+signal campaign_progress_changed(revision: int)
 
 const SCHEMA_VERSION := 1
 @export var schema_version: int = SCHEMA_VERSION
@@ -88,7 +88,7 @@ func record_stage_clear(stage: SpaceStageDefinition, result: Dictionary, settlem
 	})
 	reward_settlement_ids.append(settlement_id)
 	revision += 1
-	changed.emit(revision)
+	campaign_progress_changed.emit(revision)
 	return true
 
 func to_data() -> Dictionary:
