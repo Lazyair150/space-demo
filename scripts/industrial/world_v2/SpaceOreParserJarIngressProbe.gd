@@ -165,6 +165,14 @@ func _ready() -> void:
     assert(restored_jar_host.RestoreSpaceClockRemainderMilli(clock_remainder),
         "Space fractional-millisecond remainder must restore before the next step")
 
+    # A rejected Core import must not be converted into a success receipt or remove
+    # the parser outbox entry. The stable operation ID remains available for a safe retry.
+    var rejected_receipt: Dictionary = restored_jar_host.ImportProducedJars("", batch.jarCounts)
+    assert(not bool(rejected_receipt.get("success", false)),
+        "invalid Core import must return an explicit rejection, never a synthetic success")
+    assert(restored_parser.pending_output_batches().size() == 1,
+        "a rejected import must leave the parser batch pending")
+
     # Retrying the same pending operation after checkpoint restore must receive Jar's
     # persisted duplicate receipt, acknowledge Space's outbox, and create no second Jar.
     var retry := SpaceOreParserJarIngress.flush_pending(restored_parser, restored_jar_host)
