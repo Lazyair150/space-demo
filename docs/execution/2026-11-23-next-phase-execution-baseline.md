@@ -497,3 +497,11 @@
 - Parser runtime Probe coverage now includes a valid no-rule profile and rejection after stripping the baseline and tampering with an effective rate.
 - This closes a snapshot-integrity bypass; it does not expand supported Parser effects or enable multiple Parser instances.
 - Validation remains authored-only: no Godot 4.7.1 .NET runtime/Probe execution or Space CI workflow run is available for this branch head.
+### Parser checkpoint resource-conservation ledger (2026-11-24)
+
+- Parser runtime checkpoint schema 3 persists cumulative completed Jar counts independently for each output shape.
+- Restore reconciles accepted pickup volume against queued remaining volume + fractional progress + cumulative completed Jar count multiplied by the frozen per-shape progress threshold. Pending versus already-acknowledged batches do not alter this equation.
+- Schema 2 checkpoints are migrated by deriving cumulative counts only when the existing accepted/queued/progress data proves an exact non-negative whole-Jar result; ambiguous or inconsistent states fail closed.
+- Runtime Probe coverage includes exact schema-2 migration, tampered cumulative output rejection, and atomic no-partial-mutation behavior.
+- This ledger accounts for completed production regardless of whether Core import is pending or acknowledged; Core operation-ID deduplication remains the separate exactly-once import boundary.
+- Probe changes are authored only. Godot 4.7.1 .NET compile/runtime execution remains outstanding.
