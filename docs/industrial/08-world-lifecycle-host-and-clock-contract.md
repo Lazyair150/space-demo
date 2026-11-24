@@ -1,6 +1,6 @@
 # World V2 × Space — world host and simulation clock contract
 
-Status (2026-11-25): the World V2 host/clock and lifecycle integration have been built and exercised by the cross-repository workflow at Space commit `74a93ed281d94823608b0c6803edd78dd9f068cc` against Core `b342259fe04363386085dc9a4ca995112954ed43` (run `45438436612`, success). The Space PR later advanced through the HUD probe type-annotation change `2fa994783e5f275d468459b26e30cb8b985b036c` and documentation-status cleanup; latest head is `d9e1d4b681163697f6623b17ccd077edc0abfb51`. No successful workflow is recorded for the post-cleanup head, so exact-latest-head verification remains pending. Older implementation-status paragraphs below are chronological checkpoints, not current validation claims.
+Status (2026-11-25): the World V2 host/clock and lifecycle integration have been built and exercised by the cross-repository workflow at Space commit `74a93ed281d94823608b0c6803edd78dd9f068cc` against Core `b342259fe04363386085dc9a4ca995112954ed43` (run `45438436612`, success). The Space PR later advanced through the HUD probe type-annotation change and subsequent documentation-status cleanup. The exact current branch head is tracked in `docs/execution/2026-11-24-cross-repo-integration.txt`; no successful workflow is recorded for the post-cleanup documentation head, so exact-latest-head verification remains pending. Older implementation-status paragraphs below are chronological checkpoints, not current validation claims.
 
 ## 1. Repository facts verified
 
