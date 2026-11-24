@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://0pkv3cfo4k8l"]
 
 [ext_resource type="Script" uid="uid://b4q1bilsecymx" path="res://scripts/Game.gd" id="1_m44fu"]
+[ext_resource type="Script" path="res://scripts/industrial/ui/SpaceJarHudObserver.gd" id="18_jar_observer"]
 [ext_resource type="PackedScene" uid="uid://68ujyqxv1j63" path="res://scenes/actors/Asteroid.tscn" id="2_7qcb4"]
 [ext_resource type="Texture2D" uid="uid://1qn42mk3gp6f" path="res://assets/sprites/bg.svg" id="2_vrspl"]
 [ext_resource type="PackedScene" uid="uid://x8pdj8wbeybg" path="res://scenes/actors/Player.tscn" id="3_vrspl"]
@@ -85,3 +86,13 @@ process_mode = 3
 script = ExtResource("15_pause")
 
 [editable path="Arena/Player"]
+
+[node name="JarObserver" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("18_jar_observer")
