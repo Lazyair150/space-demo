@@ -20,7 +20,7 @@ static func compose_ship(definition: SpaceShipDefinition, instance: SpaceOwnedPr
 		"shipResourceProfile": {"expectedStoneProgressPerSecondByShape": rates}
 	}
 
-static func compose_parser(definition: SpaceOreParserDefinition, instance: SpaceOwnedProgressionInstance, shapes: Array) -> Dictionary:
+static func compose_parser(definition: SpaceOreParserDefinition, instance: SpaceOwnedProgressionInstance, shapes: Array, slot_id: String = "") -> Dictionary:
 	if not _matches(definition, instance, "ore_parser", String(definition.parser_id if definition != null else &""), definition.definition_version if definition != null else 0):
 		return {}
 	if not definition.is_valid_for_shapes(shapes):
@@ -45,6 +45,12 @@ static func compose_parser(definition: SpaceOreParserDefinition, instance: Space
 	profile.progressPerJarByShape = progress
 	profile.productionPercentage = int(round(percentage))
 	profile["ownedInstance"] = instance.build_frozen_snapshot()
+	if not definition.rule_contributions.is_empty():
+		if slot_id.strip_edges().is_empty():
+			return {}
+		profile = SpaceOreParserRuleProfile.compose(profile, definition.rule_contributions, instance, slot_id, shapes)
+		if profile.is_empty():
+			return {}
 	return profile
 
 static func compose_device(definition: SpaceProductionDeviceDefinition, instance: SpaceOwnedProgressionInstance, slot_id: String) -> Dictionary:
