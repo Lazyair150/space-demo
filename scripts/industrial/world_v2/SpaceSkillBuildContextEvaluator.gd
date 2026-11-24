@@ -110,7 +110,7 @@ static func evaluate(
 		float(jar_order.get("cooldownDurationLogicalMilli", 0)),
 		profile.cooldown_floor_logical_milli
 	)
-	var expected_activations := ceil(expected_battle_duration_logical_milli / effective_cooldown)
+	var expected_activations: float = ceil(expected_battle_duration_logical_milli / effective_cooldown)
 	var battle_seconds := expected_battle_duration_logical_milli / 1000.0
 	var total_required_jars := 0.0
 	var total_production_capacity := 0.0
