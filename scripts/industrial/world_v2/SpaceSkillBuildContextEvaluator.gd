@@ -120,7 +120,7 @@ static func evaluate(
 		var output_jar_rate := float(effective_jar_output_rates.get(shape, 0.0))
 		if output_jar_rate <= 0.0:
 			return _failure("ship drops, selected processors, and Jar conversion must all support shape: " + shape)
-		var required := float(shape_demand[shape]) * expected_activations
+		var required: float = float(shape_demand[shape]) * expected_activations
 		var capacity := output_jar_rate * battle_seconds
 		total_required_jars += required
 		total_production_capacity += capacity
