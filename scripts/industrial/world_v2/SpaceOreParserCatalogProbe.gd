@@ -81,8 +81,16 @@ static func run() -> Dictionary:
 				"ban": [],
 				"maxJars": 10,
 				"maxLiquids": 10
+			}, {
+				"name": "从台",
+				"baseMarks": [],
+				"additionalMarks": [],
+				"ban": [],
+				"maxJars": 10,
+				"maxLiquids": 10
 			}],
-			"masterWorkshopName": "主台"
+			"masterWorkshopName": "主台",
+			"slaveWorkshopName": "从台"
 		},
 		"selectedOrderBindings": []
 	}
