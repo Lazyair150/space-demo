@@ -424,18 +424,23 @@ static func run() -> bool:
 	var restored_progression := SpacePlayerProgressionState.from_data(progression_data)
 	if restored_progression == null or not restored_progression.get_validation_errors().is_empty():
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] progression-roundtrip=passed")
 	var legacy_progression_data := progression_data.duplicate(true)
 	legacy_progression_data.schemaVersion = 1
 	legacy_progression_data.erase("rewardAcquisitionIds")
 	var migrated_progression := SpacePlayerProgressionState.from_data(legacy_progression_data)
 	if migrated_progression == null or migrated_progression.schema_version != SpacePlayerProgressionState.CURRENT_SCHEMA_VERSION:
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] progression-schema-migration=passed")
 	if int(restored_progression.build_owned_instance_snapshot("probe.parser.instance.a").get("level", 0)) != 2:
 		return false
 	var invalid_progression_data := progression_data.duplicate(true)
-	invalid_progression_data.ownedInstances[0].instanceId = "probe.parser.instance.a"
+	if invalid_progression_data.ownedInstances.size() != 2:
+		return false
+	invalid_progression_data.ownedInstances[0].instanceId = String(invalid_progression_data.ownedInstances[1].instanceId)
 	if SpacePlayerProgressionState.from_data(invalid_progression_data) != null:
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] duplicate-owned-instance-rejection=passed")
 
 	print("[SpaceHangarCatalogOwnershipProbe] progression-roundtrip-and-migration=passed")
 	# Versioned curves drive progression; the generic evaluator does not assign
