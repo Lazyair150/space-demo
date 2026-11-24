@@ -91,8 +91,19 @@ func load(expected_loadout_identity: Dictionary = {}) -> Dictionary:
         file.close()
         if not (parsed is Dictionary) or not _valid_snapshot(parsed):
             continue
-        if not expected_loadout_identity.is_empty() and parsed.get("loadoutIdentity", {}) != expected_loadout_identity:
-            continue
+        if not expected_loadout_identity.is_empty():
+            var stored_identity: Variant = parsed.get("loadoutIdentity", null)
+            if not (stored_identity is Dictionary):
+                continue
+            # JSON.parse_string may represent integral numeric fields as floats.
+            # Compare the stable identity fields semantically, not by Variant type.
+            if (
+                String(stored_identity.get("shipWorldId", "")) != String(expected_loadout_identity.get("shipWorldId", ""))
+                or String(stored_identity.get("loadoutId", "")) != String(expected_loadout_identity.get("loadoutId", ""))
+                or int(stored_identity.get("loadoutVersion", 0)) != int(expected_loadout_identity.get("loadoutVersion", 0))
+                or String(stored_identity.get("loadoutFingerprint", "")) != String(expected_loadout_identity.get("loadoutFingerprint", ""))
+            ):
+                continue
         return parsed.duplicate(true)
     push_error("No valid matching battle snapshot or recoverable previous snapshot exists")
     return {}
