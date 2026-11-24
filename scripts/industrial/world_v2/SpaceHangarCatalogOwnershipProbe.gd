@@ -267,7 +267,7 @@ static func run() -> bool:
 		"deviceSelections": [{"slotId": "slot-a", "definitionId": "probe.device", "definitionVersion": 4}],
 		"parserId": "probe.parser", "parserVersion": 1, "parserSlotId": "parser-slot",
 		"workshopId": "probe.workshop", "workshopVersion": 5,
-		"skillSelections": [{"skillId": "probe.skill", "definitionVersion": 3, "orderDefinitionKey": "probe.order", "controlArea": "primary"}],
+		"skillSelections": [{"skillId": "probe.skill", "definitionVersion": 3, "orderDefinitionKey": "probe.order", "controlArea": "Active"}],
 		"expectedBattleDurationLogicalMilli": 60000.0
 	})
 	if not valid_selection.validate().is_empty():
@@ -285,8 +285,8 @@ static func run() -> bool:
 		"parserId": "probe.parser", "parserVersion": 1, "parserSlotId": "same",
 		"workshopId": "probe.workshop", "workshopVersion": 5,
 		"skillSelections": [
-			{"skillId": "probe.skill", "definitionVersion": 3, "orderDefinitionKey": "duplicate", "controlArea": "primary"},
-			{"skillId": "probe.skill", "definitionVersion": 3, "orderDefinitionKey": "duplicate", "controlArea": "secondary"}
+			{"skillId": "probe.skill", "definitionVersion": 3, "orderDefinitionKey": "duplicate", "controlArea": "Active"},
+			{"skillId": "probe.skill", "definitionVersion": 3, "orderDefinitionKey": "duplicate", "controlArea": "Passive"}
 		],
 		"expectedBattleDurationLogicalMilli": 60000.0
 	})
@@ -320,7 +320,7 @@ static func run() -> bool:
 		"deviceChoices": [{"id": "probe.device", "version": 4}],
 		"parserChoices": [{"id": "probe.parser", "version": 1}],
 		"workshopChoices": [{"id": "probe.workshop", "version": 5}],
-		"skillChoices": [{"id": "probe.skill", "version": 3, "allowedControlAreas": ["primary"]}]
+		"skillChoices": [{"id": "probe.skill", "version": 3, "allowedControlAreas": ["Active"]}]
 	}
 	if not draft.configure(draft_inventory):
 		return false
@@ -332,9 +332,9 @@ static func run() -> bool:
 		return false
 	if not draft.set_device("device-slot", "probe.device", 4):
 		return false
-	if draft.set_skill("probe.order", "probe.skill", 3, "secondary"):
+	if draft.set_skill("probe.order", "probe.skill", 3, "Passive"):
 		return false
-	if not draft.set_skill("probe.order", "probe.skill", 3, "primary"):
+	if not draft.set_skill("probe.order", "probe.skill", 3, "Active"):
 		return false
 	if not draft.set_workshop("probe.workshop", 5) or not draft.set_expected_battle_duration(60000.0):
 		return false
