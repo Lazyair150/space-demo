@@ -151,7 +151,7 @@ static func run() -> bool:
 	print("[SpaceHangarBoardDefinitionProbe] board-assignment-build=passed")
 	var assembled := SpaceHangarOwnedLoadoutAssembler.assemble(identity, selection, runtime_catalog, progression)
 	if assembled == null:
-		print("[SpaceHangarBoardDefinitionProbe] owned-assembler-error=", SpaceHangarOwnedLoadoutAssembler.get_last_error() if SpaceHangarOwnedLoadoutAssembler.has_method("get_last_error") else "no diagnostic API")
+		print("[SpaceHangarBoardDefinitionProbe] owned-assembler-returned-null")
 		return false
 
 	print("[SpaceHangarBoardDefinitionProbe] owned-assembly=passed")
