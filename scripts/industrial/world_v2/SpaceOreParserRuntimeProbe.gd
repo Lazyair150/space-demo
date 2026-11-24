@@ -377,6 +377,15 @@ static func run() -> Dictionary:
 	if restored.capture_state() != state_before_rejection:
 		return _failure("rejected checkpoint partially mutated parser state")
 
+	var excess_pending_output := checkpoint.duplicate(true)
+	var excess_pending_id := String(excess_pending_output.pendingOutputBatches.keys()[0])
+	excess_pending_output.pendingOutputBatches[excess_pending_id].jarCounts["圆罐"] = int(excess_pending_output.pendingOutputBatches[excess_pending_id].jarCounts.get("圆罐", 0)) + 1
+	var rejected_excess_pending := restored.restore_state(excess_pending_output)
+	if bool(rejected_excess_pending.get("success", false)):
+		return _failure("checkpoint restore accepted pending Jar output beyond cumulative completed production")
+	if restored.capture_state() != state_before_rejection:
+		return _failure("rejected excess pending output partially mutated parser state")
+
 	var corrupt_batch := checkpoint.duplicate(true)
 	var corrupt_batch_id := String(corrupt_batch.pendingOutputBatches.keys()[0])
 	corrupt_batch.pendingOutputBatches[corrupt_batch_id].jarCounts["未知罐"] = 1
