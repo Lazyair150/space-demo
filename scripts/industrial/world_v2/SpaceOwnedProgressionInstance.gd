@@ -74,17 +74,17 @@ func _is_finite_tree(value: Variant) -> bool:
 			return true
 		TYPE_FLOAT:
 			return is_finite(float(value))
-	TYPE_NIL:
-			return false
-	TYPE_ARRAY:
-		for item in value:
-			if not _is_finite_tree(item):
+		TYPE_NIL:
 				return false
-		return true
-	TYPE_DICTIONARY:
-		for key in value:
-			if not _is_finite_tree(value[key]):
-				return false
-		return true
-	_:
+		TYPE_ARRAY:
+			for item in value:
+				if not _is_finite_tree(item):
+					return false
+			return true
+		TYPE_DICTIONARY:
+			for key in value:
+				if not _is_finite_tree(value[key]):
+					return false
+			return true
+		_:
 		return false
