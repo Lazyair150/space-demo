@@ -11,6 +11,7 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 	library.pools = [parser_pool, workshop_pool, skill_pool]
 	if not library.is_valid():
 		return false
+	print("[SpaceRoguelikeIndividualLibraryProbe] library-validation=passed")
 	var rng_a := RandomNumberGenerator.new()
 	var rng_b := RandomNumberGenerator.new()
 	rng_a.seed = 77123
@@ -27,6 +28,7 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 		return false
 	if skill_pool.validate_effective_metrics(String(first.definitionId), int(first.definitionVersion), String(first.rarity), {"normalized_strength": 1.1}).is_empty():
 		return false
+	print("[SpaceRoguelikeIndividualLibraryProbe] deterministic-roll-and-power-validation=passed")
 	skill_pool.entries.append({
 		"definitionId": "probe.skills.second.item",
 		"definitionVersion": 1,
@@ -49,6 +51,7 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 		offered_keys[key] = true
 	if offered_keys.size() != 2:
 		return false
+	print("[SpaceRoguelikeIndividualLibraryProbe] distinct-offer=passed")
 	var excluded := library.roll_candidate("skill", rng_a, PackedStringArray(), PackedStringArray(), PackedStringArray(["skill:probe.skills.item@1", "skill:probe.skills.second.item@1"]))
 	if bool(excluded.get("success", false)):
 		return false
@@ -62,6 +65,7 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 	overpowered.entries[0].powerMetrics.normalized_strength = 0.9
 	if overpowered.is_valid():
 		return false
+	print("[SpaceRoguelikeIndividualLibraryProbe] exclusions-and-band-rejection=passed")
 	if bundle != null or state != null:
 		if bundle == null or state == null or skill_id.is_empty() or skill_version <= 0:
 			return false
@@ -76,33 +80,40 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 		reward_library.pools = [parser_pool, workshop_pool, skill_pool]
 		var reward_rng := RandomNumberGenerator.new()
 		reward_rng.seed = 98231
+		print("[SpaceRoguelikeIndividualLibraryProbe] real-catalog-reward-fixture=ready")
 		var reward_offer := SpaceRoguelikeIndividualOfferService.roll_offer(reward_library, "skill", reward_rng, 3, "probe.offer.real-acquisition")
 		if not bool(reward_offer.get("success", false)) or reward_offer.offers.size() != 1:
 			return false
+		print("[SpaceRoguelikeIndividualLibraryProbe] real-catalog-offer=passed")
 		var acquired := SpaceRoguelikeIndividualOfferService.acquire_selected(reward_offer, 0, state, bundle, reward_library, "probe.roguelike-owned-copy")
 		if not bool(acquired.get("success", false)):
 			return false
+		print("[SpaceRoguelikeIndividualLibraryProbe] reward-acquisition=passed")
 		var acquired_instance := state.resolve_instance("probe.roguelike-owned-copy")
 		if acquired_instance == null or not acquired_instance.growth_attributes.is_empty():
 			return false # Reward provenance must never pollute subsystem growth attributes.
 		if String(acquired_instance.acquisition_provenance.get("source", "")) != "roguelike_reward" or String(acquired_instance.acquisition_provenance.get("rewardId", "")) != String(reward_offer.offerId):
 			return false
+		print("[SpaceRoguelikeIndividualLibraryProbe] reward-provenance=passed")
 		var tampered_provenance := acquired_instance.duplicate(true) as SpaceOwnedProgressionInstance
 		tampered_provenance.progression_revision += 1
 		tampered_provenance.acquisition_provenance.rewardId = "probe.tampered-reward"
 		if state.replace_instance_progression(tampered_provenance):
 			return false # Acquisition provenance cannot be rewritten by a growth update.
+		print("[SpaceRoguelikeIndividualLibraryProbe] provenance-rejection=passed")
 		var acquired_skill := bundle.skill_catalog.resolve_skill(skill_id, skill_version)
 		if acquired_skill == null or SpaceProgressionRuntimeProfileComposer.compose_skill(acquired_skill, acquired_instance) == null:
 			return false # A newly rewarded skill must remain usable by the subsystem composer.
 		if not state.reward_acquisition_ids.has(String(reward_offer.offerId)):
 			return false
+		print("[SpaceRoguelikeIndividualLibraryProbe] restored-reward-skill=passed")
 		var restored_reward_state := SpacePlayerProgressionState.from_data(state.to_data())
 		if restored_reward_state == null or not restored_reward_state.reward_acquisition_ids.has(String(reward_offer.offerId)):
 			return false
 		var restored_instance := restored_reward_state.resolve_instance("probe.roguelike-owned-copy")
 		if restored_instance == null or restored_instance.acquisition_provenance != acquired_instance.acquisition_provenance or not restored_instance.growth_attributes.is_empty():
 			return false
+		print("[SpaceRoguelikeIndividualLibraryProbe] reward-state-roundtrip=passed")
 		# Backward compatibility: saves written before provenance had its own field
 		# stored it under growthAttributes.roguelike. Import must migrate it once.
 		var legacy_reward_data := state.to_data()
@@ -119,6 +130,7 @@ static func run(bundle: SpaceHangarCatalogBundle = null, state: SpacePlayerProgr
 		var migrated_instance := migrated_reward_state.resolve_instance("probe.roguelike-owned-copy") if migrated_reward_state != null else null
 		if migrated_instance == null or not migrated_instance.growth_attributes.is_empty() or migrated_instance.acquisition_provenance != acquired_instance.acquisition_provenance:
 			return false
+		print("[SpaceRoguelikeIndividualLibraryProbe] legacy-provenance-migration=passed")
 		var owned_count_after_reward := state.owned_instances.size()
 		var duplicate_acquire := SpaceRoguelikeIndividualOfferService.acquire_selected(reward_offer, 0, state, bundle, reward_library, "probe.roguelike-owned-copy-duplicate")
 		if bool(duplicate_acquire.get("success", false)) or state.owned_instances.size() != owned_count_after_reward:
