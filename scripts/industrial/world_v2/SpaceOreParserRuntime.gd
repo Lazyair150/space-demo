@@ -348,6 +348,9 @@ func restore_state(state: Dictionary) -> Dictionary:
 		var accepted := int(accepted_volume_by_shape[shape])
 		var queued := int(queued_volume_by_shape[shape])
 		var fractional_progress := int(progress[shape])
+		if queued > accepted or fractional_progress > accepted - queued:
+			return _failure("ore parser checkpoint has more queued/progress volume than accepted stone: " + shape)
+		var consumed_for_output := accepted - queued - fractional_progress
 		if state_schema >= 3:
 			var raw_count: Variant = produced[shape]
 			if typeof(raw_count) != TYPE_INT or int(raw_count) < 0:
@@ -356,15 +359,11 @@ func restore_state(state: Dictionary) -> Dictionary:
 		else:
 			# Schema 2 did not persist this ledger. Reconstruct it only when the
 			# existing accepted/queued/progress data yields an exact whole-Jar count.
-			var consumed := accepted - queued - fractional_progress
-			if consumed < 0 or consumed % threshold != 0:
+			if consumed_for_output % threshold != 0:
 				return _failure("legacy Parser checkpoint cannot prove exact resource conservation: " + shape)
-			restored_produced[shape] = int(consumed / threshold)
+			restored_produced[shape] = int(consumed_for_output / threshold)
 		var produced_count := int(restored_produced[shape])
-		if produced_count > int((MAX_INT64 - queued - fractional_progress) / threshold):
-			return _failure("ore parser checkpoint cumulative output volume exceeds the supported range: " + shape)
-		var accounted := queued + fractional_progress + produced_count * threshold
-		if accounted != accepted:
+		if consumed_for_output % threshold != 0 or produced_count != int(consumed_for_output / threshold):
 			return _failure("ore parser checkpoint violates accepted-stone resource conservation: " + shape)
 
 	# Publish only after every nested structure has passed validation.
