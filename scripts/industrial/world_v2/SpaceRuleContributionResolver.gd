@@ -43,11 +43,15 @@ static func resolve(
 				contributions.append(_builtin(instance, slot_id, "core.workshop.ban-liquid", "BanLiquid", String(liquid)))
 		var authored: Variant = definition.get("rule_contributions")
 		if authored is Array:
-			for contribution_definition in authored:
-				if contribution_definition == null:
+			for raw_contribution_definition in authored:
+				if raw_contribution_definition == null:
 					push_error("Board Rule Contribution cannot be null in slot: " + slot_id)
 					return {}
-				var resolved := contribution_definition.resolve(instance, slot_id)
+				if not (raw_contribution_definition is SpaceRuleContributionDefinition):
+					push_error("Board Rule Contribution has an unsupported definition type in slot: " + slot_id)
+					return {}
+				var contribution_definition: SpaceRuleContributionDefinition = raw_contribution_definition
+				var resolved: Dictionary = contribution_definition.resolve(instance, slot_id)
 				if resolved.is_empty():
 					push_error("Board Rule Contribution could not resolve against its exact owned instance: " + slot_id)
 					return {}
