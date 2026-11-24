@@ -517,7 +517,8 @@ static func run() -> bool:
 		return false
 
 	var composed_parser := SpaceProgressionRuntimeProfileComposer.compose_parser(
-		parsers.resolve_definition("probe.parser", 1), curve_upgraded, ["round", "square", "diamond", "triangle", "hex"]
+		parsers.resolve_definition("probe.parser", 1), curve_upgraded,
+		["round", "square", "diamond", "triangle", "hex"], "parser-slot"
 	)
 	if composed_parser.is_empty() or absf(float(composed_parser.shapeProcessingRatePerSecond.round) - 1.25) > 0.000001:
 		return false
