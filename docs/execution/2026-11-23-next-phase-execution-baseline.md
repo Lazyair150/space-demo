@@ -507,3 +507,13 @@
 - Probe changes are authored only. Godot 4.7.1 .NET compile/runtime execution remains outstanding.
 - Additional outbox reconciliation: restore also sums pending batch counts by shape and rejects any pending quantity greater than the cumulative completed-Jar ledger. This prevents a forged checkpoint from inflating the retry outbox beyond the production already accounted for by consumed stone.
 - Runtime Probe includes a known-shape pending-count inflation case; authored, not executed.
+
+## 2026-11-24 circuit-system model and parser import receipt follow-up
+
+- Jar Core PR #60 now contains `docs/world-v2/circuit-system-model-and-bounded-resource-routing.md`, defining the target as a bounded resource state-transition network: Board topology, exact component instances, Rule Algebra, Circuit Compiler, directional solvers, and runtime interpreter.
+- This is an architecture contract, not a claim that the compiler or universal rule interpreter is already implemented.
+- Current completeness assessment: Board topology and owned-instance assignment are established; component Definitions and progression are established; Rule Contribution serialization is partial; Core workshop rule consumption is partial; Parser-local execution is narrow; Skill and Production Device rule execution are incomplete; order A/B symbolic search exists but is not a complete generic reverse-predecessor solver; workshop replacement exists but is not yet a target-rule-driven migration optimizer.
+- Space Host parser import now requires a complete Core receipt shape before returning success. Exceptions and incomplete bridge results return explicit failure, so `SpaceOreParserJarIngress.flush_pending` cannot acknowledge an outbox batch on a synthetic success.
+- `SpaceOreParserJarIngressProbe.gd` now includes a rejected empty-operation-ID case and asserts the parser batch remains pending before the valid retry.
+- The new receipt path and Probe are authored but not run. Space Demo has no associated Actions run for the latest commit; Godot 4.7.1 .NET compile/runtime validation remains unverified.
+- Next implementation priority: define the shared Rule Evaluation / Transition / ResourceEffect contract, then make Core workshop solver and executor consume it before adding further component-specific effects. Do not start multi-Parser runtime or fabricate production balance values before this shared semantic boundary exists.
