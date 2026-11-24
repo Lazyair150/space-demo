@@ -35,18 +35,23 @@ static func run() -> bool:
 	ship.expected_stone_progress_per_second_by_shape["round"] = 99.0
 	var resolved_ship := ships.resolve_definition("probe.ship", 2)
 	if resolved_ship == null or resolved_ship.display_name != "Probe Ship" or resolved_ship.display_icon == null or resolved_ship.display_hull_texture == null or resolved_ship.display_anchors.size() != 1:
+		print("[SpaceHangarCatalogOwnershipProbe] ship-resolve-copy=", resolved_ship)
 		return false
 	resolved_ship.expected_stone_progress_per_second_by_shape["round"] = 77.0
 	if float(ships.resolve_definition("probe.ship", 2).expected_stone_progress_per_second_by_shape["round"]) != 2.0:
+		print("[SpaceHangarCatalogOwnershipProbe] ship-runtime-mutation-leaked")
 		return false
 	if String(ships.resolve_definition("probe.ship", 2).display_anchors[0].logical_slot_id) != "slot-a":
+		print("[SpaceHangarCatalogOwnershipProbe] ship-anchor-copy-missing")
 		return false
 	ship_anchor.logical_slot_id = "mutated-slot"
 	if String(ships.resolve_definition("probe.ship", 2).display_anchors[0].logical_slot_id) != "slot-a":
+		print("[SpaceHangarCatalogOwnershipProbe] ship-authoring-mutation-leaked")
 		return false
 	var invalid_display_copy := ships.resolve_definition("probe.ship", 2)
 	invalid_display_copy.display_anchors[0].normalized_position = Vector2(2.0, 0.5)
 	if not invalid_display_copy.get_validation_errors(["round", "square", "diamond", "triangle", "hex"]).is_empty() or invalid_display_copy.get_display_validation_errors().is_empty():
+		print("[SpaceHangarCatalogOwnershipProbe] ship-display-validation=", invalid_display_copy.get_validation_errors(["round", "square", "diamond", "triangle", "hex"]), " display=", invalid_display_copy.get_display_validation_errors())
 		return false
 	print("[SpaceHangarCatalogOwnershipProbe] ship-catalog=passed")
 	if ships.resolve_definition("probe.ship", 1) != null:
