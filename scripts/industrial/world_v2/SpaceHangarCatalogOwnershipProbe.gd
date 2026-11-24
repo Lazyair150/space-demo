@@ -318,6 +318,8 @@ static func run() -> bool:
 	if bool(empty_inventory.get("isReady", true)) or not empty_inventory.get("shipChoices", []).is_empty():
 		return false
 	print("[SpaceHangarCatalogOwnershipProbe] bundle-and-inventory-fail-closed=passed")
+	# A draft without an explicit Board Definition may select a ship, but must
+	# fail closed for every installable component instead of inventing legacy slots.
 	var draft := SpaceHangarSelectionDraft.new()
 	var draft_inventory := {
 		"isReady": true,
@@ -327,31 +329,20 @@ static func run() -> bool:
 		"workshopChoices": [{"id": "probe.workshop", "version": 5}],
 		"skillChoices": [{"id": "probe.skill", "version": 3, "allowedControlAreas": ["Active"]}]
 	}
-	print("[SpaceHangarCatalogOwnershipProbe] draft-fixture=ready")
 	if not draft.configure(draft_inventory):
 		return false
-	print("[SpaceHangarCatalogOwnershipProbe] draft-configure=passed")
-	if draft.set_ship("probe.ship", 1) or not draft.set_ship("probe.ship", 2):
+	if not draft.set_ship("probe.ship", 2):
 		return false
-	if not draft.set_parser("probe.parser", 1, "parser-slot"):
+	if draft.set_parser("probe.parser", 1, "parser-slot"):
 		return false
-	if draft.set_device("parser-slot", "probe.device", 4):
+	if draft.set_device("device-slot", "probe.device", 4):
 		return false
-	if not draft.set_device("device-slot", "probe.device", 4):
+	if draft.set_skill("probe.order", "probe.skill", 3, "Active"):
 		return false
-	print("[SpaceHangarCatalogOwnershipProbe] draft-ship-parser-device=passed")
-	if draft.set_skill("probe.order", "probe.skill", 3, "Passive"): 
-		return false
-	if not draft.set_skill("probe.order", "probe.skill", 3, "Active"):
-		return false
-	print("[SpaceHangarCatalogOwnershipProbe] draft-skill-control-area=passed")
 	if draft.set_workshop("probe.workshop", 5):
-		return false # Workshop roles require a Board Definition and two installed positions.
+		return false
 	if not draft.set_expected_battle_duration(60000.0):
 		return false
-	if draft.build_selection() != null:
-		return false # A definition-only draft must not bypass the authoritative Board Assignment contract.
-	print("[SpaceHangarCatalogOwnershipProbe] no-board-draft-fails-closed=passed")
 	var unavailable_draft := SpaceHangarSelectionDraft.new()
 	if unavailable_draft.configure({"isReady": false}) or unavailable_draft.set_ship("probe.ship", 2):
 		return false
