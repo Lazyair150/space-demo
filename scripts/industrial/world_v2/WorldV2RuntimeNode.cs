@@ -357,7 +357,10 @@ public partial class WorldV2RuntimeNode : Node
                 ["liquid"] = jar.Liquid ?? "",
                 ["isMarked"] = jar.IsMarked
             }),
+            // The central warehouse and ship liquid inventory are separate accounts.
+            // Expose both explicitly; callers must not infer ship stock from the warehouse.
             ["resourceLiquids"] = ToGodotDictionary(snapshot.ResourceLiquids),
+            ["shipLiquidInventory"] = ToShipLiquidInventoryDictionary(snapshot.ShipLiquidInventory),
             ["master"] = ToWorkshopDictionary(snapshot.Master),
             ["slave"] = ToWorkshopDictionary(snapshot.Slave),
             ["demands"] = ToGodotArray(snapshot.Demands, demand => (Variant)new GDictionary
@@ -497,6 +500,20 @@ public partial class WorldV2RuntimeNode : Node
         foreach (var pair in source)
             result[pair.Key] = pair.Value;
         return result;
+    }
+
+    private static GDictionary ToShipLiquidInventoryDictionary(WorldV2ShipLiquidInventoryDto? source)
+    {
+        if (source == null)
+            return new GDictionary();
+
+        return new GDictionary
+        {
+            ["capacity"] = source.Capacity,
+            ["usedCapacity"] = source.UsedCapacity,
+            ["availableCapacity"] = source.AvailableCapacity,
+            ["balances"] = ToGodotDictionary(source.Balances)
+        };
     }
 
     private static GDictionary ToWorkshopDictionary(WorldV2WorkshopDto? workshop)
