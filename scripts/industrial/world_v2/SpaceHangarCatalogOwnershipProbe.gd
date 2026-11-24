@@ -636,6 +636,26 @@ static func run() -> bool:
 	var owned_inventory := SpaceHangarOwnedInventoryBuilder.build(owned_hangar_bundle, hangar_owned_state)
 	if not bool(owned_inventory.get("isReady", false)):
 		return false
+	var field_only_owned_selection := {
+		"shipId": String(ship.ship_id),
+		"shipVersion": ship.definition_version,
+		"shipInstanceId": String(owned_ship.instance_id),
+		"parserId": String(parser.parser_id),
+		"parserVersion": parser.definition_version,
+		"parserSlotId": "parser-slot",
+		"parserInstanceId": String(parser_instance.instance_id),
+		"workshopId": String(local_world.combination_id),
+		"workshopVersion": local_world.definition_version,
+		"masterWorkshopInstanceId": String(owned_master.instance_id),
+		"slaveWorkshopInstanceId": String(owned_slave.instance_id),
+		"skillSelections": [],
+		"deviceSelections": [],
+		"expectedBattleDurationLogicalMilli": 60000.0
+	}
+	if SpaceHangarOwnedLoadoutAssembler.assemble(
+		{}, field_only_owned_selection, owned_hangar_bundle.create_runtime_bundle(), hangar_owned_state
+	) != null:
+		return false # Production Owned assembly must not bypass the canonical Board Assignment map.
 	if owned_inventory.shipChoices.size() != 1 or owned_inventory.parserChoices.size() != 1 or owned_inventory.deviceChoices.size() != 1 or owned_inventory.skillChoices.size() != 1:
 		return false
 	if owned_inventory.workshopWorldChoices.size() != 1 or owned_inventory.workshopInstanceChoices.size() != 2:
