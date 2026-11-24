@@ -2,16 +2,16 @@
 
 ## Why this phase starts here
 
-The Jar System's World V2 resource/execution lifecycle is now sufficiently specified to serve as an independent domain. The next task is not to wire its API into the old Space UI. It is to decide what the Jar world means inside the Space game, which system owns each state, and which events cross the boundary.
+The Jar System's World V2 resource/execution lifecycle is an independent domain hosted inside the player's Space ship. This document records the settled ownership boundary and the current integration contract; it is no longer a proposal to begin the integration. Open balance, content-authoring, and future UI questions remain explicitly separate from the implemented runtime boundary.
 
-This document is a design entry point, not an implementation claim. It deliberately leaves unresolved gameplay rules unresolved.
+Current playable entry path: Main Menu → Hangar → immutable owned-instance loadout → Battle. The Hangar/launcher path, World V2 host lifecycle, parser ingress, event/effect boundary, and snapshot isolation have been implemented. The current demo catalog is sufficient for a local prototype session; it is not final production content.
 
 ## Current repository facts
 
 - Space already contains an isolated World V2 RuntimeNode and a Godot Bridge consumer path for initialization, logical-time advancement, commands, snapshots, fault handling, and disposal.
 - The legacy turn-based IndustrialMain scene, IndustrialRuntime autoload, legacy JarCoreBridge, old industrial UI, old industrial sandbox/tradeoff worlds, and their legacy tests have been removed from this branch. WorldV2ShipHost is the only supported Jar host.
 - World V2 commands, snapshots, parser ingress, Hangar board/assignment, owned-instance projection, runtime lifecycle, fault handling, disposed/faulted commands, and snapshot isolation passed the cross-repository integration run `45438436612` at Space `74a93ed` against Core `b342259`. This verifies the integration boundary, not final balance/content authoring or the complete production battle save/load coordinator.
-- The legacy industrial loop has old order completion, reward/material, wallet, save, and combat-upgrade relationships. These are historical behavior, not approved migration requirements.
+- The legacy industrial loop had old order completion, reward/material, wallet, save, and combat-upgrade relationships. These are historical behavior, not approved migration requirements; they must not be reintroduced merely to make the new prototype feel complete.
 - The old Jar client implementation is retired. Its reward/material/wallet/attack-upgrade semantics were not migrated; the old player wallet coupling has also been removed from the Space runtime.
 
 ## Stable Jar-side contract
