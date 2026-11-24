@@ -47,3 +47,13 @@ NEXT STEPS
 2. Fix any .NET compile, GDScript import, or probe failures at their actual source boundary.
 3. Validate production Hangar -> frozen owned loadout -> WorldV2ShipHost -> Core template materialization -> parser import -> A/B execution -> Space effect dispatch -> checkpoint/restore.
 4. Only after the cross-repo closure is green, perform repository cleanup and remove stale compatibility paths that have no remaining production/probe callers.
+
+
+CHECKPOINT — Unified battle snapshot probe correction (2026-11-24)
+
+- Cross-repository run 45421741608 on Space head d51f738778648f803276def450648a975a60b091 successfully built the exact Core Bridge and Space C# project and completed Godot project import/script scanning. The first runtime probe then failed in SpaceBattleEffectStateStoreProbe: effect/dispatcher state was not preserved in the unified snapshot.
+- The failure occurred at a probe assertion comparing in-memory dictionaries directly with values read back from JSON. The persistence contract accepts integral numeric values represented by Godot as either integer or float; direct Variant equality at the test boundary was too strict.
+- Updated SpaceBattleEffectStateStoreProbe to normalize expected values through the same JSON.stringify → JSON.parse_string boundary before comparing them with loaded snapshots. Applied this to effect state, dispatcher state, and runtime checkpoint comparisons, including post-rejection preservation checks.
+- Latest fix commits: 4c0ca87c1f3bcdb5cdf173ab111a0edf9a941517 and indentation-only follow-up 90e46344ef8376640dfb2cc831712227b131aa53. This is a test/probe correction; no production snapshot format or gameplay behavior was changed.
+- A new cross-repository run was triggered for the corrected head; its final result is not yet recorded here. Do not claim the parser-ingress or subsequent lifecycle/fault probes have passed until the new run reaches them.
+- Continue from the first failing runtime probe. Once it passes, fix any subsequent probe failure at its actual owning boundary rather than treating the overall workflow as a single opaque red/green result.
