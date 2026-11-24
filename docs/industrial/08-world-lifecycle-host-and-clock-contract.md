@@ -7,7 +7,7 @@ Status (2026-11-25): the World V2 host/clock and lifecycle integration have been
 - `project.godot` registers `GameState`, `GameFlow`, and `WorldV2ShipHost`. The legacy `IndustrialRuntime` autoload has been removed.
 - `Game.tscn` is the active combat scene. `Game.gd` currently uses `_physics_process(delta)` only for camera shake; it does not own a general simulation clock.
 - Player movement, firing cooldown, enemy movement, and other combat actors use physics processing and the supplied physics `delta`.
-- `main_menu.gd` no longer exposes the legacy industrial scene. The current Start route still enters the development combat scene directly; the production Hangar-owned launch route remains to be connected.
+- `main_menu.gd` routes Start into `SpaceHangar.tscn`. The Hangar constructs a frozen loadout and calls `SpaceHangarBattleLauncher.launch_new_battle` before attaching the combat scene; the sandbox path remains an explicit development fallback.
 - The legacy IndustrialRuntime, JarCoreBridge, IndustrialMain scene, old industrial panels, sandbox/tradeoff data, and legacy industrial test harness have been deleted. No legacy tick loop remains in the project.
 - `WorldV2RuntimeNode` owns and disposes its Bridge session. Its `_ExitTree` is terminal. Therefore it must not be parented beneath a replaceable UI scene.
 - `WorldV2RuntimeNode.AdvanceWorldTime(long)` is the explicit external-time entry point. Production use must set `AutoAdvance = false`.
@@ -98,7 +98,7 @@ The legacy `IndustrialMain.tscn` has been removed. The Jar interface is now desi
 
 The eventual player-facing integration should make the Jar interface a presentation layer attached to the active ship-world (overlay, subview, or other UI composition), not the owner of the Jar runtime. The exact visual transition and whether opening the interface pauses combat remain gameplay/presentation decisions. Regardless of that decision, presentation visibility must not itself be the clock authority.
 
-The legacy menu shortcut has been removed. The remaining direct Start-to-Game route is a development path until the production Hangar supplies an authored frozen loadout and launch dependencies.
+The legacy industrial shortcut has been removed. The production Start route now enters the Hangar, which supplies the authored frozen loadout and launch dependencies; direct sandbox startup remains development-only.
 
 ## 7. Boundary rules for future resource and result adapters
 
