@@ -118,8 +118,8 @@ static func _probe_parser_encounter_supply() -> bool:
 	var no_drop_result := SpaceIndividualPowerEvaluator.evaluate_parser_in_encounter(
 		parser.build_runtime_profile(), ["round", "square"], no_drop, model
 	)
-	return bool(no_drop_result.get("success", false)) \\
-		and float(no_drop_result.powerMetrics["expected_supply_volume_per_second.round"]) == 0.0 \\
+	return bool(no_drop_result.get("success", false)) \
+		and float(no_drop_result.powerMetrics["expected_supply_volume_per_second.round"]) == 0.0 \
 		and float(no_drop_result.powerMetrics["stone_processing_seconds_per_drop.square"]) == 0.0
 
 static func _probe_workshop() -> bool:
