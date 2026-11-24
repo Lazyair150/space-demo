@@ -192,9 +192,17 @@ func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity:
         return false
     var score_value: Variant = run_state.get("score", null)
     var wave_value: Variant = run_state.get("wave", null)
-    if not _is_integral_json_number(score_value) or int(score_value) < 0:
+    var score_is_integer := typeof(score_value) == TYPE_INT
+    var wave_is_integer := typeof(wave_value) == TYPE_INT
+    if typeof(score_value) == TYPE_FLOAT:
+        var score_number := float(score_value)
+        score_is_integer = is_finite(score_number) and absf(score_number) <= 9007199254740991.0 and floor(score_number) == score_number
+    if typeof(wave_value) == TYPE_FLOAT:
+        var wave_number := float(wave_value)
+        wave_is_integer = is_finite(wave_number) and absf(wave_number) <= 9007199254740991.0 and floor(wave_number) == wave_number
+    if not score_is_integer or int(score_value) < 0:
         return false
-    if not _is_integral_json_number(wave_value) or int(wave_value) < 0:
+    if not wave_is_integer or int(wave_value) < 0:
         return false
     if typeof(run_state.get("segment", null)) != TYPE_STRING or not ["", "热身", "压力", "精英", "喘息"].has(String(run_state.get("segment", ""))):
         return false
@@ -216,9 +224,17 @@ func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity:
     var drop_rng_state: Variant = parser.get("dropRngState", null)
     if not (parser_runtime is Dictionary) or int(parser_runtime.get("schemaVersion", 0)) != 2:
         return false
-    if not _is_integral_json_number(next_pickup_sequence) or int(next_pickup_sequence) <= 0:
+    var next_sequence_is_integer := typeof(next_pickup_sequence) == TYPE_INT
+    var rng_state_is_integer := typeof(drop_rng_state) == TYPE_INT
+    if typeof(next_pickup_sequence) == TYPE_FLOAT:
+        var next_sequence_number := float(next_pickup_sequence)
+        next_sequence_is_integer = is_finite(next_sequence_number) and absf(next_sequence_number) <= 9007199254740991.0 and floor(next_sequence_number) == next_sequence_number
+    if typeof(drop_rng_state) == TYPE_FLOAT:
+        var rng_state_number := float(drop_rng_state)
+        rng_state_is_integer = is_finite(rng_state_number) and absf(rng_state_number) <= 9007199254740991.0 and floor(rng_state_number) == rng_state_number
+    if not next_sequence_is_integer or int(next_pickup_sequence) <= 0:
         return false
-    if not _is_integral_json_number(drop_rng_state):
+    if not rng_state_is_integer:
         return false
     if not (parser.get("pendingPickups", null) is Array):
         return false
@@ -228,18 +244,14 @@ func _valid_loadout_identity(identity: Variant) -> bool:
     if not (identity is Dictionary):
         return false
     var version_value: Variant = identity.get("loadoutVersion", null)
+    var version_is_integer := typeof(version_value) == TYPE_INT
+    if typeof(version_value) == TYPE_FLOAT:
+        var version_number := float(version_value)
+        version_is_integer = is_finite(version_number) and absf(version_number) <= 9007199254740991.0 and floor(version_number) == version_number
     return (
         not String(identity.get("shipWorldId", "")).is_empty()
         and not String(identity.get("loadoutId", "")).is_empty()
-        and _is_integral_json_number(version_value) and int(version_value) > 0
+        and version_is_integer and int(version_value) > 0
         and String(identity.get("loadoutFingerprint", "")).length() == 64
     )
 
-func _is_integral_json_number(value: Variant) -> bool:
-    if typeof(value) == TYPE_INT:
-        return true
-    if typeof(value) != TYPE_FLOAT:
-        return false
-    var numeric := float(value)
-    # JSON round-trips integral GDScript numbers as floats. Reject imprecise values.
-    return is_finite(numeric) and absf(numeric) <= 9007199254740991.0 and floor(numeric) == numeric
