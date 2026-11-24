@@ -1,6 +1,6 @@
 # World V2 resource HUD and shape visual language
 
-Status: first implementation slice on the Hangar/UI development branch. This is a presentation contract; it does not change Jar Core rules, resource ownership, feasibility, or Space balance.
+Status (2026-11-25): the ship-resource HUD observer, shape glyph/color mapping, workshop summaries, demand/cooldown/session summaries, and snapshot-delta feedback are implemented. The cross-repository run `45438436612` passed the Godot project import and integration probes at Space `74a93ed` against Core `b342259`. Remaining work is presentation polish (production art, editor-authored palette, real combat capture/manual visual review), not a missing resource-ownership or solver path. Latest PR head `2fa9947` only changes a test type annotation and still needs exact-head verification. This remains a presentation contract; it does not change Jar Core rules, resource ownership, feasibility, or Space balance.
 
 ## Player-facing information hierarchy
 
