@@ -1,0 +1,49 @@
+SPACE DEMO / JAR CORE CROSS-REPOSITORY INTEGRATION CHECKPOINT
+Date: 2026-11-24
+Space PR: #2
+Branch: world-v2/phase-4.10b-hangar-ui
+
+CORE DEPENDENCY
+- Space project references the Core WorldV2Bridge project as a sibling checkout by default.
+- space-demo.csproj now supports JarSystemWorldV2BridgeProject override.
+- Required Core source revision for this integration checkpoint:
+  3e4a5195d9640fa166359217a5f69ff143439d8d
+- Core PR #60 exact source run 45413094112: SUCCESS.
+- Core PR #60 remains Draft/Open/unmerged; do not substitute Core main for the required branch.
+
+SPACE CHANGES IN THIS CHECKPOINT
+1. SpaceHangarOwnedLoadoutAssembler recomputes the frozen Board Assignment SHA-256 fingerprint.
+2. Validates Board Definition schema/version/display identity and exact slot structure.
+3. Validates one Master slot, one Slave slot, one parser slot, required slot occupancy, area/component/role/control-area pairings.
+4. Validates Owned Instance identity, Definition ID/version, and sourceRevision against current progression_revision.
+5. Validates exact slot projection:
+   - parser slot -> selected parser instance
+   - Master/Slave role -> selected workshop instance
+   - device slot -> exact selected device
+   - skill order slot/controlArea -> exact selected skill
+6. SpaceHangarSelectionController disables owned production assembly when no Board Definition is supplied.
+7. Probes added for fingerprint tampering, rehashed invalid role, stale progression revision, swapped Master/Slave instances, and owned selection without Board Definition.
+8. Added scripts/ci/verify-world-v2-cross-repo.sh. It verifies exact Core SHA, builds Core Bridge + Space, imports/parses Godot project, then runs parser ingress, runtime, lifecycle, fault, disposed-command, faulted-command, and snapshot-isolation probes.
+
+CROSS-REPO API SOURCE AUDIT
+- Core WorldV2BridgeSession exposes AddJarDemandFromTemplate(templateName, area, cooldownDurationLogicalMilli, orderDefinitionKey).
+- Core WorldV2BridgeSession exposes ImportProducedJars(operationId, jarCounts).
+- Space WorldV2RuntimeNode calls those exact APIs.
+- Space template-backed orders pass only Core template identity + scheduling metadata; no duplicate inline type/requirements.
+- Parser flow remains Space outbox -> Host ImportProducedJars -> Core durable idempotent receipt.
+- Existing SpaceOreParserJarIngressProbe covers ambiguous transport outcome and checkpoint/retry semantics.
+
+VALIDATION LIMITS
+- This environment does not contain dotnet or Godot executables.
+- No Godot 4.7.1 .NET build, GDScript parse, SceneTree probe, or battle runtime result is claimed.
+- The cross-repo harness is authored but not executed.
+- Exact Core source revision above is verified; Space PR #2 remains Draft/Open/unmerged.
+
+NEXT STEPS
+1. Run scripts/ci/verify-world-v2-cross-repo.sh with:
+   CORE_REPO_DIR=<sibling jar-system-dotnet checkout>
+   CORE_EXPECTED_SHA=3e4a5195d9640fa166359217a5f69ff143439d8d
+   GODOT_BIN=<Godot 4.7.1 .NET executable>
+2. Fix any .NET compile, GDScript import, or probe failures at their actual source boundary.
+3. Validate production Hangar -> frozen owned loadout -> WorldV2ShipHost -> Core template materialization -> parser import -> A/B execution -> Space effect dispatch -> checkpoint/restore.
+4. Only after the cross-repo closure is green, perform repository cleanup and remove stale compatibility paths that have no remaining production/probe callers.
