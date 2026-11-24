@@ -104,7 +104,7 @@ static func run() -> Dictionary:
 	next_version.progress_per_jar_by_shape = {"圆罐": 4.0, "方罐": 2.5}
 	if not catalog.register_definition(next_version):
 		return _failure("catalog rejected a new immutable parser definition version")
-	var next_loadout := SpaceBattleLoadoutSnapshot.create_with_ore_parser(
+	var next_loadout: SpaceBattleLoadoutSnapshot = SpaceBattleLoadoutSnapshot.create_with_ore_parser(
 		loadout_source, catalog, "probe-universal-parser", 4, "parser-slot"
 	)
 	if next_loadout == null or next_loadout.loadout_fingerprint() == frozen_loadout.loadout_fingerprint():
