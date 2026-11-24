@@ -184,10 +184,10 @@ func record_space_stage_clear(stage: SpaceStageDefinition, result: Dictionary, s
 	if not _save_campaign_progress_candidate(candidate):
 		push_error("Campaign stage clear was not committed because its durable save failed")
 		return false
-	if space_campaign_progress_state != null and space_campaign_progress_state.changed.is_connected(_on_space_campaign_progress_changed):
-		space_campaign_progress_state.changed.disconnect(_on_space_campaign_progress_changed)
+	if space_campaign_progress_state != null and space_campaign_progress_state.campaign_progress_changed.is_connected(_on_space_campaign_progress_changed):
+		space_campaign_progress_state.campaign_progress_changed.disconnect(_on_space_campaign_progress_changed)
 	space_campaign_progress_state = candidate
-	space_campaign_progress_state.changed.connect(_on_space_campaign_progress_changed)
+	space_campaign_progress_state.campaign_progress_changed.connect(_on_space_campaign_progress_changed)
 	space_campaign_progress_changed.emit(space_campaign_progress_state)
 	return true
 
@@ -222,7 +222,7 @@ func _load_space_campaign_progress_state() -> void:
 			if space_campaign_progress_state == null:
 				push_error("Space campaign progress save failed schema validation")
 				space_campaign_progress_state = SpaceCampaignProgressState.new()
-	space_campaign_progress_state.changed.connect(_on_space_campaign_progress_changed)
+	space_campaign_progress_state.campaign_progress_changed.connect(_on_space_campaign_progress_changed)
 	space_campaign_progress_changed.emit(space_campaign_progress_state)
 
 func _on_space_campaign_progress_changed(_revision: int) -> void:
