@@ -163,7 +163,8 @@ func _ready() -> void:
     assert(bool(parser_restored.get("success", false)), "Space parser checkpoint must restore")
     jar_host.EndShipWorld()
 
-    var restored_jar_host := WorldV2ShipHost.new()
+    var restored_jar_host = jar_host_script.new()
+    assert(restored_jar_host != null, "restored WorldV2ShipHost C# script must instantiate")
     add_child(restored_jar_host)
     assert(restored_jar_host.BeginShipWorldFromJson(world_json), "restored Jar Host must initialize")
     assert(restored_jar_host.RestoreExecutionCheckpointJson(jar_checkpoint_json),
