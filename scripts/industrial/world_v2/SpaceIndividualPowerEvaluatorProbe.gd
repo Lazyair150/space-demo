@@ -162,10 +162,12 @@ static func _probe_workshop() -> bool:
 	var model := _model("probe.workshop.power", "workshop", metrics)
 	var result := SpaceIndividualPowerEvaluator.evaluate_workshop(workshop, ["round", "square"], ["water", "fuel"], model)
 	if not bool(result.get("success", false)) or result.get("powerMetrics", {}) != metrics:
+		print("[SpaceIndividualPowerEvaluatorProbe] workshop-evaluation=", result)
 		return false
 	var pool := _pool_for_model("probe.workshop.pool", "workshop", model)
 	var built := SpaceRoguelikeIndividualPoolEntryBuilder.append_workshop(pool, workshop, ["round"], ["water", "fuel"], "common", 1.0)
 	if not bool(built.get("success", false)) or not pool.is_valid():
+		print("[SpaceIndividualPowerEvaluatorProbe] workshop-pool-build=", built, " validation=", pool.get_validation_errors())
 		return false
 	var owned_workshop := SpaceOwnedProgressionInstance.new()
 	owned_workshop.instance_id = &"probe.workshop.owned"
@@ -181,6 +183,7 @@ static func _probe_workshop() -> bool:
 		workshop, owned_workshop, ["round", "square"], ["water", "fuel"], model
 	)
 	if not bool(effective.get("success", false)):
+		print("[SpaceIndividualPowerEvaluatorProbe] effective-workshop=", effective)
 		return false
 	var effective_metrics: Dictionary = effective.powerMetrics
 	return float(effective_metrics["max_jars"]) == 6.0 \
