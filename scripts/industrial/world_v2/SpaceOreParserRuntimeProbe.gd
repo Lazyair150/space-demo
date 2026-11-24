@@ -55,6 +55,57 @@ static func run() -> Dictionary:
 	var parser_rule_profile: Dictionary = composed_parser.get("parserRuleProfile", {})
 	if parser_rule_profile.is_empty() or String(parser_rule_profile.get("fingerprint", "")).is_empty() or parser_rule_profile.get("contributions", []).size() != 2:
 		return _failure("Parser-local contribution provenance was not frozen")
+	var parser_assignment := {
+		"boardId": "probe.parser.board",
+		"definitionVersion": 1,
+		"assignmentFingerprint": "probe.assignment.fingerprint",
+		"boardDefinition": {"boardId": "probe.parser.board"},
+		"assignments": [{
+			"slotId": "parser.slot.primary",
+			"componentKind": "ore_parser",
+			"ownedInstanceId": String(parser_owned.instance_id),
+			"definitionId": String(parser_owned.definition_id),
+			"definitionVersion": parser_owned.definition_version,
+			"sourceRevision": parser_owned.progression_revision
+		}]
+	}
+	var parser_device := {
+		"slotId": "parser.slot.primary",
+		"deviceKind": "ore_parser",
+		"definitionId": String(parser_owned.definition_id),
+		"definitionVersion": parser_owned.definition_version,
+		"ownedInstance": parser_owned.build_frozen_snapshot(),
+		"oreParserProfile": composed_parser
+	}
+	var routed_parser_profile := SpaceBoardRuntimeProfileSet.build(
+		parser_assignment,
+		{"boardRuleProfile": {"fingerprint": "probe.core.workshop.profile"}},
+		[parser_device],
+		[],
+		{"developmentFixture": true}
+	)
+	if routed_parser_profile.is_empty():
+		return _failure("valid Parser-local contribution profile failed Board consumer provenance validation")
+	var tampered_parser_device := parser_device.duplicate(true)
+	tampered_parser_device.oreParserProfile.parserRuleProfile.slotId = "parser.slot.foreign"
+	if not SpaceBoardRuntimeProfileSet.build(
+		parser_assignment,
+		{"boardRuleProfile": {"fingerprint": "probe.core.workshop.profile"}},
+		[tampered_parser_device],
+		[],
+		{"developmentFixture": true}
+	).is_empty():
+		return _failure("Board consumer accepted Parser contribution provenance from another slot")
+	var tampered_parser_effective_rate := parser_device.duplicate(true)
+	tampered_parser_effective_rate.oreParserProfile.shapeProcessingRatePerSecond["圆罐"] = 99.0
+	if not SpaceBoardRuntimeProfileSet.build(
+		parser_assignment,
+		{"boardRuleProfile": {"fingerprint": "probe.core.workshop.profile"}},
+		[tampered_parser_effective_rate],
+		[],
+		{"developmentFixture": true}
+	).is_empty():
+		return _failure("Board consumer accepted effective Parser rates inconsistent with its contribution replay")
 
 	var executable_parser_definition := SpaceOreParserDefinition.from_runtime_profile(composed_parser)
 	var executable_parser := SpaceOreParserRuntime.new()
