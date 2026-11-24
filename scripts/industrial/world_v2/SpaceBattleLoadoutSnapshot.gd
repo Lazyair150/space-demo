@@ -376,6 +376,10 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 
 	if source.has("boardAssignmentSnapshot"):
 		errors.append_array(_validate_board_assignment_snapshot(source))
+	# Owned Board snapshots must re-resolve every installed slot to its exact consumer
+	# profile. A valid outer loadout hash alone is not a substitute for this semantic check.
+	if source.has("progressionOwnerPlayerId") or source.has("boardAssignmentSnapshot"):
+		errors.append_array(SpaceBoardRuntimeProfileSet.validate(source))
 	if source.has("boardRuleProfile"):
 		errors.append_array(_validate_board_rule_profile(source))
 		var jar_profile: Variant = jar_options.get("boardRuleProfile", {}) if jar_options is Dictionary else {}
