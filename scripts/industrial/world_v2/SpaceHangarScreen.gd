@@ -59,8 +59,10 @@ func _ready() -> void:
 	_apply_board_definition()
 	_controller = SpaceHangarSelectionController.new()
 	if _preparation != null:
-		if GameState.space_progression_state == null:
-			SpaceDemoProgressionBootstrap.ensure_starting_inventory(_preparation.catalog_bundle_resource)
+		# Run the idempotent demo-save migration on every Hangar entry. Older local
+		# saves may already have progression data but lack the mandatory starter ship.
+		if not SpaceDemoProgressionBootstrap.ensure_starting_inventory(_preparation.catalog_bundle_resource):
+			push_error("[Hangar] Demo starting inventory migration failed; owned ship inventory may be incomplete.")
 		_preparation.player_progression_state = GameState.space_progression_state
 	GameState.space_progression_state_changed.connect(_on_progression_state_changed)
 	GameState.space_campaign_progress_changed.connect(_on_campaign_progress_changed)
