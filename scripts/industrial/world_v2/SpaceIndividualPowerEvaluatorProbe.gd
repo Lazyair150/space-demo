@@ -300,8 +300,8 @@ static func _probe_target_value_and_production_gate() -> bool:
 		return false # Both ends of an asymmetric target range score zero.
 	if float(ideal.powerScore) <= float(excessive.powerScore):
 		return false # More capacity is not automatically stronger; score peaks at an authored workload target.
-	if not model.get_production_validation_errors().is_empty():
-		return false # Configured state is a separate production gate, not a scoring shortcut.
+	if model.get_production_validation_errors().is_empty():
+		return false # Scoring can be evaluated while unconfigured, but production use must be rejected.
 	var invalid_capacity_direction := model.duplicate(true) as SpaceIndividualPowerModelDefinition
 	invalid_capacity_direction.configuration_status = "configured"
 	invalid_capacity_direction.metric_dimensions.max_jars.scoringMode = "higher_is_better"
