@@ -656,6 +656,26 @@ static func run() -> bool:
 		{}, field_only_owned_selection, owned_hangar_bundle.create_runtime_bundle(), hangar_owned_state
 	) != null:
 		return false # Production Owned assembly must not bypass the canonical Board Assignment map.
+
+	var owned_preparation := SpaceHangarPreparation.new()
+	owned_preparation.catalog_bundle_resource = owned_hangar_bundle
+	owned_preparation.require_owned_instances = true
+	owned_preparation.player_progression_state = hangar_owned_state
+	var owned_controller := SpaceHangarSelectionController.new()
+	var owned_identity := {
+		"shipWorldId": "probe.ship-world",
+		"loadoutId": "probe.loadout",
+		"loadoutVersion": 1
+	}
+	if not owned_controller.configure(owned_preparation, owned_identity, null):
+		return false
+	var missing_board_view := owned_controller.get_view_model()
+	if bool(missing_board_view.get("canBuild", true)):
+		return false
+	if not missing_board_view.get("validationErrors", []).has("Owned production assembly requires an explicit Board Definition"):
+		return false
+	if owned_controller.build_loadout_snapshot() != null:
+		return false # Owned production UI must fail closed before assembly when Board Definition is absent.
 	if owned_inventory.shipChoices.size() != 1 or owned_inventory.parserChoices.size() != 1 or owned_inventory.deviceChoices.size() != 1 or owned_inventory.skillChoices.size() != 1:
 		return false
 	if owned_inventory.workshopWorldChoices.size() != 1 or owned_inventory.workshopInstanceChoices.size() != 2:
