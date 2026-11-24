@@ -220,8 +220,10 @@ static func _parser_profile_matches(profile: Dictionary, assignment: Dictionary,
 			or int(source.get("sourceRevision", 0)) != int(assignment.get("sourceRevision", 0))
 		):
 			return false
-		var rule_key := String(contribution.get("ruleId", "")) + "@" + str(int(contribution.get("ruleVersion", 0)))
-		if rule_key == "@" or seen_rules.has(rule_key):
+		var rule_id := String(contribution.get("ruleId", ""))
+		var rule_version := int(contribution.get("ruleVersion", 0))
+		var rule_key := rule_id + "@" + str(rule_version)
+		if rule_id.is_empty() or rule_version <= 0 or seen_rules.has(rule_key):
 			return false
 		seen_rules[rule_key] = true
 		var effect := String(contribution.get("effect", ""))
