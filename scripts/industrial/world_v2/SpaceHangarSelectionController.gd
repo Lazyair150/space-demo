@@ -78,6 +78,10 @@ func build_loadout_snapshot() -> SpaceBattleLoadoutSnapshot:
 		_last_error = "Stable ship-world/loadout identity must be supplied by the owning game flow"
 		_emit_changed()
 		return null
+	if _requires_owned_assembly() and _board_definition == null:
+		_last_error = "Owned production assembly requires an explicit Board Definition"
+		_emit_changed()
+		return null
 	if _board_definition != null and not _draft.validate_assignments().is_empty():
 		_last_error = "Board Assignment is incomplete or contains an incompatible/duplicate owned instance"
 		_emit_changed()
@@ -95,11 +99,13 @@ func get_view_model() -> Dictionary:
 		validation_errors.append("Selection is incomplete or invalid")
 	if not _identity_is_valid():
 		validation_errors.append("Stable ship-world/loadout identity has not been supplied")
+	if _requires_owned_assembly() and _board_definition == null:
+		validation_errors.append("Owned production assembly requires an explicit Board Definition")
 	return {
 		"isReady": _draft != null and _draft.is_ready(),
 		"inventory": _inventory.duplicate(true),
 		"selection": selection_data,
-		"canBuild": selection != null and _preparation != null and _identity_is_valid(),
+		"canBuild": selection != null and _preparation != null and _identity_is_valid() and (not _requires_owned_assembly() or _board_definition != null),
 		"validationErrors": validation_errors,
 		"lastError": _last_error
 	}
@@ -112,6 +118,11 @@ func _apply(accepted: bool) -> bool:
 	_last_error = ""
 	_emit_changed()
 	return true
+
+func _requires_owned_assembly() -> bool:
+	return _preparation != null and (
+		_preparation.require_owned_instances or _preparation.player_progression_state != null
+	)
 
 func _identity_is_valid() -> bool:
 	return (
