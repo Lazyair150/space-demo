@@ -470,3 +470,13 @@
 - Duplicate or missing consumer records are rejected, including duplicate skill bindings and duplicate parser selections for one slot.
 - Extended `SpaceHangarBoardDefinitionProbe` with direct fail-closed provenance/tamper cases.
 - Godot 4.7.1 .NET compile/runtime and Probe execution remain unverified in this environment. No Space integration pass is claimed.
+
+
+## 2026-11-24 continuation — Parser-local execution
+
+- Added `SpaceOreParserRuleProfile` as a dedicated Space-owned consumer for the first two explicitly defined Parser effects: `ModifyIntensity` on `shape_processing_rate` and `RetimeProcess` on `progress_per_jar`.
+- Both effects require exact shape + finite positive multiplier parameters, are applied after Owned Instance growth composition, and are bounded by the existing fixed-point representation. Thresholds must remain representable in micro-units.
+- `SpaceRuleContributionResolver` now validates Parser-scoped contributions but excludes them from the Core-facing workshop profile. Non-parser scopes on Parser slots still reject; Skill and Production Device contributions remain unsupported.
+- The owned loadout assembler passes the exact Parser Board Slot into composition. The frozen Parser profile carries a canonical provenance/fingerprint record, and Board manifest validation checks its slot, Definition, Owned Instance, progression revision, contribution sources, and fingerprint.
+- Extended `SpaceOreParserRuntimeProbe` to execute a composed growth + rule profile through finite stone ingestion and assert the actual Jar output count; wrong scope and unsupported effect/target combinations reject.
+- This does not add Parser capacity/queue routing semantics, does not enable multi-Parser runtime, and does not change Jar Core. Godot 4.7.1 .NET compilation and Probe execution remain unverified.
