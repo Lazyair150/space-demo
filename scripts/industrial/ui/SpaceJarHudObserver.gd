@@ -265,8 +265,6 @@ func _render_hud_resource_strip(raw_jars: Variant, raw_liquids: Variant, liquid_
 	if raw_liquids is Dictionary:
 		for liquid in raw_liquids:
 			_liquid_counts.add_child(UiKit.label("%s %d" % [String(liquid), int(raw_liquids[liquid])], UiKit.FONT_SMALL, ShapeVisuals.liquid_color_for(String(liquid))))
-	if _liquid_counts.get_child_count() == 0:
-		_liquid_counts.add_child(UiKit.label("液体 0", UiKit.FONT_SMALL, UiKit.MUTED))
 	_workshop_status.text = "主台 %s  →  从台 %s" % [_workshop_hud_summary(master), _workshop_hud_summary(slave)]
 	_lifecycle_status.text = _lifecycle_text(lifecycle)
 	_lifecycle_status.add_theme_color_override("font_color", UiKit.WARN if lifecycle == "Faulted" else (UiKit.OK if lifecycle == "Active" else UiKit.MUTED))
