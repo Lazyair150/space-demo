@@ -178,8 +178,8 @@ static func _parser_profile_matches(profile: Dictionary, assignment: Dictionary,
 	if String(profile.get("parserId", "")) != String(assignment.get("definitionId", "")) or int(profile.get("definitionVersion", 0)) != int(assignment.get("definitionVersion", 0)) or not _owned_instance_matches(profile.get("ownedInstance", null), assignment):
 		return false
 	var raw_rule_profile: Variant = profile.get("parserRuleProfile", null)
-	if raw_rule_profile == null:
-		return true
+	# Owned Parser profiles must always carry a replayable post-growth baseline,
+	# including when the Definition currently has zero local contributions.
 	if not (raw_rule_profile is Dictionary):
 		return false
 	var rule_profile: Dictionary = raw_rule_profile
@@ -197,7 +197,7 @@ static func _parser_profile_matches(profile: Dictionary, assignment: Dictionary,
 	var base_thresholds: Variant = rule_profile.get("baseProgressPerJarByShape", null)
 	var effective_rates: Variant = profile.get("shapeProcessingRatePerSecond", null)
 	var effective_thresholds: Variant = profile.get("progressPerJarByShape", null)
-	if not (contributions is Array) or contributions.is_empty() or not (base_rates is Dictionary) or not (base_thresholds is Dictionary) or not (effective_rates is Dictionary) or not (effective_thresholds is Dictionary):
+	if not (contributions is Array) or not (base_rates is Dictionary) or not (base_thresholds is Dictionary) or not (effective_rates is Dictionary) or not (effective_thresholds is Dictionary):
 		return false
 	if base_rates.size() != effective_rates.size() or base_thresholds.size() != effective_thresholds.size():
 		return false
