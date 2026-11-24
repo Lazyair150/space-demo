@@ -25,7 +25,7 @@ static func run() -> Dictionary:
             "schemaVersion": 2,
             "parserRuntime": {"schemaVersion": 2},
             "nextPickupSequence": 7,
-            "dropRngState": 88172645463393265,
+            "dropRngState": 8817264546339,
             "pendingPickups": [
                 {"pickupId": "probe-pickup-6", "stoneType": "圆罐", "volume": 2.0, "positionX": 10.0, "positionY": 20.0}
             ]
