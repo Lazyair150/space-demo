@@ -54,7 +54,10 @@ func _ready() -> void:
     assert(pickup.configure("probe-pickup-stable-id", "圆罐", 1.0), "pickup must accept a stable typed resource identity")
     pickup.free()
 
-    var jar_host := WorldV2ShipHost.new()
+    var jar_host_script := load("res://scripts/industrial/world_v2/WorldV2ShipHost.cs") as Script
+    assert(jar_host_script != null, "WorldV2ShipHost C# script resource must load")
+    var jar_host = jar_host_script.new()
+    assert(jar_host != null, "WorldV2ShipHost C# script must instantiate")
     add_child(jar_host)
 
     var world_json := FileAccess.get_file_as_string("res://data/industrial/world_v2_sandbox.json")
