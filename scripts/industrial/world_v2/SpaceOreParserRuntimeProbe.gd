@@ -347,6 +347,25 @@ static func run() -> Dictionary:
 	if restored.pending_output_batches().size() != 3:
 		return _failure("pending output batches were not preserved by checkpoint")
 
+	# Schema 3 persists cumulative completed Jars and checks per-shape resource
+	# conservation. Schema 2 migration derives the same ledger only from exact evidence.
+	var legacy_checkpoint := checkpoint.duplicate(true)
+	legacy_checkpoint.schemaVersion = 2
+	legacy_checkpoint.erase("producedJarCountByShape")
+	var legacy_restored := SpaceOreParserRuntime.new()
+	legacy_restored.initialize(definition, "probe-ship-world-parser", ["圆罐", "方罐"])
+	var legacy_result := legacy_restored.restore_state(legacy_checkpoint)
+	if not bool(legacy_result.get("success", false)) or legacy_restored.capture_state().producedJarCountByShape != checkpoint.producedJarCountByShape:
+		return _failure("schema 2 checkpoint did not migrate its provable cumulative Jar ledger")
+
+	var corrupt_output_ledger := checkpoint.duplicate(true)
+	corrupt_output_ledger.producedJarCountByShape["圆罐"] = int(corrupt_output_ledger.producedJarCountByShape["圆罐"]) + 1
+	var rejected_output_ledger := restored.restore_state(corrupt_output_ledger)
+	if bool(rejected_output_ledger.get("success", false)):
+		return _failure("checkpoint restore accepted cumulative output that violates stone resource conservation")
+	if restored.capture_state() != checkpoint:
+		return _failure("rejected output-ledger checkpoint partially mutated parser state")
+
 	# Corrupt a queued pickup's shape identity. Restore must reject the whole snapshot
 	# and leave the already-restored live parser state untouched.
 	var state_before_rejection := restored.capture_state()
