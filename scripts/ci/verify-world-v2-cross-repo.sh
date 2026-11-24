@@ -40,10 +40,10 @@ if [[ ! -f "$BRIDGE_PROJECT" ]]; then
 fi
 
 echo "[1/4] Build exact Core World V2 Bridge: $ACTUAL_CORE_SHA"
-dotnet build "$BRIDGE_PROJECT" --configuration Release
+dotnet build "$BRIDGE_PROJECT" --configuration Debug
 
 echo "[2/4] Build Space against the exact sibling Bridge project"
-dotnet build "$SPACE_ROOT/space-demo.csproj" --configuration Release \
+dotnet build "$SPACE_ROOT/space-demo.csproj" --configuration Debug \
   -p:JarSystemWorldV2BridgeProject="$BRIDGE_PROJECT"
 
 run_godot_checked() {
@@ -75,7 +75,7 @@ run_godot_checked() {
 }
 
 echo "[3/4] Import project and parse GDScript/C# resources"
-run_godot_checked "editor-import" "" --headless --path "$SPACE_ROOT" --editor --quit
+run_godot_checked "editor-import" "" --headless --path "$SPACE_ROOT" --editor --build-solutions --quit
 
 echo "[4/4] Run World V2 integration and lifecycle probes"
 run_godot_checked "parser-ingress" "[SpaceOreParserJarIngressProbe] passed" \
