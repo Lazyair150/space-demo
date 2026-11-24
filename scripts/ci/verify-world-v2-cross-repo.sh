@@ -76,6 +76,8 @@ run_godot_checked() {
 
 echo "[3/4] Import project and parse GDScript/C# resources"
 run_godot_checked "editor-import" "" --headless --path "$SPACE_ROOT" --editor --build-solutions --quit
+run_godot_checked "hud-feedback" "=== 18 checks, 0 failures ===" \
+  --headless --path "$SPACE_ROOT" --script "res://tests/space_jar_hud_feedback.gd"
 
 echo "[4/4] Run World V2 integration and lifecycle probes"
 run_godot_checked "parser-ingress" "[SpaceOreParserJarIngressProbe] passed" \
