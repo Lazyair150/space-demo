@@ -247,8 +247,7 @@ func _refresh_stage_picker() -> void:
 	_stage_picker.clear()
 	_selected_stage = null
 	if stage_catalog == null or not stage_catalog.get_validation_errors().is_empty():
-		_stage_picker.add_item("战役目录未配置")
-		_stage_picker.set_item_disabled(0, true)
+		_stage_picker.add_item("战役目录未配置")		_stage_picker.set_item_disabled(0, true)
 		_stage_info_label.text = "关卡数据不可用；请为 Hangar 配置版本化的 SpaceStageCatalog。"
 		return
 	_stage_picker.add_item("自由战斗 · 无关卡目标")
@@ -472,10 +471,20 @@ func _selected_choice(picker: OptionButton) -> Dictionary:
 func _on_ship_selected(index: int) -> void:
 	if _suppress_picker_events:
 		return
-	var choice := _selected_choice(_ship_picker)
-	if not choice.is_empty():
+	# item_selected supplies the authoritative row. Do not re-read OptionButton.selected
+	# during its signal callback: the UI row and the mutable selection draft must agree.
+	if index <= 0 or index >= _ship_picker.item_count:
+		return
+	var raw_choice: Variant = _ship_picker.get_item_metadata(index)
+	if not (raw_choice is Dictionary):
+		return
+	var choice: Dictionary = raw_choice
+	if _controller.set_ship(
+		String(choice.get("id", "")),
+		int(choice.get("version", 0)),
+		String(choice.get("instanceId", ""))
+	):
 		_set_icon_texture(_primary_icons.ship, choice.get("iconTexture"), "ship")
-		_controller.set_ship(String(choice.get("id", "")), int(choice.get("version", 0)), String(choice.get("instanceId", "")))
 
 func _on_parser_selected(index: int) -> void:
 	if _suppress_picker_events:
@@ -497,8 +506,7 @@ func _on_master_workshop_selected(index: int) -> void:
 	_apply_workshop_slot_selection()
 
 func _on_slave_workshop_selected(index: int) -> void:
-	if _suppress_picker_events:
-		return
+	if _suppress_picker_events:		return
 	_apply_workshop_slot_selection()
 
 func _apply_workshop_slot_selection() -> void:
@@ -747,8 +755,7 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 				if slot_control_area in ["Active", "Passive"] and not choice.get("allowedControlAreas", []).has(slot_control_area):
 					continue
 				var item_icon: Variant = choice.get("iconTexture")
-				if not (item_icon is Texture2D):
-					item_icon = load(FALLBACK_ICONS.skill)
+				if not (item_icon is Texture2D):					item_icon = load(FALLBACK_ICONS.skill)
 				var primary_shape := String(choice.get("primaryShape", ""))
 				var category := String(choice.get("category", ""))
 				var category_label := String({
