@@ -66,7 +66,7 @@ func _run() -> void:
 	_check(game_scene != null, "combat scene resource loads for HUD integration")
 	if game_scene != null:
 		var game_root := game_scene.instantiate()
-		var jar_observer := game_root.get_node_or_null("JarObserver")
+		var jar_observer := game_root.get_node_or_null("JarObserver") as Control
 		_check(jar_observer != null and jar_observer.get_script() == observer_script, "combat scene mounts the live Jar observer")
 		_check(jar_observer != null and jar_observer.mouse_filter == Control.MOUSE_FILTER_IGNORE, "full-screen Jar observer does not block combat input")
 		game_root.free()
