@@ -15,10 +15,11 @@ static func assemble(
 		if not selection.has(key):
 			return _reject("owned selection is missing " + key)
 	var board_assignment_snapshot: Dictionary = selection.get("boardAssignments", {})
-	if not board_assignment_snapshot.is_empty():
-		var assignment_error := _validate_board_assignment_snapshot(board_assignment_snapshot, progression, selection)
-		if not assignment_error.is_empty():
-			return _reject(assignment_error)
+	if board_assignment_snapshot.is_empty():
+		return _reject("owned loadout requires a complete frozen Board Assignment; field-only selections are not a production assembly contract")
+	var assignment_error := _validate_board_assignment_snapshot(board_assignment_snapshot, progression, selection)
+	if not assignment_error.is_empty():
+		return _reject(assignment_error)
 	var board_rule_profile: Dictionary = {}
 	if not board_assignment_snapshot.is_empty():
 		board_rule_profile = SpaceRuleContributionResolver.resolve(board_assignment_snapshot, bundle, progression)
