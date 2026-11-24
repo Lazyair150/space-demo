@@ -238,3 +238,12 @@ The frozen Parser rule profile also retains the post-growth/pre-rule baseline ra
 
 - Follow-up hardening: every Owned Parser runtime profile now freezes its post-growth/pre-rule rate and threshold baseline, even when the Parser Definition has no local Rule Contributions. Board consumer validation requires that baseline and replays the ordered contribution list (which may be empty) before accepting effective rates. Removing the provenance block can no longer turn an edited effective Parser profile into an accepted legacy profile.
 - Extended `SpaceOreParserRuntimeProbe` with both a valid no-rule Parser profile and a stripped-baseline/effective-rate tamper rejection case. Probe remains authored, not executed.
+
+### Parser checkpoint resource-conservation ledger (2026-11-24)
+
+- Parser runtime checkpoint schema 3 persists cumulative completed Jar counts independently for each output shape.
+- Restore reconciles accepted pickup volume against queued remaining volume + fractional progress + cumulative completed Jar count multiplied by the frozen per-shape progress threshold. Pending versus already-acknowledged batches do not alter this equation.
+- Schema 2 checkpoints are migrated by deriving cumulative counts only when the existing accepted/queued/progress data proves an exact non-negative whole-Jar result; ambiguous or inconsistent states fail closed.
+- Runtime Probe coverage includes exact schema-2 migration, tampered cumulative output rejection, and atomic no-partial-mutation behavior.
+- This ledger accounts for completed production regardless of whether Core import is pending or acknowledged; Core operation-ID deduplication remains the separate exactly-once import boundary.
+- Probe changes are authored only. Godot 4.7.1 .NET compile/runtime execution remains outstanding.
