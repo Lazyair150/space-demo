@@ -1,9 +1,6 @@
 name: World V2 cross-repository integration
 
 on:
-  push:
-    branches:
-      - world-v2/phase-4.10b-hangar-ui
   pull_request:
   workflow_dispatch:
 
