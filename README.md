@@ -91,7 +91,7 @@ Or launch the project from Godot Project Manager by importing this directory and
    - `L`: double shot
    - `P`: pierce
 
-The HUD displays ship/Jar resource information and feedback for the selected build. Some advanced systems are intentionally prototype-grade and their catalog/balance values are not final.
+The combat scene mounts a persistent Jar observer HUD: it displays ship/Jar resource information, workshop states, Active/Passive order slots, cooldowns, and snapshot-delta feedback. The Active slot button sends only an explicit demand request to Core. Some advanced systems are intentionally prototype-grade and their catalog/balance values are not final.
 
 ## 4. Run the cross-repository verification
 
