@@ -487,3 +487,5 @@
 - Updated the Board Rule Contribution probe to assert that valid Parser-scoped rules are omitted from the Core-facing workshop profile rather than causing a false blanket rejection; Parser's own executor remains responsible for validating the supported effect/target contract. Added explicit unsupported-target rejection coverage.
 
 - Added an owned-Hangar integration Probe: a temporary supported Parser `ModifyIntensity` contribution is composed into the exact installed Parser runtime profile, while the Core-facing `boardRuleProfile` is asserted to contain no contribution sourced from the Parser slot. The fixture restores the catalog Definition after the assertion.
+
+- Extended Parser execution Probe rejection coverage to duplicate rule identities, processing-rate overflow, and retiming thresholds below micro-unit precision. The supported contract remains limited to the two documented effects.
