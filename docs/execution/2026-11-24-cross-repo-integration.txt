@@ -3,6 +3,20 @@ Date: 2026-11-24
 Space PR: #2
 Branch: world-v2/phase-4.10b-hangar-ui
 
+CURRENT AUTHORITATIVE STATUS — 2026-11-25
+
+- Space PR #2 current head: 74a93ed281d94823608b0c6803edd78dd9f068cc; Draft/Open/unmerged.
+- Core PR #60 exact source head used by this integration: b342259fe04363386085dc9a4ca995112954ed43; Draft/Open/unmerged.
+- Cross-repository workflow run 45438436612 completed SUCCESS on Space head 74a93ed. The log confirms the Core checkout was exactly b342259fe04363386085dc9a4ca995112954ed43 and ended with CROSS-REPO-WORLD-V2-OK core=b342259fe04363386085dc9a4ca995112954ed43.
+- The workflow pin and CORE_EXPECTED_SHA were updated from the stale 0a6bca3... revision to the current Core PR head before this successful run.
+- Fixed a real host snapshot omission: WorldV2RuntimeNode now exposes shipLiquidInventory (capacity, used/available capacity, balances) separately from resourceLiquids (the central warehouse). WorldV2SnapshotIsolationProbe mutates both nested account dictionaries and verifies later snapshots remain unchanged; it passes.
+- Verified in run 45438436612: Core Bridge build, Space C# build, Godot 4.7.1 project import/parse, Hangar Board Definition/Assignment and ownership probes, parser catalog/runtime/ingress idempotent retry after restore, Roguelike owned-instance/progression probes, World V2 runtime, lifecycle, fault, disposed-command, faulted-command and snapshot-isolation probes.
+- Expected negative-path probes intentionally emit ERROR messages while asserting fail-closed behavior; the workflow's final result and completion markers are successful. Do not interpret those expected messages as an integration failure.
+- The earlier 45434363095 failure was specifically the stale snapshot probe expectation; it is superseded by the passing snapshot-isolation result above.
+- Keep both PRs Draft/Open and unmerged. Next: update the Core handoff ledger, audit/clean documentation and dead files by reference, then run the final exact-head verification after cleanup.
+
+The remaining sections below are chronological historical checkpoints. Their “not yet run”, old Core SHA and old failure statements describe those dates only; the authoritative current result is this section.
+
 CORE DEPENDENCY
 - Space project references the Core WorldV2Bridge project as a sibling checkout by default.
 - space-demo.csproj now supports JarSystemWorldV2BridgeProject override.
