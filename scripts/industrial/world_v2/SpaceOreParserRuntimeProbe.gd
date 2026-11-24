@@ -297,7 +297,7 @@ static func run() -> Dictionary:
 	var frozen_init := frozen_runtime.initialize(mutable_definition, "frozen-profile-probe", ["圆罐", "方罐"])
 	if not bool(frozen_init.get("success", false)):
 		return _failure("immutable parser runtime initialization failed")
-	var frozen_profile := frozen_runtime.capture_state().parserProfile.duplicate(true)
+	var frozen_profile: Dictionary = frozen_runtime.capture_state().get("parserProfile", {}).duplicate(true)
 	mutable_definition.production_percentage = 100
 	mutable_definition.shape_processing_rate_per_second["圆罐"] = 999.0
 	if frozen_runtime.capture_state().parserProfile != frozen_profile:
