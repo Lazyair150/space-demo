@@ -170,7 +170,7 @@ This identity is stored in parser checkpoint state and seeds the parser operatio
 ### Core scope boundary and multi-parser restriction
 
 - Parser execution remains Space-owned. Core receives only completed Jar batches through the discrete warehouse import API; it does not receive stone queues or parser progress.
-- Core's current Board Rule Profile consumer remains workshop-only. Parser/Skill/Production Device contributions must not be passed into a workshop RuleContext or silently ignored. The Core-facing Space resolver now rejects non-workshop component contributions before loadout freeze, with an explicit error; it does not pass them to Core to be rejected later. Consumer-specific parser/skill/device profiles remain future work.
+- Core's current Board Rule Profile consumer remains workshop-only. Parser contributions with scope=parser are validated and excluded from that Core profile, then consumed by the dedicated Space Parser executor. A Parser contribution with another scope is rejected before freeze. Skill and Production Device contributions remain unsupported and must not be passed into a workshop RuleContext or silently ignored.
 - The Board may describe additional decomposition slots, but the current runtime adapter and battle Game own exactly one parser runtime. Multi-parser requires deterministic pickup routing, independent per-instance queues/progress/outboxes/checkpoints, update ordering, and central-warehouse settlement before the count gate can be relaxed.
 
 The matching Core contract is documented in `docs/world-v2/parser-board-slot-runtime-boundary.md` in the Jar Core repository. The identity code and Probe are authored; Godot execution is not claimed.
