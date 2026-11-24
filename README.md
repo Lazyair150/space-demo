@@ -33,7 +33,7 @@ mkdir space-workspace
 cd space-workspace
 
 git clone --branch world-v2/phase-4.10b-hangar-ui https://github.com/Lazyair150/space-demo.git
-git clone https://github.com/Lazyair150/jar-system-dotnet.git
+git clone --branch world-v2/phase-4.11c-order-template-demand-ingress https://github.com/Lazyair150/jar-system-dotnet.git
 
 cd jar-system-dotnet
 git checkout b342259fe04363386085dc9a4ca995112954ed43
