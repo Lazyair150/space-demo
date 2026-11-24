@@ -101,7 +101,7 @@ static func assemble(
 	frozen.shipSelection.ownedInstance = ship_instance.build_frozen_snapshot()
 	var devices: Array = frozen.productionDeviceSelections
 	for index in range(devices.size()):
-		var device := devices[index]
+		var device: Dictionary = devices[index]
 		if String(device.get("deviceKind", "")) == "ore_parser":
 			var parser_definition := bundle.ore_parser_catalog.resolve_definition(String(selection.parserId), int(selection.parserVersion))
 			var parser_profile := SpaceProgressionRuntimeProfileComposer.compose_parser(parser_definition, parser_instance, shapes, String(device.get("slotId", "")))
