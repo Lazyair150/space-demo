@@ -376,7 +376,6 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 
 	if source.has("boardAssignmentSnapshot"):
 		errors.append_array(_validate_board_assignment_snapshot(source))
-		errors.append_array(SpaceBoardRuntimeProfileSet.validate(source))
 	if source.has("boardRuleProfile"):
 		errors.append_array(_validate_board_rule_profile(source))
 		var jar_profile: Variant = jar_options.get("boardRuleProfile", {}) if jar_options is Dictionary else {}
