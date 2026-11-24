@@ -8,7 +8,7 @@ class_name SpaceOreParserRuntime
 
 const MICRO: int = 1000000
 const RATE_DENOMINATOR: int = 100000
-const STATE_SCHEMA_VERSION: int = 2
+const STATE_SCHEMA_VERSION: int = 3
 const MAX_INT64: int = 9223372036854775807
 const MAX_FIXED_POINT_UNITS: float = 1000000000.0
 
@@ -18,6 +18,7 @@ var _parser_token: String = ""
 var _stone_queues_by_shape: Dictionary = {}
 var _seen_pickups: Dictionary = {}
 var _progress_micro_by_shape: Dictionary = {}
+var _produced_jar_count_by_shape: Dictionary = {}
 var _rate_remainder_by_shape: Dictionary = {}
 var _pending_output_batches: Dictionary = {}
 var _next_batch_sequence: int = 1
@@ -43,6 +44,7 @@ func initialize(
 	_stone_queues_by_shape.clear()
 	_seen_pickups.clear()
 	_progress_micro_by_shape.clear()
+	_produced_jar_count_by_shape.clear()
 	_rate_remainder_by_shape.clear()
 	_pending_output_batches.clear()
 	_next_batch_sequence = 1
@@ -50,6 +52,7 @@ func initialize(
 		var shape := String(raw_shape)
 		_stone_queues_by_shape[shape] = []
 		_progress_micro_by_shape[shape] = 0
+		_produced_jar_count_by_shape[shape] = 0
 		_rate_remainder_by_shape[shape] = 0
 	return {"success": true}
 
@@ -99,6 +102,7 @@ func advance(delta_logical_milli: int) -> Dictionary:
 	# stones, accumulated progress, and rate remainders exactly as they were.
 	var staged_queues: Dictionary = _stone_queues_by_shape.duplicate(true)
 	var staged_progress: Dictionary = _progress_micro_by_shape.duplicate(true)
+	var staged_produced: Dictionary = _produced_jar_count_by_shape.duplicate(true)
 	var staged_remainders: Dictionary = _rate_remainder_by_shape.duplicate(true)
 	var output_counts: Dictionary = {}
 	var shapes: Array = staged_queues.keys()
@@ -150,6 +154,10 @@ func advance(delta_logical_milli: int) -> Dictionary:
 		var produced := int(progress / threshold)
 		staged_progress[shape] = progress % threshold
 		if produced > 0:
+			var previous_produced := int(staged_produced[shape])
+			if produced > MAX_INT64 - previous_produced:
+				return _failure("ore parser cumulative output accounting exceeds the supported range: " + shape)
+			staged_produced[shape] = previous_produced + produced
 			output_counts[shape] = produced
 
 	if not output_counts.is_empty():
@@ -175,6 +183,7 @@ func advance(delta_logical_milli: int) -> Dictionary:
 
 	_stone_queues_by_shape = staged_queues
 	_progress_micro_by_shape = staged_progress
+	_produced_jar_count_by_shape = staged_produced
 	_rate_remainder_by_shape = staged_remainders
 	return {"success": true, "newBatches": new_batches}
 
@@ -201,6 +210,7 @@ func capture_state() -> Dictionary:
 		"stoneQueuesByShape": _stone_queues_by_shape.duplicate(true),
 		"seenPickups": _seen_pickups.duplicate(true),
 		"progressMicroByShape": _progress_micro_by_shape.duplicate(true),
+		"producedJarCountByShape": _produced_jar_count_by_shape.duplicate(true),
 		"rateRemainderByShape": _rate_remainder_by_shape.duplicate(true),
 		"pendingOutputBatches": _pending_output_batches.duplicate(true),
 		"nextBatchSequence": _next_batch_sequence
@@ -209,7 +219,8 @@ func capture_state() -> Dictionary:
 func restore_state(state: Dictionary) -> Dictionary:
 	if _definition == null:
 		return _failure("ore parser runtime is not initialized")
-	if int(state.get("schemaVersion", 0)) != STATE_SCHEMA_VERSION:
+	var state_schema := int(state.get("schemaVersion", 0))
+	if state_schema not in [2, STATE_SCHEMA_VERSION]:
 		return _failure("unsupported ore parser state schema")
 	if String(state.get("parserInstanceId", "")) != _parser_instance_id:
 		return _failure("ore parser instance identity does not match")
@@ -219,15 +230,16 @@ func restore_state(state: Dictionary) -> Dictionary:
 	var queues: Variant = state.get("stoneQueuesByShape", null)
 	var seen: Variant = state.get("seenPickups", null)
 	var progress: Variant = state.get("progressMicroByShape", null)
+	var produced: Variant = state.get("producedJarCountByShape", null)
 	var remainders: Variant = state.get("rateRemainderByShape", null)
 	var pending: Variant = state.get("pendingOutputBatches", null)
 	var raw_next_sequence: Variant = state.get("nextBatchSequence", null)
-	if not (queues is Dictionary) or not (seen is Dictionary) or not (progress is Dictionary) or not (remainders is Dictionary) or not (pending is Dictionary) or typeof(raw_next_sequence) != TYPE_INT or int(raw_next_sequence) <= 0:
+	if not (queues is Dictionary) or not (seen is Dictionary) or not (progress is Dictionary) or (state_schema >= 3 and not (produced is Dictionary)) or not (remainders is Dictionary) or not (pending is Dictionary) or typeof(raw_next_sequence) != TYPE_INT or int(raw_next_sequence) <= 0:
 		return _failure("ore parser checkpoint has invalid top-level state")
 
 	var expected_shapes: Array = _stone_queues_by_shape.keys()
 	expected_shapes.sort()
-	if not _has_exact_shape_keys(queues, expected_shapes) or not _has_exact_shape_keys(progress, expected_shapes) or not _has_exact_shape_keys(remainders, expected_shapes):
+	if not _has_exact_shape_keys(queues, expected_shapes) or not _has_exact_shape_keys(progress, expected_shapes) or not _has_exact_shape_keys(remainders, expected_shapes) or (state_schema >= 3 and not _has_exact_shape_keys(produced, expected_shapes)):
 		return _failure("ore parser checkpoint shape maps do not match the configured shape vocabulary")
 
 	# Validate the pickup identity ledger before accepting any queue reference.
@@ -305,10 +317,61 @@ func restore_state(state: Dictionary) -> Dictionary:
 	if int(raw_next_sequence) <= maximum_pending_sequence:
 		return _failure("ore parser checkpoint next batch sequence is not ahead of pending outputs")
 
+	# Reconcile every accepted stone against queued volume, fractional progress and
+	# cumulative completed Jars. Pending-vs-acknowledged output does not change this
+	# conservation equation because both are already-produced Jars.
+	var accepted_volume_by_shape := {}
+	var queued_volume_by_shape := {}
+	for shape_value in expected_shapes:
+		var shape := String(shape_value)
+		accepted_volume_by_shape[shape] = 0
+		queued_volume_by_shape[shape] = 0
+	for pickup_id_value in seen:
+		var record: Dictionary = seen[pickup_id_value]
+		var shape := String(record.get("stoneType", ""))
+		var volume := int(record.get("originalVolumeMicro", 0))
+		if volume > MAX_INT64 - int(accepted_volume_by_shape[shape]):
+			return _failure("ore parser checkpoint accepted-volume ledger exceeds the supported range: " + shape)
+		accepted_volume_by_shape[shape] = int(accepted_volume_by_shape[shape]) + volume
+	for shape_value in expected_shapes:
+		var shape := String(shape_value)
+		for raw_stone in queues[shape]:
+			var remaining := int(raw_stone.get("remainingVolumeMicro", 0))
+			if remaining > MAX_INT64 - int(queued_volume_by_shape[shape]):
+				return _failure("ore parser checkpoint queued-volume ledger exceeds the supported range: " + shape)
+			queued_volume_by_shape[shape] = int(queued_volume_by_shape[shape]) + remaining
+
+	var restored_produced: Dictionary = {}
+	for shape_value in expected_shapes:
+		var shape := String(shape_value)
+		var threshold := int(round(float(_definition.progress_per_jar_by_shape[shape]) * MICRO))
+		var accepted := int(accepted_volume_by_shape[shape])
+		var queued := int(queued_volume_by_shape[shape])
+		var fractional_progress := int(progress[shape])
+		if state_schema >= 3:
+			var raw_count: Variant = produced[shape]
+			if typeof(raw_count) != TYPE_INT or int(raw_count) < 0:
+				return _failure("ore parser checkpoint has invalid cumulative Jar count: " + shape)
+			restored_produced[shape] = int(raw_count)
+		else:
+			# Schema 2 did not persist this ledger. Reconstruct it only when the
+			# existing accepted/queued/progress data yields an exact whole-Jar count.
+			var consumed := accepted - queued - fractional_progress
+			if consumed < 0 or consumed % threshold != 0:
+				return _failure("legacy Parser checkpoint cannot prove exact resource conservation: " + shape)
+			restored_produced[shape] = int(consumed / threshold)
+		var produced_count := int(restored_produced[shape])
+		if produced_count > int((MAX_INT64 - queued - fractional_progress) / threshold):
+			return _failure("ore parser checkpoint cumulative output volume exceeds the supported range: " + shape)
+		var accounted := queued + fractional_progress + produced_count * threshold
+		if accounted != accepted:
+			return _failure("ore parser checkpoint violates accepted-stone resource conservation: " + shape)
+
 	# Publish only after every nested structure has passed validation.
 	_stone_queues_by_shape = queues.duplicate(true)
 	_seen_pickups = seen.duplicate(true)
 	_progress_micro_by_shape = progress.duplicate(true)
+	_produced_jar_count_by_shape = restored_produced
 	_rate_remainder_by_shape = remainders.duplicate(true)
 	_pending_output_batches = pending.duplicate(true)
 	_next_batch_sequence = int(raw_next_sequence)
