@@ -5,9 +5,9 @@ Branch: world-v2/phase-4.10b-hangar-ui
 
 CURRENT AUTHORITATIVE STATUS — 2026-11-25
 
-- Space PR #2 latest observed head: `d9e1d4b681163697f6623b17ccd077edc0abfb51`; Draft/Open/unmerged. It includes the HUD probe's `Array[String]` type annotation fix plus documentation-status cleanup; no production runtime source changed after the last successful integration run.
+- Space PR #2 latest observed pre-checkpoint head: `aab056d2e22f1d9375ddf40815372a86b4e383b9`; Draft/Open/unmerged. It includes the HUD probe's `Array[String]` type annotation fix plus documentation-status cleanup; no production runtime source changed after the last successful integration run. This document update is the final status-only commit for this cleanup pass; its resulting commit SHA is recorded in the Core work ledger.
 - Intermediate Space head `2fa994783e5f275d468459b26e30cb8b985b036c` only tightened the HUD probe's local type from `Array` to `Array[String]`; its workflow run `45440257098` was cancelled.
-- No workflow run is currently associated with the post-cleanup head `d9e1d4b`; the successful `74a93ed` integration result remains the latest runtime validation, not a claim about the new documentation head.
+- No workflow run is currently associated with the post-cleanup documentation head; the successful `74a93ed` integration result remains the latest runtime validation, not a claim about the new documentation head.
 - The last fully successful cross-repository head remains `74a93ed281d94823608b0c6803edd78dd9f068cc`; run `45438436612` completed SUCCESS against exact Core SHA `b342259fe04363386085dc9a4ca995112954ed43`.
 - Workflow run `45440257098` for the later `2fa9947` head was cancelled. Do not attribute the earlier success to that newer head; the next final verification must run against the post-cleanup PR head.
 - Space PR #2 successful integration head: 74a93ed281d94823608b0c6803edd78dd9f068cc; Draft/Open/unmerged.
