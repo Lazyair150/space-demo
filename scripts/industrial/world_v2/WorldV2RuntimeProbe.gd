@@ -177,8 +177,10 @@ func _run_clock_control_probe() -> void:
     _run_ship_host_active_demand_probe()
 
 func _run_ship_host_active_demand_probe() -> void:
-    var host := ClassDB.instantiate("WorldV2ShipHost") as Node
-    assert(host != null, "WorldV2ShipHost class must be registered")
+    var host_script := load("res://scripts/industrial/world_v2/WorldV2ShipHost.cs") as Script
+    assert(host_script != null, "WorldV2ShipHost C# script resource must load")
+    var host := host_script.new() as Node
+    assert(host != null, "WorldV2ShipHost C# script must instantiate")
     host.name = "ActiveDemandHostProbe"
     add_child(host)
     var initialized: bool = host.call("BeginShipWorld")
