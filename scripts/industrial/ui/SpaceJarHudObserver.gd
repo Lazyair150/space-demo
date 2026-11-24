@@ -199,25 +199,26 @@ func _refresh_snapshot() -> void:
 	_emit_snapshot_feedback(snapshot)
 	_last_signature = signature
 	var jars: Variant = snapshot.get("resourceJars", [])
-	var liquids: Variant = snapshot.get("resourceLiquids", {})
+	var ship_liquid_inventory: Variant = snapshot.get("shipLiquidInventory", {})
+	var liquids: Variant = ship_liquid_inventory.get("balances", {}) if ship_liquid_inventory is Dictionary else {}
+	var liquid_capacity := int(ship_liquid_inventory.get("capacity", 0)) if ship_liquid_inventory is Dictionary else 0
 	var master: Variant = snapshot.get("master", {})
 	var slave: Variant = snapshot.get("slave", {})
 	var demands: Variant = snapshot.get("demands", [])
-	_summary_base_text = _build_hud_resource_line(jars, liquids, master, slave, String(snapshot.get("lifecycleState", "")))
-	_render_hud_resource_strip(jars, liquids, master, slave, String(snapshot.get("lifecycleState", "")))
+	_summary_base_text = _build_hud_resource_line(jars, liquids, liquid_capacity, master, slave, String(snapshot.get("lifecycleState", "")))
+	_render_hud_resource_strip(jars, liquids, liquid_capacity, master, slave, String(snapshot.get("lifecycleState", "")))
 	_toggle.text = "详情 ▲" if _expanded else "详情 ▼"
 	_strip_panel.tooltip_text = _summary_base_text
 	_render_resource_jars(jars)
-	_render_resource_liquids(liquids)
+	_render_resource_liquids(liquids, liquid_capacity)
 	_render_workshop(_master_box, "主台", master)
 	_render_workshop(_slave_box, "从台", slave)
 	_render_order_skill_hud(demands, snapshot.get("activeSessions", []), order_presentation)
 	_render_demands(demands, snapshot.get("activeSessions", []), order_presentation)
 
 
-## Persistent combat resource strip. These are exact inventory counts, not percentages:
-## ship-level capacity is not exposed by the snapshot, so no fabricated full/empty bar is drawn.
-func _build_hud_resource_line(raw_jars: Variant, raw_liquids: Variant, master: Variant, slave: Variant, lifecycle: String) -> String:
+## Persistent combat resource strip. Liquid balances and capacity come from the ship inventory account.
+func _build_hud_resource_line(raw_jars: Variant, raw_liquids: Variant, liquid_capacity: int, master: Variant, slave: Variant, lifecycle: String) -> String:
 	var jar_list: Array = raw_jars if raw_jars is Array else []
 	var jar_shapes: Dictionary = {}
 	for jar in jar_list:
@@ -234,10 +235,11 @@ func _build_hud_resource_line(raw_jars: Variant, raw_liquids: Variant, master: V
 			var amount := int(raw_liquids[liquid])
 			liquid_total += amount
 			liquid_parts.append("%s %d" % [String(liquid), amount])
-	return "JAR  %d  %s    液体  %d  %s    主台 %s  →  从台 %s    %s  %s" % [
+	var liquid_capacity_text := "%d/%d" % [liquid_total, liquid_capacity] if liquid_capacity > 0 else str(liquid_total)
+	return "JAR  %d  %s    飞船液体  %s  %s    主台 %s  →  从台 %s    %s  %s" % [
 		jar_list.size(),
 		" / ".join(shape_parts) if not shape_parts.is_empty() else "无",
-		liquid_total,
+		liquid_capacity_text,
 		" / ".join(liquid_parts) if not liquid_parts.is_empty() else "无",
 		_workshop_hud_summary(master),
 		_workshop_hud_summary(slave),
@@ -245,7 +247,7 @@ func _build_hud_resource_line(raw_jars: Variant, raw_liquids: Variant, master: V
 	]
 
 
-func _render_hud_resource_strip(raw_jars: Variant, raw_liquids: Variant, master: Variant, slave: Variant, lifecycle: String) -> void:
+func _render_hud_resource_strip(raw_jars: Variant, raw_liquids: Variant, liquid_capacity: int, master: Variant, slave: Variant, lifecycle: String) -> void:
 	var jars: Array = raw_jars if raw_jars is Array else []
 	_jar_total_label.text = "JAR  %d罐 · %d装液" % [jars.size(), _filled_jar_count(jars)]
 	UiKit.clear_children(_shape_counts)
@@ -257,6 +259,9 @@ func _render_hud_resource_strip(raw_jars: Variant, raw_liquids: Variant, master:
 	for shape in counts:
 		_shape_counts.add_child(UiKit.label("%s %d" % [ShapeVisuals.glyph_for(String(shape)), int(counts[shape])], UiKit.FONT_BODY, ShapeVisuals.color_for(String(shape))))
 	UiKit.clear_children(_liquid_counts)
+	var liquid_total := _dictionary_total(raw_liquids)
+	var liquid_capacity_text := "%d/%d" % [liquid_total, liquid_capacity] if liquid_capacity > 0 else str(liquid_total)
+	_liquid_counts.add_child(UiKit.label("液体 %s" % liquid_capacity_text, UiKit.FONT_SMALL, UiKit.ACCENT))
 	if raw_liquids is Dictionary:
 		for liquid in raw_liquids:
 			_liquid_counts.add_child(UiKit.label("%s %d" % [String(liquid), int(raw_liquids[liquid])], UiKit.FONT_SMALL, ShapeVisuals.liquid_color_for(String(liquid))))
@@ -320,7 +325,7 @@ func _emit_snapshot_feedback(snapshot: Dictionary) -> void:
 	if new_filled != old_filled:
 		var delta := new_filled - old_filled
 		events.append(("Jar 装液 +" if delta > 0 else "Jar 空置 ") + "%d" % absi(delta))
-	var liquid_delta := _dictionary_total(snapshot.get("resourceLiquids", {})) - _dictionary_total(_previous_snapshot.get("resourceLiquids", {}))
+	var liquid_delta := _dictionary_total(_ship_liquid_balances(snapshot)) - _dictionary_total(_ship_liquid_balances(_previous_snapshot))
 	if liquid_delta != 0:
 		events.append(("飞船液体 +" if liquid_delta > 0 else "飞船液体 ") + "%d" % absi(liquid_delta))
 	for key in ["master", "slave"]:
@@ -390,6 +395,13 @@ func _filled_jar_count(raw_jars: Variant) -> int:
 			if jar is Dictionary and not String(jar.get("liquid", "")).is_empty():
 				count += 1
 	return count
+
+func _ship_liquid_balances(snapshot: Dictionary) -> Dictionary:
+	var inventory: Variant = snapshot.get("shipLiquidInventory", {})
+	if not (inventory is Dictionary):
+		return {}
+	var balances: Variant = inventory.get("balances", {})
+	return balances if balances is Dictionary else {}
 
 func _dictionary_total(raw: Variant) -> int:
 	var total := 0
@@ -464,10 +476,12 @@ func _jar_tile(jar: Dictionary) -> PanelContainer:
 	tile.tooltip_text = "%s · %s · %s%s" % [id_text, shape, liquid if not liquid.is_empty() else "空罐", " · 已标记" if bool(jar.get("isMarked", false)) else ""]
 	return tile
 
-func _render_resource_liquids(raw_liquids: Variant) -> void:
+func _render_resource_liquids(raw_liquids: Variant, liquid_capacity: int) -> void:
 	UiKit.clear_children(_resource_liquids)
+	var liquid_total := _dictionary_total(raw_liquids)
+	var capacity_text := "%d/%d" % [liquid_total, liquid_capacity] if liquid_capacity > 0 else str(liquid_total)
+	_resource_liquids.add_child(UiKit.label("飞船液体库存：%s" % capacity_text, UiKit.FONT_SMALL, UiKit.ACCENT))
 	if not (raw_liquids is Dictionary) or raw_liquids.is_empty():
-		_resource_liquids.add_child(UiKit.label("液体库存：0", UiKit.FONT_SMALL, UiKit.MUTED))
 		return
 	for liquid in raw_liquids:
 		_resource_liquids.add_child(UiKit.label("%s  %d" % [String(liquid), int(raw_liquids[liquid])], UiKit.FONT_SMALL, ShapeVisuals.liquid_color_for(String(liquid))))
