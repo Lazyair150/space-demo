@@ -212,3 +212,23 @@ The consumer manifest now verifies more than slot-to-consumer routing. Before a 
 This remains a routing/provenance contract, not a rule interpreter. It does not make Parser, Skill, or Production Device Rule Contributions executable, and it does not expand the current one-Parser/two-workshop runtime projection.
 
 The Board Definition Probe now includes direct rejection cases for parser Definition substitution, skill progression-revision drift, workshop Definition-version drift, and duplicate parser consumer entries. These checks are authored but have not been executed in Godot 4.7.1 .NET.
+
+
+## Parser-local Rule Contribution execution contract (2026-11-24)
+
+Parser contributions now have a separate Space-owned execution consumer. They are deliberately excluded from the Core-facing `boardRuleProfile`; a Parser rule can never enter a Workshop `RuleContext`.
+
+The first executable Parser scope is intentionally narrow:
+
+| Effect | Exact target | Required parameters | Runtime meaning |
+|---|---|---|---|
+| `ModifyIntensity` | `shape_processing_rate` | `shape`, `multiplier` | Multiplies the selected shape's authored processing-rate progress units per logical second |
+| `RetimeProcess` | `progress_per_jar` | `shape`, `multiplier` | Multiplies the selected shape's progress threshold required to emit one Jar |
+
+Both multipliers must be finite and strictly positive. The target shape must exist in the parser's complete configured shape vocabulary. The resulting rate and threshold must remain inside the parser's fixed-point range; the threshold must remain representable in micro-units. The rules are applied after the owned instance growth composition, so Definition values, Owned Instance growth, and installed Parser contributions form one deterministic effective runtime profile.
+
+The frozen `parserRuleProfile` records exact Parser Definition/version, Board slot, Owned Instance ID, progression revision, resolved contribution provenance, and a canonical SHA-256 fingerprint. The effective rates/thresholds are the values consumed by `SpaceOreParserRuntime`; the metadata is retained in the frozen loadout and Board consumer manifest for audit/validation. Checkpoints retain the effective parser runtime profile, preserving the exact behavior across restore.
+
+Unsupported effects, targets, scopes, parameter shapes, duplicate rule identities, invalid multipliers, and mismatched provenance fail closed. No Parser capacity, queue routing, pickup allocation, or Core warehouse behavior is inferred from generic `ModifyCapacity`; those semantics remain unimplemented until separately specified. Skill and Production Device contributions remain rejected until their own executors exist.
+
+The Parser runtime Probe now checks that a synthetic owned growth profile plus `ModifyIntensity` and `RetimeProcess` changes the actual finite-input result, not merely a manifest: the composed profile is loaded into `SpaceOreParserRuntime`, finite stone is ingested, and the resulting Jar count is asserted. It also checks wrong-scope and unsupported-effect rejection. The Probe is authored but not executed in Godot 4.7.1 .NET.
