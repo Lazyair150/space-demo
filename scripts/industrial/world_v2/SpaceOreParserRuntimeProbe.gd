@@ -107,6 +107,35 @@ static func run() -> Dictionary:
 	).is_empty():
 		return _failure("Board consumer accepted effective Parser rates inconsistent with its contribution replay")
 
+	# A Parser with no authored local rules still needs a post-growth baseline.
+	# Removing that baseline must not turn an edited effective rate into an accepted profile.
+	var no_rule_profile := SpaceProgressionRuntimeProfileComposer.compose_parser(
+		definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary"
+	)
+	if no_rule_profile.is_empty() or not (no_rule_profile.get("parserRuleProfile", null) is Dictionary):
+		return _failure("Parser without local rules did not freeze its post-growth baseline")
+	var no_rule_device := parser_device.duplicate(true)
+	no_rule_device.oreParserProfile = no_rule_profile
+	if SpaceBoardRuntimeProfileSet.build(
+		parser_assignment,
+		{"boardRuleProfile": {"fingerprint": "probe.core.workshop.profile"}},
+		[no_rule_device],
+		[],
+		{"developmentFixture": true}
+	).is_empty():
+		return _failure("valid Parser profile without local rules was rejected")
+	var stripped_baseline_device := no_rule_device.duplicate(true)
+	stripped_baseline_device.oreParserProfile.erase("parserRuleProfile")
+	stripped_baseline_device.oreParserProfile.shapeProcessingRatePerSecond["圆罐"] = 99.0
+	if not SpaceBoardRuntimeProfileSet.build(
+		parser_assignment,
+		{"boardRuleProfile": {"fingerprint": "probe.core.workshop.profile"}},
+		[stripped_baseline_device],
+		[],
+		{"developmentFixture": true}
+	).is_empty():
+		return _failure("Board consumer accepted a Parser profile after its replay baseline was stripped")
+
 	var executable_parser_definition := SpaceOreParserDefinition.from_runtime_profile(composed_parser)
 	var executable_parser := SpaceOreParserRuntime.new()
 	var executable_init := executable_parser.initialize(executable_parser_definition, "parser-rule-execution", ["圆罐", "方罐"])
