@@ -517,3 +517,35 @@
 - `SpaceOreParserJarIngressProbe.gd` now includes a rejected empty-operation-ID case and asserts the parser batch remains pending before the valid retry.
 - The new receipt path and Probe are authored but not run. Space Demo has no associated Actions run for the latest commit; Godot 4.7.1 .NET compile/runtime validation remains unverified.
 - Next implementation priority: define the shared Rule Evaluation / Transition / ResourceEffect contract, then make Core workshop solver and executor consume it before adding further component-specific effects. Do not start multi-Parser runtime or fabricate production balance values before this shared semantic boundary exists.
+
+## 10. Continuation audit — 2026-11-24
+
+### Exact repository heads at this checkpoint
+
+- Space PR #2: `1425cf597b16bdb9b98db7ab5ddcebc56f9972c7`, base `main` at `4753d5926830bbb3c254c78f4966171a370522ca`; Draft/Open/unmerged.
+- Jar Core PR #60: `c02dab4341dee4d4a0a2064a31132bdd073bddc0`, base `world-v2/phase-4.11b-space-produced-jar-import-v2` at `a52f9465ad4febdcfb821227f7b2e03b2ddc012c`; Draft/Open/unmerged.
+- No Actions run or combined status was returned for current Space PR #2 head. The last observed Core verify run `45403667537` was running for the earlier Core source head `d64a2b3`; the subsequent Core head contains documentation-only commits and has no exact-head run returned. Do not mark either current PR head fully validated.
+- Godot 4.7.1 .NET build, GDScript parse, probes, scene launch and end-to-end battle execution remain unverified in this session.
+
+### Board Assignment enforcement correction
+
+- Audit found that `SpaceHangarOwnedLoadoutAssembler.assemble()` treated `boardAssignments` as optional. If a caller bypassed the UI Controller and invoked the production Owned assembler with only the legacy parallel fields (ship/parser/master/slave/device/skill selections), assembly could proceed without the canonical `slotId -> ownedInstanceId` assignment map.
+- Corrected the production Owned assembler to reject an empty/missing frozen Board Assignment before resolving subsystem profiles. The legacy field-only assembly route remains available only through the explicitly separate definition/probe path; it is no longer accepted by the production Owned assembler.
+- Added a regression to `SpaceHangarCatalogOwnershipProbe.gd`: a fully shaped field-only Owned selection without `boardAssignments` must return null. This probe is authored but not executed because no Godot validation result is available.
+- Exact Space commits: assembler guard `99ef15d4e372036f7603edacd0c58db62d66b2c7`; probe fixture correction `1425cf597b16bdb9b98db7ab5ddcebc56f9972c7`.
+
+### Current Space integration boundaries
+
+- Board Definition remains topology; Board Assignment records exact slot, component kind, Owned Instance ID, Definition ID/version and source progression revision. Current runtime projection explicitly supports exactly one Parser, one Master and one Slave; multi-Parser remains a rejected projection, not a Board topology restriction.
+- Space skill runtime carries only the exact Core template name (`template_id@version`) plus scheduling metadata; template requirements/type are Core-owned and must not be duplicated in Space runtime payload.
+- `WorldV2RuntimeNode.AddJarDemandFromTemplate` and `WorldV2ShipHost` expose the template-backed ingress. Legacy inline `AddJarDemand` remains present for compatibility/probes; production skills must continue migrating to template-backed payloads and the frozen snapshot must reject mixed template + inline requirement payloads.
+- Space-owned Parser remains the finite energy-stone consumer; only completed empty Jar counts are imported into Core using an idempotent operation ID and receipt. Parser progress/state and fractional Space clock remainder remain Space-owned; Core owns Jar inventory, demand/session/lease and ledger checkpoint.
+
+### Next execution slice
+
+1. Verify the new Board Assignment guard/probe under actual Godot 4.7.1 .NET; then audit every production Owned loadout entry point to ensure none can bypass Board Assignment.
+2. Finish making Board Assignment the sole source of truth for installable component placement; legacy parser/master/slave/device/skill fields may remain only as derived runtime projections, never as independent editable authority.
+3. Verify frozen `boardAssignmentSnapshot`, `boardRuleProfile`, `boardRuntimeProfileSet`, `ownedInstanceSnapshots` and exact progression revisions are mutually consistent after growth and slot reassignment.
+4. Align Space template names/versions with the current Core PR #60 branch and validate the exact Core template ingress API before integrating/merging either stacked PR.
+5. Run Parser completion → idempotent Core import → order template materialization → A/B execution → Space effect dispatch as a full end-to-end scenario; retain exact operation receipts and checkpoint/reload assertions.
+6. Only after those pass, continue production Catalog assets, real progression curves/power models, stage reward settlement and final repository cleanup.
