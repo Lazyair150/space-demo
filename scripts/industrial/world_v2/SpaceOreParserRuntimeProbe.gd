@@ -149,7 +149,8 @@ static func run() -> Dictionary:
 	if not SpaceProgressionRuntimeProfileComposer.compose_parser(wrong_target_definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary").is_empty():
 		return _failure("Parser executor accepted an unsupported target contract")
 	var duplicate_rule_definition := SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
-	duplicate_rule_definition.rule_contributions = [rate_rule, rate_rule.duplicate(true)]
+	var duplicate_rate_rule := rate_rule.duplicate(true) as SpaceRuleContributionDefinition
+	duplicate_rule_definition.rule_contributions = [rate_rule, duplicate_rate_rule]
 	if not SpaceProgressionRuntimeProfileComposer.compose_parser(duplicate_rule_definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary").is_empty():
 		return _failure("Parser executor accepted duplicate Rule identities")
 	var overflow_rule_definition := SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
