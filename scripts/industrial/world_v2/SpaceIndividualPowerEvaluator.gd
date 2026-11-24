@@ -20,10 +20,11 @@ static func evaluate_effective_parser(
 	definition: SpaceOreParserDefinition,
 	instance: SpaceOwnedProgressionInstance,
 	shape_vocabulary: Array,
-	model: SpaceIndividualPowerModelDefinition
+	model: SpaceIndividualPowerModelDefinition,
+	slot_id: String = ""
 ) -> Dictionary:
 	var effective_profile := SpaceProgressionRuntimeProfileComposer.compose_parser(
-		definition, instance, shape_vocabulary
+		definition, instance, shape_vocabulary, slot_id
 	)
 	if effective_profile.is_empty():
 		return _failure("parser Owned Instance growth could not be composed into a valid runtime profile")
