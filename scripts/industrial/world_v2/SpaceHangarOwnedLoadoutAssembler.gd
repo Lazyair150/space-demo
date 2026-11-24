@@ -181,6 +181,9 @@ static func assemble(
 	if not board_assignment_snapshot.is_empty():
 		frozen["boardAssignmentSnapshot"] = board_assignment_snapshot.duplicate(true)
 		frozen["boardRuleProfile"] = board_rule_profile.duplicate(true)
+		var runtime_profile_errors := SpaceBoardRuntimeProfileSet.validate(frozen)
+		if not runtime_profile_errors.is_empty():
+			return _reject("Board Runtime Profile Set failed exact consumer validation: " + "; ".join(runtime_profile_errors))
 	frozen["progressionOwnerPlayerId"] = String(progression.player_id)
 	frozen["progressionStateRevision"] = progression.state_revision
 	var owned_snapshots: Array[Dictionary] = [
