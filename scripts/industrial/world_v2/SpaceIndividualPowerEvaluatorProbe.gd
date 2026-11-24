@@ -65,7 +65,7 @@ static func _probe_parser() -> bool:
 		"productionPercentageBonus": 10
 	}
 	var effective := SpaceIndividualPowerEvaluator.evaluate_effective_parser(
-		parser, owned_parser, ["round", "square"], model
+		parser, owned_parser, ["round", "square"], model, "parser-slot"
 	)
 	if not bool(effective.get("success", false)):
 		return false
