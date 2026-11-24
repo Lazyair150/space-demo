@@ -150,8 +150,8 @@ static func run() -> Dictionary:
 ## Godot may decode integral JSON numbers as floats, so raw in-memory Variant equality
 ## is not a valid assertion for persisted snapshots.
 static func _matches_json_value(actual: Variant, expected: Variant) -> bool:
-	var normalized_expected: Variant = JSON.parse_string(JSON.stringify(expected))
-	return actual == normalized_expected
+    var normalized_expected: Variant = JSON.parse_string(JSON.stringify(expected))
+    return actual == normalized_expected
 
 ## Exercises real Buff instance reconstruction and processed-event idempotency.
 static func _probe_effect_manager_restore() -> Dictionary:
