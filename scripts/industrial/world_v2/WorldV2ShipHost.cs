@@ -310,9 +310,35 @@ public partial class WorldV2ShipHost : Node
             !_runtime.IsInitialized || _runtime.IsDisposed)
             return new GDictionary { ["success"] = false, ["error"] = "Ship world is not active" };
 
-        var result = _runtime.ImportProducedJars(operationId, jarCounts);
-        result["success"] = true;
-        return result;
+        try
+        {
+            var result = _runtime.ImportProducedJars(operationId, jarCounts);
+            if (result == null ||
+                !result.ContainsKey("wasDuplicate") ||
+                !result.ContainsKey("submittedJarCount") ||
+                !result.ContainsKey("storedJarCount") ||
+                !result.ContainsKey("discardedJarCount"))
+            {
+                return new GDictionary
+                {
+                    ["success"] = false,
+                    ["error"] = "Jar import returned an incomplete receipt"
+                };
+            }
+
+            // A successful return from the Core import operation is the commit receipt.
+            // Exceptions and incomplete bridge responses must never be acknowledged by Space.
+            result["success"] = true;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            return new GDictionary
+            {
+                ["success"] = false,
+                ["error"] = "Jar import did not return a commit receipt: " + ex.Message
+            };
+        }
     }
 
     /// <summary>
