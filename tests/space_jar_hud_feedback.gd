@@ -51,7 +51,7 @@ func _run() -> void:
 	_check(not ("%" in hud_line), "ship resource strip shows exact capacity instead of inventing a percentage")
 	_check(observer._demand_shape_summary("方罐", [{"shape": "圆罐"}, {"shape": "长条舱段"}]) == "■ 主形 ● ▬", "order HUD uses explicit primary shape plus separate requirement shapes")
 	_check(observer._demand_shape_summary("", [{"shape": "圆罐"}]) == "●", "order HUD does not infer primary shape from first requirement")
-	var cooling: Array = observer._cooling_demand_ids([
+	var cooling: Array[String] = observer._cooling_demand_ids([
 		{"id": 7, "isCoolingDown": true},
 		{"id": 8, "isCoolingDown": false},
 		{"id": 9, "isCoolingDown": true}
