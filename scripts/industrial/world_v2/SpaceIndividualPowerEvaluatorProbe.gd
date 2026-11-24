@@ -165,7 +165,7 @@ static func _probe_workshop() -> bool:
 		print("[SpaceIndividualPowerEvaluatorProbe] workshop-evaluation=", result)
 		return false
 	var pool := _pool_for_model("probe.workshop.pool", "workshop", model)
-	var built := SpaceRoguelikeIndividualPoolEntryBuilder.append_workshop(pool, workshop, ["round"], ["water", "fuel"], "common", 1.0)
+	var built := SpaceRoguelikeIndividualPoolEntryBuilder.append_workshop(pool, workshop, ["round", "square"], ["water", "fuel"], "common", 1.0)
 	if not bool(built.get("success", false)) or not pool.is_valid():
 		print("[SpaceIndividualPowerEvaluatorProbe] workshop-pool-build=", built, " validation=", pool.get_validation_errors())
 		return false
