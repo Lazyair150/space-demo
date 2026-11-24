@@ -480,3 +480,6 @@
 - The owned loadout assembler passes the exact Parser Board Slot into composition. The frozen Parser profile carries a canonical provenance/fingerprint record, and Board manifest validation checks its slot, Definition, Owned Instance, progression revision, contribution sources, and fingerprint.
 - Extended `SpaceOreParserRuntimeProbe` to execute a composed growth + rule profile through finite stone ingestion and assert the actual Jar output count; wrong scope and unsupported effect/target combinations reject.
 - This does not add Parser capacity/queue routing semantics, does not enable multi-Parser runtime, and does not change Jar Core. Godot 4.7.1 .NET compilation and Probe execution remain unverified.
+
+- Follow-up hardening: the frozen Parser rule profile now retains its post-growth/pre-rule baseline rate and threshold maps. Board consumer validation replays the ordered Parser multipliers and compares the result to the effective profile, preventing independent rate tampering even when the route metadata is present.
+- Added Probe cases for valid Parser consumer routing, foreign-slot rule provenance, and effective-rate tampering against the replay baseline.
