@@ -46,6 +46,18 @@ static func run() -> Dictionary:
     if not store.save(effects, dispatcher, identity, runtime_checkpoint):
         _cleanup(absolute_path)
         return _failure("unified battle checkpoint save failed")
+    var raw_file := FileAccess.open(absolute_path, FileAccess.READ)
+    if raw_file == null:
+        _cleanup(absolute_path)
+        return _failure("unified checkpoint file is missing immediately after save")
+    var raw_snapshot: Variant = JSON.parse_string(raw_file.get_as_text())
+    raw_file.close()
+    if not (raw_snapshot is Dictionary):
+        _cleanup(absolute_path)
+        return _failure("unified checkpoint file is not a JSON dictionary after save")
+    if not store._valid_snapshot(raw_snapshot):
+        _cleanup(absolute_path)
+        return _failure("saved checkpoint failed validation after JSON roundtrip: " + JSON.stringify(raw_snapshot))
     var loaded := store.load(identity)
     if int(loaded.get("schemaVersion", 0)) != 3:
         _cleanup(absolute_path)
