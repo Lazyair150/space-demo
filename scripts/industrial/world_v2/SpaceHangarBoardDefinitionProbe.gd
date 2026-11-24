@@ -153,10 +153,21 @@ static func run() -> bool:
 	unsupported_parser_rule.target = "parser.throughput"
 	unsupported_parser_rule.scope = "parser"
 	parser_definition.rule_contributions = [unsupported_parser_rule]
-	var leaked_profile := SpaceRuleContributionResolver.resolve(generic_assignment_snapshot, runtime_catalog, progression)
+	var core_profile := SpaceRuleContributionResolver.resolve(generic_assignment_snapshot, runtime_catalog, progression)
 	parser_definition.rule_contributions = original_parser_rules
-	if not leaked_profile.is_empty():
+	if core_profile.is_empty():
 		return false
+	var parser_slot_id := ""
+	for assignment in generic_assignment_snapshot.get("assignments", []):
+		if assignment is Dictionary and String(assignment.get("componentKind", "")) == "ore_parser":
+			parser_slot_id = String(assignment.get("slotId", ""))
+			break
+	if parser_slot_id.is_empty():
+		return false
+	for contribution in core_profile.get("contributions", []):
+		var source: Dictionary = contribution.get("source", {})
+		if String(source.get("slotId", "")) == parser_slot_id or String(contribution.get("scope", "")) != "workshop":
+			return false
 	var frozen_data := assembled.to_dictionary()
 	var frozen := SpaceBattleLoadoutSnapshot.create(frozen_data)
 	if frozen == null or frozen.order_definition_keys().size() != 2:
