@@ -168,6 +168,35 @@ static func run() -> bool:
 		var source: Dictionary = contribution.get("source", {})
 		if String(source.get("slotId", "")) == parser_slot_id or String(contribution.get("scope", "")) != "workshop":
 			return false
+
+	# The owned assembler must route a supported Parser rule to Space's Parser profile
+	# while keeping the Core-facing workshop profile free of that Parser contribution.
+	var parser_rule_shape := String(assembled.to_dictionary().get("jarWorldOptions", {}).get("shapes", [])[0])
+	var supported_parser_rule := SpaceRuleContributionDefinition.new()
+	supported_parser_rule.rule_id = &"probe.parser.owned-rate-rule"
+	supported_parser_rule.rule_version = 1
+	supported_parser_rule.effect = "ModifyIntensity"
+	supported_parser_rule.target = "shape_processing_rate"
+	supported_parser_rule.scope = "parser"
+	supported_parser_rule.parameters = {"shape": parser_rule_shape, "multiplier": 1.25}
+	parser_definition.rule_contributions = [supported_parser_rule]
+	var parser_rule_assembled := SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, selection, progression)
+	parser_definition.rule_contributions = original_parser_rules
+	if parser_rule_assembled == null:
+		return false
+	var parser_rule_loadout := parser_rule_assembled.to_dictionary()
+	var parser_rule_device: Dictionary = {}
+	for device in parser_rule_loadout.get("productionDeviceSelections", []):
+		if device is Dictionary and String(device.get("deviceKind", "")) == "ore_parser":
+			parser_rule_device = device
+			break
+	if parser_rule_device.is_empty() or not parser_rule_device.get("oreParserProfile", {}).has("parserRuleProfile"):
+		return false
+	for contribution in parser_rule_loadout.get("boardRuleProfile", {}).get("contributions", []):
+		var source: Dictionary = contribution.get("source", {})
+		if String(source.get("slotId", "")) == parser_slot_id:
+			return false
+
 	var frozen_data := assembled.to_dictionary()
 	var frozen := SpaceBattleLoadoutSnapshot.create(frozen_data)
 	if frozen == null or frozen.order_definition_keys().size() != 2:
