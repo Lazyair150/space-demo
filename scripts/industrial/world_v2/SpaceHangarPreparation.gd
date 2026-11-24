@@ -8,14 +8,22 @@ class_name SpaceHangarPreparation
 @export var ore_parser_catalog: SpaceOreParserCatalog
 @export var workshop_combination_catalog: SpaceWorkshopCombinationCatalog
 @export var workshop_catalog: SpaceWorkshopCatalog
-@export var skill_catalog: SpaceSkillCatalog
+var skill_catalog: SpaceSkillCatalog
 @export var balance_profile: SpaceSkillBalanceProfile
-@export var effect_catalog: SpaceEffectCatalog
+var effect_catalog: SpaceEffectCatalog
 @export var catalog_bundle_resource: SpaceHangarCatalogBundleResource
 ## Production Hangar must select player-owned instances; definition-only selection is an explicit development mode.
 @export var require_owned_instances: bool = true
 ## Injected from the player save/session owner; never authored into a shared catalog Resource.
 var player_progression_state: SpacePlayerProgressionState
+
+## Runtime-only legacy catalog injection. Production should use catalog_bundle_resource.
+func configure_runtime_catalogs(skills: SpaceSkillCatalog, effects: SpaceEffectCatalog) -> bool:
+	if skills == null or effects == null:
+		return false
+	skill_catalog = skills
+	effect_catalog = effects
+	return true
 
 func create_catalog_bundle() -> SpaceHangarCatalogBundle:
 	if catalog_bundle_resource != null:
