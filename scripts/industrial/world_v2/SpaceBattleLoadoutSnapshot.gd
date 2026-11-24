@@ -513,7 +513,7 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 							elif template_requirements is Array:
 								resolved_order_requirements = template_requirements
 					else:
-							errors.append("jarWorldOptions.orderTemplates must be an array")
+						errors.append("jarWorldOptions.orderTemplates must be an array")
 				else:
 					# Compatibility for legacy development bindings only.
 					if not ["A", "B"].has(String(jar_order.get("type", ""))):
