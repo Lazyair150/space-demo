@@ -502,18 +502,18 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 							if raw_template is Dictionary and String(raw_template.get("name", "")) == template_name:
 								matched_template = raw_template
 								break
-					if matched_template.is_empty():
+						if matched_template.is_empty():
 							errors.append("Jar order templateName must resolve in frozen jarWorldOptions.orderTemplates")
+						else:
+							if not ["A", "B"].has(String(matched_template.get("type", ""))):
+								errors.append("Core order template type must be A or B")
+							var template_requirements: Variant = matched_template.get("requirements", null)
+							if not (template_requirements is Array) or template_requirements.is_empty():
+								errors.append("Core order template must contain non-empty requirements")
+							elif template_requirements is Array:
+								resolved_order_requirements = template_requirements
 					else:
-						if not ["A", "B"].has(String(matched_template.get("type", ""))):
-							errors.append("Core order template type must be A or B")
-						var template_requirements: Variant = matched_template.get("requirements", null)
-						if not (template_requirements is Array) or template_requirements.is_empty():
-							errors.append("Core order template must contain non-empty requirements")
-						elif template_requirements is Array:
-							resolved_order_requirements = template_requirements
-				else:
-						errors.append("jarWorldOptions.orderTemplates must be an array")
+							errors.append("jarWorldOptions.orderTemplates must be an array")
 				else:
 					# Compatibility for legacy development bindings only.
 					if not ["A", "B"].has(String(jar_order.get("type", ""))):
