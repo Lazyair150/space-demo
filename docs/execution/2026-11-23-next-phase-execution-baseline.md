@@ -489,3 +489,11 @@
 - Added an owned-Hangar integration Probe: a temporary supported Parser `ModifyIntensity` contribution is composed into the exact installed Parser runtime profile, while the Core-facing `boardRuleProfile` is asserted to contain no contribution sourced from the Parser slot. The fixture restores the catalog Definition after the assertion.
 
 - Extended Parser execution Probe rejection coverage to duplicate rule identities, processing-rate overflow, and retiming thresholds below micro-unit precision. The supported contract remains limited to the two documented effects.
+
+### 2026-11-24 Parser provenance hardening
+
+- Owned Parser runtime composition now always emits a versioned `parserRuleProfile` with post-growth/pre-rule shape-rate and progress-threshold baselines, including when the Definition has no local contributions.
+- Board consumer validation rejects a missing Parser provenance block and replays the contribution list (including the valid empty-list case) against the frozen baseline before accepting effective values.
+- Parser runtime Probe coverage now includes a valid no-rule profile and rejection after stripping the baseline and tampering with an effective rate.
+- This closes a snapshot-integrity bypass; it does not expand supported Parser effects or enable multiple Parser instances.
+- Validation remains authored-only: no Godot 4.7.1 .NET runtime/Probe execution or Space CI workflow run is available for this branch head.
