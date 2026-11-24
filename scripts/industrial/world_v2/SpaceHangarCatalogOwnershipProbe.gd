@@ -3,7 +3,17 @@ class_name SpaceHangarCatalogOwnershipProbe
 ## Synthetic ownership checks only; contains no production balance or world configuration.
 
 static func run() -> bool:
-	if not SpaceIndividualPowerEvaluatorProbe.run() or not SpaceWorkshopSlotSelectionProbe.run() or not SpaceHangarBoardDefinitionProbe.run():
+	var power_probe_passed := SpaceIndividualPowerEvaluatorProbe.run()
+	print("[SpaceHangarCatalogOwnershipProbe] individual-power=", power_probe_passed)
+	if not power_probe_passed:
+		return false
+	var workshop_slots_passed := SpaceWorkshopSlotSelectionProbe.run()
+	print("[SpaceHangarCatalogOwnershipProbe] workshop-slots=", workshop_slots_passed)
+	if not workshop_slots_passed:
+		return false
+	var board_probe_passed := SpaceHangarBoardDefinitionProbe.run()
+	print("[SpaceHangarCatalogOwnershipProbe] board-definition=", board_probe_passed)
+	if not board_probe_passed:
 		return false
 	var ship := SpaceShipDefinition.new()
 	ship.ship_id = &"probe.ship"
