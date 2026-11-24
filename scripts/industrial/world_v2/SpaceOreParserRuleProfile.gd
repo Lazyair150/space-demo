@@ -22,6 +22,8 @@ static func compose(
 		return {}
 	if rates.size() != shape_names.size() or thresholds.size() != shape_names.size():
 		return {}
+	var base_rates := rates.duplicate(true)
+	var base_thresholds := thresholds.duplicate(true)
 	for shape_value in shape_names:
 		var shape := String(shape_value)
 		if not rates.has(shape) or not thresholds.has(shape):
@@ -77,8 +79,6 @@ static func compose(
 			return {}
 		target_map[shape] = adjusted
 
-	var base_rates := (base_profile.shapeProcessingRatePerSecond as Dictionary).duplicate(true)
-	var base_thresholds := (base_profile.progressPerJarByShape as Dictionary).duplicate(true)
 	var clean_contributions: Array[Dictionary] = []
 	for contribution in resolved:
 		var clean := contribution.duplicate(true)
