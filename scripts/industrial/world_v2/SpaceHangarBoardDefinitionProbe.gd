@@ -171,7 +171,10 @@ static func run() -> bool:
 
 	# The owned assembler must route a supported Parser rule to Space's Parser profile
 	# while keeping the Core-facing workshop profile free of that Parser contribution.
-	var parser_rule_shape := String(assembled.to_dictionary().get("jarWorldOptions", {}).get("shapes", [])[0])
+	var parser_shapes: Variant = assembled.to_dictionary().get("jarWorldOptions", {}).get("shapes", [])
+	if not (parser_shapes is Array) or parser_shapes.is_empty():
+		return false
+	var parser_rule_shape := String(parser_shapes[0])
 	var supported_parser_rule := SpaceRuleContributionDefinition.new()
 	supported_parser_rule.rule_id = &"probe.parser.owned-rate-rule"
 	supported_parser_rule.rule_version = 1
@@ -190,7 +193,8 @@ static func run() -> bool:
 		if device is Dictionary and String(device.get("deviceKind", "")) == "ore_parser":
 			parser_rule_device = device
 			break
-	if parser_rule_device.is_empty() or not parser_rule_device.get("oreParserProfile", {}).has("parserRuleProfile"):
+	var parser_profile: Variant = parser_rule_device.get("oreParserProfile", null)
+	if parser_rule_device.is_empty() or not (parser_profile is Dictionary) or not parser_profile.has("parserRuleProfile"):
 		return false
 	for contribution in parser_rule_loadout.get("boardRuleProfile", {}).get("contributions", []):
 		var source: Dictionary = contribution.get("source", {})
