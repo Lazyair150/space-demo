@@ -103,6 +103,8 @@ static func run() -> bool:
 		return false
 	if not generic_draft.set_workshop("demo.world.starter", 1):
 		return false
+	if not generic_draft.set_expected_battle_duration(60000.0):
+		return false
 	print("[SpaceHangarBoardDefinitionProbe] draft-and-world-selection=passed")
 	var generic_assignments := {
 		"workshop.master": "demo.workshop.alpha.01",
