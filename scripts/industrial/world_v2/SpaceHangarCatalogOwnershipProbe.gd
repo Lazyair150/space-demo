@@ -356,7 +356,7 @@ static func run() -> bool:
 	if not unavailable_view.get("inventory", {}).get("shipChoices", []).is_empty():
 		return false
 
-	print("[SpaceHangarCatalogOwnershipProbe] legacy-draft-contracts=passed")
+	print("[SpaceHangarCatalogOwnershipProbe] no-board-draft-fails-closed=passed")
 	# Player progression is separate from immutable catalog definitions.
 	var progression_workshop_catalog := SpaceWorkshopCatalog.new()
 	if (
@@ -371,6 +371,7 @@ static func run() -> bool:
 	)
 	if not progression_bundle.validate_and_prepare().is_empty():
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] progression-bundle=passed")
 	var progression := SpacePlayerProgressionState.new()
 	progression.player_id = &"probe.player"
 	var parser_instance := SpaceOwnedProgressionInstance.new()
@@ -392,6 +393,7 @@ static func run() -> bool:
 	second_parser_instance.instance_id = &"probe.parser.instance.b"
 	if not SpacePlayerProgressionCatalogService.acquire_instance(progression, progression_bundle, second_parser_instance):
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] parser-unlock-and-independent-acquisition=passed")
 	var stale_parser_copy := progression.resolve_instance("probe.parser.instance.a")
 	var upgraded_parser := progression.resolve_instance("probe.parser.instance.a")
 	if upgraded_parser == null or stale_parser_copy == null:
@@ -415,6 +417,7 @@ static func run() -> bool:
 		return false # Progression revisions prevent stale overwrites.
 	if not progression.get_validation_errors().is_empty():
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] parser-progression-snapshot=passed")
 	var progression_data := progression.to_data()
 	if progression_data.ownedInstances.size() != 2 or progression_data.unlockedDefinitionKeys.size() != 1:
 		return false
@@ -434,6 +437,7 @@ static func run() -> bool:
 	if SpacePlayerProgressionState.from_data(invalid_progression_data) != null:
 		return false
 
+	print("[SpaceHangarCatalogOwnershipProbe] progression-roundtrip-and-migration=passed")
 	# Versioned curves drive progression; the generic evaluator does not assign
 	# gameplay meaning to subsystem-owned attribute keys.
 	var parser_curve := SpaceProgressionCurveDefinition.new()
@@ -466,6 +470,7 @@ static func run() -> bool:
 		return false # Curve catalog returns detached immutable-by-interface copies.
 	if parser_curve.level_for_experience(99) != 1 or parser_curve.level_for_experience(100) != 2 or parser_curve.level_for_experience(300) != 3:
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] curve-definition-and-catalog=passed")
 	var level_two_growth := parser_curve.build_growth_attributes(2)
 	if absf(float(level_two_growth.shapeProcessingRateMultiplier) - 1.25) > 0.000001:
 		return false
@@ -482,6 +487,7 @@ static func run() -> bool:
 		return false
 	if curve_upgraded.growth_curve_id != parser_curve.curve_id or curve_upgraded.growth_curve_version != parser_curve.definition_version:
 		return false # The exact curve version is persisted with the calculated result.
+	print("[SpaceHangarCatalogOwnershipProbe] curve-application=passed")
 	var curve_provenance_tamper := progression.resolve_instance("probe.parser.instance.b")
 	curve_provenance_tamper.growth_curve_version += 1
 	curve_provenance_tamper.progression_revision += 1
@@ -510,6 +516,7 @@ static func run() -> bool:
 		return false # Cumulative XP thresholds must strictly increase.
 
 	# Each subsystem interprets only its own growth attribute contract.
+	print("[SpaceHangarCatalogOwnershipProbe] curve-provenance-and-restore=passed")
 	var ship_growth_instance := SpaceOwnedProgressionInstance.new()
 	ship_growth_instance.instance_id = &"probe.ship.growth"
 	ship_growth_instance.item_kind = "ship"
@@ -598,6 +605,7 @@ static func run() -> bool:
 		return false # Curves may target an explicit balance dimension without changing the effect parameter.
 	if not bool(direct_benefit_binding.balanceReport.get("valid", false)):
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] subsystem-growth-composers=passed")
 	var owned_hangar_bundle := SpaceHangarCatalogBundleResource.new()
 	owned_hangar_bundle.ship_catalog = ships
 	owned_hangar_bundle.production_device_catalog = devices
@@ -612,6 +620,7 @@ static func run() -> bool:
 	if owned_hangar_bundle.create_runtime_bundle() == null:
 		return false
 
+	print("[SpaceHangarCatalogOwnershipProbe] legacy-owned-bundle=passed")
 	var template_hangar_bundle := SpaceHangarCatalogBundleResource.new()
 	template_hangar_bundle.ship_catalog = ships
 	template_hangar_bundle.production_device_catalog = devices
@@ -624,6 +633,7 @@ static func run() -> bool:
 	template_hangar_bundle.effect_definitions = [effect]
 	if template_hangar_bundle.create_runtime_bundle() == null:
 		return false # Production bundle must resolve the materialized per-world Core template catalog.
+	print("[SpaceHangarCatalogOwnershipProbe] template-owned-bundle=passed")
 	var hangar_owned_state := SpacePlayerProgressionState.new()
 	hangar_owned_state.player_id = &"probe.hangar-player"
 	var owned_ship := SpaceOwnedProgressionInstance.new()
@@ -661,9 +671,11 @@ static func run() -> bool:
 			hangar_owned_state, owned_hangar_bundle.create_runtime_bundle(), owned
 		):
 			return false
+	print("[SpaceHangarCatalogOwnershipProbe] owned-instances-unlocked-and-acquired=passed")
 	var owned_inventory := SpaceHangarOwnedInventoryBuilder.build(owned_hangar_bundle, hangar_owned_state)
 	if not bool(owned_inventory.get("isReady", false)):
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] owned-inventory=passed")
 	var field_only_owned_selection := {
 		"shipId": String(ship.ship_id),
 		"shipVersion": ship.definition_version,
@@ -685,6 +697,7 @@ static func run() -> bool:
 	) != null:
 		return false # Production Owned assembly must not bypass the canonical Board Assignment map.
 
+	print("[SpaceHangarCatalogOwnershipProbe] field-only-assembly-rejected=passed")
 	var owned_preparation := SpaceHangarPreparation.new()
 	owned_preparation.catalog_bundle_resource = owned_hangar_bundle
 	owned_preparation.require_owned_instances = true
