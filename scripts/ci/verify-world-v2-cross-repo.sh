@@ -10,7 +10,11 @@ if [[ -z "$EXPECTED_CORE_SHA" ]]; then
   echo "CORE_EXPECTED_SHA must be set to the exact Jar Core PR commit used for integration." >&2
   exit 2
 fi
-if [[ ! -d "$CORE_ROOT/.git" ]]; then
+if ! command -v git >/dev/null 2>&1; then
+  echo "git is required to verify the exact Core revision." >&2
+  exit 2
+fi
+if ! git -C "$CORE_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "Jar Core checkout not found: $CORE_ROOT" >&2
   exit 2
 fi
