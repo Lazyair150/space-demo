@@ -1,24 +1,23 @@
 SPACE DEMO / JAR CORE CROSS-REPOSITORY INTEGRATION CHECKPOINT
-Date: 2026-11-24
+Date: 2026-11-25
 Space PR: #2
 Branch: world-v2/phase-4.10b-hangar-ui
 
 CURRENT AUTHORITATIVE STATUS — 2026-11-25
 
-- Space PR #2 latest observed pre-checkpoint head: `62a1236ab15a375d58440caf239a25e3c73962b8`; Draft/Open/unmerged. It includes the HUD probe's `Array[String]` type annotation fix plus documentation-status cleanup and the correction that Main Menu now routes through Hangar into the frozen-loadout launcher. No production runtime source changed after the last successful integration run. This document update is the final status-only commit for this cleanup pass; its resulting commit SHA is recorded in the Core work ledger.
-- Intermediate Space head `2fa994783e5f275d468459b26e30cb8b985b036c` only tightened the HUD probe's local type from `Array` to `Array[String]`; its workflow run `45440257098` was cancelled.
-- No workflow run is currently associated with the post-cleanup documentation head; the successful `74a93ed` integration result remains the latest runtime validation, not a claim about the new documentation head. A rerun of the cancelled workflow at intermediate code head `2fa9947` was requested to cover its `Array[String]` probe type fix; it does not validate the later documentation-only head.
-- The last fully successful cross-repository head remains `74a93ed281d94823608b0c6803edd78dd9f068cc`; run `45438436612` completed SUCCESS against exact Core SHA `b342259fe04363386085dc9a4ca995112954ed43`.
-- Workflow run `45440257098` for the later `2fa9947` head was cancelled. Do not attribute the earlier success to that newer head; the next final verification must run against the post-cleanup PR head.
-- Space PR #2 successful integration head: 74a93ed281d94823608b0c6803edd78dd9f068cc; Draft/Open/unmerged.
-- Core PR #60 exact source head used by this integration: b342259fe04363386085dc9a4ca995112954ed43; Draft/Open/unmerged.
-- Cross-repository workflow run 45438436612 completed SUCCESS on Space head 74a93ed. The log confirms the Core checkout was exactly b342259fe04363386085dc9a4ca995112954ed43 and ended with CROSS-REPO-WORLD-V2-OK core=b342259fe04363386085dc9a4ca995112954ed43.
-- The workflow pin and CORE_EXPECTED_SHA were updated from the stale 0a6bca3... revision to the current Core PR head before this successful run.
-- Fixed a real host snapshot omission: WorldV2RuntimeNode now exposes shipLiquidInventory (capacity, used/available capacity, balances) separately from resourceLiquids (the central warehouse). WorldV2SnapshotIsolationProbe mutates both nested account dictionaries and verifies later snapshots remain unchanged; it passes.
-- Verified in run 45438436612: Core Bridge build, Space C# build, Godot 4.7.1 project import/parse, Hangar Board Definition/Assignment and ownership probes, parser catalog/runtime/ingress idempotent retry after restore, Roguelike owned-instance/progression probes, World V2 runtime, lifecycle, fault, disposed-command, faulted-command and snapshot-isolation probes.
-- Expected negative-path probes intentionally emit ERROR messages while asserting fail-closed behavior; the workflow's final result and completion markers are successful. Do not interpret those expected messages as an integration failure.
-- The earlier 45434363095 failure was specifically the stale snapshot probe expectation; it is superseded by the passing snapshot-isolation result above.
-- Keep both PRs Draft/Open and unmerged. Next: update the Core handoff ledger, audit/clean documentation and dead files by reference, then run the final exact-head verification after cleanup.
+- Current Space PR #2 branch head before this checkpoint refresh: da41d90129a855dbb9be3c09edfc5c3a40ae155b; Draft/Open/unmerged. This commit contains the new root README, industrial documentation index, and updated semantic entry.
+- Current code-bearing Space commit: 4e556dd93fa92a242e237cd338e7baf0734c14db. Relative to the last successful runtime integration head 74a93ed, the code delta includes the persistent read-only Jar HUD observer, its pure aggregation/feedback probe (18 assertions), and the typed-array correction in the verification harness. This is real production presentation code and must not be described as documentation-only.
+- The latest observed workflow for the code-bearing Space commit was run 45453637781, conclusion CANCELLED. Therefore the new HUD observer and its 18-check probe are authored but do not yet have a successful CI result. A prior successful run must not be used to claim these additions passed.
+- Last successful cross-repository integration: Space 74a93ed281d94823608b0c6803edd78dd9f068cc against exact Core source b342259fe04363386085dc9a4ca995112954ed43; workflow run 45438436612 completed SUCCESS. It verified Core Bridge build, Space C# build, Godot 4.7.1 project import/parse, Hangar board/assignment and ownership probes, parser ingress/idempotent retry, progression probes, runtime lifecycle/fault/disposed/faulted command probes, and detached snapshot isolation.
+- That successful run predates the new HUD observer, so it validates the integration baseline, not the latest HUD implementation or current Space branch head.
+- Core PR #60 latest head 8ea7310f6839af017e92c2666c7ca9adbb4a3550 remains Draft/Open. Its latest workflow run 45453647928 completed SUCCESS. Its changes after Core source head b342259 are documentation-only.
+- Core fixed-seed conservation matrix remains 6,720 deterministic samples; Core verification at b342259 is recorded as 841 tests, 0 errors, 0 failures. No further fixed-seed expansion is planned in this phase.
+- Main Menu Start routes to SpaceHangar.tscn. The Hangar uses demo Board/Catalog resources, builds a frozen owned-instance loadout, and invokes SpaceHangarBattleLauncher before attaching scenes/game. The battle scene is scenes/game/Game.tscn. Free combat and finite-stage selection are both represented in the Hangar UI. This establishes a source-level playable path; actual local desktop play still depends on the user's installed Godot 4.7.1 .NET + .NET 10 toolchain and has not been manually observed in this environment.
+- Added root README.md with exact two-repository clone layout, pinned Core source SHA, .NET/Godot requirements, build/import/run commands, controls, and the prototype scope. Added docs/industrial/README.md as the World V2 integration document index. Updated the semantic entry to describe the implemented integration rather than calling it a pre-implementation proposal.
+- Conservative cleanup found the old IndustrialRuntime/JarCoreBridge/IndustrialMain paths, legacy 01–06 client docs, temporary tests/industrial/_dbg.gd helper, and old industrial test harnesses already absent. No further deletion was justified without reference/ownership proof. Historical baselines, schema/replay fixtures, Oracle, protocol/security gates, and active probes remain preserved.
+- Manual workshop replacement remains deliberately isolated and is not part of the playable path. No workshop replacement semantics were changed.
+- Current PRs remain Draft/Open/unmerged: Space PR #2 and Core PR #60. Do not merge them as part of this phase.
+- Remaining to close this phase: run the cross-repository workflow against the final Space branch head after the README/index/status commits; resolve any failures in the HUD probe or build/import path. Then perform a local GUI launch/first-play check with the README commands. This environment has no local Godot/.NET runtime, so no manual-play claim is made here.
 
 The remaining sections below are chronological historical checkpoints. Their “not yet run”, old Core SHA and old failure statements describe those dates only; the authoritative current result is this section.
 
