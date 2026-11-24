@@ -61,6 +61,15 @@ func _run() -> void:
 		{"isTerminal": false, "completedMasterSteps": 2, "completedSlaveSteps": 1},
 		{"isTerminal": true, "completedMasterSteps": 90, "completedSlaveSteps": 90}
 	]) == 3, "terminal sessions do not contribute active progress")
+
+	var game_scene: PackedScene = load("res://scenes/game/Game.tscn")
+	_check(game_scene != null, "combat scene resource loads for HUD integration")
+	if game_scene != null:
+		var game_root := game_scene.instantiate()
+		var jar_observer := game_root.get_node_or_null("JarObserver")
+		_check(jar_observer != null and jar_observer.get_script() == observer_script, "combat scene mounts the live Jar observer")
+		_check(jar_observer != null and jar_observer.mouse_filter == Control.MOUSE_FILTER_IGNORE, "full-screen Jar observer does not block combat input")
+		game_root.free()
 	observer.free()
 	print("=== %d checks, %d failures ===" % [_checks, _fails])
 	quit(0 if _fails == 0 else 1)
