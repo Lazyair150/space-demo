@@ -896,6 +896,21 @@ func _on_refresh_confirmed() -> void:
 		_controller.set_expected_battle_duration(_duration_picker.value)
 
 func _on_build_pressed() -> void:
+	# The picker is the visible source of the player's current ship choice.
+	# Reconcile it at the final assembly boundary as well as handling item_selected,
+	# so a missed/stale UI signal cannot leave the domain draft without a ship.
+	var ship_choice := _selected_choice(_ship_picker)
+	if ship_choice.is_empty():
+		_status_label.text = "尚未选择飞船：请在「飞船定义」中选择一艘已拥有的飞船。"
+		_update_build_enabled(_controller.get_view_model())
+		return
+	if not _controller.set_ship(
+		String(ship_choice.get("id", "")),
+		int(ship_choice.get("version", 0)),
+		String(ship_choice.get("instanceId", ""))
+	):
+		_status_label.text = "飞船选择未能写入装配草稿：当前目录中的飞船实例已失效，请重新读取目录后再选。"
+		return
 	var snapshot := _controller.build_loadout_snapshot()
 	if snapshot == null:
 		_status_label.text = String(_controller.get_view_model().get("lastError", "装配快照构建失败"))
