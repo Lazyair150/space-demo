@@ -217,7 +217,7 @@ func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity:
         return false
     return true
 
-static func _is_exact_integer(value: Variant) -> bool:
+func _is_exact_integer(value: Variant) -> bool:
 	if typeof(value) == TYPE_INT:
 		return true
 	if typeof(value) != TYPE_FLOAT:
@@ -225,7 +225,7 @@ static func _is_exact_integer(value: Variant) -> bool:
 	var numeric := float(value)
 	# JSON round-trips integral GDScript numbers as floats. Accept only the exact
 	# IEEE-754 integer range so counters/versions cannot silently lose precision.
-	return is_finite(numeric) and absf(numeric) <= 9007199254740991.0 and floor(numeric) == numeric
+	return is_finite(numeric) and absf(numeric) <= 9007199254740991.0 and roundf(numeric) == numeric
 
 func _valid_loadout_identity(identity: Variant) -> bool:
     if not (identity is Dictionary):
