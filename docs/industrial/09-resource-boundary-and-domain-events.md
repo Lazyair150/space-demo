@@ -1,6 +1,6 @@
 # World V2 × Space — resource, order-effect, and event contract
 
-Status (2026-11-25): the resource, order-event, parser-ingress, and host boundaries are implemented and covered by the successful cross-repository run `45438436612` at Space `74a93ed` against Core `b342259`. Space still owns effect meaning and policy; production content calibration, full battle save/load orchestration, and non-Buff effect executors remain separate work. Older progress paragraphs are chronological checkpoints; the latest PR head `2fa9947` has not yet received a successful exact-head run.
+Status (2026-11-25): the resource, order-event, parser-ingress, and host boundaries are implemented and covered by the successful cross-repository run `45438436612` at Space `74a93ed` against Core `b342259`. Space still owns effect meaning and policy; production content calibration, full battle save/load orchestration, and non-Buff effect executors remain separate work. Older progress paragraphs are chronological checkpoints; the latest PR head `d9e1d4b681163697f6623b17ccd077edc0abfb51` consists of documentation-status cleanup after the HUD probe annotation change; it has not yet received a successful exact-head run.
 
 ## 1. Settled gameplay model
 
