@@ -345,12 +345,13 @@ static func run() -> bool:
 	if not draft.set_skill("probe.order", "probe.skill", 3, "Active"):
 		return false
 	print("[SpaceHangarCatalogOwnershipProbe] draft-skill-control-area=passed")
-	if not draft.set_workshop("probe.workshop", 5) or not draft.set_expected_battle_duration(60000.0):
+	if draft.set_workshop("probe.workshop", 5):
+		return false # Workshop roles require a Board Definition and two installed positions.
+	if not draft.set_expected_battle_duration(60000.0):
 		return false
-	print("[SpaceHangarCatalogOwnershipProbe] draft-workshop-duration=passed")
-	var drafted_selection := draft.build_selection()
-	if drafted_selection == null or not drafted_selection.validate().is_empty():
-		return false
+	if draft.build_selection() != null:
+		return false # A definition-only draft must not bypass the authoritative Board Assignment contract.
+	print("[SpaceHangarCatalogOwnershipProbe] no-board-draft-fails-closed=passed")
 	var unavailable_draft := SpaceHangarSelectionDraft.new()
 	if unavailable_draft.configure({"isReady": false}) or unavailable_draft.set_ship("probe.ship", 2):
 		return false
