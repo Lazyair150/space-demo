@@ -85,7 +85,7 @@ static func run() -> bool:
 	var progression := SpaceDemoProgressionBootstrap.create_starting_inventory(DEMO_CATALOG)
 	if progression == null:
 		return false
-	var inventory := SpaceHangarOwnedInventoryBuilder.build(DEMO_CATALOG, runtime_catalog, progression)
+	var inventory := SpaceHangarOwnedInventoryBuilder.build(DEMO_CATALOG, progression)
 	if not bool(inventory.get("isReady", false)):
 		return false
 	if inventory.parserChoices.size() != 2 or inventory.workshopInstanceChoices.size() != 2 or inventory.skillChoices.size() != 2 or inventory.workshopWorldChoices.size() != 2:
