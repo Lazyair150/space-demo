@@ -193,14 +193,23 @@ static func _parser_profile_matches(profile: Dictionary, assignment: Dictionary,
 	):
 		return false
 	var contributions: Variant = rule_profile.get("contributions", null)
-	if not (contributions is Array) or contributions.is_empty():
+	var base_rates: Variant = rule_profile.get("baseShapeProcessingRatePerSecond", null)
+	var base_thresholds: Variant = rule_profile.get("baseProgressPerJarByShape", null)
+	var effective_rates: Variant = profile.get("shapeProcessingRatePerSecond", null)
+	var effective_thresholds: Variant = profile.get("progressPerJarByShape", null)
+	if not (contributions is Array) or contributions.is_empty() or not (base_rates is Dictionary) or not (base_thresholds is Dictionary) or not (effective_rates is Dictionary) or not (effective_thresholds is Dictionary):
 		return false
+	if base_rates.size() != effective_rates.size() or base_thresholds.size() != effective_thresholds.size():
+		return false
+	var expected_rates: Dictionary = base_rates.duplicate(true)
+	var expected_thresholds: Dictionary = base_thresholds.duplicate(true)
 	var seen_rules := {}
 	for contribution in contributions:
 		if not (contribution is Dictionary):
 			return false
 		var source: Variant = contribution.get("source", null)
-		if not (source is Dictionary):
+		var parameters: Variant = contribution.get("parameters", null)
+		if not (source is Dictionary) or not (parameters is Dictionary) or parameters.size() != 2:
 			return false
 		if (
 			String(contribution.get("scope", "")) != "parser"
@@ -215,6 +224,26 @@ static func _parser_profile_matches(profile: Dictionary, assignment: Dictionary,
 		if rule_key == "@" or seen_rules.has(rule_key):
 			return false
 		seen_rules[rule_key] = true
+		var effect := String(contribution.get("effect", ""))
+		var target := String(contribution.get("target", ""))
+		var target_map: Dictionary = expected_rates if effect == "ModifyIntensity" and target == "shape_processing_rate" else (expected_thresholds if effect == "RetimeProcess" and target == "progress_per_jar" else {})
+		if target_map.is_empty() or not parameters.has("shape") or not parameters.has("multiplier"):
+			return false
+		var shape := String(parameters.get("shape", ""))
+		var multiplier_text := String(parameters.get("multiplier", ""))
+		if not target_map.has(shape) or not multiplier_text.is_valid_float():
+			return false
+		var multiplier := multiplier_text.to_float()
+		if not is_finite(multiplier) or multiplier <= 0.0 or multiplier > 1000000000.0:
+			return false
+		var adjusted := float(target_map[shape]) * multiplier
+		if not is_finite(adjusted) or adjusted < 0.0 or adjusted > 1000000000.0:
+			return false
+		if effect == "RetimeProcess" and (adjusted <= 0.0 or round(adjusted * 1000000.0) < 1.0):
+			return false
+		target_map[shape] = adjusted
+	if JSON.stringify(_canonicalize(expected_rates)) != JSON.stringify(_canonicalize(effective_rates)) or JSON.stringify(_canonicalize(expected_thresholds)) != JSON.stringify(_canonicalize(effective_thresholds)):
+		return false
 	var supplied_fingerprint := String(rule_profile.get("fingerprint", ""))
 	var fingerprint_payload := rule_profile.duplicate(true)
 	fingerprint_payload.erase("fingerprint")
