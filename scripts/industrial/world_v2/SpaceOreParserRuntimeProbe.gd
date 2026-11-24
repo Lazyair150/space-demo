@@ -15,6 +15,79 @@ static func run() -> Dictionary:
 		"圆罐": 2.0,
 		"方罐": 3.0
 	}
+
+	# Parser-local Rule Contributions are composed after owned growth and must
+	# change the actual finite-input production runtime, not the Core workshop rules.
+	var rule_definition := SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
+	var rate_rule := SpaceRuleContributionDefinition.new()
+	rate_rule.rule_id = &"probe.parser.rate.boost"
+	rate_rule.rule_version = 1
+	rate_rule.effect = "ModifyIntensity"
+	rate_rule.target = "shape_processing_rate"
+	rate_rule.scope = "parser"
+	rate_rule.parameters = {"shape": "圆罐", "multiplier": 1.5}
+	var retime_rule := SpaceRuleContributionDefinition.new()
+	retime_rule.rule_id = &"probe.parser.jar.retime"
+	retime_rule.rule_version = 1
+	retime_rule.effect = "RetimeProcess"
+	retime_rule.target = "progress_per_jar"
+	retime_rule.scope = "parser"
+	retime_rule.parameters = {"shape": "圆罐", "multiplier": 0.5}
+	rule_definition.rule_contributions = [rate_rule, retime_rule]
+	var parser_owned := SpaceOwnedProgressionInstance.new()
+	parser_owned.instance_id = &"parser-rule-owned"
+	parser_owned.item_kind = "ore_parser"
+	parser_owned.definition_id = rule_definition.parser_id
+	parser_owned.definition_version = rule_definition.definition_version
+	parser_owned.growth_attributes = {
+		"shapeProcessingRateMultiplier": 2.0,
+		"progressPerJarMultiplier": 0.5
+	}
+	var composed_parser := SpaceProgressionRuntimeProfileComposer.compose_parser(
+		rule_definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary"
+	)
+	if composed_parser.is_empty():
+		return _failure("valid Parser-local contributions failed composition")
+	if not is_equal_approx(float(composed_parser.shapeProcessingRatePerSecond["圆罐"]), 12.0):
+		return _failure("Parser rate contribution did not compose after Owned Instance growth")
+	if not is_equal_approx(float(composed_parser.progressPerJarByShape["圆罐"]), 0.5):
+		return _failure("Parser retiming contribution did not compose after Owned Instance growth")
+	var parser_rule_profile: Dictionary = composed_parser.get("parserRuleProfile", {})
+	if parser_rule_profile.is_empty() or String(parser_rule_profile.get("fingerprint", "")).is_empty() or parser_rule_profile.get("contributions", []).size() != 2:
+		return _failure("Parser-local contribution provenance was not frozen")
+
+	var executable_parser_definition := SpaceOreParserDefinition.from_runtime_profile(composed_parser)
+	var executable_parser := SpaceOreParserRuntime.new()
+	var executable_init := executable_parser.initialize(executable_parser_definition, "parser-rule-execution", ["圆罐", "方罐"])
+	if not bool(executable_init.get("success", false)):
+		return _failure("composed Parser rule profile could not initialize its runtime")
+	if not bool(executable_parser.ingest_stone("parser-rule-stone", "圆罐", 4.0).get("success", false)):
+		return _failure("composed Parser runtime rejected its finite stone input")
+	var executable_step := executable_parser.advance(1000)
+	if not bool(executable_step.get("success", false)) or executable_step.newBatches.size() != 1 or int(executable_step.newBatches[0].jarCounts.get("圆罐", 0)) != 8:
+		return _failure("Parser-local rate/retiming contributions did not affect actual Jar output")
+
+	var wrong_scope_definition := SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
+	var wrong_scope_rule := SpaceRuleContributionDefinition.new()
+	wrong_scope_rule.rule_id = &"probe.parser.wrong.scope"
+	wrong_scope_rule.effect = "ModifyIntensity"
+	wrong_scope_rule.target = "shape_processing_rate"
+	wrong_scope_rule.scope = "workshop"
+	wrong_scope_rule.parameters = {"shape": "圆罐", "multiplier": 2.0}
+	wrong_scope_definition.rule_contributions = [wrong_scope_rule]
+	if not SpaceProgressionRuntimeProfileComposer.compose_parser(wrong_scope_definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary").is_empty():
+		return _failure("Parser executor accepted a non-parser contribution scope")
+	var unsupported_parser_definition := SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
+	var unsupported_parser_rule := SpaceRuleContributionDefinition.new()
+	unsupported_parser_rule.rule_id = &"probe.parser.unsupported.effect"
+	unsupported_parser_rule.effect = "SuppressOperation"
+	unsupported_parser_rule.target = "shape_processing_rate"
+	unsupported_parser_rule.scope = "parser"
+	unsupported_parser_rule.parameters = {"shape": "圆罐", "multiplier": 2.0}
+	unsupported_parser_definition.rule_contributions = [unsupported_parser_rule]
+	if not SpaceProgressionRuntimeProfileComposer.compose_parser(unsupported_parser_definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary").is_empty():
+		return _failure("Parser executor accepted an unsupported effect/target combination")
+
 	# Two owned copies of one exact parser Definition must never share runtime state identity.
 	var owned_profile_a := definition.build_runtime_profile()
 	owned_profile_a["ownedInstance"] = {
