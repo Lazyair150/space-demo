@@ -92,7 +92,7 @@ static func run() -> Dictionary:
 	)
 	if bool(missing_thresholds.get("valid", false)):
 		return _failure("build context accepted a threshold map that omitted the frozen parser's thresholds")
-	var mismatched_thresholds := parser_profile.progressPerJarByShape.duplicate(true)
+	var mismatched_thresholds: Dictionary = parser_profile.progressPerJarByShape.duplicate(true)
 	mismatched_thresholds["圆罐"] = 3.0
 	var mismatched := SpaceSkillBuildContextEvaluator.evaluate(
 		order, devices, workshop, ship_resources, mismatched_thresholds, 10000.0, profile
