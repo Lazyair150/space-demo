@@ -22,8 +22,8 @@ static func compose(
 		return {}
 	if rates.size() != shape_names.size() or thresholds.size() != shape_names.size():
 		return {}
-	var base_rates := rates.duplicate(true)
-	var base_thresholds := thresholds.duplicate(true)
+	var base_rates: Dictionary = rates.duplicate(true)
+	var base_thresholds: Dictionary = thresholds.duplicate(true)
 	for shape_value in shape_names:
 		var shape := String(shape_value)
 		if not rates.has(shape) or not thresholds.has(shape):
