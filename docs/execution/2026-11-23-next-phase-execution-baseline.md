@@ -483,3 +483,5 @@
 
 - Follow-up hardening: the frozen Parser rule profile now retains its post-growth/pre-rule baseline rate and threshold maps. Board consumer validation replays the ordered Parser multipliers and compares the result to the effective profile, preventing independent rate tampering even when the route metadata is present.
 - Added Probe cases for valid Parser consumer routing, foreign-slot rule provenance, and effective-rate tampering against the replay baseline.
+
+- Updated the Board Rule Contribution probe to assert that valid Parser-scoped rules are omitted from the Core-facing workshop profile rather than causing a false blanket rejection; Parser's own executor remains responsible for validating the supported effect/target contract. Added explicit unsupported-target rejection coverage.
