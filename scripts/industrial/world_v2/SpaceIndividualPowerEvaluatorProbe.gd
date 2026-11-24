@@ -3,9 +3,25 @@ class_name SpaceIndividualPowerEvaluatorProbe
 ## Synthetic adapter tests. They verify metric provenance, not production balance values.
 
 static func run() -> bool:
-	if not _probe_parser() or not _probe_parser_encounter_supply() or not _probe_workshop() or not _probe_skill() or not _probe_target_value_and_production_gate():
+	var parser_passed := _probe_parser()
+	print("[SpaceIndividualPowerEvaluatorProbe] parser=", parser_passed)
+	if not parser_passed:
 		return false
-	return true
+	var parser_supply_passed := _probe_parser_encounter_supply()
+	print("[SpaceIndividualPowerEvaluatorProbe] parser-encounter-supply=", parser_supply_passed)
+	if not parser_supply_passed:
+		return false
+	var workshop_passed := _probe_workshop()
+	print("[SpaceIndividualPowerEvaluatorProbe] workshop=", workshop_passed)
+	if not workshop_passed:
+		return false
+	var skill_passed := _probe_skill()
+	print("[SpaceIndividualPowerEvaluatorProbe] skill=", skill_passed)
+	if not skill_passed:
+		return false
+	var target_gate_passed := _probe_target_value_and_production_gate()
+	print("[SpaceIndividualPowerEvaluatorProbe] target-value-production-gate=", target_gate_passed)
+	return target_gate_passed
 
 static func _probe_parser() -> bool:
 	var parser := SpaceOreParserDefinition.new()
