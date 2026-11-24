@@ -88,11 +88,13 @@ static func run() -> bool:
 	var progression := SpaceDemoProgressionBootstrap.create_starting_inventory(DEMO_CATALOG)
 	if progression == null:
 		return false
+	print("[SpaceHangarBoardDefinitionProbe] progression-bootstrap=passed")
 	var inventory := SpaceHangarOwnedInventoryBuilder.build(DEMO_CATALOG, progression)
 	if not bool(inventory.get("isReady", false)):
 		return false
 	if inventory.parserChoices.size() != 2 or inventory.workshopInstanceChoices.size() != 2 or inventory.skillChoices.size() != 2 or inventory.workshopWorldChoices.size() != 2:
 		return false
+	print("[SpaceHangarBoardDefinitionProbe] owned-inventory=passed")
 	# Exercise the same generic Owned Instance -> Board Slot assignment path used by Hangar UI.
 	var generic_draft := SpaceHangarSelectionDraft.new()
 	if not generic_draft.configure(inventory, DEMO_BOARD):
@@ -101,6 +103,7 @@ static func run() -> bool:
 		return false
 	if not generic_draft.set_workshop("demo.world.starter", 1):
 		return false
+	print("[SpaceHangarBoardDefinitionProbe] draft-and-world-selection=passed")
 	var generic_assignments := {
 		"workshop.master": "demo.workshop.alpha.01",
 		"workshop.slave": "demo.workshop.beta.01",
@@ -113,12 +116,15 @@ static func run() -> bool:
 			return false
 	if not generic_draft.validate_assignments().is_empty():
 		return false
+	print("[SpaceHangarBoardDefinitionProbe] board-assignments=passed")
 	var generic_selection := generic_draft.build_selection()
 	if generic_selection == null:
 		return false
+	print("[SpaceHangarBoardDefinitionProbe] selection-snapshot=passed")
 	var generic_assignment_snapshot := generic_draft.build_assignment_snapshot()
 	if generic_assignment_snapshot.is_empty() or generic_assignment_snapshot.get("assignments", []).size() != 5:
 		return false
+	print("[SpaceHangarBoardDefinitionProbe] assignment-snapshot=passed")
 	var identity := {
 		"shipWorldId": "demo.ship_world",
 		"loadoutId": "demo.starter.loadout",
@@ -138,11 +144,14 @@ static func run() -> bool:
 		],
 		"expectedBattleDurationLogicalMilli": 60000.0
 	}
+	print("[SpaceHangarBoardDefinitionProbe] selection-fixture=passed")
 	selection["boardAssignments"] = SpaceHangarBoardAssignment.build_from_selection(DEMO_BOARD, selection, inventory)
 	if selection.boardAssignments.is_empty():
 		return false
+	print("[SpaceHangarBoardDefinitionProbe] board-assignment-build=passed")
 	var assembled := SpaceHangarOwnedLoadoutAssembler.assemble(identity, selection, runtime_catalog, progression)
 	if assembled == null:
+		print("[SpaceHangarBoardDefinitionProbe] owned-assembler-error=", SpaceHangarOwnedLoadoutAssembler.get_last_error() if SpaceHangarOwnedLoadoutAssembler.has_method("get_last_error") else "no diagnostic API")
 		return false
 
 	print("[SpaceHangarBoardDefinitionProbe] owned-assembly=passed")
