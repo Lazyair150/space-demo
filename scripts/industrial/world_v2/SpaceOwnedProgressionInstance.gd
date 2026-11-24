@@ -75,7 +75,7 @@ func _is_finite_tree(value: Variant) -> bool:
 		TYPE_FLOAT:
 			return is_finite(float(value))
 		TYPE_NIL:
-				return false
+			return false
 		TYPE_ARRAY:
 			for item in value:
 				if not _is_finite_tree(item):
@@ -87,4 +87,4 @@ func _is_finite_tree(value: Variant) -> bool:
 					return false
 			return true
 		_:
-		return false
+			return false
