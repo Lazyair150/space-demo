@@ -1,6 +1,6 @@
 # World V2 × Space — pre-battle skill loadout and order-effect binding
 
-Status: skill-domain architecture plus initial loadout, event dispatch, versioned effect catalog, Buff snapshot, and single-snapshot persistence foundations. Hangar integration and production battle save/load remain incomplete.
+Status (2026-11-25): Hangar board/assignment and owned-instance selection, frozen loadout validation, Core template ingress, parser ingress, runtime lifecycle, and effect/checkpoint integration probes are present and passed in cross-repository run `45438436612` at Space `74a93ed` against Core `b342259`. Full production battle save/load orchestration, production catalog/balance authoring, and typed non-Buff effect executors remain incomplete. The detailed progress sections below include older chronological notes; consult `docs/execution/2026-11-24-cross-repo-integration.txt` for the authoritative integration head and validation boundary. Latest PR head `2fa9947` is awaiting a successful exact-head run.
 
 ## 1. Skills are the player-facing capability model
 
