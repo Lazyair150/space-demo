@@ -8,9 +8,14 @@
     <RootNamespace>SpaceDemo</RootNamespace>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <!-- Override for CI/workspaces that do not use the default sibling checkout layout. -->
+    <JarSystemWorldV2BridgeProject Condition="'$(JarSystemWorldV2BridgeProject)' == ''">$(MSBuildThisFileDirectory)..\jar-system-dotnet\hosts\godot\WorldV2Bridge\JarSystem.WorldV2Bridge.csproj</JarSystemWorldV2BridgeProject>
+  </PropertyGroup>
+
   <ItemGroup>
-    <!-- World v2 Bridge is checked out as a sibling repository during this integration phase. -->
-    <ProjectReference Include="..\jar-system-dotnet\hosts\godot\WorldV2Bridge\JarSystem.WorldV2Bridge.csproj" />
+    <!-- Build against the exact Core PR branch during cross-repository integration. -->
+    <ProjectReference Include="$(JarSystemWorldV2BridgeProject)" />
   </ItemGroup>
 
 </Project>
