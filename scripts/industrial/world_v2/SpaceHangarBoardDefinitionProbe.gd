@@ -26,6 +26,7 @@ static func run() -> bool:
 		return false
 	if not DEMO_BOARD.get_runtime_projection_errors().is_empty():
 		return false
+	print("[SpaceHangarBoardDefinitionProbe] catalog-and-board-contracts=passed")
 	var frozen_board := DEMO_BOARD.build_frozen_snapshot()
 	if String(frozen_board.get("boardId", "")) != "demo.circuit_board" or frozen_board.get("slots", []).size() != 5:
 		return false
@@ -68,6 +69,7 @@ static func run() -> bool:
 	if expanded_config.get("skillOrderBindings", []).size() != 3 or expanded_config.get("deviceSlotIds", []).size() != 1:
 		return false
 
+	print("[SpaceHangarBoardDefinitionProbe] board-projection=passed")
 	# Unsupported multiplicity is rejected explicitly, never silently overwritten.
 	var multi_parser := expanded.duplicate(true) as SpaceHangarBoardDefinition
 	var extra_parser := SpaceHangarBoardSlotDefinition.new()
@@ -81,6 +83,7 @@ static func run() -> bool:
 	if multi_parser.get_runtime_projection_errors().is_empty() or not multi_parser.build_hangar_configuration().is_empty():
 		return false
 
+	print("[SpaceHangarBoardDefinitionProbe] multiplicity-contract=passed")
 	# End-to-end prototype inventory -> owned-instance assembly -> frozen board snapshot.
 	var progression := SpaceDemoProgressionBootstrap.create_starting_inventory(DEMO_CATALOG)
 	if progression == null:
@@ -142,6 +145,7 @@ static func run() -> bool:
 	if assembled == null:
 		return false
 
+	print("[SpaceHangarBoardDefinitionProbe] owned-assembly=passed")
 	# The assignment fingerprint must bind the complete frozen map, not merely be non-empty.
 	var tampered_fingerprint_selection := selection.duplicate(true)
 	tampered_fingerprint_selection.boardAssignments.assignments[0].sourceRevision += 1
@@ -177,6 +181,7 @@ static func run() -> bool:
 	wrong_slot_selection.boardAssignments = SpaceHangarBoardAssignment.build_snapshot(DEMO_BOARD, wrong_slot_assignments)
 	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, wrong_slot_selection, runtime_catalog, progression) != null:
 		return false
+	print("[SpaceHangarBoardDefinitionProbe] assignment-tamper-rejection=passed")
 	# A Parser contribution must not leak into the Core workshop Rule Profile.
 	var parser_definition := runtime_catalog.ore_parser_catalog.resolve_definition("demo.parser.precision", 1)
 	if parser_definition == null:
@@ -205,6 +210,7 @@ static func run() -> bool:
 		if String(source.get("slotId", "")) == parser_slot_id or String(contribution.get("scope", "")) != "workshop":
 			return false
 
+	print("[SpaceHangarBoardDefinitionProbe] parser-core-rule-isolation=passed")
 	# The owned assembler must route a supported Parser rule to Space's Parser profile
 	# while keeping the Core-facing workshop profile free of that Parser contribution.
 	var parser_shapes: Variant = assembled.to_dictionary().get("jarWorldOptions", {}).get("shapes", [])
@@ -237,6 +243,7 @@ static func run() -> bool:
 		if String(source.get("slotId", "")) == parser_slot_id:
 			return false
 
+	print("[SpaceHangarBoardDefinitionProbe] parser-rule-routing=passed")
 	var frozen_data := assembled.to_dictionary()
 	var frozen := SpaceBattleLoadoutSnapshot.create(frozen_data)
 	if frozen == null or frozen.order_definition_keys().size() != 2:
@@ -253,6 +260,7 @@ static func run() -> bool:
 	if int(routed_consumers.get("jar_core.workshop", 0)) != 2 or int(routed_consumers.get("space.parser", 0)) != 1 or int(routed_consumers.get("space.skill", 0)) != 2:
 		return false
 
+	print("[SpaceHangarBoardDefinitionProbe] frozen-profile-projection=passed")
 	# A route must bind to the exact installed Owned Instance and Definition revision,
 	# not merely to a profile that happens to occupy the same slot.
 	var wrong_parser_identity := frozen_data.duplicate(true)
@@ -317,6 +325,7 @@ static func run() -> bool:
 	).is_empty():
 		return false
 
+	print("[SpaceHangarBoardDefinitionProbe] route-tamper-rejection=passed")
 	var tampered_profile_set := frozen_data.duplicate(true)
 	tampered_profile_set.boardRuntimeProfileSet.entries[0].profileFingerprint = "invalid"
 	if SpaceBattleLoadoutSnapshot.create(tampered_profile_set) != null:
@@ -324,6 +333,7 @@ static func run() -> bool:
 	if not _probe_assignments() or not _probe_rule_contributions():
 		return false
 
+	print("[SpaceHangarBoardDefinitionProbe] assignment-and-rule-contribution=passed")
 	var invalid := DEMO_BOARD.duplicate(true) as SpaceHangarBoardDefinition
 	invalid.slots.append(invalid.slots[0].duplicate(true) as SpaceHangarBoardSlotDefinition)
 	return not invalid.get_validation_errors().is_empty()
