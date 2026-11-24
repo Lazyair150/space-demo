@@ -4,10 +4,10 @@ Status: first implementation slice on the Hangar/UI development branch. This is 
 
 ## Player-facing information hierarchy
 
-The combat HUD keeps survival information (health, wave, score) in its existing fixed positions. Directly below the upper-left status row, a persistent **JAR resource strip** acts as the resource-bar counterpart to health/shield/energy HUD meters: it remains visible during combat without requiring a click. It shows exact ship-level Jar count split by shape glyph, exact liquid counts, concise Master/Slave Jar-and-liquid staging totals, the one-way Master → Slave direction, and Host lifecycle state. Ship-level capacity is not exposed by the snapshot, so this strip deliberately shows quantities and shape composition rather than inventing a percentage/fullness meter. Clicking the strip opens a read-only detail panel containing:
+The combat HUD keeps survival information (health, wave, score) in its existing fixed positions. Directly below the upper-left status row, a persistent **JAR resource strip** acts as the resource-bar counterpart to health/shield/energy HUD meters: it remains visible during combat without requiring a click. It shows exact ship-level Jar count split by shape glyph, exact ship-liquid counts and used/capacity, concise Master/Slave Jar-and-liquid staging totals, the one-way Master → Slave direction, and Host lifecycle state. Ship-level capacity is not exposed by the snapshot, so this strip deliberately shows quantities and shape composition rather than inventing a percentage/fullness meter. Clicking the strip opens a read-only detail panel containing:
 
 - ship resource Jars rendered as individual compact tiles, each showing its shape glyph/color, exact Jar identity when exposed, liquid fill strip, empty/filled state, and marked indicator; inventories over the visible tile budget show an explicit remaining count;
-- ship resource liquids by exact liquid key;
+- ship resource liquids by exact liquid key and exact used/capacity; the central LiquidWarehouse snapshot is a separate account and is not presented as ship-owned stock;
 - separate Master and Slave workshop cards with shape-affinity borders, Jar occupancy/capacity, shape marks, individual Jar tiles, liquid staging meters and explicit staging-Ban warnings; the Master → Slave transfer direction is shown between the cards;
 - selected demand identity, required Jar shapes/liquid-bearing requirements, cooldown state, and active session step counts.
 
@@ -42,7 +42,7 @@ This blend is not a new workshop stat and must never be consumed by compatibilit
 ## Resource meters and truthful quantities
 
 - Workshop liquid staging is shown as a meter only against that workshop's own `maxLiquids`; each liquid is measured independently.
-- Ship-level liquid inventory is shown as exact counts. No capacity bar is shown unless the snapshot exposes the authoritative capacity.
+- Ship-level liquid inventory is read from snapshot.shipLiquidInventory.balances and shows exact counts plus used/capacity; snapshot.resourceLiquids remains the separate central LiquidWarehouse account. No percentage bar is inferred.
 - Ship resource Jars and workshop Jars are separate groups; never combine their counts.
 - A Jar with liquid remains a Jar resource, and its fill state is shown as a secondary detail. This does not move liquid ownership or make Jar contents equivalent to free workshop/ship liquid.
 
@@ -52,7 +52,7 @@ Each order demand displays its exact required shape as a colored glyph token; a 
 
 ## Data ownership and update policy
 
-`SpaceJarHudObserver` reads detached state through `WorldV2ShipHost.GetWorldSnapshot()`. Its only command is an explicit Active-demand trigger forwarded through `WorldV2ShipHost.StartActiveDemand()`; it does not infer feasibility, calculate costs, mutate resources directly, or advance time. Core decides whether a requested demand can start. It polls at a low UI cadence and rebuilds only when the detached snapshot changes. The component uses `PROCESS_MODE_ALWAYS` so the information remains inspectable while the combat SceneTree is paused; the underlying Host lifecycle remains the authority for whether simulation can advance. Between distinct snapshots it compares exact Jar counts/fill counts, ship and workshop liquid totals, lifecycle state, demand cooldown transitions, and active-session step totals. It emits a short, coalesced toast and a brief tint pulse on the compact JAR control. The first snapshot after startup/reconnect establishes a baseline and never fabricates a gain event. Clock-only changes update the time label without rebuilding the inventory controls, avoiding repeated UI churn during steady simulation. Workshop liquid meters use a presentation-only 80% caution tint and a full-capacity label; this is not a Core threshold or an admission rule. These cues are observational only; they do not infer feasibility or trigger commands.
+`SpaceJarHudObserver` reads detached state through `WorldV2ShipHost.GetWorldSnapshot()`. Its only command is an explicit Active-demand trigger forwarded through `WorldV2ShipHost.StartActiveDemand()`; it does not infer feasibility, calculate costs, mutate resources directly, or advance time. Core decides whether a requested demand can start. It polls at a low UI cadence and rebuilds only when the detached snapshot changes. The component uses `PROCESS_MODE_ALWAYS` so the information remains inspectable while the combat SceneTree is paused; the underlying Host lifecycle remains the authority for whether simulation can advance. Between distinct snapshots it compares exact Jar counts/fill counts, ship-inventory and workshop-staging liquid totals, lifecycle state, demand cooldown transitions, and active-session step totals. It never treats central LiquidWarehouse balances as ship-owned stock. It emits a short, coalesced toast and a brief tint pulse on the compact JAR control. The first snapshot after startup/reconnect establishes a baseline and never fabricates a gain event. Clock-only changes update the time label without rebuilding the inventory controls, avoiding repeated UI churn during steady simulation. Workshop liquid meters use a presentation-only 80% caution tint and a full-capacity label; this is not a Core threshold or an admission rule. These cues are observational only; they do not infer feasibility or trigger commands.
 
 Unavailable, disposed, or not-yet-started worlds show an explicit unavailable state rather than fabricated zero inventory. The panel is hidden by default and toggled by the compact summary control.
 
@@ -72,7 +72,7 @@ Implemented on the branch:
 - color-coded shape tokens in the industrial presentation components;
 - optional Space-owned `primary_shape` metadata on skill/order definitions, shown in Hangar selection, frozen outside the Jar order payload and validated against its requirement shapes;
 - workshop tendency accent as separate Master/Slave cards, an explicit one-way Master → Slave transfer cue, and per-liquid staging meters where capacity is explicit;
-- combat HUD observer for the active World V2 Host snapshot;
+- combat HUD observer for the active World V2 Host snapshot; ship liquid counts and capacity are projected from the dedicated shipLiquidInventory account, not the central resourceLiquids warehouse;
 - individual responsive Jar tiles in ship inventory and each workshop, with a bounded visible count and an explicit overflow count;
 - snapshot-delta feedback for Jar acquisition/consumption, fill changes, ship/workshop liquid changes, lifecycle transitions, order cooldown transitions, and active-session progress;
 - clock-only snapshot updates no longer rebuild inventory controls; workshop meters add a presentation-only 80% caution state and explicit full-capacity label;
@@ -85,4 +85,4 @@ Not yet authored:
 - authoring primary shapes on production skill Resources and reviewing their visual hierarchy;
 - responsive art review against real combat captures and a manual Godot play pass.
 
-The Core's latest Space-ingress branch verification is tracked separately in `jar-system-dotnet` PR #59. Core verification record: the latest Space produced-Jar ingress integration commit `a52f9465ad4febdcfb821227f7b2e03b2ddc012c` on `jar-system-dotnet` PR #59 completed the repository's `verify` GitHub Actions workflow successfully (run `45129087505`, including the build and full verification loop). PR #59 is still open and is not the Core `main` branch. The Space demo's Godot 4.7.1 .NET compile and updated `WorldV2RuntimeProbe` have not yet been executed in this environment.
+Cross-repository verification (2026-11-25): Core PR #60 head `b342259fe04363386085dc9a4ca995112954ed43` passed run `45437911516` (841 tests, 0 failures). Space PR #2 integration run `45438436612` built the exact Core Bridge, built Space, imported/parsed the Godot 4.7.1 .NET project, and passed parser ingress, runtime, lifecycle, fault, disposed-command, faulted-command, and snapshot-isolation probes. The snapshot-isolation probe now verifies both the central warehouse and ship-owned liquid inventory are detached. Both PRs remain Draft/Open/unmerged.
