@@ -505,3 +505,5 @@
 - Runtime Probe coverage includes exact schema-2 migration, tampered cumulative output rejection, and atomic no-partial-mutation behavior.
 - This ledger accounts for completed production regardless of whether Core import is pending or acknowledged; Core operation-ID deduplication remains the separate exactly-once import boundary.
 - Probe changes are authored only. Godot 4.7.1 .NET compile/runtime execution remains outstanding.
+- Additional outbox reconciliation: restore also sums pending batch counts by shape and rejects any pending quantity greater than the cumulative completed-Jar ledger. This prevents a forged checkpoint from inflating the retry outbox beyond the production already accounted for by consumed stone.
+- Runtime Probe includes a known-shape pending-count inflation case; authored, not executed.
