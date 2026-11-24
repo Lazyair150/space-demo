@@ -45,12 +45,15 @@ static func compose_parser(definition: SpaceOreParserDefinition, instance: Space
 	profile.progressPerJarByShape = progress
 	profile.productionPercentage = int(round(percentage))
 	profile["ownedInstance"] = instance.build_frozen_snapshot()
-	if not definition.rule_contributions.is_empty():
-		if slot_id.strip_edges().is_empty():
-			return {}
-		profile = SpaceOreParserRuleProfile.compose(profile, definition.rule_contributions, instance, slot_id, shapes)
-		if profile.is_empty():
-			return {}
+	# Every production Parser profile carries a post-growth/pre-rule baseline,
+	# even when it currently has no authored contributions. Snapshot validation can
+	# therefore reject altered effective rates instead of treating missing provenance
+	# as an implicit legacy profile.
+	if slot_id.strip_edges().is_empty():
+		return {}
+	profile = SpaceOreParserRuleProfile.compose(profile, definition.rule_contributions, instance, slot_id, shapes)
+	if profile.is_empty():
+		return {}
 	return profile
 
 static func compose_device(definition: SpaceProductionDeviceDefinition, instance: SpaceOwnedProgressionInstance, slot_id: String) -> Dictionary:
