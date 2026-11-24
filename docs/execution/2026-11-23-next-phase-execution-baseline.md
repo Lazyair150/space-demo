@@ -549,3 +549,20 @@
 4. Align Space template names/versions with the current Core PR #60 branch and validate the exact Core template ingress API before integrating/merging either stacked PR.
 5. Run Parser completion → idempotent Core import → order template materialization → A/B execution → Space effect dispatch as a full end-to-end scenario; retain exact operation receipts and checkpoint/reload assertions.
 6. Only after those pass, continue production Catalog assets, real progression curves/power models, stage reward settlement and final repository cleanup.
+## 11. Cross-repository continuation update — 2026-11-24 22:15 +08:00
+
+- Space PR #2 current head is `efd1049f47149872f8e16cd55ac16eb424b0b8ab` (Draft/Open/unmerged); latest Space source-code head before the documentation-only checkpoint is `1425cf597b16bdb9b98db7ab5ddcebc56f9972c7`.
+- Core PR #60 source head is `8e29f19b93d16f527f9f1a3dfb8916f10054d321`; exact-head verify run `45405814473` was in progress when checked. Core PR #60 remains Draft/Open and stacked on PR #59.
+- `space-demo.csproj` references `..\jar-system-dotnet\hosts\godot\WorldV2Bridge\JarSystem.WorldV2Bridge.csproj`. This is a sibling-checkout dependency, not a pinned NuGet package or submodule. A reproducible integration build must check out Space PR #2 and the exact Core PR #60 branch at the expected sibling paths.
+- No Space PR #2 Actions run or combined status was returned for the latest inspected head. Godot 4.7.1 .NET build, GDScript parse, probes and actual scene/battle launch remain unverified.
+- Production Owned Hangar assembly now rejects missing/empty `boardAssignments`; the Board Assignment regression probe asserts that a field-only legacy selection cannot bypass the canonical slot-to-owned-instance map. This is authored, not executed.
+
+### Remaining Space integration sequence
+
+1. Run the Owned assembler guard and all Board Definition/Assignment probes in Godot 4.7.1 .NET, with Core PR #60 checked out as the sibling project dependency.
+2. Ensure production UI always supplies the exact Board Definition; do not permit `SpaceHangarSelectionController.configure(..., board: null)` in production entry points.
+3. Verify assignment snapshot fingerprint, exact slot/component/owned instance/definition version/source revision, Rule Contribution resolution and runtime projection as one frozen snapshot.
+4. Verify exact Core template identity/version is the only order-template payload from Space; Core owns requirement content and materialization.
+5. Verify Parser completion imports only completed empty Jar counts with stable idempotent operation IDs/receipts; test replay, checkpoint restore and repeated import.
+6. End-to-end: Parser completion → Core Jar inventory → Core template demand → A/B execution → Space skill/effect dispatch → battle checkpoint/restore.
+7. Repository cleanup only after the cross-repository build and end-to-end scenario are green.
