@@ -141,6 +141,42 @@ static func run() -> bool:
 	var assembled := SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, selection, progression)
 	if assembled == null:
 		return false
+
+	# The assignment fingerprint must bind the complete frozen map, not merely be non-empty.
+	var tampered_fingerprint_selection := selection.duplicate(true)
+	tampered_fingerprint_selection.boardAssignments.assignments[0].sourceRevision += 1
+	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, tampered_fingerprint_selection, progression) != null:
+		return false
+
+	# Rebuild valid fingerprints around invalid payloads to ensure semantic validation is
+	# independent from the hash and binds role, slot, and current progression revision.
+	var changed_role_assignments := {}
+	for entry in selection.boardAssignments.assignments:
+		changed_role_assignments[String(entry.slotId)] = entry.duplicate(true)
+	changed_role_assignments["workshop.master"].roleId = "slave"
+	var changed_role_selection := selection.duplicate(true)
+	changed_role_selection.boardAssignments = SpaceHangarBoardAssignment.build_snapshot(DEMO_BOARD, changed_role_assignments)
+	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, changed_role_selection, progression) != null:
+		return false
+
+	var stale_revision_assignments := {}
+	for entry in selection.boardAssignments.assignments:
+		stale_revision_assignments[String(entry.slotId)] = entry.duplicate(true)
+	stale_revision_assignments["workshop.master"].sourceRevision += 1
+	var stale_revision_selection := selection.duplicate(true)
+	stale_revision_selection.boardAssignments = SpaceHangarBoardAssignment.build_snapshot(DEMO_BOARD, stale_revision_assignments)
+	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, stale_revision_selection, progression) != null:
+		return false
+
+	var wrong_slot_assignments := {}
+	for entry in selection.boardAssignments.assignments:
+		wrong_slot_assignments[String(entry.slotId)] = entry.duplicate(true)
+	wrong_slot_assignments["workshop.master"].ownedInstanceId = "demo.workshop.beta.01"
+	wrong_slot_assignments["workshop.slave"].ownedInstanceId = "demo.workshop.alpha.01"
+	var wrong_slot_selection := selection.duplicate(true)
+	wrong_slot_selection.boardAssignments = SpaceHangarBoardAssignment.build_snapshot(DEMO_BOARD, wrong_slot_assignments)
+	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, wrong_slot_selection, progression) != null:
+		return false
 	# A Parser contribution must not leak into the Core workshop Rule Profile.
 	var parser_definition := runtime_catalog.ore_parser_catalog.resolve_definition("demo.parser.precision", 1)
 	if parser_definition == null:
