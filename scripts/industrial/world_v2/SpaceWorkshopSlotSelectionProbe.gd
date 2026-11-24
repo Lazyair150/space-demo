@@ -58,8 +58,8 @@ static func _world(roster: Array[SpaceWorkshopDefinition]) -> SpaceWorkshopCombi
 
 static func _has_roles(options: Dictionary, master_name: String, slave_name: String) -> bool:
 	var workshops: Array = options.get("workshops", [])
-	return workshops.size() == 2 \\
-		and String(workshops[0].get("name", "")) == master_name \\
-		and String(workshops[1].get("name", "")) == slave_name \\
-		and String(options.get("masterWorkshopName", "")) == master_name \\
+	return workshops.size() == 2 \
+		and String(workshops[0].get("name", "")) == master_name \
+		and String(workshops[1].get("name", "")) == slave_name \
+		and String(options.get("masterWorkshopName", "")) == master_name \
 		and String(options.get("slaveWorkshopName", "")) == slave_name
