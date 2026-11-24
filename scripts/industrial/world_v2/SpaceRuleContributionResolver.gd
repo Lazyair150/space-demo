@@ -47,14 +47,21 @@ static func resolve(
 				if contribution_definition == null:
 					push_error("Board Rule Contribution cannot be null in slot: " + slot_id)
 					return {}
-				# This resolver builds the Core-facing Board Rule Profile. Core currently
-				# has an execution consumer only for workshop scope; component-local parser,
-				# skill and device rules must wait for their own runtime profile consumers.
-				if kind != "workshop":
-					push_error("Board Rule Contribution has no Core ingress consumer for component kind: " + kind + " at " + slot_id)
-					return {}
 				var resolved := contribution_definition.resolve(instance, slot_id)
-				if resolved.is_empty() or String(resolved.get("scope", "")) != "workshop":
+				if resolved.is_empty():
+					push_error("Board Rule Contribution could not resolve against its exact owned instance: " + slot_id)
+					return {}
+				# Parser-local contributions are consumed by SpaceOreParserRuleProfile,
+				# never by the Core-facing workshop profile.
+				if kind == "ore_parser":
+					if String(resolved.get("scope", "")) != "parser":
+						push_error("Parser contribution must use parser scope: " + slot_id)
+						return {}
+					continue
+				if kind != "workshop":
+					push_error("Board Rule Contribution has no runtime consumer for component kind: " + kind + " at " + slot_id)
+					return {}
+				if String(resolved.get("scope", "")) != "workshop":
 					push_error("Core-facing Board Rule Contribution must resolve to workshop scope: " + slot_id)
 					return {}
 				contributions.append(resolved)
