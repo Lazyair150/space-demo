@@ -196,32 +196,83 @@ static func assemble(
 
 
 static func _validate_board_assignment_snapshot(snapshot: Dictionary, progression: SpacePlayerProgressionState, selection: Dictionary) -> String:
-	if int(snapshot.get("schemaVersion", 0)) != 1 or String(snapshot.get("assignmentFingerprint", "")).is_empty():
-		return "Board Assignment snapshot schema or fingerprint is missing"
+	if int(snapshot.get("schemaVersion", 0)) != 1:
+		return "Board Assignment snapshot schema is invalid"
+	var expected_fingerprint := String(snapshot.get("assignmentFingerprint", ""))
+	if expected_fingerprint.is_empty():
+		return "Board Assignment fingerprint is missing"
+	var fingerprint_payload := snapshot.duplicate(true)
+	fingerprint_payload.erase("assignmentFingerprint")
+	var fingerprint_hash := HashingContext.new()
+	fingerprint_hash.start(HashingContext.HASH_SHA256)
+	fingerprint_hash.update(JSON.stringify(fingerprint_payload).to_utf8_buffer())
+	if fingerprint_hash.finish().hex_encode() != expected_fingerprint:
+		return "Board Assignment fingerprint does not match its frozen Board Definition and assignments"
+
 	var board: Dictionary = snapshot.get("boardDefinition", {})
 	var slots: Variant = board.get("slots", [])
 	var assignments: Variant = snapshot.get("assignments", [])
 	if String(board.get("boardId", "")) != String(snapshot.get("boardId", "")) or int(board.get("definitionVersion", 0)) != int(snapshot.get("definitionVersion", 0)) or not (slots is Array) or not (assignments is Array):
 		return "Board Assignment snapshot does not contain its exact Board Definition"
+
 	var slot_index := {}
+	var master_slot_count := 0
+	var slave_slot_count := 0
+	var parser_slot_count := 0
 	for slot in slots:
 		if not (slot is Dictionary):
 			return "Board Definition snapshot contains an invalid slot"
 		var slot_id := String(slot.get("slotId", ""))
 		if slot_id.is_empty() or slot_index.has(slot_id):
 			return "Board Definition snapshot contains an empty or duplicate slot identity"
+		var area_id := String(slot.get("areaId", ""))
+		var component_kind := String(slot.get("componentKind", ""))
+		var role_id := String(slot.get("roleId", ""))
+		var control_area := String(slot.get("controlArea", ""))
+		var valid_slot := (
+			(area_id == "workshop" and component_kind == "workshop" and role_id in ["master", "slave"] and control_area == "none")
+			or (area_id == "decomposition" and component_kind == "ore_parser" and role_id == "none" and control_area == "none")
+			or (area_id == "orders" and component_kind == "skill" and role_id == "none" and control_area in ["Active", "Passive"])
+			or (area_id == "production" and component_kind == "production_device" and role_id == "none" and control_area == "none")
+		)
+		if not valid_slot:
+			return "Board Definition slot has an invalid area/component/role/control-area combination: " + slot_id
+		if component_kind == "workshop":
+			master_slot_count += 1 if role_id == "master" else 0
+			slave_slot_count += 1 if role_id == "slave" else 0
+		elif component_kind == "ore_parser":
+			parser_slot_count += 1
 		slot_index[slot_id] = slot
+	if master_slot_count != 1 or slave_slot_count != 1 or parser_slot_count != 1:
+		return "Current World V2 runtime projection requires exactly one Master, one Slave, and one parser slot"
+
+	var expected_devices := {}
+	for raw_device in selection.get("deviceSelections", []):
+		if not (raw_device is Dictionary):
+			return "Selected device projection contains an invalid entry"
+		var device_slot_id := String(raw_device.get("slotId", ""))
+		if device_slot_id.is_empty() or expected_devices.has(device_slot_id):
+			return "Selected device projection contains an empty or duplicate slot"
+		expected_devices[device_slot_id] = raw_device
+	var expected_skills := {}
+	for raw_skill in selection.get("skillSelections", []):
+		if not (raw_skill is Dictionary):
+			return "Selected skill projection contains an invalid entry"
+		var skill_slot_id := String(raw_skill.get("orderDefinitionKey", ""))
+		if skill_slot_id.is_empty() or expected_skills.has(skill_slot_id):
+			return "Selected skill projection contains an empty or duplicate order slot"
+		expected_skills[skill_slot_id] = raw_skill
+
 	var expected_instances := {
 		String(selection.get("parserInstanceId", "")): true,
 		String(selection.get("masterWorkshopInstanceId", "")): true,
 		String(selection.get("slaveWorkshopInstanceId", "")): true
 	}
-	for raw_device in selection.get("deviceSelections", []):
-		if raw_device is Dictionary:
-			expected_instances[String(raw_device.get("instanceId", ""))] = true
-	for raw_skill in selection.get("skillSelections", []):
-		if raw_skill is Dictionary:
-			expected_instances[String(raw_skill.get("instanceId", ""))] = true
+	for raw_device in expected_devices.values():
+		expected_instances[String(raw_device.get("instanceId", ""))] = true
+	for raw_skill in expected_skills.values():
+		expected_instances[String(raw_skill.get("instanceId", ""))] = true
+
 	var seen_slots := {}
 	var seen_instances := {}
 	for entry in assignments:
@@ -234,13 +285,43 @@ static func _validate_board_assignment_snapshot(snapshot: Dictionary, progressio
 		seen_slots[slot_id] = true
 		seen_instances[instance_id] = true
 		var slot: Dictionary = slot_index[slot_id]
-		if String(entry.get("componentKind", "")) != String(slot.get("componentKind", "")):
+		var component_kind := String(slot.get("componentKind", ""))
+		if String(entry.get("componentKind", "")) != component_kind:
 			return "Board Assignment component kind does not match its slot"
+		if component_kind == "workshop" and String(entry.get("roleId", "")) != String(slot.get("roleId", "")):
+			return "Board Assignment workshop role does not match the exact slot"
+		if component_kind == "skill" and String(entry.get("controlArea", "")) != String(slot.get("controlArea", "")):
+			return "Board Assignment skill control area does not match the exact slot"
+
 		var instance := progression.resolve_instance(instance_id)
-		if instance == null or instance.item_kind != String(slot.get("componentKind", "")):
+		if instance == null or instance.item_kind != component_kind:
 			return "Board Assignment references an unowned or incompatible component instance"
 		if String(instance.definition_id) != String(entry.get("definitionId", "")) or instance.definition_version != int(entry.get("definitionVersion", 0)):
 			return "Board Assignment exact Definition identity/version differs from the owned instance"
+		if instance.progression_revision != int(entry.get("sourceRevision", 0)):
+			return "Board Assignment source revision differs from the current owned instance"
+
+		match component_kind:
+			"ore_parser":
+				if slot_id != String(selection.get("parserSlotId", "")) or instance_id != String(selection.get("parserInstanceId", "")):
+					return "Parser Board Slot does not map to the selected parser instance"
+			"workshop":
+				var expected_id := String(selection.get("masterWorkshopInstanceId", "")) if String(slot.get("roleId", "")) == "master" else String(selection.get("slaveWorkshopInstanceId", ""))
+				if instance_id != expected_id:
+					return "Workshop Board Slot role does not map to the selected Master/Slave instance"
+			"production_device":
+				if not expected_devices.has(slot_id):
+					return "Board Assignment contains a device not present in the selected runtime projection"
+				var device: Dictionary = expected_devices[slot_id]
+				if instance_id != String(device.get("instanceId", "")) or String(entry.get("definitionId", "")) != String(device.get("definitionId", "")) or int(entry.get("definitionVersion", 0)) != int(device.get("definitionVersion", 0)):
+					return "Device Board Slot differs from its selected exact instance/Definition"
+			"skill":
+				if not expected_skills.has(slot_id):
+					return "Board Assignment contains a skill not present in the selected runtime projection"
+				var skill: Dictionary = expected_skills[slot_id]
+				if instance_id != String(skill.get("instanceId", "")) or String(entry.get("definitionId", "")) != String(skill.get("skillId", "")) or int(entry.get("definitionVersion", 0)) != int(skill.get("definitionVersion", 0)) or String(skill.get("controlArea", "")) != String(entry.get("controlArea", "")):
+					return "Skill Board Slot differs from its selected exact instance/Definition/control area"
+
 	for slot_id in slot_index:
 		var slot: Dictionary = slot_index[slot_id]
 		if bool(slot.get("required", false)) and not seen_slots.has(slot_id):
