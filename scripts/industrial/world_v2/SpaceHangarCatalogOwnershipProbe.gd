@@ -48,6 +48,7 @@ static func run() -> bool:
 	invalid_display_copy.display_anchors[0].normalized_position = Vector2(2.0, 0.5)
 	if not invalid_display_copy.get_validation_errors(["round"]).is_empty() or invalid_display_copy.get_display_validation_errors().is_empty():
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] ship-catalog=passed")
 	if ships.resolve_definition("probe.ship", 1) != null:
 		return false
 
@@ -73,6 +74,7 @@ static func run() -> bool:
 	if devices.create_selection("probe.device", 3, "slot-a").size() != 0:
 		return false
 
+	print("[SpaceHangarCatalogOwnershipProbe] device-catalog=passed")
 	var local_master := SpaceWorkshopDefinition.new()
 	local_master.workshop_id = &"probe.master"
 	local_master.definition_version = 1
@@ -158,6 +160,7 @@ static func run() -> bool:
 	if workshops.resolve_definition("probe.workshop", 4) != null:
 		return false
 
+	print("[SpaceHangarCatalogOwnershipProbe] workshop-catalog-and-template-materialization=passed")
 	var template_skill := SpaceSkillDefinition.new()
 	template_skill.skill_id = &"probe.template-skill"
 	template_skill.definition_version = 1
@@ -199,6 +202,7 @@ static func run() -> bool:
 	if oversized_template.get_validation_errors().is_empty():
 		return false # Keep Space authoring aligned with Core's maximum of ten requirements.
 
+	print("[SpaceHangarCatalogOwnershipProbe] core-template-contract=passed")
 	var parser := SpaceOreParserDefinition.new()
 	parser.parser_id = &"probe.parser"
 	parser.definition_version = 1
@@ -257,6 +261,7 @@ static func run() -> bool:
 	if not effects.register_buff(effect) or effects.resolve_buff("probe.effect", 1).display_icon == null:
 		return false
 
+	print("[SpaceHangarCatalogOwnershipProbe] parser-catalog=passed")
 	var valid_selection := SpaceHangarSelection.from_data({
 		"shipId": "probe.ship", "shipVersion": 2,
 		"deviceSelections": [{"slotId": "slot-a", "definitionId": "probe.device", "definitionVersion": 4}],
@@ -287,6 +292,7 @@ static func run() -> bool:
 	})
 	if duplicate_selection.validate().is_empty():
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] skill-and-effect-catalogs=passed")
 	var incomplete_bundle := SpaceHangarCatalogBundle.create(
 		SpaceShipCatalog.new(), SpaceProductionDeviceCatalog.new(),
 		SpaceOreParserCatalog.new(), SpaceWorkshopCombinationCatalog.new(),
@@ -306,6 +312,7 @@ static func run() -> bool:
 	var empty_inventory := empty_authored_bundle.build_selection_inventory()
 	if bool(empty_inventory.get("isReady", true)) or not empty_inventory.get("shipChoices", []).is_empty():
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] bundle-and-inventory-fail-closed=passed")
 	var draft := SpaceHangarSelectionDraft.new()
 	var draft_inventory := {
 		"isReady": true,
@@ -347,6 +354,7 @@ static func run() -> bool:
 	if not unavailable_view.get("inventory", {}).get("shipChoices", []).is_empty():
 		return false
 
+	print("[SpaceHangarCatalogOwnershipProbe] legacy-draft-contracts=passed")
 	# Player progression is separate from immutable catalog definitions.
 	var progression_workshop_catalog := SpaceWorkshopCatalog.new()
 	if not progression_workshop_catalog.register_definition(local_master) or not progression_workshop_catalog.register_definition(local_slave):
