@@ -61,7 +61,7 @@ static func build(
 					if device is Dictionary and String(device.get("slotId", "")) == slot_id and String(device.get("deviceKind", "")) == "ore_parser":
 						matched_count += 1
 						var parser: Variant = device.get("oreParserProfile", null)
-						if parser is Dictionary and _device_identity_matches(device, assignment) and _parser_profile_matches(parser, assignment):
+						if parser is Dictionary and _device_identity_matches(device, assignment) and _parser_profile_matches(parser, assignment, slot_id):
 							runtime_profile = parser.duplicate(true)
 				if matched_count != 1 or runtime_profile.is_empty():
 					return {}
@@ -174,12 +174,51 @@ static func _device_identity_matches(device: Dictionary, assignment: Dictionary)
 		and _owned_instance_matches(device.get("ownedInstance", null), assignment)
 	)
 
-static func _parser_profile_matches(profile: Dictionary, assignment: Dictionary) -> bool:
-	return (
-		String(profile.get("parserId", "")) == String(assignment.get("definitionId", ""))
-		and int(profile.get("definitionVersion", 0)) == int(assignment.get("definitionVersion", 0))
-		and _owned_instance_matches(profile.get("ownedInstance", null), assignment)
-	)
+static func _parser_profile_matches(profile: Dictionary, assignment: Dictionary, slot_id: String) -> bool:
+	if String(profile.get("parserId", "")) != String(assignment.get("definitionId", "")) or int(profile.get("definitionVersion", 0)) != int(assignment.get("definitionVersion", 0)) or not _owned_instance_matches(profile.get("ownedInstance", null), assignment):
+		return false
+	var raw_rule_profile: Variant = profile.get("parserRuleProfile", null)
+	if raw_rule_profile == null:
+		return true
+	if not (raw_rule_profile is Dictionary):
+		return false
+	var rule_profile: Dictionary = raw_rule_profile
+	if (
+		int(rule_profile.get("schemaVersion", 0)) != 1
+		or String(rule_profile.get("parserDefinitionId", "")) != String(assignment.get("definitionId", ""))
+		or int(rule_profile.get("parserDefinitionVersion", 0)) != int(assignment.get("definitionVersion", 0))
+		or String(rule_profile.get("slotId", "")) != slot_id
+		or String(rule_profile.get("ownedInstanceId", "")) != String(assignment.get("ownedInstanceId", ""))
+		or int(rule_profile.get("progressionRevision", 0)) != int(assignment.get("sourceRevision", 0))
+	):
+		return false
+	var contributions: Variant = rule_profile.get("contributions", null)
+	if not (contributions is Array) or contributions.is_empty():
+		return false
+	var seen_rules := {}
+	for contribution in contributions:
+		if not (contribution is Dictionary):
+			return false
+		var source: Variant = contribution.get("source", null)
+		if not (source is Dictionary):
+			return false
+		if (
+			String(contribution.get("scope", "")) != "parser"
+			or String(source.get("slotId", "")) != slot_id
+			or String(source.get("sourceInstanceId", "")) != String(assignment.get("ownedInstanceId", ""))
+			or String(source.get("definitionId", "")) != String(assignment.get("definitionId", ""))
+			or int(source.get("definitionVersion", 0)) != int(assignment.get("definitionVersion", 0))
+			or int(source.get("sourceRevision", 0)) != int(assignment.get("sourceRevision", 0))
+		):
+			return false
+		var rule_key := String(contribution.get("ruleId", "")) + "@" + str(int(contribution.get("ruleVersion", 0)))
+		if rule_key == "@" or seen_rules.has(rule_key):
+			return false
+		seen_rules[rule_key] = true
+	var supplied_fingerprint := String(rule_profile.get("fingerprint", ""))
+	var fingerprint_payload := rule_profile.duplicate(true)
+	fingerprint_payload.erase("fingerprint")
+	return not supplied_fingerprint.is_empty() and _fingerprint(fingerprint_payload) == supplied_fingerprint
 
 static func _skill_identity_matches(binding: Dictionary, assignment: Dictionary) -> bool:
 	var control: Variant = binding.get("skillControl", null)
