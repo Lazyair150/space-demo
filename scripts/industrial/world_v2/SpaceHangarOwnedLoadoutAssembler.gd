@@ -102,7 +102,7 @@ static func assemble(
 		var device := devices[index]
 		if String(device.get("deviceKind", "")) == "ore_parser":
 			var parser_definition := bundle.ore_parser_catalog.resolve_definition(String(selection.parserId), int(selection.parserVersion))
-			var parser_profile := SpaceProgressionRuntimeProfileComposer.compose_parser(parser_definition, parser_instance, shapes)
+			var parser_profile := SpaceProgressionRuntimeProfileComposer.compose_parser(parser_definition, parser_instance, shapes, String(device.get("slotId", "")))
 			if parser_profile.is_empty():
 				return _reject("parser growth attributes do not satisfy parser subsystem contract")
 			devices[index].oreParserProfile = parser_profile
