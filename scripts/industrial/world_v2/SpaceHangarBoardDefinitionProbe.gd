@@ -85,7 +85,7 @@ static func run() -> bool:
 	var progression := SpaceDemoProgressionBootstrap.create_starting_inventory(DEMO_CATALOG)
 	if progression == null:
 		return false
-	var inventory := SpaceHangarOwnedInventoryBuilder.build(DEMO_CATALOG, progression)
+	var inventory := SpaceHangarOwnedInventoryBuilder.build(DEMO_CATALOG, runtime_catalog, progression)
 	if not bool(inventory.get("isReady", false)):
 		return false
 	if inventory.parserChoices.size() != 2 or inventory.workshopInstanceChoices.size() != 2 or inventory.skillChoices.size() != 2 or inventory.workshopWorldChoices.size() != 2:
@@ -138,14 +138,14 @@ static func run() -> bool:
 	selection["boardAssignments"] = SpaceHangarBoardAssignment.build_from_selection(DEMO_BOARD, selection, inventory)
 	if selection.boardAssignments.is_empty():
 		return false
-	var assembled := SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, selection, progression)
+	var assembled := SpaceHangarOwnedLoadoutAssembler.assemble(identity, selection, runtime_catalog, progression)
 	if assembled == null:
 		return false
 
 	# The assignment fingerprint must bind the complete frozen map, not merely be non-empty.
 	var tampered_fingerprint_selection := selection.duplicate(true)
 	tampered_fingerprint_selection.boardAssignments.assignments[0].sourceRevision += 1
-	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, tampered_fingerprint_selection, progression) != null:
+	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, tampered_fingerprint_selection, runtime_catalog, progression) != null:
 		return false
 
 	# Rebuild valid fingerprints around invalid payloads to ensure semantic validation is
@@ -156,7 +156,7 @@ static func run() -> bool:
 	changed_role_assignments["workshop.master"].roleId = "slave"
 	var changed_role_selection := selection.duplicate(true)
 	changed_role_selection.boardAssignments = SpaceHangarBoardAssignment.build_snapshot(DEMO_BOARD, changed_role_assignments)
-	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, changed_role_selection, progression) != null:
+	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, changed_role_selection, runtime_catalog, progression) != null:
 		return false
 
 	var stale_revision_assignments := {}
@@ -165,7 +165,7 @@ static func run() -> bool:
 	stale_revision_assignments["workshop.master"].sourceRevision += 1
 	var stale_revision_selection := selection.duplicate(true)
 	stale_revision_selection.boardAssignments = SpaceHangarBoardAssignment.build_snapshot(DEMO_BOARD, stale_revision_assignments)
-	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, stale_revision_selection, progression) != null:
+	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, stale_revision_selection, runtime_catalog, progression) != null:
 		return false
 
 	var wrong_slot_assignments := {}
@@ -175,7 +175,7 @@ static func run() -> bool:
 	wrong_slot_assignments["workshop.slave"].ownedInstanceId = "demo.workshop.alpha.01"
 	var wrong_slot_selection := selection.duplicate(true)
 	wrong_slot_selection.boardAssignments = SpaceHangarBoardAssignment.build_snapshot(DEMO_BOARD, wrong_slot_assignments)
-	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, wrong_slot_selection, progression) != null:
+	if SpaceHangarOwnedLoadoutAssembler.assemble(identity, wrong_slot_selection, runtime_catalog, progression) != null:
 		return false
 	# A Parser contribution must not leak into the Core workshop Rule Profile.
 	var parser_definition := runtime_catalog.ore_parser_catalog.resolve_definition("demo.parser.precision", 1)
@@ -189,7 +189,7 @@ static func run() -> bool:
 	unsupported_parser_rule.target = "parser.throughput"
 	unsupported_parser_rule.scope = "parser"
 	parser_definition.rule_contributions = [unsupported_parser_rule]
-	var core_profile := SpaceRuleContributionResolver.resolve(generic_assignment_snapshot, runtime_catalog, progression)
+	var core_profile := SpaceRuleContributionResolver.resolve(generic_assignment_snapshot, runtime_catalog, runtime_catalog, progression)
 	parser_definition.rule_contributions = original_parser_rules
 	if core_profile.is_empty():
 		return false
@@ -219,7 +219,7 @@ static func run() -> bool:
 	supported_parser_rule.scope = "parser"
 	supported_parser_rule.parameters = {"shape": parser_rule_shape, "multiplier": 1.25}
 	parser_definition.rule_contributions = [supported_parser_rule]
-	var parser_rule_assembled := SpaceHangarOwnedLoadoutAssembler.assemble(identity, runtime_catalog, selection, progression)
+	var parser_rule_assembled := SpaceHangarOwnedLoadoutAssembler.assemble(identity, selection, runtime_catalog, progression)
 	parser_definition.rule_contributions = original_parser_rules
 	if parser_rule_assembled == null:
 		return false
