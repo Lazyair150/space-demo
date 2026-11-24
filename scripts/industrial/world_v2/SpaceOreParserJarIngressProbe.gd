@@ -65,6 +65,9 @@ func _ready() -> void:
     var world_options_raw: Variant = JSON.parse_string(world_json)
     assert(world_options_raw is Dictionary, "sandbox World V2 options must parse as a dictionary")
     var world_options: Dictionary = world_options_raw
+    # JSON.parse_string represents numeric values as Variants; restore the Core Int64 field
+    # before re-serializing this fixture for System.Text.Json.
+    world_options["executionLogicalTimePerUnit"] = 1000
     world_options["orderTemplates"] = [
         {
             "name": "probe.order.active@1",
