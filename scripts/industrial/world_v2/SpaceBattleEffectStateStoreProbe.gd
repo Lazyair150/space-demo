@@ -62,10 +62,10 @@ static func run() -> Dictionary:
     if int(loaded.get("schemaVersion", 0)) != 3:
         _cleanup(absolute_path)
         return _failure("unified save did not load as schema v3")
-    if loaded.get("effectState", {}) != effects or loaded.get("dispatcherState", {}) != dispatcher:
+    if not _matches_json_value(loaded.get("effectState", {}), effects) or not _matches_json_value(loaded.get("dispatcherState", {}), dispatcher):
         _cleanup(absolute_path)
         return _failure("effect/dispatcher state was not preserved in the unified snapshot")
-    if loaded.get("runtimeCheckpoint", {}) != runtime_checkpoint:
+    if not _matches_json_value(loaded.get("runtimeCheckpoint", {}), runtime_checkpoint):
         _cleanup(absolute_path)
         return _failure("Jar/Space runtime checkpoint was not preserved in the unified snapshot")
 
@@ -75,7 +75,7 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("store accepted an incomplete Jar/Space checkpoint")
     var after_rejection := store.load(identity)
-    if after_rejection.get("runtimeCheckpoint", {}) != runtime_checkpoint:
+    if not _matches_json_value(after_rejection.get("runtimeCheckpoint", {}), runtime_checkpoint):
         _cleanup(absolute_path)
         return _failure("rejected save replaced the previous valid battle checkpoint")
 
@@ -85,7 +85,7 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("store accepted parser checkpoint without deterministic drop RNG state")
     var after_rng_rejection := store.load(identity)
-    if after_rng_rejection.get("runtimeCheckpoint", {}) != runtime_checkpoint:
+    if not _matches_json_value(after_rng_rejection.get("runtimeCheckpoint", {}), runtime_checkpoint):
         _cleanup(absolute_path)
         return _failure("missing RNG rejection replaced the previous valid battle checkpoint")
 
@@ -95,7 +95,7 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("store accepted a dispatcher/effect processed-event ledger mismatch")
     var after_dispatcher_rejection := store.load(identity)
-    if after_dispatcher_rejection.get("dispatcherState", {}) != dispatcher:
+    if not _matches_json_value(after_dispatcher_rejection.get("dispatcherState", {}), dispatcher):
         _cleanup(absolute_path)
         return _failure("mismatched dispatcher ledger replaced the previous valid checkpoint")
 
@@ -118,7 +118,7 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("store accepted an effect payload outside StatusEffectManager schema v1")
     var after_effect_rejection := store.load(identity)
-    if after_effect_rejection.get("effectState", {}) != effects:
+    if not _matches_json_value(after_effect_rejection.get("effectState", {}), effects):
         _cleanup(absolute_path)
         return _failure("invalid effect state replaced the previous valid battle checkpoint")
 
@@ -128,7 +128,7 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("store accepted a wave/segment mismatch")
     var after_wave_rejection := store.load(identity)
-    if after_wave_rejection.get("runtimeCheckpoint", {}) != runtime_checkpoint:
+    if not _matches_json_value(after_wave_rejection.get("runtimeCheckpoint", {}), runtime_checkpoint):
         _cleanup(absolute_path)
         return _failure("wave/segment mismatch replaced the previous valid battle checkpoint")
 
@@ -138,12 +138,20 @@ static func run() -> Dictionary:
         _cleanup(absolute_path)
         return _failure("store accepted a Jar/Space checkpoint without transient run progression")
     var after_run_state_rejection := store.load(identity)
-    if after_run_state_rejection.get("runtimeCheckpoint", {}) != runtime_checkpoint:
+    if not _matches_json_value(after_run_state_rejection.get("runtimeCheckpoint", {}), runtime_checkpoint):
         _cleanup(absolute_path)
         return _failure("missing run-state rejection replaced the previous valid battle checkpoint")
 
     _cleanup(absolute_path)
     return {"passed": true, "schemaVersion": 3, "domains": 6}
+
+
+## Compare values after the same JSON serialization boundary used by the durable store.
+## Godot may decode integral JSON numbers as floats, so raw in-memory Variant equality
+## is not a valid assertion for persisted snapshots.
+static func _matches_json_value(actual: Variant, expected: Variant) -> bool:
+	var normalized_expected: Variant = JSON.parse_string(JSON.stringify(expected))
+	return actual == normalized_expected
 
 ## Exercises real Buff instance reconstruction and processed-event idempotency.
 static func _probe_effect_manager_restore() -> Dictionary:
