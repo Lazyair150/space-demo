@@ -359,7 +359,11 @@ static func run() -> bool:
 	print("[SpaceHangarCatalogOwnershipProbe] legacy-draft-contracts=passed")
 	# Player progression is separate from immutable catalog definitions.
 	var progression_workshop_catalog := SpaceWorkshopCatalog.new()
-	if not progression_workshop_catalog.register_definition(local_master) or not progression_workshop_catalog.register_definition(local_slave):
+	if (
+		resolved_workshop.workshop_definitions.size() != 2
+		or not progression_workshop_catalog.register_definition(resolved_workshop.workshop_definitions[0])
+		or not progression_workshop_catalog.register_definition(resolved_workshop.workshop_definitions[1])
+	):
 		return false
 	var progression_bundle := SpaceHangarCatalogBundle.create(
 		ships, devices, parsers, workshops, skills,
