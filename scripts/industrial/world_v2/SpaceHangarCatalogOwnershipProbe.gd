@@ -327,8 +327,10 @@ static func run() -> bool:
 		"workshopChoices": [{"id": "probe.workshop", "version": 5}],
 		"skillChoices": [{"id": "probe.skill", "version": 3, "allowedControlAreas": ["Active"]}]
 	}
+	print("[SpaceHangarCatalogOwnershipProbe] draft-fixture=ready")
 	if not draft.configure(draft_inventory):
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] draft-configure=passed")
 	if draft.set_ship("probe.ship", 1) or not draft.set_ship("probe.ship", 2):
 		return false
 	if not draft.set_parser("probe.parser", 1, "parser-slot"):
@@ -337,12 +339,15 @@ static func run() -> bool:
 		return false
 	if not draft.set_device("device-slot", "probe.device", 4):
 		return false
-	if draft.set_skill("probe.order", "probe.skill", 3, "Passive"):
+	print("[SpaceHangarCatalogOwnershipProbe] draft-ship-parser-device=passed")
+	if draft.set_skill("probe.order", "probe.skill", 3, "Passive"): 
 		return false
 	if not draft.set_skill("probe.order", "probe.skill", 3, "Active"):
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] draft-skill-control-area=passed")
 	if not draft.set_workshop("probe.workshop", 5) or not draft.set_expected_battle_duration(60000.0):
 		return false
+	print("[SpaceHangarCatalogOwnershipProbe] draft-workshop-duration=passed")
 	var drafted_selection := draft.build_selection()
 	if drafted_selection == null or not drafted_selection.validate().is_empty():
 		return false
