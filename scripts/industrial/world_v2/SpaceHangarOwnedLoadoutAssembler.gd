@@ -14,9 +14,10 @@ static func assemble(
 	for key in ["shipId", "shipVersion", "shipInstanceId", "parserId", "parserVersion", "parserSlotId", "parserInstanceId", "workshopId", "workshopVersion", "masterWorkshopInstanceId", "slaveWorkshopInstanceId", "skillSelections", "deviceSelections", "expectedBattleDurationLogicalMilli"]:
 		if not selection.has(key):
 			return _reject("owned selection is missing " + key)
-	var board_assignment_snapshot: Dictionary = selection.get("boardAssignments", {})
-	if board_assignment_snapshot.is_empty():
+	var board_assignment_raw: Variant = selection.get("boardAssignments", {})
+	if not (board_assignment_raw is Dictionary) or board_assignment_raw.is_empty():
 		return _reject("owned loadout requires a complete frozen Board Assignment; field-only selections are not a production assembly contract")
+	var board_assignment_snapshot: Dictionary = board_assignment_raw
 	var assignment_error := _validate_board_assignment_snapshot(board_assignment_snapshot, progression, selection)
 	if not assignment_error.is_empty():
 		return _reject(assignment_error)
@@ -209,11 +210,14 @@ static func _validate_board_assignment_snapshot(snapshot: Dictionary, progressio
 	if fingerprint_hash.finish().hex_encode() != expected_fingerprint:
 		return "Board Assignment fingerprint does not match its frozen Board Definition and assignments"
 
-	var board: Dictionary = snapshot.get("boardDefinition", {})
+	var board_raw: Variant = snapshot.get("boardDefinition", {})
+	if not (board_raw is Dictionary):
+		return "Board Assignment snapshot does not contain a Board Definition dictionary"
+	var board: Dictionary = board_raw
 	var slots: Variant = board.get("slots", [])
 	var assignments: Variant = snapshot.get("assignments", [])
-	if String(board.get("boardId", "")) != String(snapshot.get("boardId", "")) or int(board.get("definitionVersion", 0)) != int(snapshot.get("definitionVersion", 0)) or not (slots is Array) or not (assignments is Array):
-		return "Board Assignment snapshot does not contain its exact Board Definition"
+	if int(board.get("schemaVersion", 0)) != 1 or String(board.get("displayName", "")).strip_edges().is_empty() or String(board.get("boardId", "")) != String(snapshot.get("boardId", "")) or int(board.get("definitionVersion", 0)) != int(snapshot.get("definitionVersion", 0)) or not (slots is Array) or not (assignments is Array):
+		return "Board Assignment snapshot does not contain its exact versioned Board Definition"
 
 	var slot_index := {}
 	var master_slot_count := 0
