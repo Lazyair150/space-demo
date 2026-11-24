@@ -1,6 +1,6 @@
 # World V2 × Space — world host and simulation clock contract
 
-Status: architecture contract derived from the current Space repository audit. The first host/clock integration slice is implemented but has not yet been locally compiled or run in Godot.
+Status (2026-11-25): the World V2 host/clock and lifecycle integration have been built and exercised by the cross-repository workflow at Space commit `74a93ed281d94823608b0c6803edd78dd9f068cc` against Core `b342259fe04363386085dc9a4ca995112954ed43` (run `45438436612`, success). The current Space PR head later advanced to `2fa994783e5f275d468459b26e30cb8b985b036c` with a HUD probe type-annotation-only change; its run was cancelled, so exact-latest-head verification remains pending. Older implementation-status paragraphs below are chronological checkpoints, not current validation claims.
 
 ## 1. Repository facts verified
 
