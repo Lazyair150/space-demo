@@ -62,7 +62,69 @@ func _ready() -> void:
 
     var world_json := FileAccess.get_file_as_string("res://data/industrial/world_v2_sandbox.json")
     assert(not world_json.is_empty(), "sandbox World V2 fixture must be readable")
+    var world_options_raw: Variant = JSON.parse_string(world_json)
+    assert(world_options_raw is Dictionary, "sandbox World V2 options must parse as a dictionary")
+    var world_options: Dictionary = world_options_raw
+    world_options["orderTemplates"] = [
+        {
+            "name": "probe.order.active@1",
+            "type": "A",
+            "requirements": [{"shape": "圆罐"}]
+        },
+        {
+            "name": "probe.order.passive@1",
+            "type": "B",
+            "requirements": [
+                {"shape": "方罐"},
+                {"shape": "圆罐", "liquid": "酒"}
+            ]
+        }
+    ]
+    world_json = JSON.stringify(world_options)
     assert(jar_host.BeginShipWorldFromJson(world_json), "Jar host must accept the test world")
+    var selected_orders: Array = [
+        {
+            "orderDefinitionKey": "probe.skill.active",
+            "jarOrder": {
+                "templateName": "probe.order.active@1",
+                "area": "Active",
+                "cooldownDurationLogicalMilli": 0
+            }
+        },
+        {
+            "orderDefinitionKey": "probe.skill.passive",
+            "jarOrder": {
+                "templateName": "probe.order.passive@1",
+                "area": "Passive",
+                "cooldownDurationLogicalMilli": 2500
+            }
+        }
+    ]
+    var materialized: Dictionary = jar_host.MaterializeSelectedOrders(selected_orders)
+    assert(bool(materialized.get("success", false)),
+        "Space must materialize exact Core order templates through Host: " + String(materialized.get("error", "")))
+    var materialized_ids: Array = materialized.get("demandIds", [])
+    assert(materialized_ids.size() == 2, "Core template ingress must return both exact demand IDs")
+    var template_snapshot: Dictionary = jar_host.GetWorldSnapshot()
+    var found_template_keys := {}
+    for raw_demand in template_snapshot.get("demands", []):
+        var demand: Dictionary = raw_demand
+        var order_key := String(demand.get("orderDefinitionKey", ""))
+        if order_key == "probe.skill.active":
+            assert(String(demand.get("type", "")) == "A", "Core must own the Active template order type")
+            assert(String(demand.get("area", "")) == "Active", "Active control area must survive template ingress")
+            assert(demand.get("requirements", []).size() == 1, "Core must instantiate Active template requirements")
+            found_template_keys[order_key] = true
+        elif order_key == "probe.skill.passive":
+            assert(String(demand.get("type", "")) == "B", "Core must own the Passive template order type")
+            assert(String(demand.get("area", "")) == "Passive", "Passive control area must survive template ingress")
+            assert(demand.get("requirements", []).size() == 2, "Core must instantiate Passive template requirements")
+            found_template_keys[order_key] = true
+    assert(found_template_keys.has("probe.skill.active") and found_template_keys.has("probe.skill.passive"),
+        "Core snapshot must retain both opaque Space order keys")
+    var duplicate_materialization: Dictionary = jar_host.MaterializeSelectedOrders(selected_orders)
+    assert(not bool(duplicate_materialization.get("success", false)),
+        "Host must not materialize the same frozen loadout orders twice")
 
     # The Host is the sole fractional-millisecond accumulator. Two 0.75ms deltas
     # must forward 0ms then 1ms, and each prepared delta must be consumed exactly once.
