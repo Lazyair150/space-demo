@@ -189,7 +189,7 @@ static func run() -> bool:
 	unsupported_parser_rule.target = "parser.throughput"
 	unsupported_parser_rule.scope = "parser"
 	parser_definition.rule_contributions = [unsupported_parser_rule]
-	var core_profile := SpaceRuleContributionResolver.resolve(generic_assignment_snapshot, runtime_catalog, runtime_catalog, progression)
+	var core_profile := SpaceRuleContributionResolver.resolve(generic_assignment_snapshot, runtime_catalog, progression)
 	parser_definition.rule_contributions = original_parser_rules
 	if core_profile.is_empty():
 		return false
