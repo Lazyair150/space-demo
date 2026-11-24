@@ -138,6 +138,16 @@ static func run() -> Dictionary:
 	unsupported_parser_definition.rule_contributions = [unsupported_parser_rule]
 	if not SpaceProgressionRuntimeProfileComposer.compose_parser(unsupported_parser_definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary").is_empty():
 		return _failure("Parser executor accepted an unsupported effect/target combination")
+	var wrong_target_definition := SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
+	var wrong_target_rule := SpaceRuleContributionDefinition.new()
+	wrong_target_rule.rule_id = &"probe.parser.wrong.target"
+	wrong_target_rule.effect = "ModifyIntensity"
+	wrong_target_rule.target = "parser.throughput"
+	wrong_target_rule.scope = "parser"
+	wrong_target_rule.parameters = {"shape": "圆罐", "multiplier": 2.0}
+	wrong_target_definition.rule_contributions = [wrong_target_rule]
+	if not SpaceProgressionRuntimeProfileComposer.compose_parser(wrong_target_definition, parser_owned, ["圆罐", "方罐"], "parser.slot.primary").is_empty():
+		return _failure("Parser executor accepted an unsupported target contract")
 
 	# Two owned copies of one exact parser Definition must never share runtime state identity.
 	var owned_profile_a := definition.build_runtime_profile()
