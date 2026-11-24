@@ -1,6 +1,6 @@
 # World V2 × Space — resource, order-effect, and event contract
 
-Status: skill semantics are settled at the domain boundary. Jar orders are execution/cost blueprints for equipped Space skills; Jar owns resource consumption/execution/cooldown, while Space owns skill benefit/effect definitions, versions, targets, stacking, and duration. Concrete catalog content and trigger policies remain implementation/data work.
+Status (2026-11-25): the resource, order-event, parser-ingress, and host boundaries are implemented and covered by the successful cross-repository run `45438436612` at Space `74a93ed` against Core `b342259`. Space still owns effect meaning and policy; production content calibration, full battle save/load orchestration, and non-Buff effect executors remain separate work. Older progress paragraphs are chronological checkpoints; the latest PR head `2fa9947` has not yet received a successful exact-head run.
 
 ## 1. Settled gameplay model
 
@@ -157,7 +157,7 @@ For order effects:
 
 Space and Jar do not share one database transaction. Save recovery must use stable operation/event IDs and idempotent application, not assume cross-system atomic writes.
 
-Space now has a frozen-loadout snapshot contract and a callback-driven order-effect dispatcher boundary. The dispatcher will not acknowledge an event until the injected Space commit callback reports that both the effect state and processed EventId were durably saved. The callback and battle save/load wiring remain to be implemented; until then, the dispatcher must not be treated as an active effect path.
+Space has a frozen-loadout snapshot contract, callback-driven order-effect dispatcher, concrete effect committer, and checkpoint store. The cross-repository probes exercise event delivery and persistence boundaries. This does not by itself claim that the complete production battle save/load coordinator or every future effect category is finished.
 
 ## 8. Explicitly not decided
 
