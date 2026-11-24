@@ -31,12 +31,12 @@ func _run() -> void:
 	]) == 2, "filled Jar count only counts non-empty liquid identities")
 	_check(observer._dictionary_total({"酒": 2, "蜜": 3}) == 5, "liquid totals aggregate exact inventory quantities")
 	_check(observer._dictionary_total([]) == 0, "invalid aggregate input fails closed to zero")
-	var ship_balances := observer._ship_liquid_balances({
+	var ship_balances: Dictionary = observer._ship_liquid_balances({
 		"resourceLiquids": {"酒": 0},
 		"shipLiquidInventory": {"capacity": 200, "balances": {"酒": 10}}
 	})
 	_check(ship_balances == {"酒": 10}, "HUD reads ship-owned liquid balances, not central warehouse stock")
-	var hud_line := observer._build_hud_resource_line(
+	var hud_line: String = observer._build_hud_resource_line(
 		[{"shape": "圆罐"}, {"shape": "方罐"}],
 		{"酒": 2, "蜜": 1},
 		200,
@@ -51,7 +51,7 @@ func _run() -> void:
 	_check(not ("%" in hud_line), "ship resource strip shows exact capacity instead of inventing a percentage")
 	_check(observer._demand_shape_summary("方罐", [{"shape": "圆罐"}, {"shape": "长条舱段"}]) == "■ 主形 ● ▬", "order HUD uses explicit primary shape plus separate requirement shapes")
 	_check(observer._demand_shape_summary("", [{"shape": "圆罐"}]) == "●", "order HUD does not infer primary shape from first requirement")
-	var cooling := observer._cooling_demand_ids([
+	var cooling: Array = observer._cooling_demand_ids([
 		{"id": 7, "isCoolingDown": true},
 		{"id": 8, "isCoolingDown": false},
 		{"id": 9, "isCoolingDown": true}
