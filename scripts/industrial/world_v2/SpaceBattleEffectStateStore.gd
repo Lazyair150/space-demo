@@ -122,7 +122,12 @@ func _valid_dispatcher_state(dispatcher: Dictionary, identity: Dictionary, effec
         return false
     if String(dispatcher.get("loadoutId", "")) != String(identity.get("loadoutId", "")):
         return false
-    if not _is_exact_integer(dispatcher.get("loadoutVersion", null)) or int(dispatcher.get("loadoutVersion", 0)) != int(identity.get("loadoutVersion", 0)):
+    var dispatcher_version: Variant = dispatcher.get("loadoutVersion", null)
+    var dispatcher_version_is_integer := typeof(dispatcher_version) == TYPE_INT
+    if typeof(dispatcher_version) == TYPE_FLOAT:
+        var dispatcher_version_number := float(dispatcher_version)
+        dispatcher_version_is_integer = is_finite(dispatcher_version_number) and absf(dispatcher_version_number) <= 9007199254740991.0 and floor(dispatcher_version_number) == dispatcher_version_number
+    if not dispatcher_version_is_integer or int(dispatcher_version) != int(identity.get("loadoutVersion", 0)):
         return false
     if String(dispatcher.get("loadoutFingerprint", "")) != String(identity.get("loadoutFingerprint", "")):
         return false
@@ -185,9 +190,11 @@ func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity:
         return false
     if not (run_state is Dictionary) or int(run_state.get("schemaVersion", 0)) != 1:
         return false
-    if not _is_exact_integer(run_state.get("score", null)) or int(run_state.get("score", -1)) < 0:
+    var score_value: Variant = run_state.get("score", null)
+    var wave_value: Variant = run_state.get("wave", null)
+    if not _is_integral_json_number(score_value) or int(score_value) < 0:
         return false
-    if not _is_exact_integer(run_state.get("wave", null)) or int(run_state.get("wave", -1)) < 0:
+    if not _is_integral_json_number(wave_value) or int(wave_value) < 0:
         return false
     if typeof(run_state.get("segment", null)) != TYPE_STRING or not ["", "热身", "压力", "精英", "喘息"].has(String(run_state.get("segment", ""))):
         return false
@@ -209,30 +216,30 @@ func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity:
     var drop_rng_state: Variant = parser.get("dropRngState", null)
     if not (parser_runtime is Dictionary) or int(parser_runtime.get("schemaVersion", 0)) != 2:
         return false
-    if not _is_exact_integer(next_pickup_sequence) or int(next_pickup_sequence) <= 0:
+    if not _is_integral_json_number(next_pickup_sequence) or int(next_pickup_sequence) <= 0:
         return false
-    if not _is_exact_integer(drop_rng_state):
+    if not _is_integral_json_number(drop_rng_state):
         return false
     if not (parser.get("pendingPickups", null) is Array):
         return false
     return true
 
-static func _is_exact_integer(value: Variant) -> bool:
-	if typeof(value) == TYPE_INT:
-		return true
-	if typeof(value) != TYPE_FLOAT:
-		return false
-	var numeric := float(value)
-	# JSON round-trips integral GDScript numbers as floats. Accept only the exact
-	# IEEE-754 integer range so counters/versions cannot silently lose precision.
-	return is_finite(numeric) and absf(numeric) <= 9007199254740991.0 and floor(numeric) == numeric
-
 func _valid_loadout_identity(identity: Variant) -> bool:
     if not (identity is Dictionary):
         return false
+    var version_value: Variant = identity.get("loadoutVersion", null)
     return (
         not String(identity.get("shipWorldId", "")).is_empty()
         and not String(identity.get("loadoutId", "")).is_empty()
-        and _is_exact_integer(identity.get("loadoutVersion", null)) and int(identity.get("loadoutVersion", 0)) > 0
+        and _is_integral_json_number(version_value) and int(version_value) > 0
         and String(identity.get("loadoutFingerprint", "")).length() == 64
     )
+
+func _is_integral_json_number(value: Variant) -> bool:
+    if typeof(value) == TYPE_INT:
+        return true
+    if typeof(value) != TYPE_FLOAT:
+        return false
+    var numeric := float(value)
+    # JSON round-trips integral GDScript numbers as floats. Reject imprecise values.
+    return is_finite(numeric) and absf(numeric) <= 9007199254740991.0 and floor(numeric) == numeric
