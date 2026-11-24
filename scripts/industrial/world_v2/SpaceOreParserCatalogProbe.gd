@@ -86,7 +86,7 @@ static func run() -> Dictionary:
 		},
 		"selectedOrderBindings": []
 	}
-	var frozen_loadout := SpaceBattleLoadoutSnapshot.create_with_ore_parser(
+	var frozen_loadout: SpaceBattleLoadoutSnapshot = SpaceBattleLoadoutSnapshot.create_with_ore_parser(
 		loadout_source, catalog, "probe-universal-parser", 3, "parser-slot"
 	)
 	if frozen_loadout == null:
