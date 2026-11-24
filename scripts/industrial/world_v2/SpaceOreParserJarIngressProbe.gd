@@ -62,13 +62,7 @@ func _ready() -> void:
 
     var world_json := FileAccess.get_file_as_string("res://data/industrial/world_v2_sandbox.json")
     assert(not world_json.is_empty(), "sandbox World V2 fixture must be readable")
-    var world_options_raw: Variant = JSON.parse_string(world_json)
-    assert(world_options_raw is Dictionary, "sandbox World V2 options must parse as a dictionary")
-    var world_options: Dictionary = world_options_raw
-    # JSON.parse_string represents numeric values as Variants; restore the Core Int64 field
-    # before re-serializing this fixture for System.Text.Json.
-    world_options["executionLogicalTimePerUnit"] = 1000
-    world_options["orderTemplates"] = [
+    var order_templates: Array = [
         {
             "name": "probe.order.active@1",
             "type": "A",
@@ -83,7 +77,10 @@ func _ready() -> void:
             ]
         }
     ]
-    world_json = JSON.stringify(world_options)
+    # Preserve source JSON integer tokens; append only the Core template property.
+    world_json = world_json.strip_edges()
+    assert(world_json.ends_with("}"), "sandbox World V2 fixture must be a JSON object")
+    world_json = world_json.substr(0, world_json.length() - 1) + ",\"orderTemplates\":" + JSON.stringify(order_templates) + "}"
     assert(jar_host.BeginShipWorldFromJson(world_json), "Jar host must accept the test world")
     var selected_orders: Array = [
         {
