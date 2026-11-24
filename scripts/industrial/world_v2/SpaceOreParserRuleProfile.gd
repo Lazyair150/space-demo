@@ -77,6 +77,8 @@ static func compose(
 			return {}
 		target_map[shape] = adjusted
 
+	var base_rates := (base_profile.shapeProcessingRatePerSecond as Dictionary).duplicate(true)
+	var base_thresholds := (base_profile.progressPerJarByShape as Dictionary).duplicate(true)
 	var clean_contributions: Array[Dictionary] = []
 	for contribution in resolved:
 		var clean := contribution.duplicate(true)
@@ -90,6 +92,8 @@ static func compose(
 		"slotId": slot_id,
 		"ownedInstanceId": String(instance.instance_id),
 		"progressionRevision": instance.progression_revision,
+		"baseShapeProcessingRatePerSecond": base_rates,
+		"baseProgressPerJarByShape": base_thresholds,
 		"contributions": clean_contributions
 	}
 	payload["fingerprint"] = _fingerprint(payload)
