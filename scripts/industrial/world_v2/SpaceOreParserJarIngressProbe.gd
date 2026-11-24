@@ -71,8 +71,11 @@ func _ready() -> void:
     assert(jar_host.AdvanceSpaceSimulationMilliseconds(second_half_milli), "prepared one-ms step must advance Jar")
 
     var before: Dictionary = jar_host.GetWorldSnapshot()
-    var initial_warehouse_count := before.get("resourceJars", []).size()
-    var initial_master_count := before.get("master", {}).get("jars", []).size()
+    var initial_warehouse_jars: Array = before.get("resourceJars", [])
+    var initial_master: Dictionary = before.get("master", {})
+    var initial_master_jars: Array = initial_master.get("jars", [])
+    var initial_warehouse_count: int = initial_warehouse_jars.size()
+    var initial_master_count: int = initial_master_jars.size()
 
     var definition := SpaceOreParserDefinition.new()
     definition.parser_id = &"space-jar-ingress-probe"
