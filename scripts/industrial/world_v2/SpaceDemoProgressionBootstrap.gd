@@ -4,10 +4,27 @@ class_name SpaceDemoProgressionBootstrap
 ## Production progression is always loaded from GameState's durable save and is never overwritten.
 
 static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleResource) -> bool:
-	if GameState.space_progression_state != null:
-		return GameState.space_progression_state.get_validation_errors().is_empty()
-	var state := create_starting_inventory(bundle_resource)
-	if state == null:
+	if bundle_resource == null or bundle_resource.create_runtime_bundle() == null:
+		push_error("Demo progression bootstrap requires a valid prototype catalog bundle")
+		return false
+	if GameState.space_progression_state == null:
+		var new_state := create_starting_inventory(bundle_resource)
+		if new_state == null:
+			return false
+		return GameState.set_space_progression_state(new_state)
+
+	# Existing demo saves may predate the starter-ship grant. Preserve all earned
+	# progression and repair only the missing mandatory starting ship, idempotently.
+	var state: SpacePlayerProgressionState = GameState.space_progression_state
+	if not state.get_validation_errors().is_empty():
+		push_error("Demo progression bootstrap cannot repair an invalid player progression state")
+		return false
+	for instance in state.owned_instances:
+		if instance != null and instance.item_kind == "ship":
+			return true
+	var starter := _instance("demo.ship.starter.01", "ship", "demo.ship.starter", 1)
+	if not state.unlock_and_acquire_instance(starter, "demo-start:demo.ship.starter.01"):
+		push_error("Demo progression migration could not grant the missing mandatory starter ship")
 		return false
 	return GameState.set_space_progression_state(state)
 
