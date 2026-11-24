@@ -348,9 +348,12 @@ static func run() -> bool:
 		return false
 
 	# Player progression is separate from immutable catalog definitions.
+	var progression_workshop_catalog := SpaceWorkshopCatalog.new()
+	if not progression_workshop_catalog.register_definition(local_master) or not progression_workshop_catalog.register_definition(local_slave):
+		return false
 	var progression_bundle := SpaceHangarCatalogBundle.create(
 		ships, devices, parsers, workshops, skills,
-		SpaceSkillBalanceProfile.new(), effects
+		SpaceSkillBalanceProfile.new(), effects, progression_workshop_catalog
 	)
 	if not progression_bundle.validate_and_prepare().is_empty():
 		return false
