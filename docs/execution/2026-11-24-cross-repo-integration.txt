@@ -57,3 +57,11 @@ CHECKPOINT — Unified battle snapshot probe correction (2026-11-24)
 - Latest fix commits: 4c0ca87c1f3bcdb5cdf173ab111a0edf9a941517 and indentation-only follow-up 90e46344ef8376640dfb2cc831712227b131aa53. This is a test/probe correction; no production snapshot format or gameplay behavior was changed.
 - A new cross-repository run was triggered for the corrected head; its final result is not yet recorded here. Do not claim the parser-ingress or subsequent lifecycle/fault probes have passed until the new run reaches them.
 - Continue from the first failing runtime probe. Once it passes, fix any subsequent probe failure at its actual owning boundary rather than treating the overall workflow as a single opaque red/green result.
+
+
+CHECKPOINT — Parser Catalog probe fixture follows the two-role world contract (2026-11-24)
+
+- Corrected-head run 45423503329 passed the unified battle snapshot store probe and progressed to SpaceOreParserCatalogProbe. It then failed because the probe's synthetic jarWorldOptions still contained only one workshop and omitted slaveWorkshopName.
+- SpaceBattleLoadoutSnapshot.validate_data now correctly requires exactly two selected workshop positions with distinct Master/Slave names for every materialized World V2 loadout. This is a current domain invariant, not an optional owned-instance-only constraint.
+- Updated the parser catalog probe fixture to provide a second distinct Slave workshop entry and slaveWorkshopName. No production validation was weakened.
+- Fix commit: 407932714935b33721c0a1198fc1072e7b5f6358. The next cross-repository run must continue from this new exact head; parser ingress and later probes remain unverified until it completes.
