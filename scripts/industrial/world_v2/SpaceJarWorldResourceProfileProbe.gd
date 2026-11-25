@@ -9,6 +9,7 @@ static func run() -> Dictionary:
 	profile.world_options = {
 		"shapes": ["round", "square"],
 		"liquids": ["water", "oil"],
+		"liquidPolarities": {"water": "Cathode", "oil": "Anode"},
 		"producers": [{"name": "legacy-producer", "rates": {"round": 0.0, "square": 0.0}}],
 		"liquidProductionRates": {"water": 0.25, "oil": 0.0},
 		"initialLiquidStock": {"water": 3, "oil": 1},
