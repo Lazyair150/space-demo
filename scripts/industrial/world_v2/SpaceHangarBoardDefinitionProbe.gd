@@ -30,6 +30,15 @@ static func run() -> bool:
 	var frozen_board := DEMO_BOARD.build_frozen_snapshot()
 	if String(frozen_board.get("boardId", "")) != "demo.circuit_board" or frozen_board.get("slots", []).size() != 5:
 		return false
+	var parser_frozen_slot: Dictionary = {}
+	for frozen_slot in frozen_board.get("slots", []):
+		if String(frozen_slot.get("slotId", "")) == "decomposition.parser.primary":
+			parser_frozen_slot = frozen_slot
+			break
+	if String(parser_frozen_slot.get("areaId", "")) != "production" or String(parser_frozen_slot.get("subAreaId", "")) != "decomposition":
+		return false
+	if DEMO_BOARD.get_slots_for_area("production").size() != 1:
+		return false
 	var config := DEMO_BOARD.build_hangar_configuration()
 	if String(config.get("parserSlotId", "")) != "decomposition.parser.primary":
 		return false
@@ -74,7 +83,8 @@ static func run() -> bool:
 	var multi_parser := expanded.duplicate(true) as SpaceHangarBoardDefinition
 	var extra_parser := SpaceHangarBoardSlotDefinition.new()
 	extra_parser.slot_id = &"decomposition.parser.secondary"
-	extra_parser.area_id = "decomposition"
+	extra_parser.area_id = "production"
+	extra_parser.sub_area_id = "decomposition"
 	extra_parser.component_kind = "ore_parser"
 	extra_parser.display_name = "第二分解器"
 	multi_parser.slots.append(extra_parser)
@@ -375,15 +385,15 @@ static func _probe_assignments() -> bool:
 	}
 	var assignments := {
 		"workshop.master": {
-			"slotId": "workshop.master", "componentKind": "workshop", "roleId": "master",
+			"slotId": "workshop.master", "areaId": "workshop", "subAreaId": "none", "componentKind": "workshop", "roleId": "master",
 			"ownedInstanceId": "owned.master", "definitionId": "workshop.alpha", "definitionVersion": 1, "sourceRevision": 4
 		},
 		"workshop.slave": {
-			"slotId": "workshop.slave", "componentKind": "workshop", "roleId": "slave",
+			"slotId": "workshop.slave", "areaId": "workshop", "subAreaId": "none", "componentKind": "workshop", "roleId": "slave",
 			"ownedInstanceId": "owned.slave", "definitionId": "workshop.alpha", "definitionVersion": 1, "sourceRevision": 5
 		},
 		"decomposition.parser.primary": {
-			"slotId": "decomposition.parser.primary", "componentKind": "ore_parser",
+			"slotId": "decomposition.parser.primary", "areaId": "production", "subAreaId": "decomposition", "componentKind": "ore_parser",
 			"ownedInstanceId": "owned.parser", "definitionId": "parser.basic", "definitionVersion": 1, "sourceRevision": 2
 		}
 	}
@@ -404,7 +414,7 @@ static func _probe_assignments() -> bool:
 		return false
 	var duplicate_instance := assignments.duplicate(true)
 	duplicate_instance["orders.active.primary"] = {
-		"slotId": "orders.active.primary", "componentKind": "skill",
+		"slotId": "orders.active.primary", "areaId": "orders", "subAreaId": "none", "componentKind": "skill",
 		"ownedInstanceId": "owned.parser", "definitionId": "parser.basic", "definitionVersion": 1
 	}
 	if SpaceHangarBoardAssignment.validate(DEMO_BOARD, duplicate_instance, inventory).is_empty():
@@ -412,6 +422,10 @@ static func _probe_assignments() -> bool:
 	var wrong_kind := assignments.duplicate(true)
 	wrong_kind["decomposition.parser.primary"]["componentKind"] = "workshop"
 	if SpaceHangarBoardAssignment.validate(DEMO_BOARD, wrong_kind, inventory).is_empty():
+		return false
+	var wrong_area := assignments.duplicate(true)
+	wrong_area["decomposition.parser.primary"]["areaId"] = "decomposition"
+	if SpaceHangarBoardAssignment.validate(DEMO_BOARD, wrong_area, inventory).is_empty():
 		return false
 
 	# Changing a World profile that excludes installed workshop instances must be rejected,
