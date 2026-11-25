@@ -3,7 +3,6 @@
 .mono/
 .export/
 export.cfg
-export_presets.cfg
 
 # Platform/export build output
 /android/
