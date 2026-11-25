@@ -235,6 +235,7 @@ jar_world_options = {
 "燃料": 0.1
 },
 "liquids": ["冷却液", "燃料"],
+"liquidPolarities": {"冷却液": "Cathode", "燃料": "Anode"},
 "producers": [{
 "name": "前哨合成器",
 "rates": {
@@ -271,6 +272,7 @@ jar_world_options = {
 "燃料": 0.2
 },
 "liquids": ["冷却液", "燃料"],
+"liquidPolarities": {"冷却液": "Cathode", "燃料": "Anode"},
 "producers": [{
 "name": "深空压缩阵列",
 "rates": {
