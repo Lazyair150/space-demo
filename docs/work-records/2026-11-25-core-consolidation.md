@@ -57,3 +57,11 @@
 - 已更新 `docs/execution/2026-11-24-cross-repo-integration.txt`，明确旧 Core pin `b342259fe04363386085dc9a4ca995112954ed43` 的历史成功不能替代新 Core 验证。
 - 新跨仓库 workflow run `45588333902` 正在执行；等待 Godot 4.7.1 .NET 下载、Core Bridge / Space 构建、项目导入及全部运行时 probes 完成。
 - 该 CI 只提供 Headless 自动化证据；本地 GUI 试玩、视觉验收和目标 GPU 行为仍需用户机器确认。
+
+
+## 2026-11-25 第五轮：固定到 Core PR #63 最新绿色精确 head
+
+- Core PR #63 最新 head `5023b38b75ad4cf66d953e3bb3fa4c490076d4d7` 的两个 exact-head verify runs `45588065611` / `45588076128` 均 SUCCESS；包含 854 项基础回归、World 单一词表约束、checkpoint schema v3 以及旧 schema v2 拒绝测试。
+- 将 Space cross-repo workflow 的 Core checkout ref 与 `CORE_EXPECTED_SHA` 从 `fd0b3761babe3af7f7d770483004ef1a454021f8` 更新到 `5023b38b75ad4cf66d953e3bb3fa4c490076d4d7`。
+- 同步更新当前集成说明中的 Core source pin。旧 Core pin `b342259fe04363386085dc9a4ca995112954ed43` 的成功 run 仅保留为历史证据，不再作为本轮验收依据。
+- 本次工作流与文档合并为一个提交；新 Space cross-repo run 的结果待执行。
