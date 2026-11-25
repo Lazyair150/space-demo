@@ -249,7 +249,8 @@ func _refresh_stage_picker() -> void:
 	_stage_picker.clear()
 	_selected_stage = null
 	if stage_catalog == null or not stage_catalog.get_validation_errors().is_empty():
-		_stage_picker.add_item("战役目录未配置")		_stage_picker.set_item_disabled(0, true)
+		_stage_picker.add_item("战役目录未配置")
+		_stage_picker.set_item_disabled(0, true)
 		_stage_info_label.text = "关卡数据不可用；请为 Hangar 配置版本化的 SpaceStageCatalog。"
 		return
 	_stage_picker.add_item("自由战斗 · 无关卡目标")
