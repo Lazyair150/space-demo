@@ -3,16 +3,21 @@ class_name SpaceBattleLoadoutSnapshot
 ## Immutable-by-interface snapshot of the four player-authored pre-battle build dimensions.
 ## Mutable source dictionaries are deep-copied on creation and on every read.
 
-const CURRENT_SCHEMA_VERSION: int = 2
+const CURRENT_SCHEMA_VERSION: int = 3
 
 var _data: Dictionary = {}
 
 static func create(source: Dictionary) -> SpaceBattleLoadoutSnapshot:
 	var staged := source.duplicate(true)
-	var fingerprint := compute_fingerprint(staged)
-	if staged.has("loadoutFingerprint") and String(staged["loadoutFingerprint"]) != fingerprint:
+	var supplied_fingerprint := String(staged.get("loadoutFingerprint", ""))
+	if not supplied_fingerprint.is_empty() and supplied_fingerprint != compute_fingerprint(staged):
 		push_error("Space battle loadout fingerprint does not match its contents")
 		return null
+	if not _migrate_loadout_schema(staged):
+		push_error("Space battle loadout schema has no safe deterministic migration")
+		return null
+	staged.erase("loadoutFingerprint")
+	var fingerprint := compute_fingerprint(staged)
 	staged["loadoutFingerprint"] = fingerprint
 	var errors := validate_data(staged)
 	if not errors.is_empty():
@@ -68,6 +73,29 @@ static func create_with_ore_parser(
 	devices.append(parser_selection)
 	staged["productionDeviceSelections"] = devices
 	return create(staged)
+
+static func _migrate_loadout_schema(staged: Dictionary) -> bool:
+	var version := int(staged.get("schemaVersion", 0))
+	if version == CURRENT_SCHEMA_VERSION:
+		return true
+	if version != 2:
+		return false
+	var jar_options: Variant = staged.get("jarWorldOptions", null)
+	if not (jar_options is Dictionary):
+		return false
+	if not jar_options.has("liquidPolarities"):
+		var liquids: Variant = jar_options.get("liquids", null)
+		if not (liquids is Array) or liquids.size() != 2:
+			return false
+		var identity_set := {}
+		for liquid in liquids:
+			identity_set[String(liquid)] = true
+		if identity_set.size() != 2 or not identity_set.has("冷却液") or not identity_set.has("燃料"):
+			return false
+		jar_options["liquidPolarities"] = {"冷却液": "Cathode", "燃料": "Anode"}
+		staged["jarWorldOptions"] = jar_options
+	staged["schemaVersion"] = CURRENT_SCHEMA_VERSION
+	return true
 
 static func compute_fingerprint(source: Dictionary) -> String:
 	var canonical_source := source.duplicate(true)
