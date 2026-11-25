@@ -129,7 +129,7 @@ func build_frozen_snapshot() -> Dictionary:
 			"required": slot.required
 		})
 	return {
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"boardId": String(board_id),
 		"definitionVersion": definition_version,
 		"displayName": display_name,
