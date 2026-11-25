@@ -3,31 +3,30 @@ Date: 2026-11-25
 Space PR: #2
 Branch: world-v2/phase-4.10b-hangar-ui
 
-CURRENT AUTHORITATIVE STATUS — 2026-11-25 16:10 +08:00
+CURRENT AUTHORITATIVE STATUS — 2026-11-25
 
-- Current Space branch head before this documentation refresh: b91b6b781dd7ac1f4eb646a26d5f3b595fbfe7ce. PR #2 remains Draft/Open/unmerged.
-- Current Core integration source remains pinned to b342259fe04363386085dc9a4ca995112954ed43; this exact source was checked out by the successful integration workflow.
-- Exact-head Space workflow run 45565738848 for b91b6b781dd7ac1f4eb646a26d5f3b595fbfe7ce completed SUCCESS. Final marker: CROSS-REPO-WORLD-V2-OK core=b342259fe04363386085dc9a4ca995112954ed43.
-- CI built the Core World V2 Bridge and Space .NET project successfully, imported/parsed the Godot 4.7.1 project, and executed all configured probes. HUD: 21 checks, 0 failures. Domain contracts: all-domain-contracts=passed.
-- Parser -> Jar ingress: parsed=1, stored=1, retry_after_restore=1, shared_clock=1, workshop_bypass=0.
-- Runtime/lifecycle: invalid initialization faulted without retaining a session; corrected initialization recovered; duplicate initialization was rejected without replacing the live session; SceneTree exit disposed the session; post-exit reinitialization was rejected.
-- Fault boundary: real Core checked-arithmetic overflow reached Runtime exactly once; mutating command gate closed; diagnostic snapshot remained readable; faulted session disposal passed.
-- Disposed command probe: all 9 post-disposal operations rejected; no fault signal emitted.
-- Faulted command probe: all 6 mutating/control operations rejected; fault reason remained stable.
-- Snapshot isolation: root, dictionary, array, nested, and cross-snapshot mutation isolation passed.
-- Battle pause/navigation: pause/resume, focus-loss explicit resume, RESUMING/RESUME_READY confirmation, fault state, failed menu transition rollback, and terminal return to Main Menu all passed.
-- The failures before this green run were corrected without weakening production validation: f04a8ef (domain Probe result handling), 0c1920b (typed skill fixture), 288b6c2 (Profile validation branch indentation), 6b25881 (explicit projected-liquid float), b91b6b7 (complete synthetic world profile flow-rate fixture).
-- Hangar default-selection path exists in SpaceHangarSelectionDraft._apply_default_selection: it chooses an owned ship, two distinct compatible workshop instances, parser, and compatible optional Board slots using normal assignment validation. SpaceDemoProgressionBootstrap repairs a missing starter ship and two starter workshop instances idempotently.
-- Remaining Hangar hardening: a dedicated regression for partial legacy saves missing parser inventory is not yet present. Do not claim this edge case is covered by the green workflow.
-- WorldV2RuntimeNode._ExitTree marks the node disposed, releases the Bridge session, clears fractional time remainder and frozen options. Runtime lifecycle probes confirm this under Godot SceneTree execution.
-- Main-menu return and pause overlay lifecycle passed the headless scene probe, including rejected scene-path rollback and terminal transition to scenes/menus/MainMenu.tscn.
-- This is Headless CI evidence, not local GUI/manual play acceptance. Local GUI first-play, visual inspection of default Hangar composition, and repeated manual scene navigation remain outstanding.
-- No manual workshop replacement behavior was introduced. PR #2 and Core PR #60 remain Draft/Open/unmerged; do not merge them.
+- Current Space code head: f8f5c8882f193faac1c20572a59a3f8c29ce6428. PR #2 remains Draft/Open/unmerged.
+- Exact Core integration source: b342259fe04363386085dc9a4ca995112954ed43.
+- Exact-head Space workflow run 45566736772 for f8f5c8882f193faac1c20572a59a3f8c29ce6428 completed SUCCESS. Final marker: CROSS-REPO-WORLD-V2-OK core=b342259fe04363386085dc9a4ca995112954ed43.
+- Core World V2 Bridge and Space .NET builds passed; Godot 4.7.1 project import/parse passed; HUD reports 21 checks, 0 failures; all domain contracts passed.
+- Parser -> Jar ingress passed: parsed=1, stored=1, retry_after_restore=1, shared_clock=1, workshop_bypass=0.
+- Runtime lifecycle passed: invalid initialization did not retain a session; valid recovery succeeded; duplicate initialization was rejected without replacing the current session; SceneTree exit disposed the session; post-exit reinitialization was rejected.
+- Fault boundary passed: a real Core checked-arithmetic overflow reached Runtime exactly once; command gate closed; diagnostic snapshot remained readable; faulted session disposal passed.
+- Disposed command probe passed all 9 post-disposal rejections with no fault signal. Faulted command probe passed all 6 mutating/control rejections with stable fault reason.
+- Snapshot isolation passed for root, dictionary, array, nested, and cross-snapshot mutation.
+- Battle pause/navigation passed: pause/resume, focus-loss explicit resume, RESUMING/RESUME_READY confirmation, fault state, failed menu transition rollback, and terminal return to Main Menu.
+- Hangar migration hardening: existing legacy saves with no valid parser now receive exact demo.parser.universal@1 only when needed. Existing valid parser instances are preserved; unresolved owned parser definitions and instance-ID collisions fail closed. Migration is idempotent.
+- Added SpaceDemoProgressionBootstrapProbe. It confirms a legacy save missing parser inventory receives exactly one starter parser, and a second migration pass does not change state revision or inventory count.
+- Added a production-path default assembly regression using the actual data/hangar/demo_catalog_bundle.tres and data/hangar/demo_board.tres resources. It confirms the default selection includes an owned ship, universal parser, two distinct workshop instances, both compatible skill slots, a valid Board Assignment, and a frozen loadout accepted by SpaceBattleLoadoutSnapshot validation.
+- The new default-owned-hangar-assembly probe passed in run 45566736772. This verifies the default pre-battle composition at the domain/assembler boundary; it does not replace visual GUI acceptance.
+- Runtime disposal implementation and lifecycle behavior are covered by the exact-head Godot SceneTree probes. Pause overlay teardown and terminal menu transition are also covered by a real scene probe.
+- CI is Headless evidence, not local GUI/manual play acceptance. Visual layout, real input interaction, target OS/GPU behavior, and repeated manual scene navigation still require local Godot acceptance.
+- Manual workshop replacement remains deliberately isolated and was not implemented. Space PR #2 and Core PR #60 remain Draft/Open/unmerged; do not merge them.
 
 PHASE RESULT
-- Automated cross-repository build, import/parse, domain contracts, parser ingress, Runtime lifecycle/fault/disposal, snapshot isolation, and battle pause/navigation gates: COMPLETE and GREEN at the exact Space/Core SHAs above.
-- Remaining before claiming a fully playable local demo: (1) dedicated regression for partial old progression saves missing parser inventory, (2) GUI first-play/manual scene navigation and visual Hangar default-selection acceptance, (3) final repository cleanup and exact-branch pull/launch handoff.
-- Do not label GUI acceptance as passed until the project is run locally.
+- Automated cross-repository build, Godot import/parse, HUD, Hangar owned inventory/default assembly, domain contracts, parser ingress, Runtime lifecycle/fault/disposal, snapshot isolation, and battle pause/navigation gates: COMPLETE and GREEN at exact Space/Core SHAs above.
+- Remaining external acceptance before calling the demo fully playable on the user's machine: local GUI first-play, visual inspection of the default Hangar composition, and manual scene navigation on the target OS/GPU. Do not label these as passed until observed.
+- Repository cleanup audit did not justify deleting active probes, historical protocol fixtures, schema migrations, or compatibility contracts. Keep those until their callers and migration windows are demonstrably retired.
 The remaining sections below are chronological historical checkpoints. Their “not yet run”, old Core SHA and old failure statements describe those dates only; the authoritative current result is this section.
 
 CORE DEPENDENCY
