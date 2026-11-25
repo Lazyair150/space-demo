@@ -84,7 +84,7 @@ static func build_snapshot(board: SpaceHangarBoardDefinition, assignments: Dicti
 		var entry: Dictionary = assignments[key].duplicate(true)
 		canonical.append(entry)
 	var payload := {
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"boardId": String(board.board_id),
 		"definitionVersion": board.definition_version,
 		"boardDefinition": board.build_frozen_snapshot(),
