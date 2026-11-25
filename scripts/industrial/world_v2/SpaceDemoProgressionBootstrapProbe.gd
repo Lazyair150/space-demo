@@ -96,6 +96,16 @@ static func run() -> bool:
 		return false
 	if String(migrated_data.jarWorldOptions.liquidPolarities.get("冷却液", "")) != "Cathode":
 		return false
+	var unsupported_legacy: Dictionary = legacy_loadout.duplicate(true)
+	var unsupported_options: Dictionary = unsupported_legacy.jarWorldOptions.duplicate(true)
+	unsupported_options["liquids"] = ["water", "oil"]
+	unsupported_options.erase("liquidPolarities")
+	unsupported_legacy["jarWorldOptions"] = unsupported_options
+	unsupported_legacy.erase("loadoutFingerprint")
+	unsupported_legacy["loadoutFingerprint"] = SpaceBattleLoadoutSnapshot.compute_fingerprint(unsupported_legacy)
+	if SpaceBattleLoadoutSnapshot.create(unsupported_legacy) != null:
+		return false
 	print("[SpaceDemoProgressionBootstrapProbe] default-owned-hangar-assembly=passed")
 	print("[SpaceDemoProgressionBootstrapProbe] legacy-loadout-polarity-migration=passed")
+	print("[SpaceDemoProgressionBootstrapProbe] unknown-legacy-liquid-mapping=fail-closed")
 	return true
