@@ -80,7 +80,7 @@ run_godot_checked "hud-feedback" "=== 21 checks, 0 failures ===" \
   --headless --path "$SPACE_ROOT" --script "res://tests/space_jar_hud_feedback.gd"
 
 run_godot_checked "hangar-contracts" "[SpaceHangarContractProbe] passed" \
-  --headless --path "$SPACE_ROOT" --script "res://tests/space_hangar_contracts.gd"
+  --headless --path "$SPACE_ROOT" --scene "res://tests/space_hangar_contracts.tscn" --quit-after 180
 
 echo "[4/4] Run World V2 integration and lifecycle probes"
 run_godot_checked "parser-ingress" "[SpaceOreParserJarIngressProbe] passed" \
