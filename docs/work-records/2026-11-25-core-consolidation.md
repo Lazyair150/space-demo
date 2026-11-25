@@ -37,3 +37,12 @@
 - 新增 Probe：校验自定义映射保留、缺失映射拒绝、默认装配成功，并验证 schema 2 的精确迁移。
 - 相关 Space commits：`851a0c9d20374a99c90bdfcb801dd83181c08813`（demo worlds）、`c74c29b96c46b800389bbd0a1d0229f123b7ef53`（frozen loadout validation）、`03b8b1dcbee4b3f42058801dd7ec7d5f730f4631`（schema migration）、`4f5a84ebf63b96be0f1f2e9b29f4fcfd87677aab` / `f5fdffe9e958422f0c3c6612b22d75ead3ae5561`（regression probes）。
 - 以上提交仍待 Space 跨仓库 CI 以整合后的 Core 精确 SHA 验证；尚不标记为运行通过。
+
+
+## 2026-11-25 第三轮：Space 配置回归与 Core fixture 联动
+
+- Space CI run 45576616148 对提交 f704d730bd609373edcf0bb712578b3eda59f8de 成功。
+- 失败 run 45575852409 的真实失败原因是 SpaceOreParserCatalogProbe 的合成 loadout fixture 仍使用旧的酒/蜜液体集合，却未声明 liquidPolarities；这不是生产目录 bundle 的配置错误。
+- 已为该合成 fixture 明确增加 酒→Cathode、蜜→Anode，提交 f704d730bd609373edcf0bb712578b3eda59f8de；随后 run 45576616148 通过。
+- 此成功仅证明 Space 当前分支的 Godot CI/Headless 合约验证通过；不代表本地 GUI 试玩通过，也不代表它已使用 Core 整合分支的最新 DLL/桥接项目。
+- 仍需在 Core PR #63 形成可用且通过 CI 的 head 后，确认 Space 的 ProjectReference/CI 属性实际指向该 Core 版本，再跑跨仓库验证。
