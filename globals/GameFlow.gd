@@ -59,7 +59,10 @@ func return_to_menu(scene_path: String) -> bool:
 	var previous_phase := _battle_phase
 	var previous_reason := _pause_reason
 	var previous_fault := _fault_reason
+	var previous_fault_world_time := _fault_world_time_milli
+	var previous_fault_logical_time := _fault_logical_time_milli
 	var tree := get_tree()
+	var previous_tree_paused := tree.paused if tree != null else false
 	if tree != null:
 		tree.paused = false
 	_battle_phase = BattlePhase.INACTIVE
@@ -76,6 +79,10 @@ func return_to_menu(scene_path: String) -> bool:
 	_battle_phase = previous_phase
 	_pause_reason = previous_reason
 	_fault_reason = previous_fault
+	_fault_world_time_milli = previous_fault_world_time
+	_fault_logical_time_milli = previous_fault_logical_time
+	if tree != null:
+		tree.paused = previous_tree_paused
 	_emit_state()
 	transition_failed.emit(Screen.MENU, scene_path, error_code)
 	push_error("[GameFlow] Main-menu return failed (%d): %s" % [error_code, scene_path])
