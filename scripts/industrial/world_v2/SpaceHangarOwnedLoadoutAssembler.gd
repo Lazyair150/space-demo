@@ -200,7 +200,8 @@ static func assemble(
 
 
 static func _validate_board_assignment_snapshot(snapshot: Dictionary, progression: SpacePlayerProgressionState, selection: Dictionary) -> String:
-	if int(snapshot.get("schemaVersion", 0)) != 1:
+	var assignment_schema := int(snapshot.get("schemaVersion", 0))
+	if assignment_schema not in [1, 2]:
 		return "Board Assignment snapshot schema is invalid"
 	var expected_fingerprint := String(snapshot.get("assignmentFingerprint", ""))
 	if expected_fingerprint.is_empty():
@@ -219,7 +220,7 @@ static func _validate_board_assignment_snapshot(snapshot: Dictionary, progressio
 	var board: Dictionary = board_raw
 	var slots: Variant = board.get("slots", [])
 	var assignments: Variant = snapshot.get("assignments", [])
-	if int(board.get("schemaVersion", 0)) != 1 or String(board.get("displayName", "")).strip_edges().is_empty() or String(board.get("boardId", "")) != String(snapshot.get("boardId", "")) or int(board.get("definitionVersion", 0)) != int(snapshot.get("definitionVersion", 0)) or not (slots is Array) or not (assignments is Array):
+	if int(board.get("schemaVersion", 0)) not in [1, 2] or String(board.get("displayName", "")).strip_edges().is_empty() or String(board.get("boardId", "")) != String(snapshot.get("boardId", "")) or int(board.get("definitionVersion", 0)) != int(snapshot.get("definitionVersion", 0)) or not (slots is Array) or not (assignments is Array):
 		return "Board Assignment snapshot does not contain its exact versioned Board Definition"
 
 	var slot_index := {}
@@ -233,14 +234,15 @@ static func _validate_board_assignment_snapshot(snapshot: Dictionary, progressio
 		if slot_id.is_empty() or slot_index.has(slot_id):
 			return "Board Definition snapshot contains an empty or duplicate slot identity"
 		var area_id := String(slot.get("areaId", ""))
+		var sub_area_id := String(slot.get("subAreaId", "none"))
 		var component_kind := String(slot.get("componentKind", ""))
 		var role_id := String(slot.get("roleId", ""))
 		var control_area := String(slot.get("controlArea", ""))
 		var valid_slot := (
-			(area_id == "workshop" and component_kind == "workshop" and role_id in ["master", "slave"] and control_area == "none")
-			or (area_id == "decomposition" and component_kind == "ore_parser" and role_id == "none" and control_area == "none")
-			or (area_id == "orders" and component_kind == "skill" and role_id == "none" and control_area in ["Active", "Passive"])
-			or (area_id == "production" and component_kind == "production_device" and role_id == "none" and control_area == "none")
+			(area_id == "workshop" and sub_area_id == "none" and component_kind == "workshop" and role_id in ["master", "slave"] and control_area == "none")
+			or (area_id == "production" and sub_area_id == "decomposition" and component_kind == "ore_parser" and role_id == "none" and control_area == "none")
+			or (area_id == "orders" and sub_area_id == "none" and component_kind == "skill" and role_id == "none" and control_area in ["Active", "Passive"])
+			or (area_id == "production" and sub_area_id == "none" and component_kind == "production_device" and role_id == "none" and control_area == "none")
 		)
 		if not valid_slot:
 			return "Board Definition slot has an invalid area/component/role/control-area combination: " + slot_id
@@ -295,6 +297,8 @@ static func _validate_board_assignment_snapshot(snapshot: Dictionary, progressio
 		var component_kind := String(slot.get("componentKind", ""))
 		if String(entry.get("componentKind", "")) != component_kind:
 			return "Board Assignment component kind does not match its slot"
+		if assignment_schema >= 2 and (String(entry.get("areaId", "")) != area_id or String(entry.get("subAreaId", "none")) != sub_area_id):
+			return "Board Assignment area hierarchy does not match its exact slot"
 		if component_kind == "workshop" and String(entry.get("roleId", "")) != String(slot.get("roleId", "")):
 			return "Board Assignment workshop role does not match the exact slot"
 		if component_kind == "skill" and String(entry.get("controlArea", "")) != String(slot.get("controlArea", "")):
