@@ -406,10 +406,10 @@ func _render_view_model(view_model: Dictionary) -> void:
 		_status_label.text = "玩家成长存档尚未注入 Preparation；当前不能使用生产机库实例库存。"
 	elif not _identity_is_supplied():
 		_status_label.text = "目录已加载。等待所属游戏流程提供 shipWorldId / loadoutId / loadoutVersion。"
-	elif board_definition != null and not _controller.validate_assignments().is_empty():
-		_status_label.text = "电路板尚未完成安装： " + "; ".join(_controller.validate_assignments())
 	elif not String(view_model.get("lastError", "")).is_empty():
 		_status_label.text = String(view_model.get("lastError", ""))
+	elif board_definition != null and not _controller.validate_assignments().is_empty():
+		_status_label.text = "电路板尚未完成安装： " + "; ".join(_controller.validate_assignments())
 	elif parser_slot_id.strip_edges().is_empty():
 		_status_label.text = "等待游戏流程提供 parser_slot_id；机库不会自行创建解析器槽位身份。"
 	elif not _slot_configuration_is_valid():
@@ -628,10 +628,24 @@ func _board_slot_choices(inventory: Dictionary, slot: SpaceHangarBoardSlotDefini
 	if not (raw_choices is Array):
 		return []
 	var result: Array = []
+	# One owned instance can occupy only one physical board slot. Remove instances
+	# already installed elsewhere so the UI cannot offer an invalid duplicate.
+	var used_elsewhere := {}
+	if _controller != null and board_definition != null:
+		for other_slot in board_definition.slots:
+			if other_slot == null or String(other_slot.slot_id) == String(slot.slot_id):
+				continue
+			var other_assignment := _controller.get_assignment(String(other_slot.slot_id))
+			var used_id := String(other_assignment.get("ownedInstanceId", ""))
+			if not used_id.is_empty():
+				used_elsewhere[used_id] = true
 	for raw_choice in raw_choices:
 		if not (raw_choice is Dictionary):
 			continue
 		var choice: Dictionary = raw_choice
+		var candidate_instance_id := String(choice.get("instanceId", ""))
+		if not candidate_instance_id.is_empty() and used_elsewhere.has(candidate_instance_id):
+			continue
 		if slot.component_kind == "workshop" and not world_key.ends_with("@0") and world_key != "@" and not choice.get("compatibleWorldKeys", []).has(world_key):
 			continue
 		if slot.component_kind == "skill" and not choice.get("allowedControlAreas", []).has(slot.control_area):
