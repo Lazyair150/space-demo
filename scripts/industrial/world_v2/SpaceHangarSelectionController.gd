@@ -39,11 +39,18 @@ func set_ship(definition_id: String, version: int, instance_id: String = "") -> 
 func assign_instance(slot_id: String, owned_instance_id: String) -> bool:
 	if _draft == null:
 		return _apply(false)
-	for other_slot_id in _draft._assignments:
-		if String(other_slot_id) != slot_id and String(_draft._assignments[other_slot_id].get("ownedInstanceId", "")) == owned_instance_id:
-			_last_error = "同一个拥有实例不能安装到多个槽位：%s 已占用该元件。" % String(other_slot_id)
-			_emit_changed()
-			return false
+	if _board_definition != null:
+		for other_slot in _board_definition.slots:
+			if other_slot == null:
+				continue
+			var other_slot_id := String(other_slot.slot_id)
+			if other_slot_id == slot_id:
+				continue
+			var other_assignment := _draft.get_assignment(other_slot_id)
+			if String(other_assignment.get("ownedInstanceId", "")) == owned_instance_id:
+				_last_error = "同一个拥有实例不能安装到多个槽位：%s 已占用该元件。" % other_slot_id
+				_emit_changed()
+				return false
 	return _apply(_draft.assign_instance(slot_id, owned_instance_id))
 
 func unassign_slot(slot_id: String) -> bool:
