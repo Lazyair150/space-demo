@@ -313,8 +313,8 @@ func _emit_snapshot_feedback(snapshot: Dictionary) -> void:
 		events.append("世界状态：" + _lifecycle_text(new_lifecycle))
 	var old_jars: Variant = _previous_snapshot.get("resourceJars", [])
 	var new_jars: Variant = snapshot.get("resourceJars", [])
-	var old_jar_count := old_jars.size() if old_jars is Array else 0
-	var new_jar_count := new_jars.size() if new_jars is Array else 0
+	var old_jar_count: int = old_jars.size() if old_jars is Array else 0
+	var new_jar_count: int = new_jars.size() if new_jars is Array else 0
 	if new_jar_count != old_jar_count:
 		var delta := new_jar_count - old_jar_count
 		events.append(("获得" if delta > 0 else "消耗") + " Jar ×%d" % absi(delta))
@@ -336,8 +336,8 @@ func _emit_snapshot_feedback(snapshot: Dictionary) -> void:
 				events.append("%s暂存 %s%d" % [role, "+" if delta > 0 else "−", absi(delta)])
 		var old_jars_in_bench := before.get("jars", []) if before is Dictionary else []
 		var new_jars_in_bench := after.get("jars", []) if after is Dictionary else []
-		var old_bench_count := old_jars_in_bench.size() if old_jars_in_bench is Array else 0
-		var new_bench_count := new_jars_in_bench.size() if new_jars_in_bench is Array else 0
+		var old_bench_count: int = old_jars_in_bench.size() if old_jars_in_bench is Array else 0
+		var new_bench_count: int = new_jars_in_bench.size() if new_jars_in_bench is Array else 0
 		if new_bench_count != old_bench_count:
 			var role := "主台" if key == "master" else "从台"
 			events.append("%s舱段 %s%d" % [role, "+" if new_bench_count > old_bench_count else "−", absi(new_bench_count - old_bench_count)])
