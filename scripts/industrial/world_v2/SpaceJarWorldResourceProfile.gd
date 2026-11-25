@@ -72,6 +72,28 @@ static func validate_world_options(options: Dictionary) -> Array[String]:
 	for liquid in liquids:
 		liquid_set[String(liquid)] = true
 
+	var polarities: Variant = options.get("liquidPolarities", null)
+	if not (polarities is Dictionary) or polarities.size() != 2:
+		errors.append("liquidPolarities must explicitly map both liquid identities")
+	else:
+		var cathode_count := 0
+		var anode_count := 0
+		for liquid in liquids:
+			if not polarities.has(String(liquid)):
+				errors.append("liquidPolarities is missing liquid identity: " + String(liquid))
+		for liquid_key in polarities:
+			if not liquid_set.has(String(liquid_key)):
+				errors.append("liquidPolarities contains an unknown liquid identity: " + String(liquid_key))
+			var polarity_name := String(polarities[liquid_key])
+			if polarity_name == "Cathode":
+				cathode_count += 1
+			elif polarity_name == "Anode":
+				anode_count += 1
+			else:
+				errors.append("liquidPolarity must be Cathode or Anode: " + String(liquid_key))
+		if cathode_count != 1 or anode_count != 1:
+			errors.append("liquidPolarities must assign exactly one Cathode and one Anode")
+
 	var capacity: Variant = options.get("shipLiquidCapacity", null)
 	if typeof(capacity) != TYPE_INT or int(capacity) < 0:
 		errors.append("shipLiquidCapacity must be a non-negative integer")
