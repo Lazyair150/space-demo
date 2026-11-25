@@ -34,7 +34,42 @@ func refresh_inventory() -> bool:
 	return ready
 
 func set_ship(definition_id: String, version: int, instance_id: String = "") -> bool:
-	return _apply(_draft != null and _draft.set_ship(definition_id, version, instance_id))
+	if _draft == null:
+		return _reject_ship("飞船选择失败：装配草稿尚未初始化。")
+	if definition_id.strip_edges().is_empty() or version <= 0:
+		return _reject_ship("飞船选择失败：候选项缺少有效定义 ID 或版本。")
+	var matching_definition := false
+	var matching_instance := false
+	var choices: Variant = _inventory.get("shipChoices", [])
+	if choices is Array:
+		for raw_choice in choices:
+			if not (raw_choice is Dictionary):
+				continue
+			if String(raw_choice.get("id", "")) != definition_id or int(raw_choice.get("version", 0)) != version:
+				continue
+			matching_definition = true
+			if String(raw_choice.get("instanceId", "")) == instance_id:
+				matching_instance = true
+	if not matching_definition:
+		return _reject_ship("飞船选择失败：库存中不存在 %s@%d。" % [definition_id, version])
+	if _requires_owned_assembly() and instance_id.strip_edges().is_empty():
+		return _reject_ship("飞船选择失败：当前机库要求拥有实例 ID，但候选项没有 instanceId。")
+	if not matching_instance:
+		return _reject_ship("飞船选择失败：实例 %s 与库存中的 %s@%d 不匹配。" % [instance_id, definition_id, version])
+	if not _draft.set_ship(definition_id, version, instance_id):
+		return _reject_ship("飞船选择失败：候选项通过库存检查，但装配草稿拒绝写入。")
+	var committed := _draft.snapshot_data()
+	if String(committed.get("shipId", "")) != definition_id or int(committed.get("shipVersion", 0)) != version or String(committed.get("shipInstanceId", "")) != instance_id:
+		return _reject_ship("飞船选择失败：写入后的装配草稿与所选实例不一致。")
+	_last_error = ""
+	_emit_changed()
+	return true
+
+func _reject_ship(reason: String) -> bool:
+	_last_error = reason
+	push_warning("[Hangar] " + reason)
+	_emit_changed()
+	return false
 
 func assign_instance(slot_id: String, owned_instance_id: String) -> bool:
 	if _draft == null:
