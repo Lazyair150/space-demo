@@ -95,4 +95,7 @@ run_godot_checked "faulted-commands" "[WorldV2FaultedCommandsProbe] passed" \
 run_godot_checked "snapshot-isolation" "[WorldV2SnapshotIsolationProbe] passed" \
   --headless --path "$SPACE_ROOT" --scene "res://scenes/industrial/WorldV2SnapshotIsolationProbe.tscn" --quit-after 180
 
+run_godot_checked "battle-navigation" "[SpaceBattlePauseControllerProbe] passed terminal-menu-transition=true" \
+  --headless --path "$SPACE_ROOT" --scene "res://scenes/industrial/SpaceBattlePauseControllerProbe.tscn" --quit-after 180
+
 echo "CROSS-REPO-WORLD-V2-OK core=$ACTUAL_CORE_SHA"
