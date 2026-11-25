@@ -197,10 +197,6 @@ public partial class WorldV2ShipHost : Node
     }
 
     /// <summary>
-    /// Read pending Jar order-cycle events at the Space world-step boundary.
-    /// Repeated reads return the same events until explicitly acknowledged.
-    /// </summary>
-    /// <summary>
     /// Adds the frozen loadout's selected Jar orders before the first simulation step.
     /// Any partial materialization failure disposes the not-yet-started ship world.
     /// </summary>
