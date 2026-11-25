@@ -480,20 +480,38 @@ func _selected_choice(picker: OptionButton) -> Dictionary:
 func _on_ship_selected(index: int) -> void:
 	if _suppress_picker_events:
 		return
-	# item_selected supplies the authoritative row. Do not re-read OptionButton.selected
-	# during its signal callback: the UI row and the mutable selection draft must agree.
 	if index <= 0 or index >= _ship_picker.item_count:
 		return
 	var raw_choice: Variant = _ship_picker.get_item_metadata(index)
 	if not (raw_choice is Dictionary):
+		_status_label.text = "飞船选择失败：下拉项没有候选实例元数据。"
+		push_warning("[Hangar] ship picker row %d has no Dictionary metadata." % index)
 		return
 	var choice: Dictionary = raw_choice
-	if _controller.set_ship(
-		String(choice.get("id", "")),
-		int(choice.get("version", 0)),
-		String(choice.get("instanceId", ""))
-	):
-		_set_icon_texture(_primary_icons.ship, choice.get("iconTexture"), "ship")
+	var definition_id := String(choice.get("id", ""))
+	var definition_version := int(choice.get("version", 0))
+	var instance_id := String(choice.get("instanceId", ""))
+	print("[Hangar] ship picker selected: id=%s version=%d instanceId=%s" % [definition_id, definition_version, instance_id])
+	if not _controller.set_ship(definition_id, definition_version, instance_id):
+		# Controller emits the authoritative error through view_model_changed.
+		_render_view_model(_controller.get_view_model())
+		return
+	var committed: Dictionary = _controller.get_view_model().get("selection", {})
+	var confirmed := (
+		String(committed.get("shipId", "")) == definition_id
+		and int(committed.get("shipVersion", 0)) == definition_version
+		and String(committed.get("shipInstanceId", "")) == instance_id
+	)
+	if not confirmed:
+		_status_label.text = "飞船选择未提交：界面候选与装配草稿不一致，请查看 Godot 输出日志。"
+		push_error("[Hangar] ship selection commit mismatch: candidate=%s@%d#%s draft=%s@%d#%s" % [
+			definition_id, definition_version, instance_id,
+			String(committed.get("shipId", "")), int(committed.get("shipVersion", 0)), String(committed.get("shipInstanceId", ""))
+		])
+		_render_view_model(_controller.get_view_model())
+		return
+	_set_icon_texture(_primary_icons.ship, choice.get("iconTexture"), "ship")
+	print("[Hangar] ship selection committed: %s@%d#%s" % [definition_id, definition_version, instance_id])
 
 func _on_parser_selected(index: int) -> void:
 	if _suppress_picker_events:
