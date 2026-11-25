@@ -48,9 +48,19 @@ func _ready() -> void:
 	if controller._primary_button.text != "返回主菜单  /  Main Menu":
 		_fail_probe(controller, "fault action must navigate to the main menu, not resume combat")
 		return
-	GameFlow.enter_screen(GameFlow.Screen.MENU)
-	print("[SpaceBattlePauseControllerProbe] passed")
-	controller.queue_free()
+	# Exercise the real fault-exit action, not only the abstract state transitions.
+	# The probe intentionally changes to the actual main-menu scene as its final step.
+	controller._on_primary_action()
+	var menu_snapshot := GameFlow.snapshot()
+	if (
+		get_tree().paused
+		or String(menu_snapshot.get("screen", "")) != "MENU"
+		or String(menu_snapshot.get("battlePhase", "")) != "INACTIVE"
+		or controller._overlay.visible
+	):
+		_fail_probe(controller, "fault exit must unpause, clear battle ownership, and hide the old overlay")
+		return
+	print("[SpaceBattlePauseControllerProbe] passed terminal-menu-transition=true")
 
 func _fail_probe(controller: SpaceBattlePauseController, reason: String) -> void:
 	get_tree().paused = false
