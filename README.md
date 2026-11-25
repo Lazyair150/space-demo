@@ -80,10 +80,10 @@ Or launch the project from Godot Project Manager by importing this directory and
 
 ### First play session
 
-1. In the Hangar, keep the provided starter ship/parser/workshop selections or choose another owned instance.
-2. Keep the optional skill slots empty for the simplest first launch, or equip a skill if you want to exercise the order/effect path.
+1. The Hangar initializes a default build from the player's actually owned starter instances. Confirm the ship, parser, two distinct workshop instances, and required board slots in the preview.
+2. Optional skill/device slots are filled only when a compatible owned instance and a valid slot are available; the player can still change any selection.
 3. Choose **Free Combat** for an unbounded combat session, or select an unlocked finite stage.
-4. Press the build/launch button. The Hangar freezes the selected owned-instance loadout and passes it to the combat scene before the scene enters the tree.
+4. Press the build/launch button. The Hangar validates and freezes the selected owned-instance loadout, then passes it to the combat scene before the scene enters the tree.
 5. In combat, use the current input map:
    - `W` / `A` / `S` / `D`: move
    - Left mouse button: shoot
@@ -107,6 +107,10 @@ bash scripts/ci/verify-world-v2-cross-repo.sh
 ```
 
 PowerShell users can run the individual build/import commands above; the verification harness is Bash-based and requires Git Bash or WSL on Windows.
+
+## Engineering standards
+
+The cross-language coding, architecture, lifecycle, protocol, error-handling, and testing rules are documented in [Space Engineering Standard](docs/architecture/12-space-engineering-standard.md). The standard adapts the structure of Alibaba's Java Development Manual to GDScript, C#, Godot resources, and the Core/Space boundary; it is not an official Alibaba Godot standard.
 
 ## Repository boundaries
 
