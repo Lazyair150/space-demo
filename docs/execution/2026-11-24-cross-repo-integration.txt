@@ -5,10 +5,10 @@ Branch: world-v2/phase-4.10b-hangar-ui
 
 CURRENT AUTHORITATIVE STATUS — 2026-11-25
 
-- Current Space code head: a8daee73df55bf30125960a9a6231ea93e706d4f. PR #2 remains Draft/Open/unmerged.
-- Exact Core integration source now pinned by the Space cross-repo workflow: 5023b38b75ad4cf66d953e3bb3fa4c490076d4d7 (Core PR #63 integration branch; exact-head verify runs 45588065611 and 45588076128 succeeded).
-- Previous Space run 45577582987 for a8daee73df55bf30125960a9a6231ea93e706d4f succeeded with the older Core pin b342259fe04363386085dc9a4ca995112954ed43; it is not evidence for the new Core source.
-- A prior run with Core source fd0b3761babe3af7f7d770483004ef1a454021f8 was cancelled after a documentation-only branch update. The current exact-pin run will be recorded after it completes.
+- Current Space code head: a19a6afcf47d06bf500764407bad63e8f6bd5dde. PR #2 remains Draft/Open/unmerged.
+- Exact Core integration source pinned by the Space cross-repo workflow: 5023b38b75ad4cf66d953e3bb3fa4c490076d4d7 (Core PR #63; exact-head verify runs 45588065611 and 45588076128 succeeded).
+- Previous Space run 45577582987 passed with the older Core pin b342259fe04363386085dc9a4ca995112954ed43; it is historical only.
+- Intermediate Space run 45588471573 passed with Core source fd0b3761babe3af7f7d770483004ef1a454021f8. The subsequent exact-pin run 45588639250 passed with Core source 5023b38b75ad4cf66d953e3bb3fa4c490076d4d7.
 - Core World V2 Bridge and Space .NET builds passed; Godot 4.7.1 project import/parse passed; HUD reports 21 checks, 0 failures; all domain contracts passed.
 - Parser -> Jar ingress passed: parsed=1, stored=1, retry_after_restore=1, shared_clock=1, workshop_bypass=0.
 - Runtime lifecycle passed: invalid initialization did not retain a session; valid recovery succeeded; duplicate initialization was rejected without replacing the current session; SceneTree exit disposed the session; post-exit reinitialization was rejected.
@@ -22,7 +22,7 @@ CURRENT AUTHORITATIVE STATUS — 2026-11-25
 - The new default-owned-hangar-assembly probe passed in run 45566736772. This verifies the default pre-battle composition at the domain/assembler boundary; it does not replace visual GUI acceptance.
 - Runtime disposal implementation and lifecycle behavior are covered by the exact-head Godot SceneTree probes. Pause overlay teardown and terminal menu transition are also covered by a real scene probe.
 - CI is Headless evidence, not local GUI/manual play acceptance. Visual layout, real input interaction, target OS/GPU behavior, and repeated manual scene navigation still require local Godot acceptance.
-- Manual workshop replacement remains deliberately isolated and was not implemented. Space PR #2 and Core PR #60 remain Draft/Open/unmerged; do not merge them.
+- Manual workshop replacement remains deliberately isolated and was not implemented. Space PR #2 and Core PR #63 remain Draft/Open/unmerged; do not merge them.
 
 PHASE RESULT
 - Automated cross-repository build, Godot import/parse, HUD, Hangar owned inventory/default assembly, domain contracts, parser ingress, Runtime lifecycle/fault/disposal, snapshot isolation, and battle pause/navigation gates: COMPLETE and GREEN at exact Space/Core SHAs above.

@@ -64,4 +64,8 @@
 - Core PR #63 最新 head `5023b38b75ad4cf66d953e3bb3fa4c490076d4d7` 的两个 exact-head verify runs `45588065611` / `45588076128` 均 SUCCESS；包含 854 项基础回归、World 单一词表约束、checkpoint schema v3 以及旧 schema v2 拒绝测试。
 - 将 Space cross-repo workflow 的 Core checkout ref 与 `CORE_EXPECTED_SHA` 从 `fd0b3761babe3af7f7d770483004ef1a454021f8` 更新到 `5023b38b75ad4cf66d953e3bb3fa4c490076d4d7`。
 - 同步更新当前集成说明中的 Core source pin。旧 Core pin `b342259fe04363386085dc9a4ca995112954ed43` 的成功 run 仅保留为历史证据，不再作为本轮验收依据。
-- 本次工作流与文档合并为一个提交；新 Space cross-repo run 的结果待执行。
+- 本次工作流与文档合并为一个提交；最新 Core pin 的 Space cross-repo run 已完成。
+- Exact-head Space cross-repo run 45588639250 for Space head `a19a6afcf47d06bf500764407bad63e8f6bd5dde` + Core source `5023b38b75ad4cf66d953e3bb3fa4c490076d4d7`: SUCCESS.
+- Core Bridge and Space .NET builds both succeeded; Godot 4.7.1 .NET import/parse succeeded; HUD reported 21 checks / 0 failures; Hangar, progression, board, parser ingress, domain, lifecycle, fault, disposed/faulted commands, snapshot isolation and battle pause/navigation probes all passed.
+- Fault overflow and missing-main-menu resource errors in the logs are deliberate negative-path injections; their probes completed with pass markers and the workflow ended with `CROSS-REPO-WORLD-V2-OK core=5023b38b75ad4cf66d953e3bb3fa4c490076d4d7`.
+- This is headless automation evidence only; local GUI first-play, visual inspection and target GPU/OS behavior remain pending.
