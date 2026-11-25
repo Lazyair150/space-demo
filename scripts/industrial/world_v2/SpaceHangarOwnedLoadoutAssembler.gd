@@ -209,7 +209,7 @@ static func _validate_board_assignment_snapshot(snapshot: Dictionary, progressio
 	fingerprint_payload.erase("assignmentFingerprint")
 	var fingerprint_hash := HashingContext.new()
 	fingerprint_hash.start(HashingContext.HASH_SHA256)
-	fingerprint_hash.update(JSON.stringify(fingerprint_payload).to_utf8_buffer())
+	fingerprint_hash.update(JSON.stringify(fingerprint_payload, "", false).to_utf8_buffer())
 	if fingerprint_hash.finish().hex_encode() != expected_fingerprint:
 		return "Board Assignment fingerprint does not match its frozen Board Definition and assignments"
 
