@@ -13,20 +13,54 @@ static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleR
 			return false
 		return GameState.set_space_progression_state(new_state)
 
-	# Existing demo saves may predate the starter-ship grant. Preserve all earned
-	# progression and repair only the missing mandatory starting ship, idempotently.
+	# Existing demo saves may predate the complete starter assembly. Preserve
+	# earned progression and repair only missing minimum starter inventory,
+	# idempotently. A usable board needs two distinct workshop instances because
+	# Master and Slave are separate required physical positions.
 	var state: SpacePlayerProgressionState = GameState.space_progression_state
 	if not state.get_validation_errors().is_empty():
 		push_error("Demo progression bootstrap cannot repair an invalid player progression state")
 		return false
+
+	var has_ship := false
+	var workshop_count := 0
+	var existing_instance_ids := {}
 	for instance in state.owned_instances:
-		if instance != null and instance.item_kind == "ship":
-			return true
-	var starter := _instance("demo.ship.starter.01", "ship", "demo.ship.starter", 1)
-	if not state.unlock_and_acquire_instance(starter, "demo-start:demo.ship.starter.01"):
-		push_error("Demo progression migration could not grant the missing mandatory starter ship")
-		return false
-	return GameState.set_space_progression_state(state)
+		if instance == null:
+			continue
+		existing_instance_ids[String(instance.instance_id)] = true
+		if instance.item_kind == "ship":
+			has_ship = true
+		elif instance.item_kind == "workshop":
+			workshop_count += 1
+
+	var changed := false
+	if not has_ship:
+		var starter_ship := _instance("demo.ship.starter.01", "ship", "demo.ship.starter", 1)
+		if not state.unlock_and_acquire_instance(starter_ship, "demo-start:demo.ship.starter.01"):
+			push_error("Demo progression migration could not grant the missing mandatory starter ship")
+			return false
+		changed = true
+
+	var starter_workshops := [
+		{"instanceId": "demo.workshop.alpha.01", "definitionId": "demo.workshop.alpha"},
+		{"instanceId": "demo.workshop.beta.01", "definitionId": "demo.workshop.beta"}
+	]
+	for workshop in starter_workshops:
+		if workshop_count >= 2:
+			break
+		var instance_id := String(workshop.instanceId)
+		if existing_instance_ids.has(instance_id):
+			continue
+		var starter_workshop := _instance(instance_id, "workshop", String(workshop.definitionId), 1)
+		if not state.unlock_and_acquire_instance(starter_workshop, "demo-start:" + instance_id):
+			push_error("Demo progression migration could not grant required starter workshop instance: " + instance_id)
+			return false
+		existing_instance_ids[instance_id] = true
+		workshop_count += 1
+		changed = true
+
+	return GameState.set_space_progression_state(state) if changed else true
 
 static func create_starting_inventory(bundle_resource: SpaceHangarCatalogBundleResource) -> SpacePlayerProgressionState:
 	if bundle_resource == null or bundle_resource.create_runtime_bundle() == null:
