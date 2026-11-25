@@ -99,6 +99,19 @@ static func run() -> bool:
 	var generic_draft := SpaceHangarSelectionDraft.new()
 	if not generic_draft.configure(inventory, DEMO_BOARD):
 		return false
+	# A fresh Hangar draft must already contain a complete, valid default build.
+	# This protects the player from repeating the full selection on every entry.
+	var default_data := generic_draft.snapshot_data()
+	var default_assignments: Variant = default_data.get("boardAssignments", {})
+	if (
+		String(default_data.get("shipInstanceId", "")) != "demo.ship.starter.01"
+		or not (default_assignments is Dictionary)
+		or default_assignments.get("assignments", []).size() != 5
+		or not generic_draft.validate_assignments().is_empty()
+		or generic_draft.build_selection() == null
+	):
+		return false
+	print("[SpaceHangarBoardDefinitionProbe] default-loadout=passed")
 	if not generic_draft.set_ship("demo.ship.starter", 1, "demo.ship.starter.01"):
 		return false
 	if not generic_draft.set_workshop("demo.world.starter", 1):
