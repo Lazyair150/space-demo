@@ -343,6 +343,7 @@ func _add_picker(parent: VBoxContainer, caption: String, category: String) -> Op
 	picker.allow_reselect = true
 	picker.add_item("目录未加载")
 	picker.set_item_disabled(0, true)
+	picker.select(0)
 	row.add_child(picker)
 	return picker
 
