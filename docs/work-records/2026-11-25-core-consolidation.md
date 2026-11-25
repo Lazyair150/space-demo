@@ -24,3 +24,16 @@
 - Core 主线 PR 收敛及旧堆叠 PR 清理。
 - Space 的 Core pin / ProjectReference 正式版本策略。
 - Space 与 Core 完整 CI、Headless 和本地 GUI 回归。
+
+## 截图故障的实际定位与修正
+
+- 玩家战斗运行时出现 `Liquid has no registered Jar polarity: 燃料`。
+- 追查到 `data/hangar/demo_catalog_bundle.tres` 中两个战斗世界都声明了 `liquids = [冷却液, 燃料]`，但没有任何身份→极性映射；Core 旧实现只认识硬编码的 `酒/蜜`。
+- 已在两个战斗世界显式声明：
+  - `冷却液` → `Cathode`
+  - `燃料` → `Anode`
+- Space 的 `SpaceJarWorldResourceProfile` 现在要求两种液体都有显式且一一对应的极性映射；自定义身份不得从名称或数组顺序猜测。
+- 冻结战斗 Loadout schema 升为 3；对 schema 2 仅提供一条严格迁移：只有确切的旧 Space 身份集合 `{冷却液, 燃料}` 才能补上上述映射，其他自定义身份拒绝自动猜测。
+- 新增 Probe：校验自定义映射保留、缺失映射拒绝、默认装配成功，并验证 schema 2 的精确迁移。
+- 相关 Space commits：`851a0c9d20374a99c90bdfcb801dd83181c08813`（demo worlds）、`c74c29b96c46b800389bbd0a1d0229f123b7ef53`（frozen loadout validation）、`03b8b1dcbee4b3f42058801dd7ec7d5f730f4631`（schema migration）、`4f5a84ebf63b96be0f1f2e9b29f4fcfd87677aab` / `f5fdffe9e958422f0c3c6612b22d75ead3ae5561`（regression probes）。
+- 以上提交仍待 Space 跨仓库 CI 以整合后的 Core 精确 SHA 验证；尚不标记为运行通过。
