@@ -297,7 +297,7 @@ static func _validate_board_assignment_snapshot(snapshot: Dictionary, progressio
 		var component_kind := String(slot.get("componentKind", ""))
 		if String(entry.get("componentKind", "")) != component_kind:
 			return "Board Assignment component kind does not match its slot"
-		if assignment_schema >= 2 and (String(entry.get("areaId", "")) != area_id or String(entry.get("subAreaId", "none")) != sub_area_id):
+		if assignment_schema >= 2 and (String(entry.get("areaId", "")) != String(slot.get("areaId", "")) or String(entry.get("subAreaId", "none")) != String(slot.get("subAreaId", "none"))):
 			return "Board Assignment area hierarchy does not match its exact slot"
 		if component_kind == "workshop" and String(entry.get("roleId", "")) != String(slot.get("roleId", "")):
 			return "Board Assignment workshop role does not match the exact slot"
