@@ -23,9 +23,17 @@ static func run() -> bool:
 	print("[SpaceDomainContractProbe] all-domain-contracts=passed")
 	return true
 
-static func _check(contract_name: String, result: Dictionary) -> bool:
-	if not bool(result.get("passed", false)):
-		push_error("[SpaceDomainContractProbe] " + contract_name + " failed: " + String(result.get("reason", "unspecified failure")))
+static func _check(contract_name: String, result: Variant) -> bool:
+	var passed := false
+	var reason := "probe returned an unsupported result type"
+	if result is Dictionary:
+		passed = bool(result.get("passed", false))
+		reason = String(result.get("reason", "unspecified failure"))
+	elif result is bool:
+		passed = result
+		reason = "probe returned false"
+	if not passed:
+		push_error("[SpaceDomainContractProbe] " + contract_name + " failed: " + reason)
 		return false
 	print("[SpaceDomainContractProbe] " + contract_name + "=passed")
 	return true
