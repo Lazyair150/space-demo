@@ -28,3 +28,15 @@ Thumbs.db
 tmp/
 TestResults/
 coverage/
+
+# Local diagnostics and profiler artifacts
+*.trace
+*.dump
+*.prof
+*.coverage
+*.coveragexml
+*.opendb
+*.sdf
+
+# Generated local work-record exports; canonical records under docs/work-records stay tracked
+docs/work-records/_local/
