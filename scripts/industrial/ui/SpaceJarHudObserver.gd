@@ -275,7 +275,7 @@ func _workshop_hud_summary(raw_workshop: Variant) -> String:
 	var workshop: Dictionary = raw_workshop
 	var jars: Variant = workshop.get("jars", [])
 	var liquids: Variant = workshop.get("liquids", {})
-	var jar_count := jars.size() if jars is Array else 0
+	var jar_count: int = jars.size() if jars is Array else 0
 	return "%d罐/%d液" % [jar_count, _dictionary_total(liquids)]
 
 func _set_unavailable(message: String) -> void:
