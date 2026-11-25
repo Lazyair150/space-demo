@@ -119,10 +119,14 @@ func _build_interface() -> void:
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# The hangar is a responsive vertical page. A horizontal scrollbar here
+	# indicates a broken child minimum-width constraint, not intended navigation.
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	margin.add_child(scroll)
 
 	var root := VBoxContainer.new()
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	root.add_theme_constant_override("separation", 14)
 	scroll.add_child(root)
 
@@ -324,8 +328,10 @@ func _add_picker(parent: VBoxContainer, caption: String, category: String) -> Op
 	_primary_icons[category] = icon
 	var label := Label.new()
 	label.text = caption
-	label.custom_minimum_size.x = 205
+	label.custom_minimum_size.x = 160
+	label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(label)
 	var picker := OptionButton.new()
 	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
