@@ -34,4 +34,47 @@ static func run() -> bool:
 	if state.state_revision != repaired_revision or state.owned_instances.size() != 2:
 		return false
 	print("[SpaceDemoProgressionBootstrapProbe] legacy-missing-parser-repair=idempotent")
+
+	# Verify the actual authored demo board receives a complete deterministic
+	# owned-instance default and can freeze it through the production controller.
+	var complete_state := SpaceDemoProgressionBootstrap.create_starting_inventory(bundle)
+	if complete_state == null:
+		return false
+	var board := load("res://data/hangar/demo_board.tres") as SpaceHangarBoardDefinition
+	if board == null:
+		return false
+	var preparation := SpaceHangarPreparation.new()
+	preparation.catalog_bundle_resource = bundle
+	preparation.require_owned_instances = true
+	preparation.player_progression_state = complete_state
+	var controller := SpaceHangarSelectionController.new()
+	var identity := {
+		"shipWorldId": "bootstrap-probe-world",
+		"loadoutId": "bootstrap-probe-loadout",
+		"loadoutVersion": 1
+	}
+	if not controller.configure(preparation, identity, board):
+		return false
+	var view_model := controller.get_view_model()
+	if not bool(view_model.get("canBuild", false)):
+		return false
+	var selection: Dictionary = view_model.get("selection", {})
+	if String(selection.get("shipInstanceId", "")).is_empty():
+		return false
+	if String(selection.get("parserId", "")) != "demo.parser.universal":
+		return false
+	if String(selection.get("parserInstanceId", "")) != "demo.parser.universal.01":
+		return false
+	if String(selection.get("masterWorkshopInstanceId", "")).is_empty():
+		return false
+	if String(selection.get("slaveWorkshopInstanceId", "")).is_empty():
+		return false
+	if String(selection.masterWorkshopInstanceId) == String(selection.slaveWorkshopInstanceId):
+		return false
+	if selection.skillSelections.size() != 2 or selection.boardAssignments.size() < 5:
+		return false
+	var default_loadout := controller.build_loadout_snapshot()
+	if default_loadout == null or not default_loadout.is_valid():
+		return false
+	print("[SpaceDemoProgressionBootstrapProbe] default-owned-hangar-assembly=passed")
 	return true
