@@ -487,13 +487,21 @@ func _on_ship_selected(index: int) -> void:
 		_status_label.text = "飞船选择失败：下拉项没有候选实例元数据。"
 		push_warning("[Hangar] ship picker row %d has no Dictionary metadata." % index)
 		return
-	var choice: Dictionary = raw_choice
+	# Do not clear/rebuild an OptionButton while its item_selected signal is
+	# dispatching. Commit on the next idle turn, then render from the draft.
+	var choice: Dictionary = raw_choice.duplicate(true)
+	print("[Hangar] ship picker event received: index=%d candidate=%s@%d#%s" % [
+		index, String(choice.get("id", "")), int(choice.get("version", 0)), String(choice.get("instanceId", ""))
+	])
+	call_deferred("_commit_ship_selection", choice)
+
+func _commit_ship_selection(choice: Dictionary) -> void:
+	if not is_instance_valid(_controller):
+		return
 	var definition_id := String(choice.get("id", ""))
 	var definition_version := int(choice.get("version", 0))
 	var instance_id := String(choice.get("instanceId", ""))
-	print("[Hangar] ship picker selected: id=%s version=%d instanceId=%s" % [definition_id, definition_version, instance_id])
 	if not _controller.set_ship(definition_id, definition_version, instance_id):
-		# Controller emits the authoritative error through view_model_changed.
 		_render_view_model(_controller.get_view_model())
 		return
 	var committed: Dictionary = _controller.get_view_model().get("selection", {})
@@ -503,15 +511,15 @@ func _on_ship_selected(index: int) -> void:
 		and String(committed.get("shipInstanceId", "")) == instance_id
 	)
 	if not confirmed:
-		_status_label.text = "飞船选择未提交：界面候选与装配草稿不一致，请查看 Godot 输出日志。"
-		push_error("[Hangar] ship selection commit mismatch: candidate=%s@%d#%s draft=%s@%d#%s" % [
+		_status_label.text = "飞船选择未提交：装配草稿与候选实例不一致。"
+		push_error("[Hangar] ship commit mismatch: candidate=%s@%d#%s draft=%s@%d#%s" % [
 			definition_id, definition_version, instance_id,
 			String(committed.get("shipId", "")), int(committed.get("shipVersion", 0)), String(committed.get("shipInstanceId", ""))
 		])
 		_render_view_model(_controller.get_view_model())
 		return
-	_set_icon_texture(_primary_icons.ship, choice.get("iconTexture"), "ship")
 	print("[Hangar] ship selection committed: %s@%d#%s" % [definition_id, definition_version, instance_id])
+	_render_view_model(_controller.get_view_model())
 
 func _on_parser_selected(index: int) -> void:
 	if _suppress_picker_events:
@@ -1006,13 +1014,26 @@ func _update_build_enabled(view_model: Dictionary) -> void:
 	var devices_exist := _array_size(inventory.get("deviceChoices", [])) > 0
 	var skills_exist := _array_size(inventory.get("skillChoices", [])) > 0
 	var binding_configuration_complete := board_definition != null or ((not devices_exist or not device_slot_ids.is_empty()) and (not skills_exist or not skill_order_bindings.is_empty()))
-	_build_button.disabled = (
-		not _board_configuration_valid
-		or not bool(view_model.get("canBuild", false))
-		or _duration_picker.value <= 0.0
-		or not binding_configuration_complete
-		or not _slot_configuration_is_valid()
-	)
+	var blockers: Array[String] = []
+	if not _board_configuration_valid:
+		blockers.append("电路板定义无效")
+	if not bool(view_model.get("canBuild", false)):
+		var selection: Dictionary = view_model.get("selection", {})
+		if String(selection.get("shipId", "")).is_empty():
+			blockers.append("尚未提交飞船选择")
+		if board_definition != null:
+			for issue in _controller.validate_assignments():
+				blockers.append(String(issue))
+		for issue in view_model.get("validationErrors", []):
+			blockers.append(String(issue))
+	if _duration_picker.value <= 0.0:
+		blockers.append("战斗时长无效")
+	if not binding_configuration_complete:
+		blockers.append("设备/技能槽位绑定配置不完整")
+	if not _slot_configuration_is_valid():
+		blockers.append("机库槽位配置无效")
+	_build_button.disabled = not blockers.is_empty()
+	_build_button.tooltip_text = "无法进入战斗：\n" + "\n".join(blockers) if not blockers.is_empty() else "装配条件已满足，可以进入战斗。"
 
 func _slot_configuration_is_valid() -> bool:
 	if parser_slot_id.strip_edges().is_empty():
