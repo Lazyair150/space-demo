@@ -236,7 +236,7 @@ func _build_hud_resource_line(raw_jars: Variant, raw_liquids: Variant, liquid_ca
 			liquid_total += amount
 			liquid_parts.append("%s %d" % [String(liquid), amount])
 	var liquid_capacity_text := "%d/%d" % [liquid_total, liquid_capacity] if liquid_capacity > 0 else str(liquid_total)
-	return "JAR  %d  %s    飞船液体  %s  %s    主台 %s  →  从台 %s    %s" % [
+	return "JAR  %d  %s    飞船液体 %s  %s    主台 %s  →  从台 %s    %s" % [
 		jar_list.size(),
 		" / ".join(shape_parts) if not shape_parts.is_empty() else "无",
 		liquid_capacity_text,
