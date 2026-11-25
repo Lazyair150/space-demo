@@ -54,7 +54,49 @@ static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleR
 		existing_instance_ids[instance_id] = true
 		changed = true
 
+	var parser_revision_before := state.state_revision
+	if not ensure_starting_parser_inventory(state, bundle_resource):
+		return false
+	changed = changed or state.state_revision != parser_revision_before
 	return GameState.set_space_progression_state(state) if changed else true
+
+
+## Older demo saves may have ship/workshop ownership but no parser. A production
+## owned loadout requires one exact parser instance, so repair only that missing
+## minimum inventory and keep the operation idempotent.
+static func ensure_starting_parser_inventory(
+	state: SpacePlayerProgressionState,
+	bundle_resource: SpaceHangarCatalogBundleResource
+) -> bool:
+	if state == null or bundle_resource == null or bundle_resource.ore_parser_catalog == null:
+		return false
+	if not state.get_validation_errors().is_empty():
+		return false
+	var has_valid_parser := false
+	for instance in state.owned_instances:
+		if instance == null or instance.item_kind != "ore_parser":
+			continue
+		if bundle_resource.ore_parser_catalog.resolve_definition(
+				String(instance.definition_id), instance.definition_version
+			) == null:
+			push_error("Demo progression migration found an owned parser with no exact catalog definition")
+			return false
+		has_valid_parser = true
+	if has_valid_parser:
+		return true
+	var parser_definition := bundle_resource.ore_parser_catalog.resolve_definition("demo.parser.universal", 1)
+	if parser_definition == null:
+		push_error("Demo progression migration requires exact starter parser demo.parser.universal@1")
+		return false
+	var parser_instance_id := "demo.parser.universal.01"
+	if state.resolve_instance(parser_instance_id) != null:
+		push_error("Demo progression migration starter parser instance ID is already occupied")
+		return false
+	var starter_parser := _instance(parser_instance_id, "ore_parser", String(parser_definition.parser_id), parser_definition.definition_version)
+	if not state.unlock_and_acquire_instance(starter_parser, "demo-start:" + parser_instance_id):
+		push_error("Demo progression migration could not grant the missing starter parser")
+		return false
+	return true
 
 static func create_starting_inventory(bundle_resource: SpaceHangarCatalogBundleResource) -> SpacePlayerProgressionState:
 	if bundle_resource == null or bundle_resource.create_runtime_bundle() == null:
