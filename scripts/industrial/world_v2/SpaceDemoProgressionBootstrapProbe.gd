@@ -74,7 +74,7 @@ static func run() -> bool:
 	if selection.skillSelections.size() != 2 or selection.boardAssignments.size() < 5:
 		return false
 	var default_loadout := controller.build_loadout_snapshot()
-	if default_loadout == null or not default_loadout.is_valid():
+	if default_loadout == null or not SpaceBattleLoadoutSnapshot.validate_data(default_loadout.to_dictionary()).is_empty():
 		return false
 	print("[SpaceDemoProgressionBootstrapProbe] default-owned-hangar-assembly=passed")
 	return true
