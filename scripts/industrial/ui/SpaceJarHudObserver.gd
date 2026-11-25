@@ -236,7 +236,7 @@ func _build_hud_resource_line(raw_jars: Variant, raw_liquids: Variant, liquid_ca
 			liquid_total += amount
 			liquid_parts.append("%s %d" % [String(liquid), amount])
 	var liquid_capacity_text := "%d/%d" % [liquid_total, liquid_capacity] if liquid_capacity > 0 else str(liquid_total)
-	return "JAR  %d  %s    飞船液体  %s  %s    主台 %s  →  从台 %s    %s  %s" % [
+	return "JAR  %d  %s    飞船液体  %s  %s    主台 %s  →  从台 %s    %s" % [
 		jar_list.size(),
 		" / ".join(shape_parts) if not shape_parts.is_empty() else "无",
 		liquid_capacity_text,
@@ -413,7 +413,7 @@ func _cooling_demand_ids(raw: Variant) -> Array[String]:
 	if raw is Array:
 		for demand in raw:
 			if demand is Dictionary and bool(demand.get("isCoolingDown", false)):
-				result.append(String(demand.get("id", "")))
+				result.append(str(demand.get("id", "")))
 	return result
 
 func _active_session_step_total(raw: Variant) -> int:
