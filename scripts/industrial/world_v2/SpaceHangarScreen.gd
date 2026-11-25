@@ -226,6 +226,10 @@ func _build_interface() -> void:
 		_skill_section.visible = false
 
 	_ship_picker.item_selected.connect(_on_ship_selected)
+	print("[HangarDiag] screen ready instance=%s ship_picker=%s connected=%s item_count=%d" % [
+		str(get_instance_id()), str(_ship_picker.get_instance_id()),
+		str(_ship_picker.item_selected.is_connected(_on_ship_selected)), _ship_picker.item_count
+	])
 	_parser_picker.item_selected.connect(_on_parser_selected)
 	_workshop_picker.item_selected.connect(_on_workshop_selected)
 	_master_workshop_picker.item_selected.connect(_on_master_workshop_selected)
@@ -478,9 +482,14 @@ func _selected_choice(picker: OptionButton) -> Dictionary:
 	return value if value is Dictionary else {}
 
 func _on_ship_selected(index: int) -> void:
+	print("[HangarDiag] ship item_selected received index=%d suppress=%s item_count=%d selected=%d" % [
+		index, str(_suppress_picker_events), _ship_picker.item_count, _ship_picker.selected
+	])
 	if _suppress_picker_events:
+		push_warning("[HangarDiag] ship selection signal arrived while picker rendering was suppressed.")
 		return
 	if index <= 0 or index >= _ship_picker.item_count:
+		push_warning("[HangarDiag] ship selection index is outside the candidate range.")
 		return
 	var raw_choice: Variant = _ship_picker.get_item_metadata(index)
 	if not (raw_choice is Dictionary):
