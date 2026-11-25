@@ -147,7 +147,7 @@ static func validate_world_options(options: Dictionary) -> Array[String]:
 				workshop_names[name] = true
 			if not (workshop.get("baseMarks", null) is Array) or not (workshop.get("additionalMarks", null) is Array):
 				errors.append("workshop shape marks must be arrays: " + name)
-		else:
+			else:
 				for mark in workshop.baseMarks + workshop.additionalMarks:
 					if not shape_set.has(String(mark)):
 						errors.append("workshop references an unknown shape: " + String(mark))
