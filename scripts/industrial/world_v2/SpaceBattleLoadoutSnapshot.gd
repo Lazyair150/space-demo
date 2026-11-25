@@ -129,7 +129,8 @@ static func _validate_board_assignment_snapshot(source: Dictionary) -> PackedStr
 	if not (snapshot is Dictionary):
 		errors.append("boardAssignmentSnapshot must be a dictionary")
 		return errors
-	if int(snapshot.get("schemaVersion", 0)) != 1 or _required_text(snapshot, "assignmentFingerprint").is_empty():
+	var assignment_schema := int(snapshot.get("schemaVersion", 0))
+	if assignment_schema not in [1, 2] or _required_text(snapshot, "assignmentFingerprint").is_empty():
 		errors.append("boardAssignmentSnapshot requires schema version and assignment fingerprint")
 	var fingerprint_payload: Dictionary = snapshot.duplicate(true)
 	var supplied_fingerprint := String(fingerprint_payload.get("assignmentFingerprint", ""))
@@ -143,6 +144,8 @@ static func _validate_board_assignment_snapshot(source: Dictionary) -> PackedStr
 	if not (board is Dictionary):
 		errors.append("boardAssignmentSnapshot must freeze its Board Definition")
 		return errors
+	if int(board.get("schemaVersion", 1)) not in [1, 2]:
+		errors.append("Board Definition schema version is unsupported")
 	if _required_text(board, "boardId") != _required_text(snapshot, "boardId") or int(board.get("definitionVersion", 0)) != int(snapshot.get("definitionVersion", 0)):
 		errors.append("board assignment and Board Definition identities differ")
 	var slots: Variant = board.get("slots", null)
@@ -167,6 +170,17 @@ static func _validate_board_assignment_snapshot(source: Dictionary) -> PackedStr
 		else:
 			slot_index[slot_id] = raw_slot
 		var component_kind := String(raw_slot.get("componentKind", ""))
+		if int(board.get("schemaVersion", 1)) >= 2:
+			var area_id := String(raw_slot.get("areaId", ""))
+			var sub_area_id := String(raw_slot.get("subAreaId", "none"))
+			var valid_area := (
+				(area_id == "workshop" and sub_area_id == "none" and component_kind == "workshop")
+				or (area_id == "production" and sub_area_id == "decomposition" and component_kind == "ore_parser")
+				or (area_id == "production" and sub_area_id == "none" and component_kind == "production_device")
+				or (area_id == "orders" and sub_area_id == "none" and component_kind == "skill")
+			)
+			if not valid_area:
+				errors.append("Board Slot top-level area/sub-area hierarchy is invalid: " + slot_id)
 		var role_id := String(raw_slot.get("roleId", "none"))
 		if component_kind == "workshop" and role_id == "master":
 			master_count += 1
@@ -195,6 +209,9 @@ static func _validate_board_assignment_snapshot(source: Dictionary) -> PackedStr
 		var slot: Dictionary = slot_index[slot_id]
 		if _required_text(raw_entry, "componentKind") != _required_text(slot, "componentKind"):
 			errors.append("Board Assignment component kind differs from slot compatibility")
+		if assignment_schema >= 2:
+			if _required_text(raw_entry, "areaId") != _required_text(slot, "areaId") or String(raw_entry.get("subAreaId", "none")) != String(slot.get("subAreaId", "none")):
+				errors.append("Board Assignment area hierarchy differs from its frozen Board Slot")
 		if String(slot.get("componentKind", "")) == "workshop" and _required_text(raw_entry, "roleId") != _required_text(slot, "roleId"):
 			errors.append("Board Assignment workshop role differs from its position")
 		if String(slot.get("componentKind", "")) == "skill" and _required_text(raw_entry, "controlArea") != _required_text(slot, "controlArea"):
