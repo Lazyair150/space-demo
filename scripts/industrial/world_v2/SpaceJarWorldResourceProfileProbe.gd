@@ -13,6 +13,8 @@ static func run() -> Dictionary:
 		"liquidProductionRates": {"water": 0.25, "oil": 0.0},
 		"initialLiquidStock": {"water": 3, "oil": 1},
 		"shipLiquidCapacity": 8,
+		"jarFlowRatePerLogicalTime": 1.0,
+		"liquidFlowRatePerLogicalTime": 1.0,
 		"workshops": [
 			{"name": "master", "baseMarks": ["round", "square"], "additionalMarks": [], "ban": [], "maxJars": 8, "maxLiquids": 8, "liquidStagingCapacity": 6},
 			{"name": "slave", "baseMarks": ["round", "square"], "additionalMarks": [], "ban": [], "maxJars": 8, "maxLiquids": 8, "liquidStagingCapacity": 6}
