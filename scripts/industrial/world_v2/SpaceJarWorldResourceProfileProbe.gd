@@ -26,6 +26,13 @@ static func run() -> Dictionary:
 	}
 	if not profile.is_valid():
 		return {"passed": false, "reason": "; ".join(profile.get_validation_errors())}
+	var mapping: Dictionary = profile.world_options.liquidPolarities
+	if String(mapping.get("water", "")) != "Cathode" or String(mapping.get("oil", "")) != "Anode":
+		return {"passed": false, "reason": "World liquid polarity mapping was not preserved"}
+	var missing_mapping := profile.duplicate(true) as SpaceJarWorldResourceProfile
+	missing_mapping.world_options.erase("liquidPolarities")
+	if missing_mapping.get_validation_errors().is_empty():
+		return {"passed": false, "reason": "custom liquid identities were accepted without explicit polarity mapping"}
 	var forecast := profile.build_liquid_economy_resources()
 	if int(forecast.liquidInventoryCapacity) != 8 or int(forecast.initialLiquids.water) != 3:
 		return {"passed": false, "reason": "Jar liquid stock/capacity did not materialize"}
