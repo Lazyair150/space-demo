@@ -6,7 +6,7 @@ This repository contains the Space game client and the Godot presentation/runtim
 
 The Hangar uses the demo board and catalog resources under `data/hangar/`. The player can select the ship, parser, workshop instances/roles, optional devices and skills, choose free combat or an unlocked finite stage, then launch the battle. The Jar simulation is hosted by `WorldV2ShipHost`; Jar rules and execution remain owned by the sibling `jar-system-dotnet` repository.
 
-> **Prototype status:** this is a locally runnable gameplay prototype, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. The latest successful cross-repository runtime integration used Space commit `74a93ed281d94823608b0c6803edd78dd9f068cc` with Core commit `b342259fe04363386085dc9a4ca995112954ed43`. Later Space changes in this branch are documentation/status cleanup and the HUD probe's typed-array correction; the latest documentation head has not yet been revalidated by a successful exact-head workflow.
+> **Prototype status:** this is a locally runnable gameplay prototype, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. The cross-repository workflow pins Core commit `b342259fe04363386085dc9a4ca995112954ed43`; each successful run validates the exact Space commit shown on that run. Headless probes cover the Hangar ownership/board contracts and battle pause/fault navigation. GUI layout, actual input interaction, and platform-specific behavior still require local Godot acceptance.
 
 ## Requirements
 
@@ -95,7 +95,7 @@ The combat scene mounts a persistent Jar observer HUD: it displays ship/Jar reso
 
 ## 4. Run the cross-repository verification
 
-The full integration script builds the exact Core Bridge, builds Space, imports/parses the Godot project, and runs the HUD, parser ingress, runtime, lifecycle, fault, disposed/faulted command, and snapshot-isolation probes.
+The full integration script builds the exact Core Bridge, builds Space, imports/parses the Godot project, and runs the HUD, Hangar catalog/ownership/board contracts, parser ingress, runtime, lifecycle, fault, disposed/faulted command, snapshot-isolation, and battle pause/fault-navigation probes.
 
 From `space-demo`:
 
@@ -121,6 +121,6 @@ The cross-language coding, architecture, lifecycle, protocol, error-handling, an
 
 ## Current validation boundary
 
-- Successful exact runtime integration: Space `74a93ed281d94823608b0c6803edd78dd9f068cc`, Core `b342259fe04363386085dc9a4ca995112954ed43`, workflow run `45438436612`.
-- Core fixed-seed and Core test suite verification is recorded in the Core repository work ledger.
-- This README is a setup/run guide; it does not claim that a successful CI run exists for every later documentation-only commit on the current Space branch.
+- Core integration is pinned to `b342259fe04363386085dc9a4ca995112954ed43`.
+- Consult the Actions run attached to the exact Space commit when checking current CI status; an earlier green commit does not validate later changes.
+- Headless CI does not replace local GUI acceptance on the target OS/GPU.
