@@ -44,8 +44,12 @@ func _build_view() -> void:
 	_status.add_theme_color_override("font_color", Color(0.52, 0.84, 0.98, 1.0))
 	outer.add_child(_status)
 
+	# The preview uses two columns for the hull and core systems. Skills occupy a
+	# separate full-width row; keeping them as a third fixed-width column caused
+	# labels and icons to collapse at ordinary game-window widths.
 	var layout := HBoxContainer.new()
-	layout.add_theme_constant_override("separation", 18)
+	layout.add_theme_constant_override("separation", 16)
+	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	outer.add_child(layout)
 
 	var ship_panel := PanelContainer.new()
@@ -95,8 +99,8 @@ func _build_view() -> void:
 	systems.add_child(_device_list)
 
 	var skills_panel := PanelContainer.new()
-	skills_panel.custom_minimum_size.x = 190
-	layout.add_child(skills_panel)
+	skills_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	outer.add_child(skills_panel)
 	var skills := VBoxContainer.new()
 	skills.add_theme_constant_override("separation", 8)
 	skills_panel.add_child(skills)
@@ -139,7 +143,12 @@ func render(view_model: Dictionary) -> void:
 	var inventory: Dictionary = view_model.get("inventory", {})
 	var selection: Dictionary = view_model.get("selection", {})
 	var ready := bool(view_model.get("isReady", false))
-	var ship := _find_choice(inventory.get("shipChoices", []), String(selection.get("shipId", "")), int(selection.get("shipVersion", 0)))
+	var ship := _find_ship_choice(
+		inventory.get("shipChoices", []),
+		String(selection.get("shipId", "")),
+		int(selection.get("shipVersion", 0)),
+		String(selection.get("shipInstanceId", ""))
+	)
 	var parser := _find_choice(inventory.get("parserChoices", []), String(selection.get("parserId", "")), int(selection.get("parserVersion", 0)))
 	var workshop := _find_choice(inventory.get("workshopChoices", []), String(selection.get("workshopId", "")), int(selection.get("workshopVersion", 0)))
 
@@ -284,6 +293,20 @@ func _render_skills(skill_choices: Variant, selected_skills: Variant) -> void:
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(label)
+
+func _find_ship_choice(raw_choices: Variant, definition_id: String, version: int, instance_id: String) -> Dictionary:
+	if not (raw_choices is Array):
+		return {}
+	# Owned ship instances are the selectable unit. Prefer their stable instance
+	# identity so a stale/missing definition projection cannot falsely show
+	# "尚未选择飞船" after the picker has selected an owned ship.
+	if not instance_id.is_empty():
+		for raw_choice in raw_choices:
+			if raw_choice is Dictionary and String(raw_choice.get("instanceId", "")) == instance_id:
+				return raw_choice
+	if definition_id.is_empty() or version <= 0:
+		return {}
+	return _find_choice(raw_choices, definition_id, version)
 
 func _find_choice(raw_choices: Variant, definition_id: String, version: int) -> Dictionary:
 	if definition_id.is_empty() or version <= 0 or not (raw_choices is Array):
