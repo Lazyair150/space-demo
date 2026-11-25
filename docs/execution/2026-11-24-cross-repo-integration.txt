@@ -5,9 +5,10 @@ Branch: world-v2/phase-4.10b-hangar-ui
 
 CURRENT AUTHORITATIVE STATUS — 2026-11-25
 
-- Current Space code head: f8f5c8882f193faac1c20572a59a3f8c29ce6428. PR #2 remains Draft/Open/unmerged.
-- Exact Core integration source: b342259fe04363386085dc9a4ca995112954ed43.
-- Exact-head Space workflow run 45566736772 for f8f5c8882f193faac1c20572a59a3f8c29ce6428 completed SUCCESS. Final marker: CROSS-REPO-WORLD-V2-OK core=b342259fe04363386085dc9a4ca995112954ed43.
+- Current Space code head: a8daee73df55bf30125960a9a6231ea93e706d4f. PR #2 remains Draft/Open/unmerged.
+- Exact Core integration source now pinned by the Space cross-repo workflow: fd0b3761babe3af7f7d770483004ef1a454021f8 (Core PR #63 integration branch; two exact-head Core verify runs succeeded).
+- Previous Space run 45577582987 for a8daee73df55bf30125960a9a6231ea93e706d4f succeeded with the older Core pin b342259fe04363386085dc9a4ca995112954ed43; it is not evidence for the new Core source.
+- A new Space cross-repo run is expected from workflow pin update commit 8675ea9beb9ad83c77d8fa55101a9d66bef12c5b; final result pending.
 - Core World V2 Bridge and Space .NET builds passed; Godot 4.7.1 project import/parse passed; HUD reports 21 checks, 0 failures; all domain contracts passed.
 - Parser -> Jar ingress passed: parsed=1, stored=1, retry_after_restore=1, shared_clock=1, workshop_bypass=0.
 - Runtime lifecycle passed: invalid initialization did not retain a session; valid recovery succeeded; duplicate initialization was rejected without replacing the current session; SceneTree exit disposed the session; post-exit reinitialization was rejected.
@@ -31,11 +32,10 @@ The remaining sections below are chronological historical checkpoints. Their “
 
 CORE DEPENDENCY
 - Space project references the Core WorldV2Bridge project as a sibling checkout by default.
-- space-demo.csproj now supports JarSystemWorldV2BridgeProject override.
-- Required Core source revision for this integration checkpoint:
-  3e4a5195d9640fa166359217a5f69ff143439d8d
-- Core PR #60 exact source run 45413094112: SUCCESS.
-- Core PR #60 remains Draft/Open/unmerged; do not substitute Core main for the required branch.
+- space-demo.csproj supports JarSystemWorldV2BridgeProject override.
+- Required Core source revision for this integration checkpoint: fd0b3761babe3af7f7d770483004ef1a454021f8.
+- Core PR #63 source branch: architecture/core-liquid-identity-consolidation; exact-head verify runs 45587631031 and 45587642292: SUCCESS.
+- Do not substitute Core main for this integration source until PR #63 is reviewed and merged.
 
 SPACE CHANGES IN THIS CHECKPOINT
 1. SpaceHangarOwnedLoadoutAssembler recomputes the frozen Board Assignment SHA-256 fingerprint.
