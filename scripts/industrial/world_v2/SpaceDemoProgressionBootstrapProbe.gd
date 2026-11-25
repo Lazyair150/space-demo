@@ -76,5 +76,26 @@ static func run() -> bool:
 	var default_loadout := controller.build_loadout_snapshot()
 	if default_loadout == null or not SpaceBattleLoadoutSnapshot.validate_data(default_loadout.to_dictionary()).is_empty():
 		return false
+
+	# Version 2 froze the Space liquid identities but not their polarity map.
+	# Only the exact known Space pair has a deterministic migration.
+	var legacy_loadout: Dictionary = default_loadout.to_dictionary()
+	legacy_loadout["schemaVersion"] = 2
+	var legacy_jar_options: Dictionary = legacy_loadout.jarWorldOptions.duplicate(true)
+	legacy_jar_options.erase("liquidPolarities")
+	legacy_loadout["jarWorldOptions"] = legacy_jar_options
+	legacy_loadout.erase("loadoutFingerprint")
+	legacy_loadout["loadoutFingerprint"] = SpaceBattleLoadoutSnapshot.compute_fingerprint(legacy_loadout)
+	var migrated_loadout := SpaceBattleLoadoutSnapshot.create(legacy_loadout)
+	if migrated_loadout == null:
+		return false
+	var migrated_data: Dictionary = migrated_loadout.to_dictionary()
+	if int(migrated_data.get("schemaVersion", 0)) != SpaceBattleLoadoutSnapshot.CURRENT_SCHEMA_VERSION:
+		return false
+	if String(migrated_data.jarWorldOptions.liquidPolarities.get("燃料", "")) != "Anode":
+		return false
+	if String(migrated_data.jarWorldOptions.liquidPolarities.get("冷却液", "")) != "Cathode":
+		return false
 	print("[SpaceDemoProgressionBootstrapProbe] default-owned-hangar-assembly=passed")
+	print("[SpaceDemoProgressionBootstrapProbe] legacy-loadout-polarity-migration=passed")
 	return true
