@@ -60,7 +60,11 @@ func show_fault(reason: String) -> void:
 
 func _on_primary_action() -> void:
 	if _faulted:
-		GameFlow.request_scene_transition(GameFlow.Screen.MENU, "res://scenes/menus/MainMenu.tscn")
+		_primary_button.disabled = true
+		_overlay.visible = false
+		if not GameFlow.return_to_menu("res://scenes/menus/MainMenu.tscn"):
+			_primary_button.disabled = false
+			_overlay.visible = true
 	else:
 		set_paused(false)
 
