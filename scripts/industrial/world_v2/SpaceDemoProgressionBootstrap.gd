@@ -23,7 +23,6 @@ static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleR
 		return false
 
 	var has_ship := false
-	var workshop_count := 0
 	var existing_instance_ids := {}
 	for instance in state.owned_instances:
 		if instance == null:
@@ -31,8 +30,6 @@ static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleR
 		existing_instance_ids[String(instance.instance_id)] = true
 		if instance.item_kind == "ship":
 			has_ship = true
-		elif instance.item_kind == "workshop":
-			workshop_count += 1
 
 	var changed := false
 	if not has_ship:
@@ -47,8 +44,6 @@ static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleR
 		{"instanceId": "demo.workshop.beta.01", "definitionId": "demo.workshop.beta"}
 	]
 	for workshop in starter_workshops:
-		if workshop_count >= 2:
-			break
 		var instance_id := String(workshop.instanceId)
 		if existing_instance_ids.has(instance_id):
 			continue
@@ -57,7 +52,6 @@ static func ensure_starting_inventory(bundle_resource: SpaceHangarCatalogBundleR
 			push_error("Demo progression migration could not grant required starter workshop instance: " + instance_id)
 			return false
 		existing_instance_ids[instance_id] = true
-		workshop_count += 1
 		changed = true
 
 	return GameState.set_space_progression_state(state) if changed else true
