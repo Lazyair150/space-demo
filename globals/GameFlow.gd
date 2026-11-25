@@ -48,6 +48,39 @@ func request_scene_transition(next_screen: int, scene_path: String) -> bool:
 	push_error("[GameFlow] Scene transition failed (%d): %s" % [error_code, scene_path])
 	return false
 
+
+## Fault/ended battles may leave only through this explicit terminal navigation path.
+## Release the SceneTree pause and reset the battle lifecycle before changing scenes.
+func return_to_menu(scene_path: String) -> bool:
+	if scene_path.is_empty() or not (_battle_phase in [BattlePhase.FAULTED, BattlePhase.ENDED, BattlePhase.INACTIVE]):
+		push_error("[GameFlow] Main-menu return rejected while battle is still active")
+		return false
+	var previous_screen := _screen
+	var previous_phase := _battle_phase
+	var previous_reason := _pause_reason
+	var previous_fault := _fault_reason
+	var tree := get_tree()
+	if tree != null:
+		tree.paused = false
+	_battle_phase = BattlePhase.INACTIVE
+	_pause_reason = PauseReason.NONE
+	_fault_reason = ""
+	_fault_world_time_milli = -1
+	_fault_logical_time_milli = -1
+	_screen = Screen.MENU
+	_emit_state()
+	var error_code := tree.change_scene_to_file(scene_path) if tree != null else ERR_UNCONFIGURED
+	if error_code == OK:
+		return true
+	_screen = previous_screen
+	_battle_phase = previous_phase
+	_pause_reason = previous_reason
+	_fault_reason = previous_fault
+	_emit_state()
+	transition_failed.emit(Screen.MENU, scene_path, error_code)
+	push_error("[GameFlow] Main-menu return failed (%d): %s" % [error_code, scene_path])
+	return false
+
 func enter_screen(next_screen: int) -> bool:
 	if next_screen < 0 or next_screen >= Screen.keys().size():
 		return false
