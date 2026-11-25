@@ -73,6 +73,7 @@ static func run() -> Dictionary:
 		"jarWorldOptions": {
 			"shapes": ["圆罐", "方罐"],
 			"liquids": ["酒", "蜜"],
+			"liquidPolarities": {"酒": "Cathode", "蜜": "Anode"},
 			"producers": [],
 			"workshops": [{
 				"name": "主台",
