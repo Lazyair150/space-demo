@@ -104,6 +104,8 @@ static func build(
 				return {}
 		var source := {
 			"slotId": slot_id,
+			"areaId": String(assignment.get("areaId", "")),
+			"subAreaId": String(assignment.get("subAreaId", "none")),
 			"componentKind": kind,
 			"ownedInstanceId": instance_id,
 			"definitionId": String(assignment.get("definitionId", "")),
@@ -126,7 +128,7 @@ static func build(
 		return String(a.get("source", {}).get("slotId", "")) < String(b.get("source", {}).get("slotId", ""))
 	)
 	var result := {
-		"schemaVersion": 1,
+		"schemaVersion": 2,
 		"boardId": String(assignment_snapshot.get("boardId", "")),
 		"boardDefinitionVersion": int(assignment_snapshot.get("definitionVersion", 0)),
 		"assignmentFingerprint": String(assignment_snapshot.get("assignmentFingerprint", "")),
