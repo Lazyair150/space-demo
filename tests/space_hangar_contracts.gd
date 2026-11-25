@@ -12,4 +12,8 @@ func _run() -> void:
 		get_tree().quit(1)
 		return
 	print("[SpaceHangarContractProbe] passed")
+	if not SpaceDomainContractProbe.run():
+		push_error("[SpaceDomainContractProbe] failed")
+		get_tree().quit(1)
+		return
 	get_tree().quit(0)
