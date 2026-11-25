@@ -263,7 +263,8 @@ func _set_component_row(row: HBoxContainer, choice: Dictionary, category: String
 func _render_devices(device_choices: Variant, selected_devices: Variant) -> void:
 	_clear_children(_device_list)
 	if not (selected_devices is Array) or selected_devices.is_empty():
-		_add_empty_label(_device_list, "尚未安装生产设备")
+		var available_count := _array_size(device_choices)
+		_add_empty_label(_device_list, "当前没有可安装的生产设备定义" if available_count == 0 else "尚未安装生产设备")
 		return
 	for raw_selection in selected_devices:
 		if not (raw_selection is Dictionary):
