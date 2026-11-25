@@ -22,7 +22,8 @@ role_id = "slave"
 [sub_resource type="Resource" id="DecompositionParserSlot"]
 script = ExtResource("2_slot")
 slot_id = &"decomposition.parser.primary"
-area_id = "decomposition"
+area_id = "production"
+sub_area_id = "decomposition"
 component_kind = "ore_parser"
 display_name = "原石分解器"
 
