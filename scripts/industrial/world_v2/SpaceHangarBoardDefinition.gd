@@ -98,6 +98,7 @@ func build_slot_index() -> Dictionary:
 		result[String(slot.slot_id)] = {
 			"slotId": String(slot.slot_id),
 			"areaId": slot.area_id,
+			"subAreaId": slot.sub_area_id,
 			"componentKind": slot.component_kind,
 			"displayName": slot.display_name,
 			"roleId": slot.role_id,
@@ -120,6 +121,7 @@ func build_frozen_snapshot() -> Dictionary:
 		frozen_slots.append({
 			"slotId": String(slot.slot_id),
 			"areaId": slot.area_id,
+			"subAreaId": slot.sub_area_id,
 			"componentKind": slot.component_kind,
 			"displayName": slot.display_name,
 			"roleId": slot.role_id,
