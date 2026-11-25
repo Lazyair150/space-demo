@@ -46,3 +46,14 @@
 - 已为该合成 fixture 明确增加 酒→Cathode、蜜→Anode，提交 f704d730bd609373edcf0bb712578b3eda59f8de；随后 run 45576616148 通过。
 - 此成功仅证明 Space 当前分支的 Godot CI/Headless 合约验证通过；不代表本地 GUI 试玩通过，也不代表它已使用 Core 整合分支的最新 DLL/桥接项目。
 - 仍需在 Core PR #63 形成可用且通过 CI 的 head 后，确认 Space 的 ProjectReference/CI 属性实际指向该 Core 版本，再跑跨仓库验证。
+
+
+## 2026-11-25 第四轮：切换到统一 Jar Core World V2 源
+
+- Space PR #2 当前代码 head：`a8daee73df55bf30125960a9a6231ea93e706d4f`。
+- Space 继续使用 sibling ProjectReference：`../jar-system-dotnet/hosts/godot/WorldV2Bridge/JarSystem.WorldV2Bridge.csproj`，不再复制 Core 实现。
+- Core 整合分支 `architecture/core-liquid-identity-consolidation` 的生产代码 head `fd0b3761babe3af7f7d770483004ef1a454021f8` 已取得两个精确 verify run SUCCESS：`45587631031`、`45587642292`。
+- 已更新 `.github/workflows/world-v2-cross-repo.yml` 的 checkout ref 与 `CORE_EXPECTED_SHA`，两者均固定为该 Core SHA；workflow 更新提交：`8675ea9beb9ad83c77d8fa55101a9d66bef12c5b`。
+- 已更新 `docs/execution/2026-11-24-cross-repo-integration.txt`，明确旧 Core pin `b342259fe04363386085dc9a4ca995112954ed43` 的历史成功不能替代新 Core 验证。
+- 新跨仓库 workflow run `45588333902` 正在执行；等待 Godot 4.7.1 .NET 下载、Core Bridge / Space 构建、项目导入及全部运行时 probes 完成。
+- 该 CI 只提供 Headless 自动化证据；本地 GUI 试玩、视觉验收和目标 GPU 行为仍需用户机器确认。
