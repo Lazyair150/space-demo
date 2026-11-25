@@ -442,15 +442,7 @@ public partial class WorldV2ShipHost : Node
 
     private static string ReadRuntimeFault(WorldV2RuntimeNode runtime, string fallback)
     {
-        try
-        {
-            var snapshot = runtime.GetWorldSnapshot();
-            var reason = snapshot.ContainsKey("faultReason") ? snapshot["faultReason"].AsString() : "";
-            return string.IsNullOrWhiteSpace(reason) ? fallback : reason;
-        }
-        catch
-        {
-            return fallback;
-        }
+        var reason = runtime.FaultReason;
+        return string.IsNullOrWhiteSpace(reason) ? fallback : reason;
     }
 }
