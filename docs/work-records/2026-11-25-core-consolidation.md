@@ -69,3 +69,11 @@
 - Core Bridge and Space .NET builds both succeeded; Godot 4.7.1 .NET import/parse succeeded; HUD reported 21 checks / 0 failures; Hangar, progression, board, parser ingress, domain, lifecycle, fault, disposed/faulted commands, snapshot isolation and battle pause/navigation probes all passed.
 - Fault overflow and missing-main-menu resource errors in the logs are deliberate negative-path injections; their probes completed with pass markers and the workflow ended with `CROSS-REPO-WORLD-V2-OK core=5023b38b75ad4cf66d953e3bb3fa4c490076d4d7`.
 - This is headless automation evidence only; local GUI first-play, visual inspection and target GPU/OS behavior remain pending.
+
+
+## 2026-11-25 第六轮：Space 重新固定到 Core Provider Registry 绿色源
+
+- Core code head `18a0b26407ee51c6df722f093165c3b3770c31a7` 的精确验证 runs `45597874582` / `45597884119` 均 SUCCESS：868/868 xUnit、资源守恒 5,032 样本零错误。
+- Space `.github/workflows/world-v2-cross-repo.yml` 的 checkout ref 与 `CORE_EXPECTED_SHA` 均从 `5023b38b75ad4cf66d953e3bb3fa4c490076d4d7` 更新到 `18a0b26407ee51c6df722f093165c3b3770c31a7`。
+- Space 旧 run `45588639250` 仍是 Core 5023 的历史成功证据，不能代表 Provider Registry 新实现。
+- 更新后的 Space 联合验证等待执行；Headless CI 通过后仍需本地 GUI 验收。
