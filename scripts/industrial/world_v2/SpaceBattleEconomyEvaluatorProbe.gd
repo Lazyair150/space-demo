@@ -33,7 +33,7 @@ static func run() -> Dictionary:
 		return {"passed": false, "reason": "liquid or workshop scarcity should constrain the skill"}
 
 	var shared_skills := one_skill.duplicate(true)
-	var second := one_skill[0].duplicate(true)
+	var second: Dictionary = one_skill[0].duplicate(true)
 	second["skillId"] = "overdrive"
 	second["jarOrder"] = {"type": "A", "requirements": [
 		{"shape": "small", "liquid": "water"}
