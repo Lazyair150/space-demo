@@ -254,6 +254,7 @@ func _build_stage_section(root: VBoxContainer) -> void:
 func _refresh_stage_picker() -> void:
 	if not is_instance_valid(_stage_picker):
 		return
+	_stage_picker.allow_reselect = true
 	_stage_picker.clear()
 	_selected_stage = null
 	if stage_catalog == null or not stage_catalog.get_validation_errors().is_empty():
@@ -339,6 +340,7 @@ func _add_picker(parent: VBoxContainer, caption: String, category: String) -> Op
 	row.add_child(label)
 	var picker := OptionButton.new()
 	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.allow_reselect = true
 	picker.add_item("目录未加载")
 	picker.set_item_disabled(0, true)
 	row.add_child(picker)
@@ -427,6 +429,7 @@ func _render_view_model(view_model: Dictionary) -> void:
 	_update_build_enabled(view_model)
 
 func _fill_picker(picker: OptionButton, raw_choices: Variant, empty_text: String, category: String) -> void:
+	picker.allow_reselect = true
 	picker.clear()
 	picker.add_item(empty_text)
 	picker.set_item_disabled(0, true)
@@ -446,6 +449,9 @@ func _fill_picker(picker: OptionButton, raw_choices: Variant, empty_text: String
 			icon_texture = load(String(FALLBACK_ICONS.get(category, FALLBACK_ICONS.effect)))
 		picker.add_icon_item(icon_texture, "%s  [v%d]" % [label, version])
 		picker.set_item_metadata(picker.item_count - 1, choice.duplicate())
+	# Never let OptionButton's implicit first-item selection become a domain choice.
+	# Index 0 is always the explicit empty/unselected state; the draft is restored below.
+	picker.select(0)
 
 func _select_exact(picker: OptionButton, definition_id: String, version: int, instance_id: String = "", master_instance_id: String = "", slave_instance_id: String = "") -> void:
 	if definition_id.is_empty() or version <= 0:
@@ -614,7 +620,9 @@ func _rebuild_board_slot_section(inventory: Dictionary, selection: Dictionary) -
 		row.add_child(label)
 		var picker := OptionButton.new()
 		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		picker.allow_reselect = true
 		picker.add_item("未安装（点击选择元件）")
+		picker.select(0)
 		var choices := _board_slot_choices(inventory, slot, world_key)
 		for choice in choices:
 			var choice_icon: Variant = choice.get("iconTexture")
@@ -738,7 +746,9 @@ func _rebuild_device_section(device_choices: Variant, selected_devices: Variant)
 		row.add_child(label)
 		var picker := OptionButton.new()
 		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		picker.allow_reselect = true
 		picker.add_item("空槽位")
+		picker.select(0)
 		for choice in device_choices:
 			if choice is Dictionary:
 				var item_icon: Variant = choice.get("iconTexture")
@@ -807,7 +817,9 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 		controls.add_child(primary_shape_label)
 		var skill_picker := OptionButton.new()
 		skill_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		skill_picker.allow_reselect = true
 		skill_picker.add_item("不装备技能")
+		skill_picker.select(0)
 		for choice in skill_choices:
 			if choice is Dictionary:
 				if slot_control_area in ["Active", "Passive"] and not choice.get("allowedControlAreas", []).has(slot_control_area):
@@ -833,8 +845,10 @@ func _rebuild_skill_section(skill_choices: Variant, selected_skills: Variant) ->
 				skill_picker.set_item_tooltip(skill_picker.item_count - 1, String(choice.get("description", "")))
 		controls.add_child(skill_picker)
 		var area_picker := OptionButton.new()
+		area_picker.allow_reselect = true
 		area_picker.custom_minimum_size.x = 145
 		area_picker.add_item("控制区域")
+		area_picker.select(0)
 		controls.add_child(area_picker)
 		var existing := _find_skill_selection(selected_skills, order_key)
 		var pending: Dictionary = _pending_skill_choices.get(order_key, {})
@@ -864,8 +878,10 @@ func _find_skill_selection(raw_selections: Variant, order_key: String) -> Dictio
 	return {}
 
 func _populate_control_areas(area_picker: OptionButton, raw_areas: Variant, selected_area: String = "") -> void:
+	area_picker.allow_reselect = true
 	area_picker.clear()
 	area_picker.add_item("控制区域")
+	area_picker.select(0)
 	if raw_areas is Array:
 		for area in raw_areas:
 			area_picker.add_item(String(area))
