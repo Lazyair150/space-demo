@@ -88,7 +88,7 @@ static func build_snapshot(board: SpaceHangarBoardDefinition, assignments: Dicti
 	}
 	var hashing := HashingContext.new()
 	hashing.start(HashingContext.HASH_SHA256)
-	hashing.update(JSON.stringify(payload).to_utf8_buffer())
+	hashing.update(JSON.stringify(payload, "", false).to_utf8_buffer())
 	payload["assignmentFingerprint"] = hashing.finish().hex_encode()
 	return payload
 
