@@ -159,7 +159,21 @@ func render(view_model: Dictionary) -> void:
 		_ship_hull.texture = hull
 	else:
 		_ship_hull.texture = load(String(FALLBACK_ICONS.ship))
-	_ship_name.text = _choice_label(ship, "尚未选择飞船")
+	var selected_ship_id := String(selection.get("shipId", "")).strip_edges()
+	var selected_ship_version := int(selection.get("shipVersion", 0))
+	var selected_ship_instance_id := String(selection.get("shipInstanceId", "")).strip_edges()
+	var ship_is_selected := not selected_ship_id.is_empty() and selected_ship_version > 0
+	# In owned-inventory mode the instance identity is mandatory. The selection
+	# draft validates it before storing; preview asset resolution is presentation
+	# only and must not decide whether the player selected a ship.
+	if not selected_ship_instance_id.is_empty():
+		ship_is_selected = true
+	if not ship_is_selected:
+		_ship_name.text = "尚未选择飞船"
+	elif ship.is_empty():
+		_ship_name.text = "%s  [v%d] · 预览资源未解析" % [selected_ship_id, selected_ship_version]
+	else:
+		_ship_name.text = _choice_label(ship, selected_ship_id)
 	_render_ship_anchors(ship, selection, inventory)
 	_set_component_row(_parser_row, parser, "parser", "原石解析器未选择")
 	_set_component_row(_workshop_row, workshop, "workshop", "工作台组合未选择")
@@ -169,7 +183,13 @@ func render(view_model: Dictionary) -> void:
 	var selected_device_count := _array_size(selection.get("deviceSelections", []))
 	var selected_skill_count := _array_size(selection.get("skillSelections", []))
 	var missing: Array[String] = []
-	if ship.is_empty():
+	var selected_ship_id := String(selection.get("shipId", "")).strip_edges()
+	var selected_ship_version := int(selection.get("shipVersion", 0))
+	var selected_ship_instance_id := String(selection.get("shipInstanceId", "")).strip_edges()
+	var ship_is_selected := not selected_ship_id.is_empty() and selected_ship_version > 0
+	if not selected_ship_instance_id.is_empty():
+		ship_is_selected = true
+	if not ship_is_selected:
 		missing.append("飞船")
 	if parser.is_empty():
 		missing.append("解析器")
