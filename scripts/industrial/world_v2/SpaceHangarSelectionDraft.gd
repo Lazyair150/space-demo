@@ -85,11 +85,11 @@ func _apply_default_selection() -> void:
 					for skill in skills:
 						if not (skill is Dictionary):
 							continue
-					if _contains_string(skill.get("allowedControlAreas", []), String(slot.control_area)) and set_skill(
-						slot_id, String(skill.get("id", "")), int(skill.get("version", 0)),
-						String(slot.control_area), String(skill.get("instanceId", ""))
-					):
-						break
+						if _contains_string(skill.get("allowedControlAreas", []), String(slot.control_area)) and set_skill(
+							slot_id, String(skill.get("id", "")), int(skill.get("version", 0)),
+							String(slot.control_area), String(skill.get("instanceId", ""))
+						):
+							break
 			"production_device":
 				var devices: Variant = _inventory.get("deviceChoices", [])
 				if devices is Array:
