@@ -24,6 +24,19 @@ func _ready() -> void:
 	if get_tree().paused or controller.is_paused() or controller._overlay.visible or String(GameFlow.snapshot().get("battlePhase", "")) != "RUNNING":
 		_fail_probe(controller, "resume must release both pause gates and hide the overlay")
 		return
+	# Window focus loss must pause, and focus regain must never auto-resume.
+	controller._notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+	if not get_tree().paused or not controller.is_paused() or String(GameFlow.snapshot().get("pauseReason", "")) != "WINDOW_FOCUS_LOST":
+		_fail_probe(controller, "window focus loss must enter the explicit focus-lost pause state")
+		return
+	controller._notification(NOTIFICATION_APPLICATION_FOCUS_IN)
+	if not get_tree().paused or not controller.is_paused():
+		_fail_probe(controller, "window focus regain must not resume combat automatically")
+		return
+	controller.set_paused(false)
+	if get_tree().paused or controller.is_paused() or String(GameFlow.snapshot().get("battlePhase", "")) != "RUNNING":
+		_fail_probe(controller, "focus-lost pause must require and accept explicit player resume")
+		return
 	GameFlow.end_battle()
 	GameFlow.enter_screen(GameFlow.Screen.MENU)
 	if not GameFlow.begin_battle_preparation() or not GameFlow.begin_battle_resuming() or not GameFlow.mark_battle_resume_ready():
@@ -48,6 +61,20 @@ func _ready() -> void:
 	if controller._primary_button.text != "返回主菜单  /  Main Menu":
 		_fail_probe(controller, "fault action must navigate to the main menu, not resume combat")
 		return
+	# A rejected scene path must restore the complete fault and pause state.
+	get_tree().paused = true
+	if GameFlow.return_to_menu("res://scenes/menus/__missing_main_menu_probe__.tscn"):
+		_fail_probe(controller, "missing main-menu scene must be rejected")
+		return
+	var rollback_snapshot := GameFlow.snapshot()
+	if (
+		not get_tree().paused
+		or String(rollback_snapshot.get("battlePhase", "")) != "FAULTED"
+		or String(rollback_snapshot.get("faultReason", "")) != "probe fault reason"
+	):
+		_fail_probe(controller, "failed menu transition must restore pause and fault registry state")
+		return
+	get_tree().paused = false
 	# Exercise the real fault-exit action, not only the abstract state transitions.
 	# The probe intentionally changes to the actual main-menu scene as its final step.
 	controller._on_primary_action()
