@@ -20,9 +20,82 @@ func configure(inventory: Dictionary, board: SpaceHangarBoardDefinition = null) 
 		"parserSlotId": "", "parserInstanceId": "", "workshopId": "",
 		"workshopVersion": 0, "masterWorkshopInstanceId": "",
 		"slaveWorkshopInstanceId": "", "skillSelections": [],
-		"expectedBattleDurationLogicalMilli": 0.0
+		"expectedBattleDurationLogicalMilli": 60000.0
 	}
+	if _inventory_ready:
+		_apply_default_selection()
 	return _inventory_ready
+
+
+## Build a deterministic starter loadout from the player's actual owned inventory.
+## This is a convenience default only; every assignment still passes the same
+## exact-instance, compatibility, and Board validation as a manual selection.
+func _apply_default_selection() -> void:
+	var ships: Variant = _inventory.get("shipChoices", [])
+	if ships is Array:
+		for raw_ship in ships:
+			if raw_ship is Dictionary and set_ship(
+				String(raw_ship.get("id", "")),
+				int(raw_ship.get("version", 0)),
+				String(raw_ship.get("instanceId", ""))
+			):
+				break
+
+	if _board == null:
+		return
+
+	var world_choices: Variant = _inventory.get("workshopWorldChoices", _inventory.get("workshopChoices", []))
+	var workshop_instances: Variant = _inventory.get("workshopInstanceChoices", [])
+	if world_choices is Array and workshop_instances is Array:
+		for raw_world in world_choices:
+			if not (raw_world is Dictionary):
+				continue
+			var world_id := String(raw_world.get("id", ""))
+			var world_version := int(raw_world.get("version", 0))
+			if world_id.is_empty() or world_version <= 0:
+				continue
+			var world_key := world_id + "@" + str(world_version)
+			var compatible_ids: Array[String] = []
+			for raw_instance in workshop_instances:
+				if not (raw_instance is Dictionary):
+					continue
+				var compatible_worlds: Variant = raw_instance.get("compatibleWorldKeys", [])
+				var instance_id := String(raw_instance.get("instanceId", ""))
+				if not instance_id.is_empty() and compatible_worlds is Array and compatible_worlds.has(world_key):
+					compatible_ids.append(instance_id)
+				if compatible_ids.size() >= 2:
+					break
+			if compatible_ids.size() >= 2 and set_workshop(world_id, world_version, compatible_ids[0], compatible_ids[1]):
+				break
+
+	for slot in _board.slots:
+		if slot == null:
+			continue
+		var slot_id := String(slot.slot_id)
+		match slot.component_kind:
+			"ore_parser":
+				var parsers: Variant = _inventory.get("parserChoices", [])
+				if parsers is Array:
+					for parser in parsers:
+						if parser is Dictionary and set_parser(String(parser.get("id", "")), int(parser.get("version", 0)), slot_id, String(parser.get("instanceId", ""))):
+							break
+			"skill":
+				var skills: Variant = _inventory.get("skillChoices", [])
+				if skills is Array:
+					for skill in skills:
+						if not (skill is Dictionary):
+							continue
+					if _contains_string(skill.get("allowedControlAreas", []), String(slot.control_area)) and set_skill(
+						slot_id, String(skill.get("id", "")), int(skill.get("version", 0)),
+						String(slot.control_area), String(skill.get("instanceId", ""))
+					):
+						break
+			"production_device":
+				var devices: Variant = _inventory.get("deviceChoices", [])
+				if devices is Array:
+					for device in devices:
+						if device is Dictionary and set_device(slot_id, String(device.get("id", "")), int(device.get("version", 0)), String(device.get("instanceId", ""))):
+							break
 
 func set_ship(definition_id: String, version: int, instance_id: String = "") -> bool:
 	var choice := _find_exact_choice("shipChoices", definition_id, version, instance_id)
