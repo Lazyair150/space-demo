@@ -12,6 +12,8 @@ static func create_entry(slot: SpaceHangarBoardSlotDefinition, choice: Dictionar
 		return {}
 	var entry := {
 		"slotId": String(slot.slot_id),
+		"areaId": slot.area_id,
+		"subAreaId": slot.sub_area_id,
 		"componentKind": slot.component_kind,
 		"ownedInstanceId": instance_id,
 		"definitionId": definition_id,
@@ -44,6 +46,8 @@ static func validate(board: SpaceHangarBoardDefinition, assignments: Dictionary,
 		var slot: Dictionary = slots[slot_id]
 		if String(entry.get("slotId", "")) != slot_id:
 			errors.append("assignment key and slot identity differ: " + slot_id)
+		if String(entry.get("areaId", "")) != String(slot.areaId) or String(entry.get("subAreaId", "none")) != String(slot.subAreaId):
+			errors.append("assignment area hierarchy does not match its board position: " + slot_id)
 		if String(entry.get("componentKind", "")) != String(slot.componentKind):
 			errors.append("assignment component kind is incompatible with slot: " + slot_id)
 		if slot.componentKind == "workshop" and String(entry.get("roleId", "")) != String(slot.roleId):
