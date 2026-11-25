@@ -365,9 +365,31 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 	if not (jar_options is Dictionary):
 		errors.append("jarWorldOptions must be a fully materialized WorldV2Options dictionary")
 	else:
-		for required_key in ["shapes", "liquids", "producers", "workshops", "masterWorkshopName", "slaveWorkshopName"]:
+		for required_key in ["shapes", "liquids", "liquidPolarities", "producers", "workshops", "masterWorkshopName", "slaveWorkshopName"]:
 			if not jar_options.has(required_key):
 				errors.append("jarWorldOptions is missing " + required_key)
+		var liquid_names: Variant = jar_options.get("liquids", null)
+		var liquid_polarities: Variant = jar_options.get("liquidPolarities", null)
+		if not (liquid_names is Array) or liquid_names.size() != 2 or not (liquid_polarities is Dictionary) or liquid_polarities.size() != 2:
+			errors.append("jarWorldOptions must freeze exactly two liquid identities and their explicit polarity mapping")
+		else:
+			var cathode_count := 0
+			var anode_count := 0
+			for liquid_name in liquid_names:
+				if not liquid_polarities.has(String(liquid_name)):
+					errors.append("jarWorldOptions polarity mapping is missing " + String(liquid_name))
+			for liquid_name in liquid_polarities:
+				if not liquid_names.has(String(liquid_name)):
+					errors.append("jarWorldOptions polarity mapping contains an unknown liquid " + String(liquid_name))
+				var polarity_name := String(liquid_polarities[liquid_name])
+				if polarity_name == "Cathode":
+					cathode_count += 1
+				elif polarity_name == "Anode":
+					anode_count += 1
+				else:
+					errors.append("jarWorldOptions polarity must be Cathode or Anode")
+			if cathode_count != 1 or anode_count != 1:
+				errors.append("jarWorldOptions must assign exactly one Cathode and one Anode")
 		var active_workshops: Variant = jar_options.get("workshops", null)
 		if not (active_workshops is Array) or active_workshops.size() != 2:
 			errors.append("jarWorldOptions must materialize exactly two player-selected workshop positions")
