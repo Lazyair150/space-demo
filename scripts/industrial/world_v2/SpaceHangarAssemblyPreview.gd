@@ -183,12 +183,6 @@ func render(view_model: Dictionary) -> void:
 	var selected_device_count := _array_size(selection.get("deviceSelections", []))
 	var selected_skill_count := _array_size(selection.get("skillSelections", []))
 	var missing: Array[String] = []
-	var selected_ship_id := String(selection.get("shipId", "")).strip_edges()
-	var selected_ship_version := int(selection.get("shipVersion", 0))
-	var selected_ship_instance_id := String(selection.get("shipInstanceId", "")).strip_edges()
-	var ship_is_selected := not selected_ship_id.is_empty() and selected_ship_version > 0
-	if not selected_ship_instance_id.is_empty():
-		ship_is_selected = true
 	if not ship_is_selected:
 		missing.append("飞船")
 	if parser.is_empty():
