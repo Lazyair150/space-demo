@@ -5,7 +5,7 @@
 - 仓库：`Lazyair150/space-demo`
 - 分支：`world-v2/phase-4.10b-hangar-ui`
 - 源 HEAD：`0b800dad7c572b508aee10901bc06f81fcdd9acb`
-- Core 精确源：`3cd18335134e736740f11d4c0d9e3c5187e94d70`
+- Core 精确源：`7e9f2cc8cf7feb492f1aa656bf7ac19cd8737f2d`
 - 基线自动化：Space PR #2 run `45787796492` 对应 `0b800dad7c572b508aee10901bc06f81fcdd9acb`，SUCCESS。
 - 本轮不重复执行该基线上的供给/Parser 测试。
 
@@ -37,16 +37,16 @@
 
 ## 下一步
 
-1. 若需要恢复 duplicate 批次最初的逐 shape stored/discarded 结果，应在 Core 持久回执中保存原始 Import Result，或提供由稳定操作 ID 查询的持久结果接口；不能依赖可能裁剪的资源事件日志。
-2. 将 Parser observation 与 Core `GetWorldSnapshot` / 可查询 Import Receipt 合并为一个只读战斗供给对账视图。
-3. 在完成该对账视图后，再接入基于事实的 XP Reward Profile；不提前制造生产奖励数值。
+1. 将 Parser observation 与 Core 实时 Warehouse / 资源账本快照合并为只读战斗供给对账视图，明确区分累计产出、仓库存量、已丢弃与仍未导入数量。
+2. 用对账视图驱动生产可见性 HUD 和战后结算事实采集，不把预估供给当成实际结算。
+3. 在事实对账稳定后，再接入基于已确认事件的 XP Reward Profile；不提前制造生产奖励数值。
 
 
 ## 2026-11-26 Core 精确回执接入（过程追加）
 
 ### 实施依据
 
-Core 分支新增提交 `0faffd14e2660b94d2c08ef0c9cbb06c0cbdcb2e` 与 `3cd18335134e736740f11d4c0d9e3c5187e94d70`，在 ResourceLedger 持久保存每个外部导入批次的请求/入库/丢弃逐形状数量、payload 指纹，并纳入 schema 11 检查点；导入 DTO 同时返回首次逐形状入库/丢弃 maps。Space 不读取事件日志推断历史结果。
+Core 分支新增提交 `0faffd14e2660b94d2c08ef0c9cbb06c0cbdcb2e`、`3cd18335134e736740f11d4c0d9e3c5187e94d70` 与 `7e9f2cc8cf7feb492f1aa656bf7ac19cd8737f2d`，在 ResourceLedger 持久保存每个外部导入批次的请求/入库/丢弃逐形状数量、payload 指纹，并纳入 schema 11 检查点；导入 DTO 同时返回首次逐形状入库/丢弃 maps。Space 不读取事件日志推断历史结果。
 
 ### Space 侧成组修改
 

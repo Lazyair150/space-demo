@@ -523,7 +523,7 @@ static func run() -> Dictionary:
 	if not bool(legacy_receipt_runtime.restore_state(legacy_receipt_state).get("success", false)):
 		return _failure("schema 4 legacy receipt checkpoint was not accepted")
 	var legacy_receipt_observation: Dictionary = legacy_receipt_runtime.build_supply_observation_snapshot()
-	if int(legacy_receipt_observation.get("duplicateConfirmationBatchCountWithUnknownOutcome", 0)) != 1 or bool(legacy_receipt_observation.get("coreImportReceiptHistoryComplete", false)) != bool(captured_receipts.coreImportReceiptHistoryComplete):
+	if int(legacy_receipt_observation.get("duplicateConfirmationBatchCountWithUnknownOutcome", 0)) != 1 or bool(legacy_receipt_observation.get("coreImportReceiptHistoryComplete", false)) != bool(captured_receipts.coreImportReceiptHistoryComplete) or bool(legacy_receipt_observation.get("perShapeCoreOutcomeHistoryComplete", true)):
 		return _failure("schema 4 legacy receipt did not preserve its unknown outcome / history flag")
 
 	# Schema 3 had cumulative output accounting but no Core receipt ledger. It remains

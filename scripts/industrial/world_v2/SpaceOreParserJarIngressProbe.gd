@@ -212,7 +212,8 @@ func _ready() -> void:
     assert(bool(first_receipt.get("hasExactReceipt", false)), "first Jar import must expose its exact outcome")
     var first_stored_by_shape: Dictionary = first_receipt.get("storedJarCountsByShape", {})
     assert(int(first_stored_by_shape.get("圆罐", 0)) == 1, "Core must expose the stored Jar shape")
-    assert((first_receipt.get("discardedJarCountsByShape", {}) as Dictionary).is_empty(), "no shape should be discarded in this fixture")
+    var first_discarded_by_shape: Dictionary = first_receipt.get("discardedJarCountsByShape", {})
+    assert(first_discarded_by_shape.is_empty(), "no shape should be discarded in this fixture")
     assert(int(first_receipt.get("storedJarCount", 0)) == 1, "Jar must store the completed empty Jar")
 
     # Simulate a process restart after Jar committed but before Space persisted the receipt.
@@ -306,5 +307,5 @@ func _ready() -> void:
     )
 
     restored_jar_host.EndShipWorld()
-    print("[SpaceOreParserJarIngressProbe] passed parsed=1 duplicate_receipt_retained=1 duplicate_capacity_outcome=explicitly_unknown shared_clock=1 workshop_bypass=0")
+    print("[SpaceOreParserJarIngressProbe] passed parsed=1 duplicate_receipt_retained=1 duplicate_capacity_outcome=exact_per_shape shared_clock=1 workshop_bypass=0")
     queue_free()
