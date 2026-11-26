@@ -240,13 +240,13 @@ Next phase: stop repeating the already-green headless harness; perform desktop G
 
 CORE/SPACE INTEGRATION STATUS — 2026-11-26 (Core regression closed)
 
-- Core PR #63 head: `fce78edd54c85ddcba8fd5aae4da0b8897659e85` (Draft/Open/Unmerged).
+- Core PR #63 head: `94750d6728c416381a66ddf92492dd90146fbd65` (Draft/Open/Unmerged).
 - User ran the Core Release xUnit suite on that exact head: 1040 total, 1040 passed, 0 errors, 0 failed, 0 skipped; elapsed 7.879s.
-- Exact-head Core PR verify run `45846180974` completed successfully. Its `verify` job and all required verification steps passed.
+- Exact-head Core PR verify run `45846180974` completed successfully on parent code commit `fce78edd54c85ddcba8fd5aae4da0b8897659e85`. The only subsequent Core commit (`94750d6728c416381a66ddf92492dd90146fbd65`) changes this work-record document only; compare confirms one changed file under `docs/work-records`, with no source or test code changes.
 - The three Board Slot test fixture/assertion drifts recorded in the Core work record are closed. No production slot validation was relaxed.
 - Space PR #2 current GitHub head at this checkpoint: `f6475ba5fad9ab77f480571fda09a6117325f4ed`; PR remains Draft/Open and GitHub reports mergeable=false. There are no PR-triggered workflow runs attached to this Space head.
 - The latest user-provided full Space cross-repository success log used Core SHA `9aed7c07eb1940893a28707c3fe0398cda568729`. That run reached `CROSS-REPO-WORLD-V2-OK`, including the battle-navigation terminal-menu probe, but it does not prove the newer Core SHA was integrated.
-- `scripts/ci/verify-world-v2-cross-repo.sh` requires an exact `CORE_EXPECTED_SHA`; it does not embed a stale Core SHA. The next integration run must use Core `fce78edd54c85ddcba8fd5aae4da0b8897659e85`.
+- `scripts/ci/verify-world-v2-cross-repo.sh` requires an exact `CORE_EXPECTED_SHA`; it does not embed a stale Core SHA. The next integration run must use Core `94750d6728c416381a66ddf92492dd90146fbd65`.
 - Do not rerun Core xUnit: its exact-head local and CI evidence is already green. Run the cross-repo script once against the new exact Core pin to validate Bridge/Space compilation and runtime compatibility, then proceed to desktop GUI acceptance.
 - The detailed Core test failure/repair/closure evidence is recorded in Jar Core `docs/work-records/2026-11-26-board-slot-hierarchy-contract-fix.md`.
 
@@ -254,7 +254,7 @@ Suggested PowerShell invocation from the Space repository after both branches ar
 
 ```powershell
 $env:CORE_REPO_DIR = "D:\\godot\\programs\\jar-system-dotnet"
-$env:CORE_EXPECTED_SHA = "fce78edd54c85ddcba8fd5aae4da0b8897659e85"
+$env:CORE_EXPECTED_SHA = "94750d6728c416381a66ddf92492dd90146fbd65"
 $env:GODOT_BIN = "godot"
 $env:GODOT_VERBOSE = "1"
 bash .\\scripts\\ci\\verify-world-v2-cross-repo.sh
@@ -263,7 +263,7 @@ bash .\\scripts\\ci\\verify-world-v2-cross-repo.sh
 Record both repository HEADs with `git rev-parse HEAD` before the run. The expected final marker is:
 
 ```
-CROSS-REPO-WORLD-V2-OK core=fce78edd54c85ddcba8fd5aae4da0b8897659e85
+CROSS-REPO-WORLD-V2-OK core=94750d6728c416381a66ddf92492dd90146fbd65
 ```
 
 This is a new exact-dependency integration check, not a request to repeat the already-green Core test suite or the prior probes on the old Core SHA. Desktop GUI acceptance remains separate: default Hangar assembly, enter battle, pause/resume, return to menu, and enter battle again.
