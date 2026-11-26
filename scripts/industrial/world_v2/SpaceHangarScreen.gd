@@ -205,6 +205,11 @@ func _build_interface() -> void:
 	var footer := HBoxContainer.new()
 	footer.add_theme_constant_override("separation", 12)
 	root.add_child(footer)
+	var menu_button := Button.new()
+	menu_button.text = "返回主菜单"
+	menu_button.focus_mode = Control.FOCUS_ALL
+	footer.add_child(menu_button)
+	menu_button.pressed.connect(_on_main_menu_pressed)
 	var refresh_button := Button.new()
 	refresh_button.text = "重新读取目录"
 	footer.add_child(refresh_button)
@@ -962,6 +967,15 @@ func _on_duration_changed(value: float) -> void:
 		_controller.set_expected_battle_duration(value)
 	else:
 		_update_build_enabled(_controller.get_view_model())
+
+func _on_main_menu_pressed() -> void:
+	var menu_button := get_node_or_null("MainMenuButton") as Button
+	if menu_button != null:
+		menu_button.disabled = true
+	if not GameFlow.request_scene_transition(GameFlow.Screen.MENU, "res://scenes/menus/MainMenu.tscn"):
+		if menu_button != null:
+			menu_button.disabled = false
+		push_error("[Hangar] Failed to return to Main Menu")
 
 func _on_refresh_pressed() -> void:
 	_refresh_confirmation.popup_centered()
