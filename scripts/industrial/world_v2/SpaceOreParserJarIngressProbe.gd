@@ -2,6 +2,8 @@ extends Node
 ## End-to-end probe for Space-owned finite stone parsing -> idempotent Jar warehouse import.
 ## All numeric values are synthetic fixtures, not production balance settings.
 
+const SupplyReconciliation = preload("res://scripts/industrial/world_v2/SpaceBattleSupplyReconciliation.gd")
+
 var _probe_parser: SpaceOreParserRuntime
 
 func ingest_energy_stone(pickup_id: String, stone_type: String, volume: float) -> Dictionary:
@@ -305,6 +307,25 @@ func _ready() -> void:
         after.get("master", {}).get("jars", []).size() == initial_master_count,
         "external parser output must not bypass the central warehouse into Master"
     )
+
+    # The reconciliation view keeps parser history and current Core account balances
+    # side by side. It must not claim that current warehouse Jars are parser-originated.
+    var supply_reconciliation: Dictionary = SupplyReconciliation.build_snapshot(
+        retry_observation, after
+    )
+    assert(bool(supply_reconciliation.get("success", false)),
+        "parser/Core supply reconciliation must accept the authoritative snapshots")
+    var round_row: Dictionary = supply_reconciliation.get("shapeRows", {}).get("圆罐", {})
+    assert(int(round_row.get("parserCompletedJarCount", 0)) == 1,
+        "reconciliation must preserve parser cumulative output")
+    assert(int(round_row.get("parserExactCoreStoredJarCount", 0)) == 1,
+        "reconciliation must preserve exact historical Core import outcome")
+    assert(int(round_row.get("parserPendingCoreImportJarCount", -1)) == 0,
+        "reconciliation must show no pending import after acknowledgment")
+    assert(int(round_row.get("coreWarehouseCurrentJarCount", 0)) >= 1,
+        "reconciliation must expose current Core warehouse balance independently")
+    assert(not bool(supply_reconciliation.get("sourceAttributionAvailable", true)),
+        "current Core inventory must not be falsely attributed to the parser without per-Jar provenance")
 
     restored_jar_host.EndShipWorld()
     print("[SpaceOreParserJarIngressProbe] passed parsed=1 duplicate_receipt_retained=1 duplicate_capacity_outcome=exact_per_shape shared_clock=1 workshop_bypass=0")
