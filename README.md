@@ -1,12 +1,12 @@
 # Space Demo — World V2 playable prototype
 
-This repository contains the Space game client and the Godot presentation/runtime host for Jar System World V2. The current supported entry path is:
+This repository contains the Space game client and the Godot presentation/runtime host for Jar System World V2. The intended player entry path is:
 
 `Main Menu → Hangar → frozen battle loadout → Battle`
 
 The Hangar uses the demo board and catalog resources under `data/hangar/`. The player can select the ship, parser, workshop instances/roles, optional devices and skills, choose free combat or an unlocked finite stage, then launch the battle. The Jar simulation is hosted by `WorldV2ShipHost`; Jar rules and execution remain owned by the sibling `jar-system-dotnet` repository.
 
-> **Prototype status:** this is a locally runnable gameplay prototype, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. The cross-repository workflow pins Core PR #63 head `ba84182eba7555b3456d66ffceb58845d97a1bea`; each successful run validates the exact Space and Core commits shown on that run. Headless probes cover the Hangar ownership/board contracts and battle pause/fault navigation. GUI layout, actual input interaction, and platform-specific behavior still require local Godot acceptance.
+> **Prototype status:** this is a gameplay prototype candidate, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. A real desktop Hangar launch previously exposed an outer Board Assignment schema 2 incompatibility; Core support and regression vectors are now committed, but the latest Space cross-repository script and desktop GUI launch have not yet been re-run. Do not treat the intended entry path as accepted until the P0 release gates in the project guide and work record are complete.
 
 ## Requirements
 
@@ -131,6 +131,7 @@ The cross-language coding, architecture, lifecycle, protocol, error-handling, an
 
 ## Current validation boundary
 
-- Core integration is pinned to `ba84182eba7555b3456d66ffceb58845d97a1bea`.
-- Consult the Actions run attached to the exact Space commit when checking current CI status; an earlier green commit does not validate later changes.
-- Headless CI does not replace local GUI acceptance on the target OS/GPU.
+- Core integration pin: `ba84182eba7555b3456d66ffceb58845d97a1bea`; Core Verify run `45856292385` passed, including 1044 xUnit tests with 0 failures.
+- The cross-repository workflow file currently exists on this PR branch but not base `main`, so GitHub has no PR-triggered run attached to the current Space head. Run `scripts/ci/verify-world-v2-cross-repo.sh` locally with the exact pin above.
+- The Space schema 2 golden-vector probe is included in the Hangar Board probe path; it remains pending execution in Godot.
+- Headless success does not replace local GUI acceptance on the target OS/GPU. The desktop Hangar-to-Battle fault remains OPEN until that acceptance is recorded.
