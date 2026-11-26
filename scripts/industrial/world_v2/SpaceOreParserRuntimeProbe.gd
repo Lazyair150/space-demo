@@ -422,8 +422,8 @@ static func run() -> Dictionary:
 	if restored.acknowledge_output_batch(pending_id, exact_receipt):
 		return _failure("output batch receipt acknowledgment must be one-shot")
 	var captured_receipts := restored.capture_state()
-	if captured_receipts.coreImportReceipts.size() != 1 or not bool(captured_receipts.coreImportReceiptHistoryComplete):
-		return _failure("confirmed Core import response was not retained in the parser checkpoint")
+	if captured_receipts.coreImportReceipts.size() != 1 or bool(captured_receipts.coreImportReceiptHistoryComplete):
+		return _failure("schema 3 migration was incorrectly upgraded to complete Core receipt history")
 	var receipt_observation: Dictionary = restored.build_supply_observation_snapshot()
 	if int(receipt_observation.get("exactCoreStoredJarCount", -1)) != pending_jar_count - 1 or int(receipt_observation.get("exactCoreDiscardedJarCount", -1)) != 1:
 		return _failure("read-only parser supply observation did not expose exact stored/discarded counts")
@@ -434,6 +434,28 @@ static func run() -> Dictionary:
 		return _failure("Core import receipt history did not survive parser checkpoint restore")
 	if receipt_restored.get_core_import_receipts() != restored.get_core_import_receipts():
 		return _failure("restored Core import receipts changed their exact payload")
+	# A newly initialized Parser can prove a complete history when every emitted batch
+	# is still pending or has an exact retained Core response.
+	var fresh_history_runtime := SpaceOreParserRuntime.new()
+	if not bool(fresh_history_runtime.initialize(definition, "fresh-receipt-history-parser", ["圆罐", "方罐"]).get("success", false)):
+		return _failure("fresh receipt-history parser initialization failed")
+	if not bool(fresh_history_runtime.ingest_stone("fresh-receipt-stone", "圆罐", 4.0).get("success", false)):
+		return _failure("fresh receipt-history parser rejected its stone fixture")
+	var fresh_parse := fresh_history_runtime.advance(1000)
+	if not bool(fresh_parse.get("success", false)) or fresh_parse.get("newBatches", []).size() != 1:
+		return _failure("fresh receipt-history parser did not produce its expected batch")
+	var fresh_batch: Dictionary = fresh_parse.newBatches[0]
+	var fresh_exact_receipt := {
+		"success": true,
+		"wasDuplicate": false,
+		"submittedJarCount": 1,
+		"storedJarCount": 1,
+		"discardedJarCount": 0
+	}
+	if not fresh_history_runtime.acknowledge_output_batch(String(fresh_batch.operationId), fresh_exact_receipt):
+		return _failure("fresh Parser could not commit its exact Core receipt")
+	if not bool(fresh_history_runtime.build_supply_observation_snapshot().get("coreImportReceiptHistoryComplete", false)):
+		return _failure("new Parser with complete exact receipts did not retain its complete-history status")
 	# Schema 3 had cumulative output accounting but no Core receipt ledger. It remains
 	# loadable, but must advertise that historical import outcomes are incomplete.
 	var legacy_schema_three := checkpoint.duplicate(true)

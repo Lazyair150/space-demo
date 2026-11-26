@@ -26,10 +26,6 @@ static func flush_pending(parser_runtime: SpaceOreParserRuntime, ship_host: Obje
 				"duplicateBatches": duplicate_count
 			}
 		var was_duplicate := bool(receipt.get("wasDuplicate", false))
-		if was_duplicate:
-			duplicate_count += 1
-		else:
-			imported_count += 1
 		if not parser_runtime.acknowledge_output_batch(String(batch.operationId), receipt):
 			return {
 				"success": false,
@@ -37,6 +33,10 @@ static func flush_pending(parser_runtime: SpaceOreParserRuntime, ship_host: Obje
 				"importedBatches": imported_count,
 				"duplicateBatches": duplicate_count
 			}
+		if was_duplicate:
+			duplicate_count += 1
+		else:
+			imported_count += 1
 	return {
 		"success": true,
 		"importedBatches": imported_count,
