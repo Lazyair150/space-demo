@@ -44,3 +44,8 @@ Enemy / Stage Drop Profile
 ## 6. 源码与进一步阅读
 
 `SpaceOreParserRuntime.gd`、`SpaceOreParserJarIngress.gd`、`SpaceEnergyStonePickup.gd`、`SpaceBattleJarSupplyForecast.gd`、`SpaceBattleSupplyReconciliation.gd`。详细玩法契约见 [15 — Production, Parser and Progression](../industrial/15-production-parser-and-individual-progression-gameplay.md)。
+
+
+## World liquid identity and polarity boundary
+
+The ship World owns exactly two liquid identities and an explicit identity-to-polarity mapping. Space freezes that mapping in `jarWorldOptions.liquidPolarities`; production and Parser may use the liquid identity values but must not infer polarity from their labels or order. Core's application-service operations must propagate `WorldV2Context.LiquidPolarities` whenever constructing a `Vocabulary` or a produced Jar. Regression coverage for custom liquid names exercises produced-Jar import as well as order paths. Current incident evidence: `docs/work-records/2026-11-27-order-materialization-liquid-polarity-fault.md`.
