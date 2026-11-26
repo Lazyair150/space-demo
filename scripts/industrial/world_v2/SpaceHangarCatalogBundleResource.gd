@@ -18,6 +18,9 @@ class_name SpaceHangarCatalogBundleResource
 @export var allow_legacy_inline_skill_orders_for_probes: bool = false
 ## Optional until production exact-version pool assets are authored.
 @export var roguelike_individual_library: SpaceRoguelikeIndividualLibrary
+## Optional pair: when both are authored, Hangar entry recovers durable Stage reward outboxes.
+@export var progression_reward_profile: SpaceProgressionRewardProfile
+@export var progression_curve_catalog: SpaceProgressionCurveCatalog
 
 func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 	if roguelike_individual_library != null and not roguelike_individual_library.is_valid():
@@ -98,10 +101,24 @@ func create_runtime_bundle() -> SpaceHangarCatalogBundle:
 		if not effect_catalog.register_buff(definition):
 			push_error("Hangar bundle resource contains an invalid or duplicate effect definition")
 			return null
+	if (progression_reward_profile == null) != (progression_curve_catalog == null):
+		push_error("Hangar reward recovery requires both a Reward Profile and a Progression Curve Catalog, or neither")
+		return null
+	var runtime_reward_profile: SpaceProgressionRewardProfile
+	var runtime_curve_catalog: SpaceProgressionCurveCatalog
+	if progression_reward_profile != null:
+		if not progression_reward_profile.is_valid():
+			push_error("Hangar progression Reward Profile is invalid")
+			return null
+		runtime_reward_profile = progression_reward_profile.duplicate(true) as SpaceProgressionRewardProfile
+		runtime_curve_catalog = progression_curve_catalog.duplicate(true) as SpaceProgressionCurveCatalog
+		if runtime_curve_catalog == null or not runtime_curve_catalog.rebuild_index() or runtime_curve_catalog.definition_count() == 0:
+			push_error("Hangar progression Curve Catalog is invalid or empty")
+			return null
 	var bundle := SpaceHangarCatalogBundle.create(
 		ship_catalog, production_device_catalog, ore_parser_catalog,
 		runtime_world_catalog, skill_catalog, balance_profile, effect_catalog,
-		resolved_workshop_catalog
+		resolved_workshop_catalog, runtime_reward_profile, runtime_curve_catalog
 	)
 	if not bundle.validate_and_prepare().is_empty():
 		return null

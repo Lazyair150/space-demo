@@ -14,7 +14,7 @@ The profile accepts only committed fact envelopes (`eventId`, `instanceId`, `sou
 
 `SpaceBattleRewardFactProjection` currently projects only accepted Parser Pickup identities and the exact Stage-clear candidate into stable facts attributed to the frozen Ship Owned Instance. The stage-clear callback persists this envelope inside the campaign clear record, making that record the durable source-fact outbox. Parser processed volume, production work, Workshop rule transitions and Skill cycle facts remain explicitly uncovered until their authoritative subsystems expose stable committed event identities.
 
-The generic reward service remains a settlement mechanism: it validates ownership, exact curves, revisions, duplicate source receipts, and detached candidate state. It does not calculate game balance. The production Reward Profile and Curve Catalog are not yet authored or connected to the battle lifecycle; the current probe values are synthetic contract fixtures only.
+The generic reward service remains a settlement mechanism: it validates ownership, exact curves, revisions, duplicate source receipts, and detached candidate state. It does not calculate game balance. The production Reward Profile and Curve Catalog remain optional authored dependencies; no production XP or curve values are fabricated. When both are supplied by the Hangar catalog bundle, Hangar entry runs `SpaceProgressionRewardCoordinator.recover_pending()` against durable campaign clear records. The coordinator validates exact Stage identity and the Stage-clear fact, maps the complete fact envelope through the exact Reward Profile, and commits through the progression aggregate's existing durable save boundary. Missing policy for any fact leaves the entire settlement pending; it is never silently skipped.
 
 ## 2. Roguelike Individual
 
@@ -35,3 +35,18 @@ Checkpoint 必须冻结 exact stage identity、loadout identity/fingerprint、En
 Progression：`SpacePlayerProgressionState.gd`、`SpaceOwnedProgressionInstance.gd`、`SpaceProgressionGrowthService.gd`、`SpaceProgressionRewardProfile.gd`、`SpaceProgressionRewardService.gd`。  
 Stage：`SpaceStageCatalog.gd`、`SpaceStageEncounterDirector.gd`、`SpaceStageObjectiveRuntime.gd`、`Game.gd`。  
 更详细内容见 [15 — Production, Parser and Individual Progression Gameplay](../industrial/15-production-parser-and-individual-progression-gameplay.md)。
+
+
+## 1.2 Durable reward outbox consumption and recovery
+
+The campaign clear result is the durable outbox. `SpaceProgressionRewardCoordinator` reads only persisted campaign records; it does not read transient battle nodes or reconstruct facts from current inventory. The exact `progressionRewardSettlementId`, Stage ID/version, Stage-clear fact and Reward Profile identity/version are validated before preparing a settlement.
+
+Hangar catalog resources may optionally provide both `SpaceProgressionRewardProfile` and `SpaceProgressionCurveCatalog`. Supplying only one is invalid. If neither is supplied, recovery is deliberately skipped and the outbox remains durable. If both are supplied, recovery runs on Hangar entry. The progression service writes its detached candidate and receipt before publishing the new live aggregate.
+
+Campaign and progression are separate persisted aggregates, not one atomic file transaction. Therefore:
+- Crash before progression save: the campaign outbox remains and the next Hangar entry retries.
+- Crash after progression save: the exact settlement receipt is durable; retry returns duplicate success without awarding XP again.
+- Same settlement ID with a changed policy/award payload: fingerprint conflict is rejected.
+- Missing source policy, exact curve, or Owned Instance: settlement remains pending; no partial source subset is awarded.
+
+This is an outbox/retry protocol, not a claim of cross-file atomicity. Production recovery remains inactive until the project author supplies a complete matching Reward Profile and Curve Catalog.

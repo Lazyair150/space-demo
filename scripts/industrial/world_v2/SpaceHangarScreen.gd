@@ -67,6 +67,18 @@ func _ready() -> void:
 		_preparation.player_progression_state = GameState.space_progression_state
 	GameState.space_progression_state_changed.connect(_on_progression_state_changed)
 	GameState.space_campaign_progress_changed.connect(_on_campaign_progress_changed)
+	# Durable campaign-clear facts are an outbox. Consume them on every Hangar entry;
+	# exact progression receipts make recovery idempotent after a crash between saves.
+	if _preparation != null and _preparation.catalog_bundle_resource != null:
+		var reward_bundle := _preparation.create_catalog_bundle()
+		if reward_bundle != null and reward_bundle.progression_reward_profile != null and reward_bundle.progression_curve_catalog != null:
+			var recovery := SpaceProgressionRewardCoordinator.recover_pending(
+				GameState,
+				reward_bundle.progression_reward_profile,
+				reward_bundle.progression_curve_catalog
+			)
+			if not bool(recovery.get("success", false)):
+				push_warning("[Hangar] Progression reward recovery remains pending: " + String(recovery.get("reason", "")))
 	_build_interface()
 	_controller.view_model_changed.connect(_on_view_model_changed)
 	var ready := _controller.configure(_preparation, loadout_identity, board_definition)

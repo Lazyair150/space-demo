@@ -31,3 +31,4 @@
 - [2026-11-27 版本化成长奖励政策契约](2026-11-27-versioned-progression-reward-policy-contract.md)
 
 - [2026-11-27 战斗成长奖励事实投影](2026-11-27-battle-progression-reward-fact-projection.md)
+- [2026-11-27 成长奖励协调器与机库恢复](2026-11-27-progression-reward-coordinator-recovery.md)

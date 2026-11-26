@@ -10,6 +10,8 @@ var workshop_catalog: SpaceWorkshopCatalog
 var skill_catalog: SpaceSkillCatalog
 var balance_profile: SpaceSkillBalanceProfile
 var effect_catalog: SpaceEffectCatalog
+var progression_reward_profile: SpaceProgressionRewardProfile
+var progression_curve_catalog: SpaceProgressionCurveCatalog
 
 static func create(
 	ships: SpaceShipCatalog,
@@ -19,7 +21,9 @@ static func create(
 	skills: SpaceSkillCatalog,
 	balance: SpaceSkillBalanceProfile,
 	effects: SpaceEffectCatalog,
-	global_workshops: SpaceWorkshopCatalog = null
+	global_workshops: SpaceWorkshopCatalog = null,
+	reward_profile: SpaceProgressionRewardProfile = null,
+	curve_catalog: SpaceProgressionCurveCatalog = null
 ) -> SpaceHangarCatalogBundle:
 	var bundle := SpaceHangarCatalogBundle.new()
 	bundle.ship_catalog = ships
@@ -30,6 +34,8 @@ static func create(
 	bundle.skill_catalog = skills
 	bundle.balance_profile = balance
 	bundle.effect_catalog = effects
+	bundle.progression_reward_profile = reward_profile
+	bundle.progression_curve_catalog = curve_catalog
 	return bundle
 
 func validate_and_prepare() -> PackedStringArray:
@@ -49,4 +55,11 @@ func validate_and_prepare() -> PackedStringArray:
 	if balance_profile == null or not balance_profile.is_valid(): errors.append("skill balance profile is missing or invalid")
 	if effect_catalog == null: errors.append("effect catalog is missing")
 	elif effect_catalog.is_empty(): errors.append("effect catalog has no authored definitions")
+	if (progression_reward_profile == null) != (progression_curve_catalog == null):
+		errors.append("progression reward recovery requires both policy and curve catalogs")
+	elif progression_reward_profile != null:
+		if not progression_reward_profile.is_valid():
+			errors.append("progression reward profile is invalid")
+		if not progression_curve_catalog.rebuild_index() or progression_curve_catalog.definition_count() == 0:
+			errors.append("progression curve catalog is invalid or empty")
 	return errors
