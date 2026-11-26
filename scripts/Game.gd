@@ -271,6 +271,13 @@ func _ready() -> void:
 		if not player.damaged.is_connected(_on_player_damaged):
 			player.damaged.connect(_on_player_damaged)
 
+## Player-requested terminal exit from the pause menu.
+## The battle owner disposes Jar and closes the lifecycle before navigation.
+func end_battle_for_menu() -> bool:
+	if not _battle_shutdown_started:
+		_shutdown_battle(false, "player returned to main menu")
+	return GameFlow.return_to_menu("res://scenes/menus/MainMenu.tscn")
+
 ## Encounter completion is not objective completion or reward settlement.
 func _on_stage_encounters_completed(result: Dictionary) -> void:
 	if _selected_stage == null or _stage_objective_runtime == null or _battle_shutdown_started:
