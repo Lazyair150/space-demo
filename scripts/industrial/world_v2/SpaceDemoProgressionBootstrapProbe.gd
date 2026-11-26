@@ -98,7 +98,7 @@ static func _build_default_owned_loadout(
 		"loadoutId": "bootstrap-probe-loadout",
 		"loadoutVersion": 1
 	}
-	var result: SpaceBattleLoadoutSnapshot
+	var result: SpaceBattleLoadoutSnapshot = null
 	if controller.configure(preparation, identity, board):
 		var view := controller.get_view_model()
 		var selection: Dictionary = view.get("selection", {})
