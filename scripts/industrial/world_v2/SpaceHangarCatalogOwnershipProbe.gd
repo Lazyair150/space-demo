@@ -346,14 +346,7 @@ static func run() -> bool:
 	var unavailable_draft := SpaceHangarSelectionDraft.new()
 	if unavailable_draft.configure({"isReady": false}) or unavailable_draft.set_ship("probe.ship", 2):
 		return false
-	var unconfigured_preparation := SpaceHangarPreparation.new()
-	var selection_controller := SpaceHangarSelectionController.new()
-	if selection_controller.configure(unconfigured_preparation, {"shipWorldId": "probe.world", "loadoutId": "probe.loadout", "loadoutVersion": 1}):
-		return false
-	var unavailable_view := selection_controller.get_view_model()
-	if bool(unavailable_view.get("isReady", true)) or bool(unavailable_view.get("canBuild", true)):
-		return false
-	if not unavailable_view.get("inventory", {}).get("shipChoices", []).is_empty():
+	if not _probe_unconfigured_preparation():
 		return false
 
 	print("[SpaceHangarCatalogOwnershipProbe] no-board-draft-fails-closed=passed")
@@ -703,33 +696,9 @@ static func run() -> bool:
 		return false # Production Owned assembly must not bypass the canonical Board Assignment map.
 
 	print("[SpaceHangarCatalogOwnershipProbe] field-only-assembly-rejected=passed")
-	var owned_preparation := SpaceHangarPreparation.new()
-	owned_preparation.catalog_bundle_resource = owned_hangar_bundle
-	owned_preparation.require_owned_instances = true
-	owned_preparation.player_progression_state = hangar_owned_state
-	var owned_controller := SpaceHangarSelectionController.new()
-	var owned_identity := {
-		"shipWorldId": "probe.ship-world",
-		"loadoutId": "probe.loadout",
-		"loadoutVersion": 1
-	}
-	if not owned_controller.configure(owned_preparation, owned_identity, null):
-		return false
-	var missing_board_view := owned_controller.get_view_model()
-	if bool(missing_board_view.get("canBuild", true)):
-		return false
-	if not missing_board_view.get("validationErrors", []).has("Owned production assembly requires an explicit Board Definition"):
-		return false
-	if owned_controller.build_loadout_snapshot() != null:
-		return false # Owned production UI must fail closed before assembly when Board Definition is absent.
-	if owned_inventory.shipChoices.size() != 1 or owned_inventory.parserChoices.size() != 1 or owned_inventory.deviceChoices.size() != 1 or owned_inventory.skillChoices.size() != 1:
-		return false
-	if owned_inventory.workshopWorldChoices.size() != 1 or owned_inventory.workshopInstanceChoices.size() != 2:
-		return false
-	var owned_workshop_ids := {}
-	for choice in owned_inventory.workshopInstanceChoices:
-		owned_workshop_ids[String(choice.instanceId)] = true
-	if not owned_workshop_ids.has(String(owned_master.instance_id)) or not owned_workshop_ids.has(String(owned_slave.instance_id)):
+	if not _probe_owned_preparation_without_board(
+		owned_hangar_bundle, hangar_owned_state, owned_inventory, owned_master, owned_slave
+	):
 		return false
 	var cross_subsystem_growth := skill_growth_instance.duplicate(true) as SpaceOwnedProgressionInstance
 	cross_subsystem_growth.growth_attributes = {"maxJarsBonus": 2}
@@ -738,3 +707,65 @@ static func run() -> bool:
 	if not SpaceDemoProgressionBootstrapProbe.run():
 		return false
 	return SpaceRoguelikeIndividualLibraryProbe.run(owned_hangar_bundle.create_runtime_bundle(), hangar_owned_state, String(skill.skill_id), skill.definition_version)
+
+
+## These probes own SpaceHangarPreparation Nodes explicitly; controllers only borrow them.
+static func _probe_unconfigured_preparation() -> bool:
+	var preparation := SpaceHangarPreparation.new()
+	var controller := SpaceHangarSelectionController.new()
+	var passed := false
+	if not controller.configure(
+		preparation,
+		{"shipWorldId": "probe.world", "loadoutId": "probe.loadout", "loadoutVersion": 1}
+	):
+		var view := controller.get_view_model()
+		passed = (
+			not bool(view.get("isReady", true))
+			and not bool(view.get("canBuild", true))
+			and view.get("inventory", {}).get("shipChoices", []).is_empty()
+		)
+	controller = null
+	preparation.free()
+	return passed
+
+
+static func _probe_owned_preparation_without_board(
+	bundle: SpaceHangarCatalogBundleResource,
+	progression: SpacePlayerProgressionState,
+	inventory: Dictionary,
+	master_instance: SpaceOwnedProgressionInstance,
+	slave_instance: SpaceOwnedProgressionInstance
+) -> bool:
+	var preparation := SpaceHangarPreparation.new()
+	preparation.catalog_bundle_resource = bundle
+	preparation.require_owned_instances = true
+	preparation.player_progression_state = progression
+	var controller := SpaceHangarSelectionController.new()
+	var identity := {
+		"shipWorldId": "probe.ship-world",
+		"loadoutId": "probe.loadout",
+		"loadoutVersion": 1
+	}
+	var passed := false
+	if controller.configure(preparation, identity, null):
+		var view := controller.get_view_model()
+		var validation_errors: Array = view.get("validationErrors", [])
+		var workshop_ids := {}
+		for choice in inventory.get("workshopInstanceChoices", []):
+			workshop_ids[String(choice.get("instanceId", ""))] = true
+		passed = (
+			not bool(view.get("canBuild", true))
+			and validation_errors.has("Owned production assembly requires an explicit Board Definition")
+			and controller.build_loadout_snapshot() == null
+			and inventory.get("shipChoices", []).size() == 1
+			and inventory.get("parserChoices", []).size() == 1
+			and inventory.get("deviceChoices", []).size() == 1
+			and inventory.get("skillChoices", []).size() == 1
+			and inventory.get("workshopWorldChoices", []).size() == 1
+			and inventory.get("workshopInstanceChoices", []).size() == 2
+			and workshop_ids.has(String(master_instance.instance_id))
+			and workshop_ids.has(String(slave_instance.instance_id))
+		)
+	controller = null
+	preparation.free()
+	return passed
