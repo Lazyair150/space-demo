@@ -104,7 +104,7 @@ Core 修复应同时：
 - schema 1 fingerprint 维持原形状；
 - 把综合身份错误拆成独立可诊断错误。
 
-代码提交与 CI/桌面验收状态以 [2026-11-27 Core 工作记录](../../jar-system-dotnet/docs/work-records/2026-11-27-board-assignment-schema-v2-ingress-fix.md) 不可用作本仓库链接；请以本仓库 [现场故障记录](../work-records/2026-11-26-live-hangar-board-schema-runtime-fault.md) 及后续追加更正为准。Core 仓库工作记录位于 sibling repo，不应写成本仓库相对链接。
+Core 代码提交与 CI 状态记录在 Core 仓库的 `docs/work-records/2026-11-27-board-assignment-schema-v2-ingress-fix.md`；Space 侧现场记录位于本仓库 `docs/work-records/`。两个仓库各自维护记录，不使用跨仓库相对链接。
 
 ## 7. 失败诊断要求
 
