@@ -5,17 +5,21 @@ Space branch: world-v2/phase-4.10b-hangar-ui
 Core PR: #63
 Core branch: architecture/core-liquid-identity-consolidation
 
-CURRENT AUTHORITATIVE STATUS — 2026-11-26 (pin correction pending verification)
+CURRENT AUTHORITATIVE STATUS — 2026-11-26 (Parser ingress probe correction committed; fresh rerun required)
 
-- Space PR #2 code head: 0ee21ab7b464da6cec7b142009f8e159f6af1364 (Draft/Open; not merged).
+- Space PR #2 current code/documentation head: f895d8b910bb7d2ee6f3b4df6617d7f0828e7a4d (Draft/Open; not merged).
+- Space parser-ingress probe correction: b61875addfa4f826d8e225b5646e401ee9655768. The following work-record commit documents the correction and current evidence.
 - Core PR #63 source head: 391f318a24fde724a66054e771d0590f0e20c231 (Draft/Open; not merged).
 - Core exact-head verify run 45822480114 completed successfully for 391f318a24fde724a66054e771d0590f0e20c231.
-- Space exact-head run 45796547789 failed while building Space against stale Core pin e1e89cad5e0f11f369c8ade814140a7b4cc8df74; Core Bridge itself built successfully, but Space compilation failed because the older Core DTO did not expose HasExactReceipt, StoredJarCountsByShape and DiscardedJarCountsByShape expected by Space WorldV2RuntimeNode.
-- Root cause is an integration source-pin mismatch, not a failure in the new Core receipt implementation or a Godot runtime probe: the checked-in workflow and CORE_EXPECTED_SHA selected e1e89cad5e0f11f369c8ade814140a7b4cc8df74, while Space source already consumes the expanded exact-receipt DTO.
-- Corrective change: align both workflow checkout ref and CORE_EXPECTED_SHA to 391f318a24fde724a66054e771d0590f0e20c231; README build instructions and this checkpoint are aligned to the same exact Core commit.
-- A fresh Space cross-repository run is required before the pair can be called integrated/green. The pin correction itself is not treated as validation.
-- Both PRs remain Open/Draft and unmerged. No GUI acceptance is claimed.
-
+- Latest observed Space cross-repository run before the probe correction: Run 45826677268, Job 139932503548, failure.
+- In that run, exact Core Bridge build and Space C# build both succeeded with 0 warnings / 0 errors; Godot project import/script scan succeeded; HUD feedback probe passed 21/21; Space domain contract probe reached all-domain-contracts=passed.
+- The Parser/Core ingress probe then failed at SpaceOreParserJarIngressProbe.gd:290. Its assertion used replay_discarded_by_shape.is_empty(), but the runtime observation contract deliberately returns a total map with explicit zero values for every configured shape. Aggregate exact result and duplicate receipt assertions immediately before it had already passed.
+- Corrected the probe to assert each configured shape explicitly (round stored=1, square stored=0, both discarded=0), preserving the runtime total-map contract. No Core receipt behavior, parser normalization, persistence validation, or zero-value representation was changed.
+- The fix is committed as b61875addfa4f826d8e225b5646e401ee9655768; current PR head f895d8b910bb7d2ee6f3b4df6617d7f0828e7a4d includes the fix and the updated work record.
+- At the time of this checkpoint update, no new PR-triggered workflow run was returned for the fix/documentation commits. A fresh run of the current exact HEAD is still required; do not mark Parser ingress or the full integration as green.
+- The failed ingress run also emitted 108 leaked ObjectDB instances and 44 resources still in use at shutdown. These are recorded as follow-up diagnostics, not as the cause of the line-290 assertion.
+- Since the harness stops at the first failing ingress probe, runtime, lifecycle, fault, disposed/faulted command, snapshot-isolation, and battle-navigation probes have not been verified by this run.
+- Both PRs remain Open/Draft and unmerged. No desktop GUI acceptance is claimed.
 INTEGRATION CONTRACT
 
 - Space owns combat, player progression, ship inventory, Hangar composition, production devices, skill/effect semantics, stage progression, presentation and scene lifecycle.
