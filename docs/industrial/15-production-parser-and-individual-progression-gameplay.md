@@ -361,7 +361,11 @@ Precision Parser 的 productionPercentage 是 90%，但它的 per-shape processi
 5. Ship Liquid Inventory 初始余额与 Core Liquid Producer 产出；
 6. 从仓库/自机账户流向 Master、再到 Slave 的有效流率和容量边界。
 
-当前 `SpaceBattleJarSupplyForecast` 已完成来源拆分与固定点预算投影；`SpaceBattleEconomyEvaluator` 仍采用全装备技能共同 fulfillment fraction。二者尚未接成自动的一键 Loadout → Encounter → Skill Economy 预测管线，也没有逐 Tick 模拟原石掉落、Core 仓库溢出、Jar Flow、Workshop 收货/消耗和 Passive 触发时序。未提供 Encounter 假设时不得拿 Ship 预估率伪装成真实掉落频率。
+当前 `SpaceBattleJarSupplyForecast` 已完成初始 Warehouse、Core Time Producer、Space Parser 三路来源拆分与固定点预算投影。新增的 `SpaceBattleSupplyScenarioProfile` 和 `evaluate_scenario_band()` 将同一冻结输入分别按 Low / Baseline / High 预期敌人击败率计算，并按形状比较预期原石量、Parser 已处理/未处理量、整 Jar 产出和 Warehouse 毛供给；Core Producer 与初始 Warehouse 余额在三个场景中保持不变。
+
+场景速率是版本化的明确输入，不从 `wave_plans` 的敌人数或休息时长直接推导。关卡敌人是否以及何时被玩家击败，受玩家构筑、战斗表现和战斗时序影响；没有实测击败样本或作者给出的情景假设时，不得虚构 Low / Baseline / High 数字。该区间是期望值敏感性分析，不是统计置信区间，也不是逐次随机掉落回放。当前 Demo 尚未配置正式的场景速率资产。
+
+`SpaceBattleEconomyEvaluator` 仍采用全装备技能共同 fulfillment fraction；供给区间尚未自动贯通到一键 Loadout → Encounter → Skill Economy，也没有逐 Tick 模拟原石掉落、Core 仓库溢出、Jar Flow、Workshop 收货/消耗和 Passive 触发时序。未提供 Encounter 假设时不得拿 Ship 预估率伪装成真实掉落频率。
 
 ## 10. 玩家需要观察和理解的反馈
 

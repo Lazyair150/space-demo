@@ -269,6 +269,103 @@ static func evaluate(
 		]
 	}
 
+## Evaluates the same frozen inputs under explicit Low / Baseline / High
+## expected defeat-rate assumptions. This is sensitivity analysis, not a confidence
+## interval, deterministic drop replay, or inference from authored enemy counts.
+static func evaluate_scenario_band(
+	world_options: Dictionary,
+	parser_profile: Dictionary,
+	parser_supply_context: Dictionary,
+	duration_logical_milli: float,
+	scenario_profile: SpaceBattleSupplyScenarioProfile,
+	shared_scenario: Dictionary = {}
+) -> Dictionary:
+	if scenario_profile == null:
+		return _failure("versioned supply scenario profile is required")
+	var profile_errors := scenario_profile.get_validation_errors()
+	if not profile_errors.is_empty():
+		return _failure("supply scenario profile is invalid: " + "; ".join(profile_errors))
+	var runtime_profile := scenario_profile.build_runtime_profile()
+	var rates: Dictionary = runtime_profile.get("expectedEnemyDefeatsPerSecondByBand", {})
+	var reports := {}
+	for band_key in SpaceBattleSupplyScenarioProfile.SCENARIO_KEYS:
+		var context := parser_supply_context.duplicate(true)
+		context["expectedEnemyDefeatsPerSecond"] = float(rates[band_key])
+		var report := evaluate(
+			world_options,
+			parser_profile,
+			context,
+			duration_logical_milli,
+			shared_scenario
+		)
+		if not bool(report.get("valid", false)):
+			return _failure("%s supply scenario failed: %s" % [band_key, String(report.get("reason", "unknown"))])
+		reports[band_key] = report
+
+	var baseline: Dictionary = reports["baseline"]
+	var shapes: Array = baseline.get("shapeVocabulary", [])
+	var metric_fields := {
+		"expectedStoneVolume": "expectedStoneVolumeByShape",
+		"parserProcessedVolume": "parserProcessedVolumeByShape",
+		"parserUnprocessedVolume": "parserUnprocessedVolumeByShape",
+		"parserWholeJarEstimate": "parserWholeJarEstimateByShape",
+		"grossWarehouseJarSupply": "grossWarehouseJarSupplyByShape"
+	}
+	var comparison_by_shape := {}
+	for raw_shape in shapes:
+		var shape := String(raw_shape)
+		var metrics := {}
+		for metric_name in metric_fields:
+			var field_name := String(metric_fields[metric_name])
+			var low_map: Dictionary = reports["low"].get(field_name, {})
+			var baseline_map: Dictionary = reports["baseline"].get(field_name, {})
+			var high_map: Dictionary = reports["high"].get(field_name, {})
+			var low_value := float(low_map.get(shape, 0.0))
+			var baseline_value := float(baseline_map.get(shape, 0.0))
+			var high_value := float(high_map.get(shape, 0.0))
+			if low_value > baseline_value + 0.000001 or baseline_value > high_value + 0.000001:
+				return _failure("scenario ordering is not monotonic for %s/%s" % [shape, metric_name])
+			metrics[metric_name] = {
+				"low": low_value,
+				"baseline": baseline_value,
+				"high": high_value
+			}
+		comparison_by_shape[shape] = metrics
+
+	# These sources do not depend on enemy defeat assumptions; assert they remain
+	# identical so a band cannot accidentally double-count or mutate Core production.
+	for band_key in SpaceBattleSupplyScenarioProfile.SCENARIO_KEYS:
+		var report: Dictionary = reports[band_key]
+		if report.get("coreProducerJarOutputByShape", {}) != baseline.get("coreProducerJarOutputByShape", {}):
+			return _failure("Core Producer output changed between supply scenarios")
+		if report.get("initialWarehouseJarCountsByShape", {}) != baseline.get("initialWarehouseJarCountsByShape", {}):
+			return _failure("initial Warehouse stock changed between supply scenarios")
+		if int(report.get("masterJarFlowQuotaUpperBound", -1)) != int(baseline.get("masterJarFlowQuotaUpperBound", -2)):
+			return _failure("Master flow quota changed between supply scenarios")
+
+	var gross_totals := {}
+	var master_receipt_bounds := {}
+	for band_key in SpaceBattleSupplyScenarioProfile.SCENARIO_KEYS:
+		var report: Dictionary = reports[band_key]
+		gross_totals[band_key] = int(report.get("grossWarehouseJarSupplyTotal", 0))
+		master_receipt_bounds[band_key] = int(report.get("masterPotentialReceiptUpperBound", 0))
+	return {
+		"valid": true,
+		"forecastMode": "expected_scenario_sensitivity_band",
+		"scenarioProfileId": String(scenario_profile.profile_id),
+		"scenarioProfileVersion": scenario_profile.profile_version,
+		"expectedEnemyDefeatsPerSecondByBand": rates.duplicate(true),
+		"durationLogicalMilli": int(round(duration_logical_milli)),
+		"shapeVocabulary": shapes.duplicate(),
+		"scenarios": reports,
+		"comparisonByShape": comparison_by_shape,
+		"grossWarehouseJarSupplyTotalByBand": gross_totals,
+		"masterPotentialReceiptUpperBoundByBand": master_receipt_bounds,
+		"sharedCoreProducerJarOutputByShape": baseline.get("coreProducerJarOutputByShape", {}).duplicate(true),
+		"initialWarehouseJarCountsByShape": baseline.get("initialWarehouseJarCountsByShape", {}).duplicate(true),
+		"interpretation": "Expected-rate sensitivity only; not a statistical confidence interval or actual pickup replay."
+	}
+
 static func _complete_integer_map(value: Variant, shape_set: Dictionary, minimum: int, maximum: int, label: String) -> Dictionary:
 	if not (value is Dictionary):
 		return _failure(label + " must be a dictionary")

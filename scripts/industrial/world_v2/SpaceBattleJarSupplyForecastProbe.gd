@@ -82,13 +82,63 @@ static func run() -> Dictionary:
 	var bad_producer_id := SpaceBattleJarSupplyForecast.evaluate(missing_producer_id, parser_profile, supply_context, 2000.0)
 	if bool(bad_producer_id.get("valid", false)):
 		return _failure("Core Producer without a stable identity was accepted")
+
+	# Low/Baseline/High are explicit scenario assumptions. They change only expected
+	# enemy defeat rate; the frozen world/parser/drop profile and initial stocks are shared.
+	var rate_profile := SpaceBattleSupplyScenarioProfile.new()
+	rate_profile.profile_id = &"probe.encounter-rate"
+	rate_profile.profile_version = 4
+	rate_profile.low_expected_enemy_defeats_per_second = 1.0
+	rate_profile.baseline_expected_enemy_defeats_per_second = 2.0
+	rate_profile.high_expected_enemy_defeats_per_second = 3.0
+	var rate_roundtrip := SpaceBattleSupplyScenarioProfile.from_runtime_profile(rate_profile.build_runtime_profile())
+	if rate_roundtrip == null or rate_roundtrip.profile_version != 4:
+		return _failure("versioned supply scenario profile did not survive its runtime roundtrip")
+	var band := SpaceBattleJarSupplyForecast.evaluate_scenario_band(
+		world_options,
+		parser_profile,
+		supply_context,
+		2000.0,
+		rate_roundtrip,
+		{"initialWarehouseJarsByShape": {"round": 1, "square": 1}}
+	)
+	if not bool(band.get("valid", false)):
+		return _failure("valid Low/Baseline/High supply band was rejected: " + String(band.get("reason", "")))
+	var band_comparison: Dictionary = band.get("comparisonByShape", {})
+	var round_metrics: Dictionary = band_comparison.get("round", {})
+	var round_stone_band: Dictionary = round_metrics.get("expectedStoneVolume", {})
+	var round_parser_band: Dictionary = round_metrics.get("parserWholeJarEstimate", {})
+	if not is_equal_approx(float(round_stone_band.get("low", -1.0)), 1.0) or not is_equal_approx(float(round_stone_band.get("baseline", -1.0)), 2.0) or not is_equal_approx(float(round_stone_band.get("high", -1.0)), 3.0):
+		return _failure("scenario band did not preserve explicit expected input-rate assumptions")
+	if int(round_parser_band.get("low", -1)) != 1 or int(round_parser_band.get("baseline", -1)) != 2 or int(round_parser_band.get("high", -1)) != 2:
+		return _failure("Parser output band did not expose the high-scenario throughput bottleneck")
+	var low_report: Dictionary = band.scenarios.low
+	var high_report: Dictionary = band.scenarios.high
+	if low_report.coreProducerJarOutputByShape != high_report.coreProducerJarOutputByShape:
+		return _failure("Core Producer supply was changed or counted differently across encounter bands")
+	if int(band.grossWarehouseJarSupplyTotalByBand.low) > int(band.grossWarehouseJarSupplyTotalByBand.baseline) or int(band.grossWarehouseJarSupplyTotalByBand.baseline) > int(band.grossWarehouseJarSupplyTotalByBand.high):
+		return _failure("gross Warehouse supply band is not monotonic")
+	var invalid_rate_profile := SpaceBattleSupplyScenarioProfile.new()
+	invalid_rate_profile.profile_id = &"probe.invalid-rate-order"
+	invalid_rate_profile.profile_version = 1
+	invalid_rate_profile.low_expected_enemy_defeats_per_second = 3.0
+	invalid_rate_profile.baseline_expected_enemy_defeats_per_second = 2.0
+	invalid_rate_profile.high_expected_enemy_defeats_per_second = 4.0
+	if invalid_rate_profile.get_validation_errors().is_empty():
+		return _failure("inverted Low/Baseline scenario rates were accepted")
+	print("[SpaceBattleJarSupplyForecastProbe] explicit-scenario-sensitivity-band=passed")
+	print("[SpaceBattleJarSupplyForecastProbe] scenario-core-supply-invariance=passed")
+	print("[SpaceBattleJarSupplyForecastProbe] high-scenario-parser-bottleneck=passed")
+	print("[SpaceBattleJarSupplyForecastProbe] inverted-scenario-band=fail-closed")
 	return {
 		"passed": true,
 		"expectedStoneVolumeByShape": expected_stone,
 		"parserWholeJarEstimateByShape": parser_output,
 		"coreProducerJarOutputByShape": core_output,
 		"grossWarehouseJarSupplyByShape": gross,
-		"masterJarFlowQuotaUpperBound": int(forecast.get("masterJarFlowQuotaUpperBound", 0))
+		"masterJarFlowQuotaUpperBound": int(forecast.get("masterJarFlowQuotaUpperBound", 0)),
+		"scenarioProfileId": String(band.get("scenarioProfileId", "")),
+		"scenarioGrossWarehouseSupplyByBand": band.get("grossWarehouseJarSupplyTotalByBand", {})
 	}
 
 static func _failure(reason: String) -> Dictionary:

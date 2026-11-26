@@ -11,5 +11,6 @@
 - 本目录为版本化文档区；仅 `_local/` 导出临时产物被忽略。
 
 当前重点：
+- [2026-11-26 供给场景敏感性区间](2026-11-26-supply-scenario-band.md)
 - [2026-11-25 Core 收敛协作记录](2026-11-25-core-consolidation.md)
 - Core 架构审查源文档位于 Jar Core 仓库 `docs/architecture/2026-11-core-multi-angle-audit.md`。
