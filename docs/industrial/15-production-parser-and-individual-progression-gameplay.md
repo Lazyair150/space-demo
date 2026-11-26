@@ -373,7 +373,7 @@ Parser Runtime checkpoint schema 5 除了已接受 Pickup、队列、分形状�
 
 旧 Parser schema 2/3 没有完整的 Core 导入回执历史；schema 4 已有 receipt schema 1，但其 duplicate 结果可能未知。它们仍可迁移，不能假装补齐旧回执；schema 4 维持原有 history-complete 标记，只有新建 Parser 或能够证明完整记录的 schema 5 状态才可以声明完整。
 
-Core 当前的 duplicate `ImportProducedJars` 响应只返回 `wasDuplicate=true` 与 `submitted/stored/discarded=0`。它证明同一操作及载荷此前已提交，但不返回首次提交时的仓库容量分配。因此 Space 记录为 `duplicate_confirmation_only`：本地原始请求量已知，原始 stored/discarded 结果未知，不能把 API 重放的零计数当成真实零存储、零丢弃。首次非重复回执只有满足 `submitted=requested` 且 `stored+discarded=submitted` 才能计为 exact。
+当前 Core schema 11 及其精确导入回执 DTO 对具有持久结果的重复 `ImportProducedJars` 请求返回首次提交的 requested/stored/discarded 逐形状结果，并设置 `wasDuplicate=true`、`hasExactReceipt=true`。只有旧 schema 10 或更早检查点中仅保留 OperationId tombstone、没有历史结果回执时，重复请求才会返回 `hasExactReceipt=false`；Space 必须记录为 `duplicate_confirmation_only`，不得把缺失的历史结果伪装为 0 存储/0 丢弃。首次回执和精确重复回执都必须满足逐形状 `stored+discarded=requested`，聚合数量也必须一致。
 
 ## 10. 玩家需要观察和理解的反馈
 
