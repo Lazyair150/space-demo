@@ -75,6 +75,7 @@ func _ready() -> void:
 		_fail_probe(controller, "failed menu transition must restore pause and fault registry state")
 		return
 	get_tree().paused = false
+	print("[SpaceBattlePauseControllerProbe] expected-transition-rejection=passed")
 	# Exercise the real fault-exit action, not only the abstract state transitions.
 	# This probe is still inside _ready(); wait until SceneTree has completed the
 	# current add-child/ready traversal before replacing the active scene. A normal
