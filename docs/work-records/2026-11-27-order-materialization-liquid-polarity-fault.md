@@ -31,7 +31,7 @@ Core commit `fe0b068c9e80cc232b76c91111d42fa257c227e9` changes all three call si
 
 Core regression test was introduced in `b593f4a2effcd7091f80e1a31d703072c2d5f6b4`; the collection assertion was corrected in `35f666720115fed0b2103001ad1c450fba4a65c9`. The test `ApplicationOperationsPreserveExplicitNonDefaultLiquidPolarities` creates a custom World mapping `coolant → Cathode`, `fuel → Anode`, then exercises direct demand creation, Core template materialization and produced-Jar import.
 
-Space cross-repository workflow and README are now pinned to Core source/test SHA `35f666720115fed0b2103001ad1c450fba4a65c9`. The first Core CI run `45859139265` caught an xUnit analyzer error in the new test (`Assert.Equal` used for collection size). That test-only analyzer issue was corrected in the pinned SHA above. CI for the corrected head is pending; no success is claimed yet.
+Space cross-repository workflow and README are now pinned to Core source/test SHA `35f666720115fed0b2103001ad1c450fba4a65c9`. Core CI runs `45859139265` and `45859573824` caught two xUnit2013 collection-size assertions in the new test. Both test-only analyzer findings were corrected in the pinned SHA above. Fresh exact-head Verify run `45860000880` is in progress; no success is claimed yet.
 
 ## Navigation probe clarification
 
@@ -58,5 +58,12 @@ Do not close P0 until the exact Core run, Space integration run, and desktop GUI
 - Space PR #2 head: `d75b4ae68b30e6b045673e059a87cf299ab571cf`.
 - Core PR #63 head: `712c4b834d8320c9b535dc807ae8ab1217a68e57`.
 - Space workflow and README pin the exact Core source/test revision `35f666720115fed0b2103001ad1c450fba4a65c9`.
-- Core Verify run `45859573824` for that exact source/test revision was still `in_progress` at the time of this update.
+- Core Verify run `45860000880` for the current source/test revision is `in_progress`.
 - Space workflow requires both the expected rollback marker and the real MainMenu transition marker; it also requires the Board Assignment schema-v2 golden fingerprint marker.
+
+
+## Latest pointer refresh
+
+- Space PR #2 head: `c1d59247a46cd403236ce6577334456177cf892e`.
+- Core PR #63 head: `b597dfafbe8e4df54b1d605f38f6863c474205a3` (documentation descendant of source/test pin `35f666720115fed0b2103001ad1c450fba4a65c9`).
+- Current exact-head Core Verify run: `45860000880`, in progress.
