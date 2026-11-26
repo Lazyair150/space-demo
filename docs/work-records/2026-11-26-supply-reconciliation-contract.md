@@ -117,14 +117,29 @@ Core 导入回执目前按 operation 与 shape 汇总，不将每个导入 Jar �
 - 用户本地 Core xUnit：1038 / 1038 通过（用户提供的实际运行结果）。
 - Core 当前精确 HEAD 的 GitHub verify：Run `45822480114` success。
 - Space 旧精确集成 Run `45796547789` failure，根因是 workflow Core pin 落后；不作为新 pin 的验证证据。
-- 本轮新增 GDScript 服务与 Probe 已提交源码，但尚未运行 Godot 4.7.1 import/compile/Headless；不标记为通过。
-- 新 pin 的 Space 跨仓库工作流需要在当前最新 Space HEAD 上重新执行。
+- 本轮新增 GDScript 服务、Probe 与 HUD 接入已提交源码；最新 Space 精确集成 Run `45826120969` 正在执行，尚未取得 Build/Probe 结果。
+- 该 Run 的 verify Job `139930613248` 已完成 Space/Core checkout 与 .NET SDK setup，当前仍在安装 Headless runtime dependencies；不能提前标记 Godot import/compile/Headless 通过。
 - 桌面 GUI、主菜单/机库/战斗/暂停/返回主菜单交互仍未验收。
 
 ## 六、下一步
 
 1. 对当前最新 Space HEAD 执行一次完整跨仓库验证，Core 固定为 `391f318a24fde724a66054e771d0590f0e20c231`。
 2. 按失败的第一个步骤修复，不跳过后续探针，也不把旧 Run 的结果移植到新 HEAD。
-3. 验证通过后，将只读对账数据接入战斗 UI 的生产观察区域；UI 只展示快照，不执行资源规则计算。
+3. 已将只读对账数据接入战斗 UI 的详情区域；UI 只展示快照，不执行资源规则计算。需要通过当前 Run 验证 GDScript、C#、Godot import 和 Parser/Core probes。
 4. 若玩法确实需要知道“哪一批 Parser Jar 现在位于哪个账户”，下一项 Core 设计应是持久的 Jar 来源/转移谱系，而不是在 Space 按数量猜测。先评估事件身份、JarId 生命周期、工作台转移与检查点恢复，再决定是否引入该能力。
 5. 对账事实稳定后，再将实际 Parser 消耗、Core 已提交转换事件接入 Owned Individual XP Reward Profile。正式 XP 系数和成长曲线仍由版本化内容数据提供，不写入服务或探针。
+
+
+## 七、只读对账已接入战斗 HUD（实现已提交，待当前 Run 验证）
+
+在原有持续资源条下方的详情面板新增“原石解析 / Core 导入 / 当前库存”区域：
+
+- `Game.get_supply_reconciliation_snapshot()` 从 Space Parser 获取 observation，并读取 `WorldV2ShipHost.GetWorldSnapshot()`；只调用只读接口。
+- `SpaceJarHudObserver` 展示每形状 Parser 完成量、待导入、已确认、精确入库/丢弃，以及当前 Core Warehouse、Master、Slave 各自库存。
+- 旧检查点若回执历史不完整，会显示历史不完整提示；不会用 0 填充未知事实。
+- UI 明确提示当前账户库存与历史 Parser 入库量分别展示，尚无逐罐来源关联。
+- Parser observation 被纳入 HUD 刷新签名，因此即使 Core Jar 数量暂时没有变化，Parser 的排队/进度/导入事实变化也会触发详情刷新。
+- Parser/Core 对账契约 Probe 已加入 Parser ingress 主探针；同时检查战斗场景具有供给观察 UI 入口。
+
+最新 Space HEAD：`b322040708c5adccf9ef3b48f3b0ac4bb9d43384`。
+最新跨仓库验证：Run `45826120969`，verify Job `139930613248`，运行中。
