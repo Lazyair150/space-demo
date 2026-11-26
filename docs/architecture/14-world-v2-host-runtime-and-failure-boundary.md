@@ -59,3 +59,8 @@ Host 持有小数毫秒余数，并强制 accumulate/advance 成对执行。禁�
 5. 目标 OS/GPU 手动验收。
 
 Headless 通过不等于桌面 GUI 通过。具体暂停契约见 [11 — Runtime Lifecycle](11-game-runtime-lifecycle-pause-and-scene-tree.md)，源码见 `WorldV2ShipHost.cs`、`WorldV2RuntimeNode.cs`、`Game.gd`、`GameFlow.gd`。
+
+
+## Probe semantics: expected failure versus successful navigation
+
+The battle-navigation probe deliberately submits one missing scene path to verify that `GameFlow.return_to_menu` restores the previous fault and pause state on transition failure. That error line is expected for the negative case, not evidence that the subsequent real MainMenu transition failed. The probe emits separate `expected-transition-rejection=passed` and `passed real-main-menu-transition=true` markers, and the integration script requires both. This headless probe still does not replace desktop GUI acceptance.
