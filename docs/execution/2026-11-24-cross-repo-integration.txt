@@ -7,7 +7,7 @@ Core branch: architecture/core-liquid-identity-consolidation
 
 CURRENT AUTHORITATIVE STATUS — 2026-11-26 (Parser ingress probe correction committed; fresh rerun required)
 
-- Space PR #2 current code/documentation head: f895d8b910bb7d2ee6f3b4df6617d7f0828e7a4d (Draft/Open; not merged).
+- Space PR #2 failed-run source head: 374942d8989f4a836c0ae831ea4faab4bcf8df99; the parser-ingress probe correction is source commit b61875addfa4f826d8e225b5646e401ee9655768. PR remains Draft/Open and unmerged.
 - Space parser-ingress probe correction: b61875addfa4f826d8e225b5646e401ee9655768. The following work-record commit documents the correction and current evidence.
 - Core PR #63 source head: 391f318a24fde724a66054e771d0590f0e20c231 (Draft/Open; not merged).
 - Core exact-head verify run 45822480114 completed successfully for 391f318a24fde724a66054e771d0590f0e20c231.
