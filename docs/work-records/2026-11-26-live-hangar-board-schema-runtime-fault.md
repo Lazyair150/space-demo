@@ -1,5 +1,7 @@
 # 2026-11-26 真实 Hangar Board 身份校验故障
 
+> **更正（2026-11-27）：本记录中“Assignment Snapshot 本身仍使用 schema 1”的判断不正确。** 真实 producer `SpaceHangarBoardAssignment.build_snapshot()` 输出外层 Assignment schema 2，Core 旧 DTO 只接受 schema 1。上一轮仅放开内嵌 Board Definition schema 2，未覆盖外层 Assignment schema 2。根因、Core 修复和跨仓库 pin 更正见 [2026-11-27 根因更正记录](2026-11-27-hangar-assignment-schema-v2-root-cause-correction.md)。本文件下方旧的本地复验命令与结论已被该记录取代，不再作为当前操作依据。
+
 ## 用户现场证据
 
 Godot 4.7.1 桌面运行后，Hangar 选择器日志显示：
