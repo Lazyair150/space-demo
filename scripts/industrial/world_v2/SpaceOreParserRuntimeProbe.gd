@@ -394,16 +394,68 @@ static func run() -> Dictionary:
 		return _failure("checkpoint restore accepted an unknown pending output shape")
 	if restored.capture_state() != state_before_rejection:
 		return _failure("rejected pending batch checkpoint partially mutated parser state")
-	var pending_id := String(restored.pending_output_batches()[0].operationId)
-	if not restored.acknowledge_output_batch(pending_id) or restored.acknowledge_output_batch(pending_id):
-		return _failure("output batch acknowledgment must be one-shot")
+	var pending_batch: Dictionary = restored.pending_output_batches()[0]
+	var pending_id := String(pending_batch.operationId)
+	var pending_counts: Dictionary = pending_batch.get("jarCounts", {})
+	var pending_jar_count := 0
+	for amount in pending_counts.values():
+		pending_jar_count += int(amount)
+	var malformed_receipt := {
+		"success": true,
+		"wasDuplicate": false,
+		"submittedJarCount": pending_jar_count + 1,
+		"storedJarCount": pending_jar_count + 1,
+		"discardedJarCount": 0
+	}
+	var before_bad_receipt := restored.capture_state()
+	if restored.acknowledge_output_batch(pending_id, malformed_receipt) or restored.capture_state() != before_bad_receipt:
+		return _failure("malformed Core import receipt must reject without removing the pending batch")
+	var exact_receipt := {
+		"success": true,
+		"wasDuplicate": false,
+		"submittedJarCount": pending_jar_count,
+		"storedJarCount": pending_jar_count - 1,
+		"discardedJarCount": 1
+	}
+	if not restored.acknowledge_output_batch(pending_id, exact_receipt):
+		return _failure("complete Core import receipt was not accepted")
+	if restored.acknowledge_output_batch(pending_id, exact_receipt):
+		return _failure("output batch receipt acknowledgment must be one-shot")
+	var captured_receipts := restored.capture_state()
+	if captured_receipts.coreImportReceipts.size() != 1 or not bool(captured_receipts.coreImportReceiptHistoryComplete):
+		return _failure("confirmed Core import response was not retained in the parser checkpoint")
+	var receipt_observation: Dictionary = restored.build_supply_observation_snapshot()
+	if int(receipt_observation.get("exactCoreStoredJarCount", -1)) != pending_jar_count - 1 or int(receipt_observation.get("exactCoreDiscardedJarCount", -1)) != 1:
+		return _failure("read-only parser supply observation did not expose exact stored/discarded counts")
+	var receipt_restored := SpaceOreParserRuntime.new()
+	if not bool(receipt_restored.initialize(definition, "probe-ship-world-parser", ["圆罐", "方罐"]).get("success", false)):
+		return _failure("receipt round-trip parser initialization failed")
+	if not bool(receipt_restored.restore_state(captured_receipts).get("success", false)):
+		return _failure("Core import receipt history did not survive parser checkpoint restore")
+	if receipt_restored.get_core_import_receipts() != restored.get_core_import_receipts():
+		return _failure("restored Core import receipts changed their exact payload")
+	# Schema 3 had cumulative output accounting but no Core receipt ledger. It remains
+	# loadable, but must advertise that historical import outcomes are incomplete.
+	var legacy_schema_three := checkpoint.duplicate(true)
+	legacy_schema_three["schemaVersion"] = 3
+	var legacy_schema_three_runtime := SpaceOreParserRuntime.new()
+	legacy_schema_three_runtime.initialize(definition, "probe-ship-world-parser", ["圆罐", "方罐"])
+	if not bool(legacy_schema_three_runtime.restore_state(legacy_schema_three).get("success", false)):
+		return _failure("schema 3 parser checkpoint was not accepted by the receipt-ledger migration")
+	if bool(legacy_schema_three_runtime.build_supply_observation_snapshot().get("coreImportReceiptHistoryComplete", true)):
+		return _failure("legacy schema 3 checkpoint falsely claimed a complete Core receipt history")
+	print("[SpaceOreParserRuntimeProbe] core-import-receipt-retention=passed")
+	print("[SpaceOreParserRuntimeProbe] receipt-validation-is-atomic=passed")
+	print("[SpaceOreParserRuntimeProbe] receipt-history-schema-migration=passed")
 
 	return {
 		"passed": true,
 		"productionPercentage": definition.production_percentage,
 		"pendingBatchesBeforeAck": 3,
 		"remainingCircleProgress": runtime.capture_state().progressMicroByShape["圆罐"],
-		"remainingSquareProgress": runtime.capture_state().progressMicroByShape["方罐"]
+		"remainingSquareProgress": runtime.capture_state().progressMicroByShape["方罐"],
+		"retainedCoreImportReceipts": restored.get_core_import_receipts().size(),
+		"receiptHistoryComplete": receipt_observation.coreImportReceiptHistoryComplete
 	}
 
 static func _failure(reason: String) -> Dictionary:

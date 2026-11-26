@@ -254,7 +254,26 @@ func _ready() -> void:
     var retry := SpaceOreParserJarIngress.flush_pending(restored_parser, restored_jar_host)
     assert(bool(retry.get("success", false)), "pending Jar import retry must succeed after restore")
     assert(int(retry.get("duplicateBatches", 0)) == 1, "restored Jar ledger must recognize the duplicate")
+    assert(int(retry.get("recordedReceipts", 0)) == 1, "duplicate confirmation must be retained as a parser receipt")
     assert(restored_parser.pending_output_batches().is_empty(), "confirmed batch must leave the parser outbox")
+    var retry_observation: Dictionary = restored_parser.build_supply_observation_snapshot()
+    assert(int(retry_observation.get("acknowledgedImportBatchCount", 0)) == 1,
+        "duplicate Core confirmation must survive in the parser observation")
+    assert(int(retry_observation.get("duplicateConfirmationBatchCountWithUnknownOutcome", 0)) == 1,
+        "duplicate replay must not fabricate original stored/discarded totals")
+    assert(int(retry_observation.get("duplicateConfirmationRequestedJarCountWithUnknownOutcome", 0)) == 1,
+        "duplicate replay must retain the locally known requested count")
+    assert(int(retry_observation.get("exactCoreStoredJarCount", -1)) == 0 and int(retry_observation.get("exactCoreDiscardedJarCount", -1)) == 0,
+        "unknown duplicate capacity outcome must not be reported as exact zero stored/discarded")
+    var parser_after_receipt_checkpoint: Dictionary = restored_parser.capture_state()
+    var receipt_restored_parser := SpaceOreParserRuntime.new()
+    assert(bool(receipt_restored_parser.initialize(
+        definition, "space-jar-ingress-probe-ship", ["圆罐", "方罐"]
+    ).get("success", false)), "receipt-restored parser must initialize")
+    assert(bool(receipt_restored_parser.restore_state(parser_after_receipt_checkpoint).get("success", false)),
+        "Core duplicate confirmation receipt must survive parser checkpoint restore")
+    assert(receipt_restored_parser.get_core_import_receipts() == restored_parser.get_core_import_receipts(),
+        "Core duplicate confirmation receipt changed during checkpoint roundtrip")
 
     # The restored Host must combine its 0.5ms remainder with the next 0.75ms Space step.
     var resumed_delta: int = restored_jar_host.AccumulateSpaceSimulationDelta(0.00075)
@@ -277,5 +296,5 @@ func _ready() -> void:
     )
 
     restored_jar_host.EndShipWorld()
-    print("[SpaceOreParserJarIngressProbe] passed parsed=1 stored=1 retry_after_restore=1 shared_clock=1 workshop_bypass=0")
+    print("[SpaceOreParserJarIngressProbe] passed parsed=1 duplicate_receipt_retained=1 duplicate_capacity_outcome=explicitly_unknown shared_clock=1 workshop_bypass=0")
     queue_free()

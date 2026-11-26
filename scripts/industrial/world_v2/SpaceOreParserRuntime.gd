@@ -8,7 +8,9 @@ class_name SpaceOreParserRuntime
 
 const MICRO: int = 1000000
 const RATE_DENOMINATOR: int = 100000
-const STATE_SCHEMA_VERSION: int = 3
+const STATE_SCHEMA_VERSION: int = 4
+const IMPORT_RECEIPT_SCHEMA_VERSION: int = 1
+const MAX_INT32: int = 2147483647
 const MAX_INT64: int = 9223372036854775807
 const MAX_FIXED_POINT_UNITS: float = 1000000000.0
 
@@ -21,6 +23,9 @@ var _progress_micro_by_shape: Dictionary = {}
 var _produced_jar_count_by_shape: Dictionary = {}
 var _rate_remainder_by_shape: Dictionary = {}
 var _pending_output_batches: Dictionary = {}
+var _core_import_receipts: Dictionary = {}
+## False after restoring schema 2/3: those checkpoints did not retain historical Core acknowledgments.
+var _core_import_receipt_history_complete: bool = true
 var _next_batch_sequence: int = 1
 
 func initialize(
@@ -47,6 +52,8 @@ func initialize(
 	_produced_jar_count_by_shape.clear()
 	_rate_remainder_by_shape.clear()
 	_pending_output_batches.clear()
+	_core_import_receipts.clear()
+	_core_import_receipt_history_complete = true
 	_next_batch_sequence = 1
 	for raw_shape in shape_names:
 		var shape := String(raw_shape)
@@ -193,12 +200,196 @@ func pending_output_batches() -> Array[Dictionary]:
 		result.append(_pending_output_batches[operation_id].duplicate(true))
 	return result
 
-## Acknowledge only after WorldV2ShipHost.ImportProducedJars reports success.
-func acknowledge_output_batch(operation_id: String) -> bool:
-	if not _pending_output_batches.has(operation_id):
+## Acknowledge only after Core returns a complete import response. The response and
+## the pending-outbox removal become one parser-state mutation.
+func acknowledge_output_batch(operation_id: String, core_receipt: Dictionary) -> bool:
+	if not _pending_output_batches.has(operation_id) or _core_import_receipts.has(operation_id):
 		return false
-	_pending_output_batches.erase(operation_id)
+	var batch: Dictionary = _pending_output_batches[operation_id]
+	var normalized := _normalize_core_import_receipt(operation_id, batch, core_receipt)
+	if normalized.is_empty():
+		return false
+	var staged_pending: Dictionary = _pending_output_batches.duplicate(true)
+	var staged_receipts: Dictionary = _core_import_receipts.duplicate(true)
+	staged_pending.erase(operation_id)
+	staged_receipts[operation_id] = normalized
+	_pending_output_batches = staged_pending
+	_core_import_receipts = staged_receipts
 	return true
+
+func get_core_import_receipts() -> Dictionary:
+	return _core_import_receipts.duplicate(true)
+
+## Read-only observation of actual Space parser facts and retained Core import responses.
+## Duplicate Core confirmations deliberately keep original stored/discarded totals unknown.
+func build_supply_observation_snapshot() -> Dictionary:
+	if _definition == null:
+		return {}
+	var shapes: Array = _stone_queues_by_shape.keys()
+	shapes.sort()
+	var accepted_by_shape := {}
+	var queued_by_shape := {}
+	var pending_by_shape := {}
+	var acknowledged_by_shape := {}
+	var processed_by_shape := {}
+	var produced_by_shape := {}
+	var unattributed_by_shape := {}
+	for shape_value in shapes:
+		var shape := String(shape_value)
+		accepted_by_shape[shape] = 0
+		queued_by_shape[shape] = 0
+		pending_by_shape[shape] = 0
+		acknowledged_by_shape[shape] = 0
+		processed_by_shape[shape] = 0
+		produced_by_shape[shape] = int(_produced_jar_count_by_shape[shape])
+		unattributed_by_shape[shape] = 0
+	for raw_pickup_id in _seen_pickups:
+		var pickup: Dictionary = _seen_pickups[raw_pickup_id]
+		var shape := String(pickup.get("stoneType", ""))
+		if accepted_by_shape.has(shape):
+			accepted_by_shape[shape] = int(accepted_by_shape[shape]) + int(pickup.get("originalVolumeMicro", 0))
+	for shape_value in shapes:
+		var shape := String(shape_value)
+		for raw_stone in _stone_queues_by_shape[shape]:
+			queued_by_shape[shape] = int(queued_by_shape[shape]) + int(raw_stone.get("remainingVolumeMicro", 0))
+		processed_by_shape[shape] = int(accepted_by_shape[shape]) - int(queued_by_shape[shape])
+		var threshold := int(round(float(_definition.progress_per_jar_by_shape[shape]) * MICRO))
+		var conserved := int(_produced_jar_count_by_shape[shape]) * threshold + int(_progress_micro_by_shape[shape])
+		if int(processed_by_shape[shape]) != conserved:
+			return {}
+	for batch in _pending_output_batches.values():
+		var counts: Dictionary = batch.get("jarCounts", {})
+		for raw_shape in counts:
+			var shape := String(raw_shape)
+			pending_by_shape[shape] = int(pending_by_shape[shape]) + int(counts[raw_shape])
+	var exact_stored := 0
+	var exact_discarded := 0
+	var duplicate_unknown_batches := 0
+	var duplicate_unknown_requested := 0
+	for raw_receipt in _core_import_receipts.values():
+		var core_response: Dictionary = raw_receipt.get("coreResponse", {})
+		var request_counts: Dictionary = raw_receipt.get("requestedJarCounts", {})
+		for raw_shape in request_counts:
+			var shape := String(raw_shape)
+			acknowledged_by_shape[shape] = int(acknowledged_by_shape[shape]) + int(request_counts[raw_shape])
+		if String(raw_receipt.get("outcomeStatus", "")) == "exact":
+			exact_stored += int(core_response.get("storedJarCount", 0))
+			exact_discarded += int(core_response.get("discardedJarCount", 0))
+		else:
+			duplicate_unknown_batches += 1
+			duplicate_unknown_requested += int(raw_receipt.get("requestedJarCount", 0))
+	for shape_value in shapes:
+		var shape := String(shape_value)
+		var accounted := int(pending_by_shape[shape]) + int(acknowledged_by_shape[shape])
+		unattributed_by_shape[shape] = maxi(0, int(produced_by_shape[shape]) - accounted)
+	return {
+		"schemaVersion": 1,
+		"parserInstanceId": _parser_instance_id,
+		"acceptedPickupCount": _seen_pickups.size(),
+		"acceptedStoneVolumeMicroByShape": accepted_by_shape,
+		"queuedStoneVolumeMicroByShape": queued_by_shape,
+		"processedStoneVolumeMicroByShape": processed_by_shape,
+		"fractionalParserProgressMicroByShape": _progress_micro_by_shape.duplicate(true),
+		"completedJarCountByShape": produced_by_shape,
+		"pendingCoreImportJarCountByShape": pending_by_shape,
+		"acknowledgedCoreImportJarCountByShape": acknowledged_by_shape,
+		"unattributedCompletedJarCountByShape": unattributed_by_shape,
+		"pendingImportBatchCount": _pending_output_batches.size(),
+		"acknowledgedImportBatchCount": _core_import_receipts.size(),
+		"coreImportReceiptHistoryComplete": _core_import_receipt_history_complete,
+		"exactCoreStoredJarCount": exact_stored,
+		"exactCoreDiscardedJarCount": exact_discarded,
+		"duplicateConfirmationBatchCountWithUnknownOutcome": duplicate_unknown_batches,
+		"duplicateConfirmationRequestedJarCountWithUnknownOutcome": duplicate_unknown_requested
+	}
+
+func _normalize_core_import_receipt(
+	operation_id: String,
+	batch: Dictionary,
+	core_receipt: Dictionary
+) -> Dictionary:
+	var raw_success: Variant = core_receipt.get("success", null)
+	var counts: Variant = batch.get("jarCounts", null)
+	if typeof(raw_success) != TYPE_BOOL or not bool(raw_success) or not (counts is Dictionary) or counts.is_empty():
+		return {}
+	var was_duplicate: Variant = core_receipt.get("wasDuplicate", null)
+	var submitted: Variant = core_receipt.get("submittedJarCount", null)
+	var stored: Variant = core_receipt.get("storedJarCount", null)
+	var discarded: Variant = core_receipt.get("discardedJarCount", null)
+	if typeof(was_duplicate) != TYPE_BOOL or typeof(submitted) != TYPE_INT or typeof(stored) != TYPE_INT or typeof(discarded) != TYPE_INT:
+		return {}
+	if int(submitted) < 0 or int(stored) < 0 or int(discarded) < 0:
+		return {}
+	var requested_count := 0
+	var copied_counts := {}
+	for raw_shape in counts:
+		var shape := String(raw_shape)
+		var amount: Variant = counts[raw_shape]
+		if not _stone_queues_by_shape.has(shape) or typeof(amount) != TYPE_INT or int(amount) <= 0 or int(amount) > MAX_INT32 - requested_count:
+			return {}
+		requested_count += int(amount)
+		copied_counts[shape] = int(amount)
+	if requested_count <= 0:
+		return {}
+	var outcome_status := "exact"
+	if bool(was_duplicate):
+		# Core's current idempotent replay DTO returns 0/0/0 for a duplicate. It confirms
+		# the same operation/payload was previously committed, but not the original
+		# capacity outcome. Never reinterpret those zeroes as the original discard result.
+		if int(submitted) != 0 or int(stored) != 0 or int(discarded) != 0:
+			return {}
+		outcome_status = "duplicate_confirmation_only"
+	else:
+		if int(submitted) != requested_count or int(stored) + int(discarded) != int(submitted):
+			return {}
+	return {
+		"schemaVersion": IMPORT_RECEIPT_SCHEMA_VERSION,
+		"operationId": operation_id,
+		"requestedJarCounts": copied_counts,
+		"requestedJarCount": requested_count,
+		"coreResponse": {
+			"wasDuplicate": bool(was_duplicate),
+			"submittedJarCount": int(submitted),
+			"storedJarCount": int(stored),
+			"discardedJarCount": int(discarded)
+		},
+		"outcomeStatus": outcome_status
+	}
+
+func _validate_core_import_receipt(operation_id: String, value: Variant) -> bool:
+	if not (value is Dictionary):
+		return false
+	var receipt: Dictionary = value
+	if receipt.size() != 6 or typeof(receipt.get("schemaVersion", null)) != TYPE_INT or int(receipt.get("schemaVersion", 0)) != IMPORT_RECEIPT_SCHEMA_VERSION or String(receipt.get("operationId", "")) != operation_id:
+		return false
+	var raw_counts: Variant = receipt.get("requestedJarCounts", null)
+	var raw_requested_count: Variant = receipt.get("requestedJarCount", null)
+	var raw_response: Variant = receipt.get("coreResponse", null)
+	var outcome_status := String(receipt.get("outcomeStatus", ""))
+	if not (raw_counts is Dictionary) or raw_counts.is_empty() or typeof(raw_requested_count) != TYPE_INT or not (raw_response is Dictionary) or raw_response.size() != 4:
+		return false
+	var requested_count := 0
+	for raw_shape in raw_counts:
+		var shape := String(raw_shape)
+		var amount: Variant = raw_counts[raw_shape]
+		if not _stone_queues_by_shape.has(shape) or typeof(amount) != TYPE_INT or int(amount) <= 0 or int(amount) > MAX_INT32 - requested_count:
+			return false
+		requested_count += int(amount)
+	if requested_count != int(raw_requested_count):
+		return false
+	var raw_duplicate: Variant = raw_response.get("wasDuplicate", null)
+	var raw_submitted: Variant = raw_response.get("submittedJarCount", null)
+	var raw_stored: Variant = raw_response.get("storedJarCount", null)
+	var raw_discarded: Variant = raw_response.get("discardedJarCount", null)
+	if typeof(raw_duplicate) != TYPE_BOOL or typeof(raw_submitted) != TYPE_INT or typeof(raw_stored) != TYPE_INT or typeof(raw_discarded) != TYPE_INT:
+		return false
+	if int(raw_submitted) < 0 or int(raw_stored) < 0 or int(raw_discarded) < 0:
+		return false
+	if outcome_status == "exact":
+		return not bool(raw_duplicate) and int(raw_submitted) == requested_count and int(raw_stored) + int(raw_discarded) == int(raw_submitted)
+	if outcome_status == "duplicate_confirmation_only":
+		return bool(raw_duplicate) and int(raw_submitted) == 0 and int(raw_stored) == 0 and int(raw_discarded) == 0
+	return false
 
 func capture_state() -> Dictionary:
 	if _definition == null:
@@ -213,6 +404,8 @@ func capture_state() -> Dictionary:
 		"producedJarCountByShape": _produced_jar_count_by_shape.duplicate(true),
 		"rateRemainderByShape": _rate_remainder_by_shape.duplicate(true),
 		"pendingOutputBatches": _pending_output_batches.duplicate(true),
+		"coreImportReceipts": _core_import_receipts.duplicate(true),
+		"coreImportReceiptHistoryComplete": _core_import_receipt_history_complete,
 		"nextBatchSequence": _next_batch_sequence
 	}
 
@@ -220,7 +413,7 @@ func restore_state(state: Dictionary) -> Dictionary:
 	if _definition == null:
 		return _failure("ore parser runtime is not initialized")
 	var state_schema := int(state.get("schemaVersion", 0))
-	if state_schema not in [2, STATE_SCHEMA_VERSION]:
+	if state_schema not in [2, 3, STATE_SCHEMA_VERSION]:
 		return _failure("unsupported ore parser state schema")
 	if String(state.get("parserInstanceId", "")) != _parser_instance_id:
 		return _failure("ore parser instance identity does not match")
@@ -233,8 +426,10 @@ func restore_state(state: Dictionary) -> Dictionary:
 	var produced: Variant = state.get("producedJarCountByShape", null)
 	var remainders: Variant = state.get("rateRemainderByShape", null)
 	var pending: Variant = state.get("pendingOutputBatches", null)
+	var receipts: Variant = state.get("coreImportReceipts", {}) if state_schema >= 4 else {}
+	var raw_history_complete: Variant = state.get("coreImportReceiptHistoryComplete", null) if state_schema >= 4 else false
 	var raw_next_sequence: Variant = state.get("nextBatchSequence", null)
-	if not (queues is Dictionary) or not (seen is Dictionary) or not (progress is Dictionary) or (state_schema >= 3 and not (produced is Dictionary)) or not (remainders is Dictionary) or not (pending is Dictionary) or typeof(raw_next_sequence) != TYPE_INT or int(raw_next_sequence) <= 0:
+	if not (queues is Dictionary) or not (seen is Dictionary) or not (progress is Dictionary) or (state_schema >= 3 and not (produced is Dictionary)) or not (remainders is Dictionary) or not (pending is Dictionary) or not (receipts is Dictionary) or (state_schema >= 4 and (not state.has("coreImportReceipts") or not state.has("coreImportReceiptHistoryComplete") or typeof(raw_history_complete) != TYPE_BOOL)) or typeof(raw_next_sequence) != TYPE_INT or int(raw_next_sequence) <= 0:
 		return _failure("ore parser checkpoint has invalid top-level state")
 
 	var expected_shapes: Array = _stone_queues_by_shape.keys()
@@ -321,8 +516,33 @@ func restore_state(state: Dictionary) -> Dictionary:
 		batch_sequences[sequence] = true
 		maximum_pending_sequence = maxi(maximum_pending_sequence, sequence)
 
-	if int(raw_next_sequence) <= maximum_pending_sequence:
-		return _failure("ore parser checkpoint next batch sequence is not ahead of pending outputs")
+	var acknowledged_requested_count_by_shape := {}
+	for shape_value in expected_shapes:
+		acknowledged_requested_count_by_shape[String(shape_value)] = 0
+	var maximum_receipt_sequence := 0
+	for raw_operation_id in receipts:
+		var operation_id := String(raw_operation_id)
+		if not operation_id.begins_with(operation_prefix) or not _validate_core_import_receipt(operation_id, receipts[raw_operation_id]):
+			return _failure("ore parser checkpoint contains an invalid Core import receipt: " + operation_id)
+		var sequence_text := operation_id.trim_prefix(operation_prefix)
+		if not sequence_text.is_valid_int():
+			return _failure("ore parser checkpoint contains a malformed import receipt sequence")
+		var sequence := int(sequence_text)
+		if sequence <= 0 or str(sequence) != sequence_text or batch_sequences.has(sequence):
+			return _failure("ore parser checkpoint contains a duplicate or non-canonical import sequence")
+		batch_sequences[sequence] = true
+		maximum_receipt_sequence = maxi(maximum_receipt_sequence, sequence)
+		var receipt: Dictionary = receipts[raw_operation_id]
+		var receipt_counts: Dictionary = receipt.get("requestedJarCounts", {})
+		for raw_shape in receipt_counts:
+			var shape := String(raw_shape)
+			var amount := int(receipt_counts[raw_shape])
+			if amount > MAX_INT64 - int(acknowledged_requested_count_by_shape[shape]):
+				return _failure("acknowledged import receipt count exceeds the supported range: " + shape)
+			acknowledged_requested_count_by_shape[shape] = int(acknowledged_requested_count_by_shape[shape]) + amount
+
+	if int(raw_next_sequence) <= maxi(maximum_pending_sequence, maximum_receipt_sequence):
+		return _failure("ore parser checkpoint next batch sequence is not ahead of pending outputs and receipts")
 
 	# Reconcile every accepted stone against queued volume, fractional progress and
 	# cumulative completed Jars. Pending-vs-acknowledged output does not change this
@@ -372,8 +592,11 @@ func restore_state(state: Dictionary) -> Dictionary:
 		var produced_count := int(restored_produced[shape])
 		if consumed_for_output % threshold != 0 or produced_count != int(consumed_for_output / threshold):
 			return _failure("ore parser checkpoint violates accepted-stone resource conservation: " + shape)
-		if int(pending_output_count_by_shape[shape]) > produced_count:
-			return _failure("ore parser checkpoint pending batches exceed cumulative completed Jars: " + shape)
+		var accounted_outputs := int(pending_output_count_by_shape[shape]) + int(acknowledged_requested_count_by_shape[shape])
+		if accounted_outputs > produced_count:
+			return _failure("ore parser pending batches and Core receipts exceed cumulative completed Jars: " + shape)
+		if state_schema >= 4 and bool(raw_history_complete) and accounted_outputs != produced_count:
+			return _failure("complete Core import receipt history does not account for every completed Jar: " + shape)
 
 	# Publish only after every nested structure has passed validation.
 	_stone_queues_by_shape = queues.duplicate(true)
@@ -382,6 +605,8 @@ func restore_state(state: Dictionary) -> Dictionary:
 	_produced_jar_count_by_shape = restored_produced
 	_rate_remainder_by_shape = remainders.duplicate(true)
 	_pending_output_batches = pending.duplicate(true)
+	_core_import_receipts = receipts.duplicate(true)
+	_core_import_receipt_history_complete = bool(raw_history_complete) if state_schema >= 4 else false
 	_next_batch_sequence = int(raw_next_sequence)
 	return {"success": true}
 

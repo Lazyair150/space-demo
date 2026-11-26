@@ -367,6 +367,14 @@ Precision Parser 的 productionPercentage 是 90%，但它的 per-shape processi
 
 `SpaceBattleEconomyEvaluator` 仍采用全装备技能共同 fulfillment fraction；供给区间尚未自动贯通到一键 Loadout → Encounter → Skill Economy，也没有逐 Tick 模拟原石掉落、Core 仓库溢出、Jar Flow、Workshop 收货/消耗和 Passive 触发时序。未提供 Encounter 假设时不得拿 Ship 预估率伪装成真实掉落频率。
 
+### 9.1 Parser → Core 实际导入回执
+
+Parser Runtime checkpoint schema 4 除了已接受 Pickup、队列、分形状进度、累计 Jar 和 pending outbox，还会保存每批 Core Import Receipt。回执确认与 outbox 删除属于同一个 Parser 状态变更；结构校验失败时批次仍保持 pending。只读 observation snapshot 暴露接受/处理体积、完成 Jar、pending 数量、已确认请求数、精确存储/丢弃汇总和未归属产量。
+
+旧 Parser schema 2/3 没有完整的 Core 导入回执历史。它们仍可迁移，但必须保留 `coreImportReceiptHistoryComplete=false`，不能假装补齐历史；只有新建 Parser 或能够证明完整记录的 schema 4 状态才可以声明完整。
+
+Core 当前的 duplicate `ImportProducedJars` 响应只返回 `wasDuplicate=true` 与 `submitted/stored/discarded=0`。它证明同一操作及载荷此前已提交，但不返回首次提交时的仓库容量分配。因此 Space 记录为 `duplicate_confirmation_only`：本地原始请求量已知，原始 stored/discarded 结果未知，不能把 API 重放的零计数当成真实零存储、零丢弃。首次非重复回执只有满足 `submitted=requested` 且 `stored+discarded=submitted` 才能计为 exact。
+
 ## 10. 玩家需要观察和理解的反馈
 
 战斗内至少让玩家看见：

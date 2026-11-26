@@ -25,19 +25,21 @@ static func flush_pending(parser_runtime: SpaceOreParserRuntime, ship_host: Obje
 				"importedBatches": imported_count,
 				"duplicateBatches": duplicate_count
 			}
-		if bool(receipt.get("wasDuplicate", false)):
+		var was_duplicate := bool(receipt.get("wasDuplicate", false))
+		if was_duplicate:
 			duplicate_count += 1
 		else:
 			imported_count += 1
-		if not parser_runtime.acknowledge_output_batch(String(batch.operationId)):
+		if not parser_runtime.acknowledge_output_batch(String(batch.operationId), receipt):
 			return {
 				"success": false,
-				"reason": "parser output batch disappeared before acknowledgment",
+				"reason": "Core import response failed receipt validation; parser batch remains pending",
 				"importedBatches": imported_count,
 				"duplicateBatches": duplicate_count
 			}
 	return {
 		"success": true,
 		"importedBatches": imported_count,
-		"duplicateBatches": duplicate_count
+		"duplicateBatches": duplicate_count,
+		"recordedReceipts": imported_count + duplicate_count
 	}
