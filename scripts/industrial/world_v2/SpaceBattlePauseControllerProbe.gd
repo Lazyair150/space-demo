@@ -95,7 +95,7 @@ func _ready() -> void:
 		# scene replacement, this probe node no longer belongs to a SceneTree.
 		push_error("[SpaceBattlePauseControllerProbe] fault exit did not complete an unpaused MainMenu transition")
 		return
-	print("[SpaceBattlePauseControllerProbe] passed terminal-menu-transition=true")
+	print("[SpaceBattlePauseControllerProbe] passed real-main-menu-transition=true")
 
 func _fail_probe(controller: SpaceBattlePauseController, reason: String) -> void:
 	get_tree().paused = false
