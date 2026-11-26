@@ -305,3 +305,63 @@ SpaceBattlePauseControllerProbe.gd:85
 5. 以最终 `CROSS-REPO-WORLD-V2-OK` 和脚本退出码作为联合验证完成条件。
 
 桌面 GUI 的主菜单/机库/战斗/暂停/恢复/故障退出仍须单独手工验收。
+
+
+## 九、2026-11-26 本地复跑：Progression Probe 类型推断阻断领域契约
+
+### 运行证据
+
+用户再次执行 `verify-world-v2-cross-repo.sh`，Core 固定在 `391f318a24fde724a66054e771d0590f0e20c231`，`GODOT_VERBOSE=1`。
+
+本次确认：
+
+- Core World V2 Bridge 构建成功。
+- Space .NET 构建成功。
+- Godot 4.7.1 项目初始化、类注册与 Editor import 阶段完成。
+- HUD：`21 checks, 0 failures`。
+- 随后的 Domain contracts 进程未通过，完整跨仓库脚本没有到达最终 `CROSS-REPO-WORLD-V2-OK`。
+- 这份日志没有打印 Space `git rev-parse HEAD`，因此不能把用户当次运行绑定到某个精确 Space commit SHA；只记录本次实际报错和随后提交的修复。
+
+### 第一个真实失败
+
+Godot 在加载 `SpaceDemoProgressionBootstrapProbe.gd` 时报告：
+
+```
+Parse Error: Cannot infer the type of "valid_selection" variable because the value doesn't have a set type.
+SpaceDemoProgressionBootstrapProbe.gd:108
+```
+
+原因是 `valid_selection` 由包含 Dictionary.get / Variant 返回值的逻辑表达式构成，使用 `:=` 让 GDScript 推断局部变量类型，无法得到确定类型。
+
+### 后续错误的边界
+
+之后 `SpaceHangarCatalogOwnershipProbe.gd:707` 报告：
+
+```
+Invalid call. Nonexistent function 'run' in base 'GDScript'.
+```
+
+该调用位于 `SpaceDemoProgressionBootstrapProbe.run()`。因为目标脚本此前已经解析失败，后续类方法调用也失去了可用的脚本方法表；当前把它记录为**首个解析错误之后出现的级联故障**，而不是另行改写静态类调用来绕开源头。修复后必须由新的 Godot 运行确认该调用自然恢复。
+
+日志中的 Board Assignment fingerprint、Workshop role、revision、bundle validation 与 field-only assembly 拒绝均有相应的 `tamper-rejection=passed`、`bundle-and-inventory-fail-closed=passed`、`field-only-assembly-rejected=passed` 等契约标记。这些是负向测试主动构造的拒绝结果，不应误判为本轮首个失败。
+
+### 修正
+
+提交 `6ab8d8118ae84589ef58fbed7da3c1b7e7e004c7`：
+
+- 显式将 `skillSelections` 与 `boardAssignments` 读入 `Array` 局部变量。
+- 将 `valid_selection` 显式声明为 `bool`。
+- 数组长度断言改为访问已明确类型化的数组。
+- 没有降低 GDScript warning/error 强度，没有修改生产机库或 Board Assignment 规则。
+
+### 当前验证状态与下一步
+
+本补丁尚无新的本地 Godot import/parse/Headless 运行结果，也没有新的完整脚本退出码。下一次只需重跑 Space 联合脚本，Core 仍固定在上述 SHA，不重复执行 Core 的 1038 项 xUnit。
+
+重点检查：
+
+1. `SpaceDemoProgressionBootstrapProbe.gd` 不再出现 `valid_selection` 类型推断解析错误。
+2. `SpaceHangarCatalogOwnershipProbe.gd` 能正常调用 `SpaceDemoProgressionBootstrapProbe.run()`，并继续到后续 Roguelike probe。
+3. Domain contracts 输出其最终通过标记，Parser ingress 与后续 Runtime / Lifecycle / Navigation 探针继续完成。
+4. Verbose 下检查 Node / ObjectDB / Resource / StringName 退出诊断；当前日志未提供足以更新上节泄漏结论的新归因证据。
+5. 只有完整脚本退出码为 0 且输出 `CROSS-REPO-WORLD-V2-OK` 才能关闭本轮联合验证。
