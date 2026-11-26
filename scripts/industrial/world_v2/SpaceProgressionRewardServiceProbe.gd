@@ -59,16 +59,17 @@ static func run() -> Dictionary:
 		return _failure("settlement did not return a detached progression candidate")
 	if state.state_revision != original_revision or state.resolve_instance("probe.ship.owned.01").experience != 0:
 		return _failure("preparing a settlement mutated the live source state")
-	var updated_ship := candidate.resolve_instance("probe.ship.owned.01")
-	var updated_parser := candidate.resolve_instance("probe.parser.owned.01")
+	var candidate_state: SpacePlayerProgressionState = candidate as SpacePlayerProgressionState
+	var updated_ship: SpaceOwnedProgressionInstance = candidate_state.resolve_instance("probe.ship.owned.01")
+	var updated_parser: SpaceOwnedProgressionInstance = candidate_state.resolve_instance("probe.parser.owned.01")
 	if updated_ship == null or updated_ship.experience != 7 or updated_ship.growth_curve_id != &"probe.ship.curve":
 		return _failure("Ship XP was not attributed to the exact owned Ship")
 	if updated_parser == null or updated_parser.experience != 11 or updated_parser.level != 2:
 		return _failure("Parser committed work XP was not aggregated before curve application")
-	var receipt_count := candidate.progression_reward_receipts.size()
+	var receipt_count: int = candidate_state.progression_reward_receipts.size()
 	if receipt_count != 4:
 		return _failure("settlement plus source event receipts were not persisted separately")
-	if candidate.reward_acquisition_ids.size() != 0:
+	if candidate_state.reward_acquisition_ids.size() != 0:
 		return _failure("XP settlement incorrectly reused item acquisition receipts")
 
 	var reversed_awards: Array[Dictionary] = []
@@ -79,7 +80,7 @@ static func run() -> Dictionary:
 	)
 	if not bool(repeated.get("success", false)) or not bool(repeated.get("duplicate", false)):
 		return _failure("identical settlement replay was not recognized independent of event order")
-	var replay_state: Variant = SpacePlayerProgressionState.from_data(candidate.to_data())
+	var replay_state: Variant = SpacePlayerProgressionState.from_data(candidate_state.to_data())
 	if not (replay_state is SpacePlayerProgressionState) or replay_state.progression_reward_receipts.size() != receipt_count:
 		return _failure("XP settlement receipts did not survive a schema-v3 save roundtrip")
 
@@ -142,7 +143,7 @@ static func run() -> Dictionary:
 		"shipExperienceAwarded": updated_ship.experience,
 		"parserExperienceAwarded": updated_parser.experience,
 		"parserLevel": updated_parser.level,
-		"stateRevisionAfterCandidate": candidate.state_revision
+		"stateRevisionAfterCandidate": candidate_state.state_revision
 	}
 
 static func _instance(instance_id: String, item_kind: String, definition_id: String, version: int) -> SpaceOwnedProgressionInstance:
