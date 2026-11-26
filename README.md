@@ -6,7 +6,7 @@ This repository contains the Space game client and the Godot presentation/runtim
 
 The Hangar uses the demo board and catalog resources under `data/hangar/`. The player can select the ship, parser, workshop instances/roles, optional devices and skills, choose free combat or an unlocked finite stage, then launch the battle. The Jar simulation is hosted by `WorldV2ShipHost`; Jar rules and execution remain owned by the sibling `jar-system-dotnet` repository.
 
-> **Prototype status:** this is a locally runnable gameplay prototype, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. The cross-repository workflow pins Core PR #63 head `e1e89cad5e0f11f369c8ade814140a7b4cc8df74`; each successful run validates the exact Space and Core commits shown on that run. Headless probes cover the Hangar ownership/board contracts and battle pause/fault navigation. GUI layout, actual input interaction, and platform-specific behavior still require local Godot acceptance.
+> **Prototype status:** this is a locally runnable gameplay prototype, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. The cross-repository workflow pins Core PR #63 head `391f318a24fde724a66054e771d0590f0e20c231`; each successful run validates the exact Space and Core commits shown on that run. Headless probes cover the Hangar ownership/board contracts and battle pause/fault navigation. GUI layout, actual input interaction, and platform-specific behavior still require local Godot acceptance.
 
 ## Requirements
 
@@ -36,7 +36,7 @@ git clone --branch world-v2/phase-4.10b-hangar-ui https://github.com/Lazyair150/
 git clone --branch architecture/core-liquid-identity-consolidation https://github.com/Lazyair150/jar-system-dotnet.git
 
 cd jar-system-dotnet
-git checkout e1e89cad5e0f11f369c8ade814140a7b4cc8df74
+git checkout 391f318a24fde724a66054e771d0590f0e20c231
 cd ../space-demo
 ```
 
@@ -101,7 +101,7 @@ From `space-demo`:
 
 ```sh
 CORE_REPO_DIR="../jar-system-dotnet" \
-CORE_EXPECTED_SHA="e1e89cad5e0f11f369c8ade814140a7b4cc8df74" \
+CORE_EXPECTED_SHA="391f318a24fde724a66054e771d0590f0e20c231" \
 GODOT_BIN="godot" \
 bash scripts/ci/verify-world-v2-cross-repo.sh
 ```
@@ -121,6 +121,6 @@ The cross-language coding, architecture, lifecycle, protocol, error-handling, an
 
 ## Current validation boundary
 
-- Core integration is pinned to `e1e89cad5e0f11f369c8ade814140a7b4cc8df74`.
+- Core integration is pinned to `391f318a24fde724a66054e771d0590f0e20c231`.
 - Consult the Actions run attached to the exact Space commit when checking current CI status; an earlier green commit does not validate later changes.
 - Headless CI does not replace local GUI acceptance on the target OS/GPU.
