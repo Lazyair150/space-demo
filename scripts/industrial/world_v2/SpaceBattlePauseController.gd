@@ -81,7 +81,12 @@ func _on_menu_action() -> void:
 		return
 	_menu_button.disabled = true
 	if not bool(battle.call("end_battle_for_menu")):
+		_faulted = true
+		_title_label.text = "战斗已结束  /  BATTLE ENDED"
+		_primary_button.text = "重试返回主菜单  /  Retry"
+		_menu_button.visible = false
 		_menu_button.disabled = false
+		_primary_button.disabled = false
 		_overlay.visible = true
 
 func _on_pause_button_pressed() -> void:
