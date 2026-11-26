@@ -1,3 +1,242 @@
+SPACE DEMO / JAR CORE CROSS-REPOSITORY INTEGRATION CHECKPOINT
+Date: 2026-11-26
+Space PR: #2
+Space branch: world-v2/phase-4.10b-hangar-ui
+Core PR: #63
+Core branch: architecture/core-liquid-identity-consolidation
+
+CURRENT AUTHORITATIVE STATUS — 2026-11-26 (Verbose run reached final navigation probe; latest fixes await rerun)
+
+- Core integration SHA remains `391f318a24fde724a66054e771d0590f0e20c231`; the previously reported Core xUnit result is 1038/1038 passed and exact-head verify Run `45822480114` succeeded.
+- User's verbose local Space run used Space HEAD `c25d618c19bbbca395e632154805630fad01fefa` and Core HEAD `391f318a24fde724a66054e771d0590f0e20c231`.
+- On that Space HEAD, Core Bridge build, Space .NET build, Godot 4.7.1 import, HUD 21/21, Hangar/Board/Progression domain contracts, Parser/Core ingress, Runtime, Lifecycle, Fault, Disposed Commands, Faulted Commands and Snapshot Isolation all passed their required markers.
+- Effect State Store now passed with real `StatCalculator` binding. The two former `StatusEffectManager` unbound warnings no longer appeared.
+- The pause probe no longer emitted `Parent node is busy adding/removing children`. However, it failed after the actual MainMenu scene replacement because it dereferenced `get_tree()` through the old, detached probe Node at line 85. This was a probe post-transition assertion error; it was not evidence of production `GameFlow.return_to_menu()` failure.
+- Fixed the navigation probe to keep a `SceneTree` reference before scene replacement and inspect only the still-live SceneTree plus GameFlow autoload state after the old probe/controller are freed. It no longer assumes `current_scene` is non-null in the same transition frame.
+- The cross-repo harness now fails on `Cannot get path of node as it is not in a scene tree`; with `GODOT_VERBOSE=1`, it also fails if Domain contracts or Parser ingress lists any `Leaked instance: Node:`. Resource/GDScript/StringName reports remain diagnostic until their owners are established.
+- Verbose exit output showed 99 leaked ObjectDB instances, 42 resources still in use, 283 unclaimed StringNames, three `get_path` errors on detached Nodes, and exactly three leaked Node instances with empty paths.
+- Static ownership audit found exactly three unfreed `SpaceHangarPreparation.new()` Nodes: two in `SpaceHangarCatalogOwnershipProbe.gd` and one in `SpaceDemoProgressionBootstrapProbe.gd`. All three helpers were refactored to release their RefCounted controller and then explicitly free the Node-owned preparation after producing detached probe results.
+- Code commits after the user run: `3bd18b384ab1e5430aea449dc641892ac4d6816e` and `296fcc071580a4d74ced06835b27e85ccbe6aca4` (navigation probe lifetime), `2f88ade03c4248aaef96530e97934fe0a995cdc1` and `e57da5091e2ebfe8532dcb3e022211fef26830a6` (three Hangar preparation Node owners), `9f0cda14c5a70c595095a56bbacb5a7c1694ac0f` (explicit nullable snapshot initialization).
+- Leak regression gate commit: `44668cd131dcb0777f579fbd4fcefc476ce0db52`.
+- The work record is updated at `docs/work-records/2026-11-26-cross-repo-probe-lifecycle.md`.
+- These latest commits have not been run locally; neither the navigation fix nor the expected decrease in leaked Node count is verified. The 42 Resource and 283 StringName diagnostics remain unresolved until another verbose run.
+- No final `CROSS-REPO-WORLD-V2-OK` marker was present in the uploaded output. The run ended on the battle-navigation probe's `SCRIPT ERROR`; do not mark the full integration green.
+- Space PR #2 and Core PR #63 remain open/unmerged. Desktop GUI acceptance is not claimed.
+
+NEXT LOCAL VALIDATION
+
+1. Pull the latest `world-v2/phase-4.10b-hangar-ui` branch and record its exact `git rev-parse HEAD`.
+2. Keep Core at `391f318a24fde724a66054e771d0590f0e20c231`; do not repeat the already passed Core 1038 xUnit suite.
+3. Rerun `verify-world-v2-cross-repo.sh` with `GODOT_VERBOSE=1`.
+4. Require `[SpaceBattlePauseControllerProbe] passed terminal-menu-transition=true` and the final `CROSS-REPO-WORLD-V2-OK` marker; the harness rejects `SCRIPT ERROR` and SceneTree busy diagnostics.
+5. Require zero detached Node leak entries and zero `get_path` errors (the harness now fails on either). Re-assess the remaining Resource/StringName lines from the new log rather than presuming they are harmless or resolved.
+6. Keep desktop GUI navigation and repeated battle entry for separate manual acceptance.
+
+PREVIOUS AUTHORITATIVE STATUS — superseded by the verbose local run and ownership audit
+
+- Core PR #63 integration source remains pinned to `391f318a24fde724a66054e771d0590f0e20c231`. The user's previously reported Core xUnit result is 1038/1038 passed; the precise Core commit's GitHub verify run `45822480114` succeeded.
+- The latest user-provided local `verify-world-v2-cross-repo.sh` output ended with `CROSS-REPO-WORLD-V2-OK core=391f318a24fde724a66054e771d0590f0e20c231`. By the script's then-current control flow, this means all build/import/probe subprocesses returned success and their required completion markers were present.
+- That run confirmed Core Bridge build, Space C# build, Godot 4.7.1 project import, HUD 21/21, Space domain contracts, Parser/Core exact import receipt replay, World V2 runtime/lifecycle/fault/disposal/faulted-command/snapshot-isolation probes, and terminal navigation marker.
+- The pasted local output did not include Space `git rev-parse HEAD`; do not infer the exact Space source SHA from it. Record both local branch HEADs before the next run.
+- Parser ingress's former total-map zero-value assertion no longer fails. It now reports `parsed=1`, `duplicate_receipt_retained=1`, and `duplicate_capacity_outcome=exact_per_shape`.
+- The final pause probe emitted `Parent node is busy adding/removing children`. Source inspection showed the probe synchronously invoked the actual scene replacement from inside its own `_ready()` traversal. This is a test scheduling defect until proven otherwise, not evidence that the normal Button `pressed` callback reproduces the issue. No production GameFlow state/rollback code was changed.
+- The Effect State Store probe emitted missing-StatCalculator warnings because it created StatusEffectManager instances without calling `bind_stats()`. The probe now provides real StatCalculator instances and validates modifier add/restore/idempotency/expiry, instead of leaving its modifier behavior untested.
+- New Space commits: `5cc9be6a92f91279d6eedfcfdb2318498e302f7f` (wait until SceneTree ready phase completes before the real navigation test), `e900de7ad1b2707384d5dfb07c6bc3c92523ff60` (bind StatCalculator and strengthen Buff restore probe), `122e83f42ab100c565ed62c47c3d6634a449caf2` (fail on SceneTree busy error; optional verbose logging for domain/ingress probes).
+- The harness now rejects the SceneTree busy diagnostic instead of accepting the final marker while that error is present. Set `GODOT_VERBOSE=1` to add `--verbose` only to Domain contracts and Parser ingress, for ObjectDB/Resource exit diagnostics.
+- The prior run still emitted `108 ObjectDB instances were leaked` and `44 resources still in use`. Explicit cleanup was added for four Nodes directly allocated by the Effect State Store probe, but the remaining leak count and ownership are unresolved until a verbose run confirms the change.
+- The new probe and harness changes have not yet been run locally. Do not attribute a green result to these latest commits yet.
+- Space PR #2 and Core PR #63 remain unmerged; desktop GUI acceptance is not claimed.
+
+NEXT LOCAL VALIDATION
+
+1. Pull the Space branch and record the exact `git rev-parse HEAD`; pull Core and ensure its HEAD remains `391f318a24fde724a66054e771d0590f0e20c231`.
+2. Run `verify-world-v2-cross-repo.sh` with `GODOT_VERBOSE=1`. The revised harness will fail if the SceneTree busy message appears.
+3. Confirm the StatCalculator warning is gone and the strengthened modifier lifecycle assertions pass.
+4. Use verbose output to identify remaining ObjectDB/Resource owners; do not mark the leak item resolved from a lower count alone.
+5. Keep GUI navigation, pause/resume, repeated battle entry and MainMenu return for a separate desktop acceptance pass.
+
+PREVIOUS AUTHORITATIVE STATUS — superseded by the user-provided local run and follow-up probe hardening
+
+- Space PR #2 failed-run source head: 374942d8989f4a836c0ae831ea4faab4bcf8df99; the parser-ingress probe correction is source commit b61875addfa4f826d8e225b5646e401ee9655768. PR remains Draft/Open and unmerged.
+- Space parser-ingress probe correction: b61875addfa4f826d8e225b5646e401ee9655768. The following work-record commit documents the correction and current evidence.
+- Core PR #63 source head: 391f318a24fde724a66054e771d0590f0e20c231 (Draft/Open; not merged).
+- Core exact-head verify run 45822480114 completed successfully for 391f318a24fde724a66054e771d0590f0e20c231.
+- Latest observed Space cross-repository run before the probe correction: Run 45826677268, Job 139932503548, failure.
+- In that run, exact Core Bridge build and Space C# build both succeeded with 0 warnings / 0 errors; Godot project import/script scan succeeded; HUD feedback probe passed 21/21; Space domain contract probe reached all-domain-contracts=passed.
+- The Parser/Core ingress probe then failed at SpaceOreParserJarIngressProbe.gd:290. Its assertion used replay_discarded_by_shape.is_empty(), but the runtime observation contract deliberately returns a total map with explicit zero values for every configured shape. Aggregate exact result and duplicate receipt assertions immediately before it had already passed.
+- Corrected the probe to assert each configured shape explicitly (round stored=1, square stored=0, both discarded=0), preserving the runtime total-map contract. No Core receipt behavior, parser normalization, persistence validation, or zero-value representation was changed.
+- The fix is committed as b61875addfa4f826d8e225b5646e401ee9655768; current PR head f895d8b910bb7d2ee6f3b4df6617d7f0828e7a4d includes the fix and the updated work record.
+- At the time of this checkpoint update, no new PR-triggered workflow run was returned for the fix/documentation commits. A fresh run of the current exact HEAD is still required; do not mark Parser ingress or the full integration as green.
+- The failed ingress run also emitted 108 leaked ObjectDB instances and 44 resources still in use at shutdown. These are recorded as follow-up diagnostics, not as the cause of the line-290 assertion.
+- Since the harness stops at the first failing ingress probe, runtime, lifecycle, fault, disposed/faulted command, snapshot-isolation, and battle-navigation probes have not been verified by this run.
+- Both PRs remain Open/Draft and unmerged. No desktop GUI acceptance is claimed.
+INTEGRATION CONTRACT
+
+- Space owns combat, player progression, ship inventory, Hangar composition, production devices, skill/effect semantics, stage progression, presentation and scene lifecycle.
+- Jar Core owns Jar resources, workshop rules, order feasibility/admission/execution, reservations, logical time and its resource ledger.
+- Core's World V2 Bridge is built from the exact checked-out Core revision; Space must not copy Core rule or solver implementations.
+- Parser output remains Space outbox -> Host ImportProducedJars -> Core durable idempotent receipt. Core producer output independently enters the Central Warehouse. Both sources share the same Jar warehouse/flow boundary after admission.
+- Core time-driven producer rates and jar-flow rates are expressed per logical time unit; parser rates consume finite picked-up stone volume. They must not be combined without preserving their separate input and rounding semantics.
+- GUI first-play, visual Hangar composition, target GPU/OS behavior and manual scene navigation have not been observed in this environment.
+
+The remaining sections below are chronological historical checkpoints. Their “not yet run”, old Core SHA and old failure statements describe those dates only; the authoritative current result is this section.
+
+CORE DEPENDENCY
+- Space project references the Core WorldV2Bridge project as a sibling checkout by default.
+- space-demo.csproj supports JarSystemWorldV2BridgeProject override.
+- Required Core source revision for this integration checkpoint: 18a0b26407ee51c6df722f093165c3b3770c31a7.
+- Core PR #63 source branch: architecture/core-liquid-identity-consolidation; exact-head verify runs 45597874582 and 45597884119: SUCCESS (868/868).
+- Do not substitute Core main for this integration source until PR #63 is reviewed and merged.
+
+SPACE CHANGES IN THIS CHECKPOINT
+1. SpaceHangarOwnedLoadoutAssembler recomputes the frozen Board Assignment SHA-256 fingerprint.
+2. Validates Board Definition schema/version/display identity and exact slot structure.
+3. Validates one Master slot, one Slave slot, one parser slot, required slot occupancy, area/component/role/control-area pairings.
+4. Validates Owned Instance identity, Definition ID/version, and sourceRevision against current progression_revision.
+5. Validates exact slot projection:
+   - parser slot -> selected parser instance
+   - Master/Slave role -> selected workshop instance
+   - device slot -> exact selected device
+   - skill order slot/controlArea -> exact selected skill
+6. SpaceHangarSelectionController disables owned production assembly when no Board Definition is supplied.
+7. Probes added for fingerprint tampering, rehashed invalid role, stale progression revision, swapped Master/Slave instances, and owned selection without Board Definition.
+8. Added scripts/ci/verify-world-v2-cross-repo.sh. It verifies exact Core SHA, builds Core Bridge + Space, imports/parses Godot project, then runs parser ingress, runtime, lifecycle, fault, disposed-command, faulted-command, and snapshot-isolation probes.
+
+CROSS-REPO API SOURCE AUDIT
+- Core WorldV2BridgeSession exposes AddJarDemandFromTemplate(templateName, area, cooldownDurationLogicalMilli, orderDefinitionKey).
+- Core WorldV2BridgeSession exposes ImportProducedJars(operationId, jarCounts).
+- Space WorldV2RuntimeNode calls those exact APIs.
+- Space template-backed orders pass only Core template identity + scheduling metadata; no duplicate inline type/requirements.
+- Parser flow remains Space outbox -> Host ImportProducedJars -> Core durable idempotent receipt.
+- Existing SpaceOreParserJarIngressProbe covers ambiguous transport outcome and checkpoint/retry semantics.
+
+VALIDATION LIMITS
+- This environment does not contain dotnet or Godot executables.
+- No Godot 4.7.1 .NET build, GDScript parse, SceneTree probe, or battle runtime result is claimed.
+- The cross-repo harness is authored but not executed.
+- Exact Core source revision above is verified; Space PR #2 remains Draft/Open/unmerged.
+
+NEXT STEPS
+1. Run scripts/ci/verify-world-v2-cross-repo.sh with:
+   CORE_REPO_DIR=<sibling jar-system-dotnet checkout>
+   CORE_EXPECTED_SHA=3e4a5195d9640fa166359217a5f69ff143439d8d
+   GODOT_BIN=<Godot 4.7.1 .NET executable>
+2. Fix any .NET compile, GDScript import, or probe failures at their actual source boundary.
+3. Validate production Hangar -> frozen owned loadout -> WorldV2ShipHost -> Core template materialization -> parser import -> A/B execution -> Space effect dispatch -> checkpoint/restore.
+4. Only after the cross-repo closure is green, perform repository cleanup and remove stale compatibility paths that have no remaining production/probe callers.
+
+
+CHECKPOINT — Unified battle snapshot probe correction (2026-11-24)
+
+- Cross-repository run 45421741608 on Space head d51f738778648f803276def450648a975a60b091 successfully built the exact Core Bridge and Space C# project and completed Godot project import/script scanning. The first runtime probe then failed in SpaceBattleEffectStateStoreProbe: effect/dispatcher state was not preserved in the unified snapshot.
+- The failure occurred at a probe assertion comparing in-memory dictionaries directly with values read back from JSON. The persistence contract accepts integral numeric values represented by Godot as either integer or float; direct Variant equality at the test boundary was too strict.
+- Updated SpaceBattleEffectStateStoreProbe to normalize expected values through the same JSON.stringify → JSON.parse_string boundary before comparing them with loaded snapshots. Applied this to effect state, dispatcher state, and runtime checkpoint comparisons, including post-rejection preservation checks.
+- Latest fix commits: 4c0ca87c1f3bcdb5cdf173ab111a0edf9a941517 and indentation-only follow-up 90e46344ef8376640dfb2cc831712227b131aa53. This is a test/probe correction; no production snapshot format or gameplay behavior was changed.
+- A new cross-repository run was triggered for the corrected head; its final result is not yet recorded here. Do not claim the parser-ingress or subsequent lifecycle/fault probes have passed until the new run reaches them.
+- Continue from the first failing runtime probe. Once it passes, fix any subsequent probe failure at its actual owning boundary rather than treating the overall workflow as a single opaque red/green result.
+
+
+CHECKPOINT — Parser Catalog probe fixture follows the two-role world contract (2026-11-24)
+
+- Corrected-head run 45423503329 passed the unified battle snapshot store probe and progressed to SpaceOreParserCatalogProbe. It then failed because the probe's synthetic jarWorldOptions still contained only one workshop and omitted slaveWorkshopName.
+- SpaceBattleLoadoutSnapshot.validate_data now correctly requires exactly two selected workshop positions with distinct Master/Slave names for every materialized World V2 loadout. This is a current domain invariant, not an optional owned-instance-only constraint.
+- Updated the parser catalog probe fixture to provide a second distinct Slave workshop entry and slaveWorkshopName. No production validation was weakened.
+- Fix commit: 407932714935b33721c0a1198fc1072e7b5f6358. The next cross-repository run must continue from this new exact head; parser ingress and later probes remain unverified until it completes.
+
+
+CHECKPOINT — Progression bootstrap probe parse failure and correction (2026-11-26)
+
+User reran `scripts/ci/verify-world-v2-cross-repo.sh` with Core pinned to `391f318a24fde724a66054e771d0590f0e20c231` and `GODOT_VERBOSE=1`.
+
+Observed in this run:
+- Core World V2 Bridge build succeeded.
+- Space .NET build succeeded.
+- Godot 4.7.1 project initialization and Editor import/class registration completed.
+- HUD feedback probe passed: `21 checks, 0 failures`.
+- Domain contracts then failed during GDScript loading; no final `CROSS-REPO-WORLD-V2-OK` was emitted.
+
+First fatal script error:
+```
+Cannot infer the type of "valid_selection" variable because the value doesn't have a set type.
+SpaceDemoProgressionBootstrapProbe.gd:108
+```
+
+The subsequent `SpaceHangarCatalogOwnershipProbe.gd:707` error (`Nonexistent function 'run' in base 'GDScript'`) occurs at the call to `SpaceDemoProgressionBootstrapProbe.run()` after that target script has already failed parsing. It is tracked as a downstream failure until a successful parse confirms otherwise; the static class invocation was not replaced with a dynamic workaround.
+
+Correction commit: `6ab8d8118ae84589ef58fbed7da3c1b7e7e004c7`.
+- Read `skillSelections` and `boardAssignments` into explicitly typed `Array` locals.
+- Declare `valid_selection: bool` explicitly instead of asking GDScript to infer the type from a Variant-containing expression.
+- Preserve the owned loadout validation conditions and production contracts.
+
+The user log did not include the Space `git rev-parse HEAD`, so its exact tested Space commit is unknown. The correction above has not yet received a new local Godot run. The work record `docs/work-records/2026-11-26-cross-repo-probe-lifecycle.md` contains the full failure classification and next-run acceptance points.
+
+Next run:
+- Pull `world-v2/phase-4.10b-hangar-ui`.
+- Keep Core fixed at `391f318a24fde724a66054e771d0590f0e20c231`; do not repeat the already-passed 1038 Core xUnit tests.
+- Confirm the bootstrap probe parses, the static `.run()` call executes, Domain contracts completes, and the full harness reaches exit code 0 plus `CROSS-REPO-WORLD-V2-OK`.
+- Continue reporting verbose Node/Resource/StringName diagnostics separately; this run did not establish that the previously tracked ownership diagnostics are resolved.
+
+
+CHECKPOINT — Board Assignment is a dictionary and caused the remaining detached Node (2026-11-26)
+
+The next user-provided verbose run confirmed that the previous GDScript type-inference error was gone and the static `SpaceDemoProgressionBootstrapProbe.run()` call executed. It then failed in `_build_default_owned_loadout()` with:
+
+```
+Trying to assign value of type 'Dictionary' to a variable of type 'Array'.
+SpaceDemoProgressionBootstrapProbe.gd:108
+```
+
+The authored selection contract was rechecked:
+- `skillSelections` is an Array.
+- `boardAssignments` is a Dictionary keyed by Board Slot ID, whose values are frozen assignment entries.
+
+Correction commit: `4c718904204aa9b0add63a85a5998de7cd17ed96`.
+The helper now uses `var skill_selections: Array` and `var board_assignments: Dictionary`. The count-based completeness checks remain unchanged.
+
+The same run listed exactly one `Leaked instance: Node:` and one detached-node path error. The helper had created `SpaceHangarPreparation.new()`, but execution aborted on the incorrect Array type assignment before reaching `preparation.free()`. This is a strong call-stack explanation for the remaining Node, but requires another verbose run to confirm the Node report disappears.
+
+Counts from this incomplete run:
+- 56 ObjectDB instances leaked.
+- 42 resources still in use.
+- 263 unclaimed StringNames.
+
+These totals are not yet treated as independent permanent leaks: the Domain probe terminated early and the preparation helper did not reach normal cleanup. Re-run the full Domain probe first, then inspect the complete verbose exit list before classifying script/resource/StringName retention.
+
+The full investigation and acceptance conditions are recorded in `docs/work-records/2026-11-26-cross-repo-probe-lifecycle.md` Section 10. Core remains pinned to `391f318a24fde724a66054e771d0590f0e20c231`; its 1038-test run is not repeated.
+
+The correction has not yet been run locally. Do not claim Domain, Parser ingress, battle navigation, or the full cross-repo workflow passed until the new run reaches exit code 0 and `CROSS-REPO-WORLD-V2-OK`.
+
+
+CHECKPOINT — Full local World V2 cross-repository verification passed (2026-11-26)
+
+User reran `scripts/ci/verify-world-v2-cross-repo.sh` with Core pinned to `391f318a24fde724a66054e771d0590f0e20c231`. The run reached the final marker:
+
+```
+CROSS-REPO-WORLD-V2-OK core=391f318a24fde724a66054e771d0590f0e20c231
+```
+
+All four phases completed:
+1. Exact Core World V2 Bridge .NET build succeeded.
+2. Space .NET build against the sibling exact Bridge project succeeded.
+3. Godot 4.7.1 import/class registration, HUD feedback (`21 checks, 0 failures`), Hangar/Progression and Domain contracts succeeded. The default owned loadout assembly and legacy polarity migration markers passed.
+4. Parser/Core ingress, World V2 runtime, lifecycle, fault, disposed commands, faulted commands, snapshot isolation and battle-navigation all reached their expected completion markers.
+
+Notable acceptance details:
+- `SpaceHangarSelectionDraft.snapshot_data()` returns `skillSelections` as an Array and `boardAssignments` as a slot-ID keyed Dictionary. The earlier runtime type mismatch is corrected.
+- Progression Bootstrap reached `default-owned-hangar-assembly=passed`, `legacy-loadout-polarity-migration=passed`, and `unknown-legacy-liquid-mapping=fail-closed`.
+- The helper reached its controller release and `SpaceHangarPreparation.free()` cleanup.
+- Domain and Parser ingress verbose shutdown showed normal tracked-instance unloading and no leaked Node, detached-node path, ObjectDB leak, Resource still-in-use, or unclaimed StringName report. The prior incomplete-run counts (56 ObjectDB / 42 Resource / 263 StringName) no longer appeared in these two processes.
+- Parser ingress reported `parsed=1 duplicate_receipt_retained=1 duplicate_capacity_outcome=exact_per_shape shared_clock=1 workshop_bypass=0`.
+- Navigation reported `passed terminal-menu-transition=true`, including the test's intentionally missing-menu rollback case.
+
+Several Godot `ERROR:` log lines are expected negative-path tests (tampered fingerprints/roles/revisions, invalid catalog entries, invalid checkpoints, fault injection and missing-menu rollback). Their corresponding probes passed and the harness completed. Do not remove those fail-closed tests just to make logs visually silent.
+
+PR #2 remains Draft / Open / Unmerged. Current GitHub PR head is `70370118f51a0042ec99889d6543ff722e72a651`; the user ran after the preceding instruction to pull that head, but did not print local `git rev-parse HEAD` in the supplied output. The exact local run SHA is therefore not independently captured here. GitHub has no attached status check / PR workflow run for that head; the validation evidence is the user-provided local .NET + Godot run.
+
+The detailed run record is in `docs/work-records/2026-11-26-cross-repo-probe-lifecycle.md` Section 11.
+
+Next phase: stop repeating the already-green headless harness; perform desktop GUI acceptance for menu → default hangar assembly → battle → pause/resume → return to menu → re-enter battle. Then verify live supply HUD / Parser-Core reconciliation against actual battle state. Jar source/transfer lineage and event-driven progression reward integration remain subsequent design tasks; balance coefficients stay in versioned content data.
+
 
 CORE/SPACE INTEGRATION STATUS — 2026-11-26 (Core regression closed)
 
@@ -14,14 +253,14 @@ CORE/SPACE INTEGRATION STATUS — 2026-11-26 (Core regression closed)
 Suggested PowerShell invocation from the Space repository after both branches are updated:
 
 ```powershell
-$env:CORE_REPO_DIR = "D:\godot\programs\jar-system-dotnet"
+$env:CORE_REPO_DIR = "D:\\godot\\programs\\jar-system-dotnet"
 $env:CORE_EXPECTED_SHA = "fce78edd54c85ddcba8fd5aae4da0b8897659e85"
 $env:GODOT_BIN = "godot"
 $env:GODOT_VERBOSE = "1"
-bash .\scripts\ci\verify-world-v2-cross-repo.sh
+bash .\\scripts\\ci\\verify-world-v2-cross-repo.sh
 ```
 
-If running from Git Bash, use the same environment values and execute the script directly. Record both repository HEADs with `git rev-parse HEAD` before the run. The expected final marker is:
+Record both repository HEADs with `git rev-parse HEAD` before the run. The expected final marker is:
 
 ```
 CROSS-REPO-WORLD-V2-OK core=fce78edd54c85ddcba8fd5aae4da0b8897659e85
