@@ -21,11 +21,11 @@ jobs:
         with:
           path: space-demo
 
-      - name: Checkout the exact stacked Jar Core revision
+      - name: Checkout the exact current Core PR #63 head
         uses: actions/checkout@v4
         with:
           repository: Lazyair150/jar-system-dotnet
-          ref: 18a0b26407ee51c6df722f093165c3b3770c31a7
+          ref: e1e89cad5e0f11f369c8ade814140a7b4cc8df74
           path: jar-system-dotnet
 
       - name: Set up .NET SDK
@@ -63,5 +63,5 @@ jobs:
         working-directory: space-demo
         env:
           CORE_REPO_DIR: ${{ github.workspace }}/jar-system-dotnet
-          CORE_EXPECTED_SHA: 18a0b26407ee51c6df722f093165c3b3770c31a7
+          CORE_EXPECTED_SHA: e1e89cad5e0f11f369c8ade814140a7b4cc8df74
         run: bash scripts/ci/verify-world-v2-cross-repo.sh

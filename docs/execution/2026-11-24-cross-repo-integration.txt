@@ -1,33 +1,29 @@
 SPACE DEMO / JAR CORE CROSS-REPOSITORY INTEGRATION CHECKPOINT
-Date: 2026-11-25
+Date: 2026-11-26
 Space PR: #2
-Branch: world-v2/phase-4.10b-hangar-ui
+Space branch: world-v2/phase-4.10b-hangar-ui
+Core PR: #63
+Core branch: architecture/core-liquid-identity-consolidation
 
-CURRENT AUTHORITATIVE STATUS — 2026-11-25
+CURRENT AUTHORITATIVE STATUS — 2026-11-26
 
-- Current Space code head: a19a6afcf47d06bf500764407bad63e8f6bd5dde (latest branch head 39d7dcc411aa52be0fb27399bf71ad407788764a includes documentation updates). PR #2 remains Draft/Open/unmerged.
-- Exact Core integration source now pinned by the Space cross-repo workflow: 18a0b26407ee51c6df722f093165c3b3770c31a7 (Core PR #63; exact-head verify runs 45597874582 and 45597884119 succeeded, 868/868 tests).
-- Previous Space run 45588639250 passed with Core source 5023b38b75ad4cf66d953e3bb3fa4c490076d4d7; it is historical evidence and does not validate the new Core source 18a0b26.
-- A new exact-pin Space cross-repo run is expected from this workflow update; final result pending.
-- Core World V2 Bridge and Space .NET builds passed; Godot 4.7.1 project import/parse passed; HUD reports 21 checks, 0 failures; all domain contracts passed.
-- Parser -> Jar ingress passed: parsed=1, stored=1, retry_after_restore=1, shared_clock=1, workshop_bypass=0.
-- Runtime lifecycle passed: invalid initialization did not retain a session; valid recovery succeeded; duplicate initialization was rejected without replacing the current session; SceneTree exit disposed the session; post-exit reinitialization was rejected.
-- Fault boundary passed: a real Core checked-arithmetic overflow reached Runtime exactly once; command gate closed; diagnostic snapshot remained readable; faulted session disposal passed.
-- Disposed command probe passed all 9 post-disposal rejections with no fault signal. Faulted command probe passed all 6 mutating/control rejections with stable fault reason.
-- Snapshot isolation passed for root, dictionary, array, nested, and cross-snapshot mutation.
-- Battle pause/navigation passed: pause/resume, focus-loss explicit resume, RESUMING/RESUME_READY confirmation, fault state, failed menu transition rollback, and terminal return to Main Menu.
-- Hangar migration hardening: existing legacy saves with no valid parser now receive exact demo.parser.universal@1 only when needed. Existing valid parser instances are preserved; unresolved owned parser definitions and instance-ID collisions fail closed. Migration is idempotent.
-- Added SpaceDemoProgressionBootstrapProbe. It confirms a legacy save missing parser inventory receives exactly one starter parser, and a second migration pass does not change state revision or inventory count.
-- Added a production-path default assembly regression using the actual data/hangar/demo_catalog_bundle.tres and data/hangar/demo_board.tres resources. It confirms the default selection includes an owned ship, universal parser, two distinct workshop instances, both compatible skill slots, a valid Board Assignment, and a frozen loadout accepted by SpaceBattleLoadoutSnapshot validation.
-- The new default-owned-hangar-assembly probe passed in run 45566736772. This verifies the default pre-battle composition at the domain/assembler boundary; it does not replace visual GUI acceptance.
-- Runtime disposal implementation and lifecycle behavior are covered by the exact-head Godot SceneTree probes. Pause overlay teardown and terminal menu transition are also covered by a real scene probe.
-- CI is Headless evidence, not local GUI/manual play acceptance. Visual layout, real input interaction, target OS/GPU behavior, and repeated manual scene navigation still require local Godot acceptance.
-- Manual workshop replacement remains deliberately isolated and was not implemented. Space PR #2 and Core PR #63 remain Draft/Open/unmerged; do not merge them.
+- Space PR #2 current code head before the pin-alignment change: a0bff57489d3ab696e9a3779c8f98f4525bda609 (Draft/Open; not merged).
+- Core PR #63 current source head: e1e89cad5e0f11f369c8ade814140a7b4cc8df74 (Draft/Open; not merged).
+- Core exact-head push and pull_request verify runs 45773000798 and 45773009044 both completed successfully.
+- Space exact-head run 45775968520 passed for Space a0bff57489d3ab696e9a3779c8f98f4525bda609, but the checked-in workflow at that head still used Core pin 18a0b26407ee51c6df722f093165c3b3770c31a7. That success does NOT prove integration against the current Core head e1e89cad5e0f11f369c8ade814140a7b4cc8df74.
+- This checkpoint change updates the workflow ref and CORE_EXPECTED_SHA, README checkout instructions and this record to one exact Core PR #63 SHA. A new Space run must pass before the current cross-repository combination is called green.
+- The workflow intentionally pins one exact Core commit. It does not silently follow a moving branch; advancing Core requires an explicit reviewed pin update and a fresh exact-head integration run.
+- Existing Space headless evidence remains valid only for the Core SHA recorded by its corresponding run. It does not replace GUI acceptance on the target OS/GPU.
 
-PHASE RESULT
-- Automated cross-repository build, Godot import/parse, HUD, Hangar owned inventory/default assembly, domain contracts, parser ingress, Runtime lifecycle/fault/disposal, snapshot isolation, and battle pause/navigation gates: COMPLETE and GREEN at exact Space/Core SHAs above.
-- Remaining external acceptance before calling the demo fully playable on the user's machine: local GUI first-play, visual inspection of the default Hangar composition, and manual scene navigation on the target OS/GPU. Do not label these as passed until observed.
-- Repository cleanup audit did not justify deleting active probes, historical protocol fixtures, schema migrations, or compatibility contracts. Keep those until their callers and migration windows are demonstrably retired.
+INTEGRATION CONTRACT
+
+- Space owns combat, player progression, ship inventory, Hangar composition, production devices, skill/effect semantics, stage progression, presentation and scene lifecycle.
+- Jar Core owns Jar resources, workshop rules, order feasibility/admission/execution, reservations, logical time and its resource ledger.
+- Core's World V2 Bridge is built from the exact checked-out Core revision; Space must not copy Core rule or solver implementations.
+- Parser output remains Space outbox -> Host ImportProducedJars -> Core durable idempotent receipt. Core producer output independently enters the Central Warehouse. Both sources share the same Jar warehouse/flow boundary after admission.
+- Core time-driven producer rates and jar-flow rates are expressed per logical time unit; parser rates consume finite picked-up stone volume. They must not be combined without preserving their separate input and rounding semantics.
+- GUI first-play, visual Hangar composition, target GPU/OS behavior and manual scene navigation have not been observed in this environment.
+
 The remaining sections below are chronological historical checkpoints. Their “not yet run”, old Core SHA and old failure statements describe those dates only; the authoritative current result is this section.
 
 CORE DEPENDENCY
