@@ -155,7 +155,7 @@ func replace_instance_progression(updated: SpaceOwnedProgressionInstance) -> boo
 
 static func from_data(source: Dictionary) -> SpacePlayerProgressionState:
 	var source_schema := int(source.get("schemaVersion", 0))
-	if source_schema not in [1, CURRENT_SCHEMA_VERSION]:
+	if source_schema not in [1, 2, CURRENT_SCHEMA_VERSION]:
 		return null
 	var state := SpacePlayerProgressionState.new()
 	state.schema_version = CURRENT_SCHEMA_VERSION
