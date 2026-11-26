@@ -173,3 +173,11 @@ Headless tests prove state transitions and input geometry. They do not prove mou
 - **GodotSceneManager (esdg)**: its installation guide targets Godot 4.5 Mono/.NET and introduces a graph schema and an AutoLoad controller. It is a possible future editor workflow, but the current project uses Godot 4.7.1 Mono; compatibility and maintenance must be verified before adoption.
 
 No external plugin is added in this phase. Keep `GameFlow` as the director, make the state graph and transition contracts testable, and adopt a plugin only when it replaces rather than duplicates authority.
+
+## 10. External references
+
+- Godot Engine, *Control*: Control bounding rectangles, Viewport input propagation, focus, and `mouse_filter`: https://docs.godotengine.org/en/stable/classes/class_control.html
+- Godot Engine, *Pausing games and process mode*: SceneTree pause and Inherit/Pausable/WhenPaused/Always/Disabled semantics: https://docs.godotengine.org/en/stable/tutorials/scripting/pausing_games.html
+- GState (MIT): hierarchical/event-driven Godot 4 state machine with nested/compound states and graph editor: https://github.com/fufuShih/GState
+- GodotSceneManager (MIT): schema-driven scene flow editor; published installation guide currently states Godot 4.5 Mono/.NET and adds an AutoLoad controller: https://github.com/esdg/GodotSceneManager/blob/main/addons/ScenesManager/Docs/installation.md
+- Scenic: scene manager that owns a persistent main scene and routes scene loading/switching, rather than using the regular scene system directly: https://store.godotengine.org/asset/flown/scenic/
