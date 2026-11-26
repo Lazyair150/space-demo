@@ -60,6 +60,7 @@ stateDiagram-v2
     MENU --> HANGAR: new run / continue
     MENU --> SETTINGS: settings
     SETTINGS --> MENU: back
+    HANGAR --> MENU: back to main menu
     HANGAR --> BATTLE_PREPARING: build frozen loadout
     BATTLE_PREPARING --> BATTLE_RUNNING: Core + Space runtime ready
     BATTLE_PREPARING --> BATTLE_FAULT: initialization rejected
@@ -92,13 +93,14 @@ Every transition is a command with:
 5. destination scene;
 6. rollback behavior if scene loading fails.
 
-Only `GameFlow` calls `SceneTree.change_scene_to_file`. Scene scripts call named intent methods; they do not call `change_scene_to_file` directly.
+Only `GameFlow` calls `SceneTree.change_scene_to_file`. Scene scripts call named intent methods; they do not call `change_scene_to_file` directly. The MainMenu Quit action and the operating-system window-close signal both call `GameFlow.quit_application()`, which releases SceneTree pause and disposes the World V2 Host before process exit.
 
 ### Required route behavior
 
 | Intent | Guard | Required action | Destination |
 |---|---|---|---|
 | Start run | MENU | Reset run, open Hangar | HANGAR |
+| Return from Hangar | HANGAR | No battle exists; navigate through GameFlow | MENU |
 | Build battle | HANGAR, valid frozen loadout | Freeze identity, create battle | BATTLE |
 | Pause | BATTLE/RUNNING | Pause Host, then SceneTree | BATTLE + PAUSE |
 | Resume | BATTLE/PAUSED | Validate phase, resume Host and SceneTree | BATTLE |
