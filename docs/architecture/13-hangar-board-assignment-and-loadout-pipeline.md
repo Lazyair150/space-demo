@@ -96,7 +96,7 @@ schema 2 不得被降级成 schema 1，也不得丢弃 Area/SubArea。Core 消�
 
 根因：Space `SpaceHangarBoardAssignment.build_snapshot()` 输出外层 Assignment schema 2；Core 之前仅接受外层 schema 1。上一轮只放开了内嵌 Board Definition schema 2，遗漏了外层版本。
 
-Core 修复应同时：
+Core 修复已按以下契约实现（精确代码/测试 SHA 与 CI 证据见工作记录）：
 - 接受 Assignment schema 1/2；
 - DTO 映射 AreaId/SubAreaId；
 - schema 2 校验 Assignment Area/SubArea 与对应 Board Slot 相同；
