@@ -422,8 +422,8 @@ static func run() -> Dictionary:
 	if restored.acknowledge_output_batch(pending_id, exact_receipt):
 		return _failure("output batch receipt acknowledgment must be one-shot")
 	var captured_receipts := restored.capture_state()
-	if captured_receipts.coreImportReceipts.size() != 1 or bool(captured_receipts.coreImportReceiptHistoryComplete):
-		return _failure("schema 3 migration was incorrectly upgraded to complete Core receipt history")
+	if captured_receipts.coreImportReceipts.size() != 1 or not bool(captured_receipts.coreImportReceiptHistoryComplete):
+		return _failure("complete schema 4 receipt history was not retained after an exact import")
 	var receipt_observation: Dictionary = restored.build_supply_observation_snapshot()
 	if int(receipt_observation.get("exactCoreStoredJarCount", -1)) != pending_jar_count - 1 or int(receipt_observation.get("exactCoreDiscardedJarCount", -1)) != 1:
 		return _failure("read-only parser supply observation did not expose exact stored/discarded counts")
