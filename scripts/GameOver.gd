@@ -18,8 +18,21 @@ func _ready() -> void:
 	retry_button.pressed.connect(_on_retry)
 	menu_button.pressed.connect(_on_menu)
 	retry_button.grab_focus()
+	await get_tree().process_frame
+	_validate_interaction_geometry()
+
+func _validate_interaction_geometry() -> void:
+	var container := $VBoxContainer as Control
+	var background := $ColorRect as ColorRect
+	if background.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+		push_error("[GameOver] Decorative background must ignore mouse input")
+	if not container.get_global_rect().encloses(retry_button.get_global_rect()) or not container.get_global_rect().encloses(menu_button.get_global_rect()):
+		push_error("[GameOver] Visible buttons extend outside their parent hit-test rectangle")
+	else:
+		print("[GameOver] input-geometry=valid buttons=2 focus=ready")
 
 func _on_retry() -> void:
+	print("[GameOver] action=retry-to-hangar")
 	retry_button.disabled = true
 	menu_button.disabled = true
 	GameState.reset_run()
@@ -29,6 +42,7 @@ func _on_retry() -> void:
 		push_error("[GameOver] Failed to return to Hangar")
 
 func _on_menu() -> void:
+	print("[GameOver] action=return-to-menu")
 	retry_button.disabled = true
 	menu_button.disabled = true
 	if not GameFlow.request_scene_transition(GameFlow.Screen.MENU, "res://scenes/menus/MainMenu.tscn"):
