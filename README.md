@@ -131,7 +131,7 @@ The cross-language coding, architecture, lifecycle, protocol, error-handling, an
 
 ## Current validation boundary
 
-- Core integration pin: `93f050fabb201c37a4bc1601f45e6c0aaff33cdd`; Core Verify run `45856292385` passed, including 1044 xUnit tests with 0 failures.
+- Core integration pin: `93f050fabb201c37a4bc1601f45e6c0aaff33cdd`. Board Assignment schema-v2 baseline passed Core Verify run `45856292385` (1044 xUnit, 0 failures). The additional non-default liquid-polarity propagation regression is included in the current pin; its exact-head Core Verify run `45859573824` is still in progress.
 - The cross-repository workflow file currently exists on this PR branch but not base `main`, so GitHub has no PR-triggered run attached to the current Space head. Run `scripts/ci/verify-world-v2-cross-repo.sh` locally with the exact pin above.
 - The Space schema 2 golden-vector probe is included in the Hangar Board probe path; it remains pending execution in Godot.
 - Headless success does not replace local GUI acceptance on the target OS/GPU. The desktop Hangar-to-Battle fault remains OPEN until that acceptance is recorded.
