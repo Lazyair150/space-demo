@@ -12,6 +12,7 @@ This directory contains the current World V2 ↔ Space integration contracts. Th
 - [12 — Order funnel and skill resource-cost semantics](12-order-funnel-and-skill-resource-cost-semantics.md): skill costs and order ingress semantics.
 - [13 — Resource HUD and shape visual language](13-resource-hud-and-shape-visual-language.md): observable resource presentation and Jar-shape visual mapping.
 - [14 — Space ability and workshop rule scopes](14-space-ability-and-workshop-rule-scopes.md): Space-owned ability policy versus workshop-local rules.
+- [15 — Production, parser and individual progression gameplay](15-production-parser-and-individual-progression-gameplay.md): the player-facing loop from finite energy-stone input through Jar production, order execution, skill effects and owned-instance growth.
 
 ## Integration record
 
