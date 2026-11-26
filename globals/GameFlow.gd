@@ -5,7 +5,7 @@ extends Node
 signal state_changed(snapshot: Dictionary)
 signal transition_failed(target_screen: int, scene_path: String, error_code: int)
 
-enum Screen { MENU, HANGAR, BATTLE, GAME_OVER }
+enum Screen { MENU, HANGAR, BATTLE, GAME_OVER, EXITING }
 enum BattlePhase { INACTIVE, PREPARING, RUNNING, PAUSED, RESUMING, RESUME_READY, ENDED, FAULTED }
 enum PauseReason { NONE, PLAYER, WINDOW_FOCUS_LOST, SYSTEM }
 
@@ -16,6 +16,29 @@ var _transition_sequence: int = 0
 var _fault_reason: String = ""
 var _fault_world_time_milli: int = -1
 var _fault_logical_time_milli: int = -1
+
+func _ready() -> void:
+	var root_window := get_tree().root
+	if not root_window.close_requested.is_connected(_on_window_close_requested):
+		root_window.close_requested.connect(_on_window_close_requested)
+
+func _on_window_close_requested() -> void:
+	quit_application()
+
+## Single application shutdown path for the menu button and operating-system close request.
+func quit_application() -> void:
+	var tree := get_tree()
+	if tree != null:
+		tree.paused = false
+		var host := tree.root.get_node_or_null("WorldV2ShipHost")
+		if host != null and host.has_method("EndShipWorld"):
+			host.call("EndShipWorld")
+	_battle_phase = BattlePhase.ENDED if _battle_phase not in [BattlePhase.INACTIVE, BattlePhase.ENDED, BattlePhase.FAULTED] else _battle_phase
+	_pause_reason = PauseReason.NONE
+	_screen = Screen.EXITING
+	_emit_state()
+	if tree != null:
+		tree.quit()
 
 func snapshot() -> Dictionary:
 	return {
