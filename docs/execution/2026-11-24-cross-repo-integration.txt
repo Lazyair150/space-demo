@@ -1,21 +1,23 @@
 SPACE DEMO / JAR CORE CROSS-REPOSITORY INTEGRATION CHECKPOINT
-Date: 2026-11-26
+Date: 2026-11-27
 Space PR: #2
 Space branch: world-v2/phase-4.10b-hangar-ui
 Core PR: #63
 Core branch: architecture/core-liquid-identity-consolidation
 
-CURRENT AUTHORITATIVE STATUS — 2026-11-26 (latest exact source state)
+CURRENT AUTHORITATIVE STATUS — 2026-11-27
 
-- Space PR #2 current head: 374942d8989f4a836c0ae831ea4faab4bcf8df99 (Draft/Open; not merged).
-- Core PR #63 current source head: 391f318a24fde724a66054e771d0590f0e20c231 (Draft/Open; not merged).
-- Core exact-head verify Run 45822480114 completed successfully for the current Core source head.
-- Space workflow and README are pinned to that exact Core SHA; the earlier stale-pin failure Run 45796547789 is historical and not the current dependency configuration.
-- Latest completed Space attempt Run 45826120969 tested Space code head b322040708c5adccf9ef3b48f3b0ac4bb9d43384 against Core 391f318a. Core Bridge build and Space C# build both succeeded with 0 warnings / 0 errors; Godot asset import completed.
-- That Space attempt then failed in the HUD feedback probe because the new reconciliation service inferred Variant-returning helper values with `:=`, and the project treats the resulting GDScript warning as an error (lines 22–27 and 31–33 of SpaceBattleSupplyReconciliation.gd).
-- Corrective source commit 374942d explicitly declares those nine locals as Variant. This exact newer Space head has not yet been validated; do not transfer the older run's build/probe result to it.
-- The failed attempt did not reach the Parser/Core ingress and reconciliation probes after the HUD failure.
-- Both PRs remain Open/Draft and unmerged. No desktop GUI acceptance is claimed.
+- Core PR #63: Open / Draft / not merged; exact HEAD 116c0bb7e3589a2850bf1b85f6da4c48de8c0a28.
+- Core verify Run 45869214849: SUCCESS on that exact HEAD.
+- Space PR #2: Open / Draft / not merged; branch synchronization merge commit 85c01d6cbb3dd2f00cb0cf8043f9dd2a056c3499.
+- Space branch was 1,258 commits ahead and 2 behind main. The two missing main commits were inspected: one adds the cross-repository integration checkpoint; the other updates the supply reconciliation work record. The feature branch already contained a later, more complete version of that work record, so it was preserved rather than overwritten.
+- A non-force merge commit incorporated main HEAD 8805ea665b0ff6eafa528b08630e5e8060fcad02 while retaining the feature branch tree and its newer work record. GitHub then reported mergeable=true.
+- Core comparison f4f2151...116c0bb7e3589a2850bf1b85f6da4c48de8c0a28 contains only a documentation update; no runtime/API source files changed. The Space workflow and README are now pinned to the latest exact verified Core SHA above.
+- Space Run 45870822329 was triggered by the branch merge before the Core pin update and therefore uses the previous pin f4f2151. It is not evidence for the updated pin. A new exact-pin workflow is expected after this documentation commit.
+- Space HUD already includes the read-only Parser/Core reconciliation view. Do not duplicate that implementation.
+- No desktop GUI acceptance is claimed. Both PRs remain Draft.
+
+The following sections are chronological historical checkpoints. Older SHAs, failures and “not yet run” statements describe their recorded dates only; this status block is authoritative for the current integration state.
 
 INTEGRATION CONTRACT
 

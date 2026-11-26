@@ -6,7 +6,7 @@ This repository contains the Space game client and the Godot presentation/runtim
 
 The Hangar uses the demo board and catalog resources under `data/hangar/`. The player can select the ship, parser, workshop instances/roles, optional devices and skills, choose free combat or an unlocked finite stage, then launch the battle. The Jar simulation is hosted by `WorldV2ShipHost`; Jar rules and execution remain owned by the sibling `jar-system-dotnet` repository.
 
-> **Prototype status:** this is a gameplay prototype candidate, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. A real desktop Hangar launch previously exposed an outer Board Assignment schema 2 incompatibility; Core Board Assignment schema-v2 and non-default liquid-polarity propagation fixes are committed; the latest Space cross-repository script and desktop GUI launch remain pending. Do not treat the intended entry path as accepted until the P0 release gates in the project guide and work record are complete.
+> **Prototype status:** this is a gameplay prototype candidate, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. Core PR #63 is currently verified on the exact pinned revision below. The Space branch has just incorporated the two commits missing from main; its cross-repository verification is running after the branch sync. Desktop GUI acceptance is still pending. Do not treat the intended entry path as accepted until the P0 release gates in the project guide and work record are complete.
 
 ## Requirements
 
@@ -36,7 +36,7 @@ git clone --branch world-v2/phase-4.10b-hangar-ui https://github.com/Lazyair150/
 git clone --branch architecture/core-liquid-identity-consolidation https://github.com/Lazyair150/jar-system-dotnet.git
 
 cd jar-system-dotnet
-git checkout 35f666720115fed0b2103001ad1c450fba4a65c9
+git checkout 116c0bb7e3589a2850bf1b85f6da4c48de8c0a28
 cd ../space-demo
 ```
 
