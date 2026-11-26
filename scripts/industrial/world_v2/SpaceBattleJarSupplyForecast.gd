@@ -82,14 +82,19 @@ static func evaluate(
 	if not (producer_entries is Array):
 		return _failure("World producers must be an array")
 	var producer_names := {}
+	var producer_ids := {}
 	for raw_producer in producer_entries:
 		if not (raw_producer is Dictionary):
 			return _failure("Core Producer entry must be a dictionary")
 		var producer: Dictionary = raw_producer
 		var producer_name := String(producer.get("name", "")).strip_edges()
+		var producer_id := String(producer.get("producerInstanceId", "")).strip_edges()
 		if producer_name.is_empty() or producer_names.has(producer_name):
 			return _failure("Core Producer names must be non-empty and unique")
 		producer_names[producer_name] = true
+		if producer_id.is_empty() or producer_id.length() > 128 or producer_id.contains(" ") or producer_ids.has(producer_id):
+			return _failure("Core Producers require unique stable producerInstanceId values")
+		producer_ids[producer_id] = true
 		var producer_rates: Variant = producer.get("rates", null)
 		if not (producer_rates is Dictionary):
 			return _failure("Core Producer rates must be a dictionary")
@@ -246,6 +251,7 @@ static func evaluate(
 		"parserJarEquivalentByShape": parser_jar_equivalents,
 		"parserProgressRemainderMicroByShape": parser_progress_remainders,
 		"parserRateRemainderAfterByShape": parser_rate_remainders_after,
+		"coreProducerIds": producer_ids.keys(),
 		"coreProducerRateMilliByShape": core_rate_milli,
 		"coreProducerJarOutputByShape": core_output,
 		"coreProducerAccumulatorMicroByShape": core_remainders,

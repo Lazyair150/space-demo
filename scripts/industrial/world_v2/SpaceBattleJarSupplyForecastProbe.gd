@@ -8,8 +8,8 @@ static func run() -> Dictionary:
 		"executionLogicalTimePerUnit": 1000,
 		"jarFlowRatePerLogicalTime": 1.0,
 		"producers": [
-			{"name": "producer.alpha", "rates": {"round": 0.5, "square": 0.25}},
-			{"name": "producer.beta", "rates": {"round": 0.25}}
+			{"name": "producer.alpha", "producerInstanceId": "probe.producer.alpha", "rates": {"round": 0.5, "square": 0.25}},
+			{"name": "producer.beta", "producerInstanceId": "probe.producer.beta", "rates": {"round": 0.25}}
 		]
 	}
 	var parser_profile := {
@@ -76,6 +76,12 @@ static func run() -> Dictionary:
 	var bad_drop := SpaceBattleJarSupplyForecast.evaluate(world_options, parser_profile, invalid_drop, 2000.0)
 	if bool(bad_drop.get("valid", false)):
 		return _failure("invalid energy-stone drop probability was accepted")
+
+	var missing_producer_id := world_options.duplicate(true)
+	missing_producer_id["producers"][0].erase("producerInstanceId")
+	var bad_producer_id := SpaceBattleJarSupplyForecast.evaluate(missing_producer_id, parser_profile, supply_context, 2000.0)
+	if bool(bad_producer_id.get("valid", false)):
+		return _failure("Core Producer without a stable identity was accepted")
 	return {
 		"passed": true,
 		"expectedStoneVolumeByShape": expected_stone,

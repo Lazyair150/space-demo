@@ -435,6 +435,34 @@ static func validate_data(source: Dictionary) -> PackedStringArray:
 					errors.append("jarWorldOptions polarity must be Cathode or Anode")
 			if cathode_count != 1 or anode_count != 1:
 				errors.append("jarWorldOptions must assign exactly one Cathode and one Anode")
+		var producers: Variant = jar_options.get("producers", null)
+		if not (producers is Array):
+			errors.append("jarWorldOptions.producers must be an array")
+		else:
+			var producer_names := {}
+			var producer_ids := {}
+			var jar_shape_ids := {}
+			for shape in jar_options.get("shapes", []):
+				jar_shape_ids[String(shape)] = true
+			for raw_producer in producers:
+				if not (raw_producer is Dictionary):
+					errors.append("jarWorldOptions Producer must be a dictionary")
+					continue
+				var producer_name := _required_text(raw_producer, "name")
+				var producer_id := _required_text(raw_producer, "producerInstanceId")
+				var producer_rates: Variant = raw_producer.get("rates", null)
+				if producer_name.is_empty() or producer_names.has(producer_name):
+					errors.append("Core Producer names must be non-empty and unique")
+				producer_names[producer_name] = true
+				if producer_id.is_empty() or producer_id.length() > 128 or producer_id.contains(" ") or producer_ids.has(producer_id):
+					errors.append("Core Producers require unique stable producerInstanceId values")
+				producer_ids[producer_id] = true
+				if not (producer_rates is Dictionary):
+					errors.append("Core Producer rates must be a dictionary: " + producer_name)
+				else:
+					for raw_shape in producer_rates:
+						if not jar_shape_ids.has(String(raw_shape)):
+							errors.append("Core Producer references an unknown Jar shape: " + String(raw_shape))
 		var active_workshops: Variant = jar_options.get("workshops", null)
 		if not (active_workshops is Array) or active_workshops.size() != 2:
 			errors.append("jarWorldOptions must materialize exactly two player-selected workshop positions")

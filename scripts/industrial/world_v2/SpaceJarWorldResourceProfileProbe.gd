@@ -10,7 +10,7 @@ static func run() -> Dictionary:
 		"shapes": ["round", "square"],
 		"liquids": ["water", "oil"],
 		"liquidPolarities": {"water": "Cathode", "oil": "Anode"},
-		"producers": [{"name": "legacy-producer", "rates": {"round": 0.0, "square": 0.0}}],
+		"producers": [{"name": "probe-producer", "producerInstanceId": "probe.producer.primary", "rates": {"round": 0.0, "square": 0.0}}],
 		"liquidProductionRates": {"water": 0.25, "oil": 0.0},
 		"initialLiquidStock": {"water": 3, "oil": 1},
 		"shipLiquidCapacity": 8,
@@ -42,6 +42,19 @@ static func run() -> Dictionary:
 	invalid.world_options.initialLiquidStock = {"water": 8, "oil": 1}
 	if invalid.is_valid():
 		return {"passed": false, "reason": "shared liquid inventory capacity overflow was accepted"}
+
+	var missing_id := profile.duplicate(true) as SpaceJarWorldResourceProfile
+	missing_id.world_options.producers[0].erase("producerInstanceId")
+	if missing_id.is_valid():
+		return {"passed": false, "reason": "Core Producer without stable identity was accepted"}
+	var duplicate_id := profile.duplicate(true) as SpaceJarWorldResourceProfile
+	duplicate_id.world_options.producers.append({
+		"name": "other-producer",
+		"producerInstanceId": "probe.producer.primary",
+		"rates": {"round": 0.0}
+	})
+	if duplicate_id.is_valid():
+		return {"passed": false, "reason": "duplicate Core Producer identity was accepted"}
 	return {
 		"passed": true,
 		"profileId": String(profile.profile_id),

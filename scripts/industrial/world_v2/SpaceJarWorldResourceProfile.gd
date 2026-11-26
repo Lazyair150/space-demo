@@ -134,6 +134,7 @@ static func validate_world_options(options: Dictionary) -> Array[String]:
 		errors.append("producers must be an array")
 	else:
 		var producer_names := {}
+		var producer_instance_ids := {}
 		for producer in producers:
 			if not (producer is Dictionary) or String(producer.get("name", "")).strip_edges().is_empty():
 				errors.append("producer entries require a name")
@@ -142,6 +143,13 @@ static func validate_world_options(options: Dictionary) -> Array[String]:
 			if producer_names.has(producer_name):
 				errors.append("producer names must be unique: " + producer_name)
 			producer_names[producer_name] = true
+			var producer_instance_id := String(producer.get("producerInstanceId", "")).strip_edges()
+			if producer_instance_id.is_empty() or producer_instance_id.length() > 128 or producer_instance_id.contains(" "):
+				errors.append("producer entries require a stable non-empty producerInstanceId: " + producer_name)
+			elif producer_instance_ids.has(producer_instance_id):
+				errors.append("producerInstanceId values must be unique: " + producer_instance_id)
+			else:
+				producer_instance_ids[producer_instance_id] = true
 			var producer_rates: Variant = producer.get("rates", null)
 			if not (producer_rates is Dictionary):
 				errors.append("producer rates must be a dictionary")

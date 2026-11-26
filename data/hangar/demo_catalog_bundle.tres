@@ -238,6 +238,7 @@ jar_world_options = {
 "liquidPolarities": {"冷却液": "Cathode", "燃料": "Anode"},
 "producers": [{
 "name": "前哨合成器",
+"producerInstanceId": "demo.producer.frontier_synthesizer",
 "rates": {
 "三角罐": 0.6,
 "六边罐": 0.4,
@@ -275,6 +276,7 @@ jar_world_options = {
 "liquidPolarities": {"冷却液": "Cathode", "燃料": "Anode"},
 "producers": [{
 "name": "深空压缩阵列",
+"producerInstanceId": "demo.producer.deep_space_compressor",
 "rates": {
 "三角罐": 1.0,
 "六边罐": 0.6,

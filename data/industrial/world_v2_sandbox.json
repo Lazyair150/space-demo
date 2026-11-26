@@ -2,7 +2,7 @@
   "shapes": ["圆罐", "方罐"],
   "liquids": ["酒", "蜜"],
   "liquidPolarities": {"酒": "Cathode", "蜜": "Anode"},
-  "producers": [{"name": "陶工", "rates": {"圆罐": 1.0, "方罐": 0.0}}],
+  "producers": [{"name": "陶工", "producerInstanceId": "probe.producer.clay", "rates": {"圆罐": 1.0, "方罐": 0.0}}],
   "liquidProductionRates": {"酒": 0.0, "蜜": 0.0},
   "initialLiquidStock": {"酒": 10, "蜜": 0},
   "jarFlowRatePerLogicalTime": 1.0,
