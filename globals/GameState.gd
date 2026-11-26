@@ -139,13 +139,16 @@ func commit_space_progression_reward_settlement(
 		}
 	if expected_state != space_progression_state:
 		return {"success": false, "reason": "player progression revision changed; first-time settlement must be rebased"}
-	var candidate: Variant = prepared.get("candidateState", null)
-	if not (candidate is SpacePlayerProgressionState) or not _save_progression_candidate(candidate):
+	var raw_candidate: Variant = prepared.get("candidateState", null)
+	if not (raw_candidate is SpacePlayerProgressionState):
+		return {"success": false, "reason": "reward service returned an invalid progression candidate"}
+	var candidate_state: SpacePlayerProgressionState = raw_candidate as SpacePlayerProgressionState
+	if not _save_progression_candidate(candidate_state):
 		push_error("Battle progression reward settlement was rejected because the durable save failed")
 		return {"success": false, "reason": "progression save failed; live player state was not changed"}
 	if space_progression_state.progression_changed.is_connected(_on_space_progression_changed):
 		space_progression_state.progression_changed.disconnect(_on_space_progression_changed)
-	space_progression_state = candidate
+	space_progression_state = candidate_state
 	space_progression_state.progression_changed.connect(_on_space_progression_changed)
 	space_progression_state_changed.emit(space_progression_state)
 	return {
@@ -153,7 +156,7 @@ func commit_space_progression_reward_settlement(
 		"duplicate": false,
 		"settlementId": settlement_id,
 		"settlementFingerprint": String(prepared.get("settlementFingerprint", "")),
-		"stateRevision": candidate.state_revision,
+		"stateRevision": candidate_state.state_revision,
 		"updatedInstances": prepared.get("updatedInstances", []),
 		"awardedExperienceByInstance": prepared.get("awardedExperienceByInstance", {})
 	}

@@ -81,8 +81,11 @@ static func run() -> Dictionary:
 	if not bool(repeated.get("success", false)) or not bool(repeated.get("duplicate", false)):
 		return _failure("identical settlement replay was not recognized independent of event order")
 	var replay_state: Variant = SpacePlayerProgressionState.from_data(candidate_state.to_data())
-	if not (replay_state is SpacePlayerProgressionState) or replay_state.progression_reward_receipts.size() != receipt_count:
+	if not (replay_state is SpacePlayerProgressionState):
 		return _failure("XP settlement receipts did not survive a schema-v3 save roundtrip")
+	var replay_state_typed: SpacePlayerProgressionState = replay_state as SpacePlayerProgressionState
+	if replay_state_typed.progression_reward_receipts.size() != receipt_count:
+		return _failure("XP settlement receipt count changed during a schema-v3 save roundtrip")
 
 	var conflicting_awards: Array[Dictionary] = awards.duplicate(true)
 	conflicting_awards[0]["experience"] = 8
