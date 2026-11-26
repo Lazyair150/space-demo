@@ -26,7 +26,9 @@ static func run() -> Dictionary:
 			"sourceRef": "probe.pickup.01",
 			"experience": 7,
 			"curveId": "probe.ship.curve",
-			"curveVersion": 1
+			"curveVersion": 1,
+			"rewardProfileId": "probe.reward-profile",
+			"rewardProfileVersion": 1
 		},
 		{
 			"eventId": "probe.run.01.parser.01",
@@ -36,7 +38,9 @@ static func run() -> Dictionary:
 			"sourceRef": "probe.parser.receipt.01",
 			"experience": 6,
 			"curveId": "probe.parser.curve",
-			"curveVersion": 1
+			"curveVersion": 1,
+			"rewardProfileId": "probe.reward-profile",
+			"rewardProfileVersion": 1
 		},
 		{
 			"eventId": "probe.run.01.parser.02",
@@ -46,7 +50,9 @@ static func run() -> Dictionary:
 			"sourceRef": "probe.parser.receipt.02",
 			"experience": 5,
 			"curveId": "probe.parser.curve",
-			"curveVersion": 1
+			"curveVersion": 1,
+			"rewardProfileId": "probe.reward-profile",
+			"rewardProfileVersion": 1
 		}
 	]
 	var prepared := SpaceProgressionRewardService.prepare_settlement(

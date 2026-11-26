@@ -12,16 +12,8 @@ const MAX_TEXT_LENGTH := 256
 const MAX_INT64: int = 9223372036854775807
 const ALLOWED_FIELDS := [
 	"eventId", "instanceId", "itemKind", "sourceKind", "sourceRef",
-	"experience", "curveId", "curveVersion"
+	"experience", "curveId", "curveVersion", "rewardProfileId", "rewardProfileVersion"
 ]
-const SOURCE_ITEM_KIND := {
-	"energy_stone_picked_up": "ship",
-	"battle_objective_completed": "ship",
-	"parser_volume_processed": "ore_parser",
-	"production_work_committed": "production_device",
-	"workshop_rule_transition_committed": "workshop",
-	"skill_effect_cycle_completed": "skill"
-}
 
 static func prepare_settlement(
 	source_state: SpacePlayerProgressionState,
@@ -40,6 +32,8 @@ static func prepare_settlement(
 
 	var normalized_awards: Array[Dictionary] = []
 	var event_ids := {}
+	var reward_profile_id := ""
+	var reward_profile_version := 0
 	for raw in raw_awards:
 		if not (raw is Dictionary):
 			return _failure("reward event must be a dictionary")
@@ -52,15 +46,18 @@ static func prepare_settlement(
 		var source_kind := _required_text(raw, "sourceKind")
 		var source_ref := _required_text(raw, "sourceRef")
 		var curve_id := _required_text(raw, "curveId")
+		var reward_policy_id := _required_text(raw, "rewardProfileId")
 		var raw_experience: Variant = raw.get("experience", null)
 		var raw_curve_version: Variant = raw.get("curveVersion", null)
+		var raw_reward_profile_version: Variant = raw.get("rewardProfileVersion", null)
 		var required_values := {
 			"eventId": event_id,
 			"instanceId": instance_id,
 			"itemKind": item_kind,
 			"sourceKind": source_kind,
 			"sourceRef": source_ref,
-			"curveId": curve_id
+			"curveId": curve_id,
+			"rewardProfileId": reward_policy_id
 		}
 		for field_name in required_values:
 			var value := String(required_values[field_name])
@@ -69,7 +66,7 @@ static func prepare_settlement(
 		if event_ids.has(event_id):
 			return _failure("reward event IDs must be unique inside a settlement: " + event_id)
 		event_ids[event_id] = true
-		if not SOURCE_ITEM_KIND.has(source_kind) or String(SOURCE_ITEM_KIND[source_kind]) != item_kind:
+		if not SpaceProgressionRewardProfile.SOURCE_ITEM_KIND.has(source_kind) or String(SpaceProgressionRewardProfile.SOURCE_ITEM_KIND[source_kind]) != item_kind:
 			return _failure("reward source kind cannot award XP to this item kind: " + source_kind + "/" + item_kind)
 		if not SpaceOwnedProgressionInstance.ITEM_KINDS.has(item_kind):
 			return _failure("reward event item kind is unsupported: " + item_kind)
@@ -77,6 +74,13 @@ static func prepare_settlement(
 			return _failure("reward experience must be a positive, already-rounded integer")
 		if typeof(raw_curve_version) != TYPE_INT or int(raw_curve_version) <= 0:
 			return _failure("reward curve version must be a positive integer")
+		if typeof(raw_reward_profile_version) != TYPE_INT or int(raw_reward_profile_version) <= 0:
+			return _failure("reward profile version must be a positive integer")
+		if reward_profile_id.is_empty():
+			reward_profile_id = reward_policy_id
+			reward_profile_version = int(raw_reward_profile_version)
+		elif reward_profile_id != reward_policy_id or reward_profile_version != int(raw_reward_profile_version):
+			return _failure("one settlement cannot mix reward profile identities or versions")
 		normalized_awards.append({
 			"eventId": event_id,
 			"instanceId": instance_id,
@@ -85,7 +89,9 @@ static func prepare_settlement(
 			"sourceRef": source_ref,
 			"experience": int(raw_experience),
 			"curveId": curve_id,
-			"curveVersion": int(raw_curve_version)
+			"curveVersion": int(raw_curve_version),
+			"rewardProfileId": reward_profile_id,
+			"rewardProfileVersion": int(raw_reward_profile_version)
 		})
 
 	normalized_awards.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:

@@ -20,6 +20,8 @@ static func run() -> bool:
 		return false
 	if not _check("battle-run-state", SpaceBattleRunStateProbe.run()):
 		return false
+	if not _check("progression-reward-profile", SpaceProgressionRewardProfileProbe.run()):
+		return false
 	if not _check("progression-reward-settlement", SpaceProgressionRewardServiceProbe.run()):
 		return false
 	if not _check("battle-jar-supply-forecast", SpaceBattleJarSupplyForecastProbe.run()):

@@ -27,3 +27,5 @@
 - [2026-11-27 GameOver 输入故障与全程 UI 状态机](2026-11-27-gameover-input-and-application-flow.md)
 
 - [2026-11-27 GitHub 分支同步与成长奖励结算审查](2026-11-27-github-branch-sync-and-progression-reward-audit.md)
+
+- [2026-11-27 版本化成长奖励政策契约](2026-11-27-versioned-progression-reward-policy-contract.md)

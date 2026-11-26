@@ -262,7 +262,7 @@ Parser 三个成长属性要保持不同语义：
 
 ### 6.2 XP 如何产生：本阶段的玩法决定
 
-**实现状态**：已有精确版本成长曲线资产类型、曲线注册表、成长计算服务和 revision-checked 实例更新。新增的 `SpaceProgressionRewardService` 已提供事件来源类型校验、按 Owned Instance 汇总整数 XP、精确 Curve ID / Version 计算，以及 settlement + source event 双层 SHA-256 收据去重；`GameState.commit_space_progression_reward_settlement()` 先持久化 detached candidate，再发布新状态。XP 收据与 `reward_acquisition_ids` 分开保存，并通过 schema-v3 兼容迁移与确定性探针验证。当前演示精密解析器的成长属性仍由 Demo Bootstrap 直接写入，不是正式奖励循环。
+**实现状态**：已有精确版本成长曲线资产类型、曲线注册表、成长计算服务和 revision-checked 实例更新。`SpaceProgressionRewardProfile` 已建立版本化内容契约：它把显式配置的 source kind 映射为兼容的 Owned Instance kind、最终整数 XP 和 exact Curve ID / Version，并将 `rewardProfileId@rewardProfileVersion` 写入每条 award。未知来源、缺失规则、错误归属、重复事件或混用政策版本均 fail closed。`SpaceProgressionRewardService` 继续负责按 Owned Instance 汇总、精确曲线计算和 settlement + source event 双层 SHA-256 收据去重；`GameState.commit_space_progression_reward_settlement()` 先持久化 detached candidate，再发布新状态。XP 收据与 `reward_acquisition_ids` 分开保存，并通过 schema-v3 兼容迁移与确定性探针验证。**当前尚无正式生产 Reward Profile / Curve Catalog 资产，也尚未将真实战斗事实接入该结算入口**；探针数值仅是合成契约数据。
 
 建议采用以下奖励原则，待正式曲线和奖励表数据化：
 
@@ -288,7 +288,7 @@ Parser 三个成长属性要保持不同语义：
 
 不计入成长的情况：敌人掉落但玩家没有拾取的原石、解析器尚未处理的队列体积、只存在于 Solver 预测中的操作、被拒绝或失败的转换、被动订单仅被排入调度、重复导入或重复投递的同一事件。MATCH 只改变订单生命周期 Mark，不应伪装成资源加工量；是否给少量参与经验应由独立的生命周期奖励配置决定，而不是和化学操作使用相同权重。
 
-每种事件的 XP 系数属于版本化 Space Reward Profile。结算时先按事件 ID 去重，再按实际来源实例汇总；在整场战斗结算时统一处理取整，避免每条很小的进度事件分别向下取整而永久丢失经验。经验系数、事件权重和每战上限仍然是待平衡数据，不在本规范中设定虚构数值。
+每种事件的 XP 系数属于版本化 Space Reward Profile。当前 Reward Profile 契约接收已提交的事实 envelope，并输出最终正整数 XP；单位换算、分段累计与取整规则必须由后续版本化内容策略明确，不能在通用服务里隐式决定。结算时先按事件 ID 去重，再按实际来源实例汇总。经验系数、事件权重、单位换算和每战上限仍然是待平衡数据，不在本规范中设定虚构数值。
 
 ### 6.3 XP 防重复与曲线应用
 
@@ -302,7 +302,7 @@ Parser 三个成长属性要保持不同语义：
 6. Progression Aggregate 以旧 Progression Revision 为基准提交更新；过期 Revision 拒绝覆盖。
 7. 保存玩家成长状态与已处理的 Reward ID；下场战斗冻结更新后的实例快照。
 
-`reward_acquisition_ids` 仍只表示 Owned Instance 获取回执；XP 现在使用独立的 `progression_reward_receipts`，同时记录整场 Settlement ID 和每个实际 Source Event ID。相同 Settlement ID + 相同规范化载荷会成为无副作用重复结果；同一 ID 对应不同载荷、或事件被另一场 Settlement 再次认领，则 fail closed。XP 系数和小数进度如何统一取整仍由版本化 Reward Profile 决定；通用结算服务只接收最终正整数 XP，不能把未达一只 Jar 的加工劳动无声丢掉或重复计算。
+`reward_acquisition_ids` 仍只表示 Owned Instance 获取回执；XP 使用独立的 `progression_reward_receipts`，同时记录整场 Settlement ID 和每个实际 Source Event ID。Award fingerprint 还绑定 Reward Profile ID / Version，避免相同 XP 数字来自不同策略版本时失去来源审计。相同 Settlement ID + 相同规范化载荷会成为无副作用重复结果；同一 ID 对应不同载荷、或事件被另一场 Settlement 再次认领，则 fail closed。XP 系数和小数进度如何统一取整仍由版本化 Reward Profile 决定；通用结算服务只接收最终正整数 XP，不能把未达一只 Jar 的加工劳动无声丢掉或重复计算。
 
 ## 7. 生产、技能与资源经济的平衡原则
 
