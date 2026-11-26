@@ -6,16 +6,32 @@ extends Control
 @onready var retry_button: Button = $VBoxContainer/RetryButton
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	GameFlow.enter_screen(GameFlow.Screen.GAME_OVER)
-	final_score.text="Final Score: %d"%GameState.score
-	hight_score.text="High Score: %d"%GameState.high_score
+	final_score.text = "Final Score: %d" % GameState.score
+	hight_score.text = "High Score: %d" % GameState.high_score
+	retry_button.custom_minimum_size = Vector2(320, 48)
+	menu_button.custom_minimum_size = Vector2(320, 48)
+	retry_button.focus_mode = Control.FOCUS_ALL
+	menu_button.focus_mode = Control.FOCUS_ALL
 	retry_button.pressed.connect(_on_retry)
 	menu_button.pressed.connect(_on_menu)
 	retry_button.grab_focus()
 
-func _on_retry()->void:
+func _on_retry() -> void:
+	retry_button.disabled = true
+	menu_button.disabled = true
 	GameState.reset_run()
-	GameFlow.request_scene_transition(GameFlow.Screen.HANGAR, "res://scenes/industrial/SpaceHangar.tscn")
+	if not GameFlow.request_scene_transition(GameFlow.Screen.HANGAR, "res://scenes/industrial/SpaceHangar.tscn"):
+		retry_button.disabled = false
+		menu_button.disabled = false
+		push_error("[GameOver] Failed to return to Hangar")
 
-func _on_menu()->void:
-	GameFlow.request_scene_transition(GameFlow.Screen.MENU, "res://scenes/menus/MainMenu.tscn")
+func _on_menu() -> void:
+	retry_button.disabled = true
+	menu_button.disabled = true
+	if not GameFlow.request_scene_transition(GameFlow.Screen.MENU, "res://scenes/menus/MainMenu.tscn"):
+		retry_button.disabled = false
+		menu_button.disabled = false
+		push_error("[GameOver] Failed to return to Main Menu")
