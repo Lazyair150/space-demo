@@ -58,6 +58,6 @@ Reviewed Godot official docs for Control input propagation and pause process mod
 - GameOver action guards and runtime hit-test geometry diagnostic: `3111452ab6e9a667cd1618b0d8046f3dcca1f4a6`, `6d0508eef2499cbc938abb14cd86185628673f68`.
 - Application flow architecture: `1eb5896730564d0be5fe5921f895903943ee0df4`; external references: `8a08c49fa575bc88f62c320e34be26f5c3feeaa4`.
 - Development guide/work-record index synchronization: `b5860bc3f0c83e4c76439a7636a8da6d6e8654e3`, `9c2f51512c206217f35934f08367fe0c01979696`.
-- Exact Space PR #2 head after this batch: `8a08c49fa575bc88f62c320e34be26f5c3feeaa4`.
+- Exact Space PR #2 head before this final work-record update: `8a08c49fa575bc88f62c320e34be26f5c3feeaa4`; this record update produces the next head.
 
 The commits above are code/document changes, not test evidence. Exact-head CI, Godot editor import, cross-repository verification and desktop pointer tests remain pending.
