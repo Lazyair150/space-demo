@@ -52,9 +52,13 @@ run_godot_checked() {
   shift 2
   local log_file="${RUNNER_TEMP:-/tmp}/godot-${log_name}.log"
   local command_status=0
+  local verbose_args=()
+  if [[ "${GODOT_VERBOSE:-0}" == "1" && ( "$log_name" == "space-domain-contracts" || "$log_name" == "parser-ingress" ) ]]; then
+    verbose_args+=(--verbose)
+  fi
 
   set +e
-  "$GODOT_BIN" "$@" 2>&1 | tee "$log_file"
+  "$GODOT_BIN" "${verbose_args[@]}" "$@" 2>&1 | tee "$log_file"
   command_status=${PIPESTATUS[0]}
   set -e
 
@@ -63,7 +67,7 @@ run_godot_checked() {
     return "$command_status"
   fi
 
-  if grep -Eq 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script|Failed to create an autoload|Failed to instantiate|Cannot instantiate C# script|Assertion failed' "$log_file"; then
+  if grep -Eq 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script|Failed to create an autoload|Failed to instantiate|Cannot instantiate C# script|Assertion failed|Parent node is busy adding/removing children' "$log_file"; then
     echo "Godot reported script, class, or assertion errors despite a zero exit code; log: $log_file" >&2
     return 1
   fi
