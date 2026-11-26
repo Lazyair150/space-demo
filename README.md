@@ -6,7 +6,7 @@ This repository contains the Space game client and the Godot presentation/runtim
 
 The Hangar uses the demo board and catalog resources under `data/hangar/`. The player can select the ship, parser, workshop instances/roles, optional devices and skills, choose free combat or an unlocked finite stage, then launch the battle. The Jar simulation is hosted by `WorldV2ShipHost`; Jar rules and execution remain owned by the sibling `jar-system-dotnet` repository.
 
-> **Prototype status:** this is a locally runnable gameplay prototype, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. The cross-repository workflow pins Core PR #63 head `391f318a24fde724a66054e771d0590f0e20c231`; each successful run validates the exact Space and Core commits shown on that run. Headless probes cover the Hangar ownership/board contracts and battle pause/fault navigation. GUI layout, actual input interaction, and platform-specific behavior still require local Godot acceptance.
+> **Prototype status:** this is a locally runnable gameplay prototype, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. The cross-repository workflow pins Core PR #63 head `ba84182eba7555b3456d66ffceb58845d97a1bea`; each successful run validates the exact Space and Core commits shown on that run. Headless probes cover the Hangar ownership/board contracts and battle pause/fault navigation. GUI layout, actual input interaction, and platform-specific behavior still require local Godot acceptance.
 
 ## Requirements
 
@@ -36,7 +36,7 @@ git clone --branch world-v2/phase-4.10b-hangar-ui https://github.com/Lazyair150/
 git clone --branch architecture/core-liquid-identity-consolidation https://github.com/Lazyair150/jar-system-dotnet.git
 
 cd jar-system-dotnet
-git checkout 391f318a24fde724a66054e771d0590f0e20c231
+git checkout ba84182eba7555b3456d66ffceb58845d97a1bea
 cd ../space-demo
 ```
 
@@ -101,12 +101,22 @@ From `space-demo`:
 
 ```sh
 CORE_REPO_DIR="../jar-system-dotnet" \
-CORE_EXPECTED_SHA="391f318a24fde724a66054e771d0590f0e20c231" \
+CORE_EXPECTED_SHA="ba84182eba7555b3456d66ffceb58845d97a1bea" \
 GODOT_BIN="godot" \
 bash scripts/ci/verify-world-v2-cross-repo.sh
 ```
 
 PowerShell users can run the individual build/import commands above; the verification harness is Bash-based and requires Git Bash or WSL on Windows.
+
+## Project development and module architecture
+
+- [Project Development Guide](docs/PROJECT_DEVELOPMENT_GUIDE.md): mandatory engineering workflow, cross-repository sync, evidence and documentation rules.
+- [System Architecture and Module Map](docs/architecture/00-system-architecture-and-module-map.md): module ownership and dependency direction.
+- [Hangar / Board Assignment pipeline](docs/architecture/13-hangar-board-assignment-and-loadout-pipeline.md): frozen Board and cross-language schema/fingerprint contract.
+- [World V2 Host / Runtime lifecycle](docs/architecture/14-world-v2-host-runtime-and-failure-boundary.md): startup, time authority, pause, disposal and fault handling.
+- [Production / Parser / resource supply](docs/architecture/15-production-parser-and-resource-supply.md).
+- [Order / Rule Profile / effect dispatch](docs/architecture/16-order-rule-profile-and-effect-dispatch.md).
+- [Progression / Stage / persistence](docs/architecture/17-progression-stage-and-persistence.md).
 
 ## Engineering standards
 
@@ -121,6 +131,6 @@ The cross-language coding, architecture, lifecycle, protocol, error-handling, an
 
 ## Current validation boundary
 
-- Core integration is pinned to `391f318a24fde724a66054e771d0590f0e20c231`.
+- Core integration is pinned to `ba84182eba7555b3456d66ffceb58845d97a1bea`.
 - Consult the Actions run attached to the exact Space commit when checking current CI status; an earlier green commit does not validate later changes.
 - Headless CI does not replace local GUI acceptance on the target OS/GPU.
