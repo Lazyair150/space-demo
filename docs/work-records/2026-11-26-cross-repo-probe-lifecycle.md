@@ -428,3 +428,101 @@ ObjectDB / Resource / StringName 总数也会因探针在中途退出而受到�
 6. 通过 Domain 后继续完整脚本所有后续探针，最终以退出码 0 和 `CROSS-REPO-WORLD-V2-OK` 为联合验证完成条件。
 
 当前代码修正提交：`4c718904204aa9b0add63a85a5998de7cd17ed96`。该提交尚无新的本地运行结果。
+
+
+## 十一、2026-11-26 完整跨仓库验证通过
+
+### 实际运行结果
+
+用户再次运行 `scripts/ci/verify-world-v2-cross-repo.sh`，Core 固定为：
+
+`391f318a24fde724a66054e771d0590f0e20c231`
+
+本次完整输出到达：
+
+```
+[SpaceHangarContractProbe] passed
+[SpaceDomainContractProbe] all-domain-contracts=passed
+[SpaceOreParserJarIngressProbe] passed parsed=1 duplicate_receipt_retained=1 duplicate_capacity_outcome=exact_per_shape shared_clock=1 workshop_bypass=0
+[WorldV2LifecycleProbe] lifecycle probe passed initialization_faults=1 recovery=true duplicate_rejected=true disposed=true post_exit_rejected=true
+[WorldV2FaultProbe] fault boundary passed ...
+[WorldV2DisposedCommandsProbe] passed
+[WorldV2FaultedCommandsProbe] passed
+[WorldV2SnapshotIsolationProbe] passed
+[SpaceBattlePauseControllerProbe] passed terminal-menu-transition=true
+CROSS-REPO-WORLD-V2-OK core=391f318a24fde724a66054e771d0590f0e20c231
+```
+
+分阶段证据：
+
+- [1/4] Core World V2 Bridge 构建成功。
+- [2/4] Space .NET 构建成功。
+- [3/4] Godot 4.7.1 Editor import / C# solution build 完成；HUD feedback `21 checks, 0 failures`；Hangar / Progression / Domain contracts 完整通过。
+- 默认 Owned Hangar 装配通过；旧存档缺失 Parser 修复幂等；schema-v2 的已知液体极性迁移通过；未知旧液体映射 fail-closed；Roguelike Individual Library 的校验、确定性 offer、奖励获取、来源校验、恢复和 roundtrip 均通过。
+- Domain 子进程完成后进入 [4/4]，不再在 Hangar / Progression 阶段中断。
+- Parser/Core ingress 保留精确 duplicate receipt，且报告 `parsed=1`、`duplicate_receipt_retained=1`、`duplicate_capacity_outcome=exact_per_shape`。
+- Runtime、Lifecycle、Fault、Disposed Commands、Faulted Commands、Snapshot Isolation 和 Battle Navigation 全部出现对应成功标记。
+
+### Board Assignment 类型错误与 Node 释放结果
+
+本轮修复 `boardAssignments` 的类型为 Dictionary 后：
+
+- `SpaceDemoProgressionBootstrapProbe` 成功生成完整默认 Owned Loadout。
+- 紧接着输出 `default-owned-hangar-assembly=passed`、`legacy-loadout-polarity-migration=passed` 和 `unknown-legacy-liquid-mapping=fail-closed`。
+- Helper 正常走到 `controller = null` 与 `preparation.free()`。
+- 后续 Roguelike Individual Library 探针完成，`SpaceHangarContractProbe` 输出通过。
+
+这确认上节中“在类型错误处中断导致最后一个 Preparation Node 未释放”的调用链已被修复。
+
+### Verbose 退出诊断
+
+本次对 `space-domain-contracts` 和 `parser-ingress` 使用 `GODOT_VERBOSE=1`。两进程均正常输出：
+
+```
+Unloading: Disposing tracked instances...
+Unloading: Finished disposing tracked instances.
+XR: Clearing primary interface
+XR: Removed interface "Native mobile"
+```
+
+这两段退出之间及之后没有出现此前的：
+
+- `Leaked instance: Node:`
+- `Cannot get path of node as it is not in a scene tree`
+- `ObjectDB instances were leaked at exit`
+- `resources still in use at exit`
+- `unclaimed string names at exit` / `Orphan StringName`
+
+所以此前不完整退出中的 56 ObjectDB / 42 Resource / 263 StringName 计数不再出现；单个 detached Node 的归因也得到修复结果支持。这里的结论只覆盖上述两个启用 verbose 的 Godot 子进程，不扩大为所有可能运行场景的内存审计结论。
+
+### 日志中的 ERROR 级别输出如何解释
+
+本次日志仍有若干 Godot `ERROR:`，但其后续对应测试 marker 全部通过，且 harness 最终继续执行。这些是主动构造的负向路径，例如：
+
+- 篡改 Board Assignment fingerprint / role / revision / exact Definition；
+- 缺失或不安全的旧 Loadout schema migration；
+- 无效 workshop bundle、field-only owned assembly；
+- 缺少 Core order template、主形状不满足 strict majority；
+- 重复或无效 Parser definition；
+- 不完整 Battle checkpoint；
+- Lifecycle 的非法 JSON、Fault 的溢出注入；
+- Pause Navigation 的 missing-main-menu rollback。
+
+不能简单要求 Godot 日志完全没有 `ERROR:`，否则会把重要的 fail-closed / fault-boundary 测试误删。当前 harness 以脚本错误、解析/编译错误、SceneTree 生命周期错误、明确断言、退出状态和必需完成 marker 进行判定；本次最终 marker 已输出。
+
+### 当前验证边界
+
+- 本次用户实际日志到达最终 `CROSS-REPO-WORLD-V2-OK`，证明脚本执行到了全部成功门禁。
+- 日志没有单独打印 `$LASTEXITCODE` 或 `git rev-parse HEAD`；因此记录 final marker 与完成流程证据，不伪造额外 shell 捕获值。
+- PR #2 当前仍为 Draft / Open / Unmerged，PR 头 SHA 为 `70370118f51a0042ec99889d6543ff722e72a651`。用户本次运行前按上一轮指令拉取该头，但本次输出本身未打印 HEAD，因此将该 SHA 作为当前 PR HEAD，而非直接声称是日志中捕获的本地 HEAD。
+- GitHub 对该 SHA 当前没有附着的 Status checks 或 PR Workflow runs；这里的通过依据是用户提供的真实本地 Godot + .NET 完整运行，不是 CI。
+- Core 精确 SHA 仍是 `391f318a24fde724a66054e771d0590f0e20c231`；没有重复执行已经通过的 1038 Core xUnit。
+
+### 下一阶段
+
+跨仓库基础门禁现已通过。下一阶段不再反复跑相同脚本寻求重复证据，转入：
+
+1. 桌面 GUI 实际验收：主菜单 → 默认机库搭配 → 战斗 → 暂停/恢复 → 返回主菜单 → 再次进入战斗。
+2. 核验默认机库 UI 的实际选中态与 Board Assignment 槽位展示，不只依赖 headless snapshot。
+3. 检查供给 HUD 与 Parser/Core 对账详情是否与实际战斗运行中的 Parser 事实、Warehouse / Master / Slave 独立库存一致。
+4. 完成后再处理现存的逐 Jar 来源/转移谱系设计、Parser / Core 事件驱动成长奖励接入；正式奖励曲线仍由版本化数据定义，不写死在运行服务中。
