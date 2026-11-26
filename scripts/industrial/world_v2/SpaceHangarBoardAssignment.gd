@@ -74,6 +74,9 @@ static func validate(board: SpaceHangarBoardDefinition, assignments: Dictionary,
 			errors.append("required Board Slot is empty: " + slot_id)
 	return errors
 
+## Emits protocol schema 2: assignment entries freeze their exact Board area hierarchy.
+## Keep SlotId sorting and JSON field order stable; Core hashes this exact payload.
+## Any schema change must update the Core DTO, canonical fingerprint writer and golden vector.
 static func build_snapshot(board: SpaceHangarBoardDefinition, assignments: Dictionary) -> Dictionary:
 	if board == null or not board.get_validation_errors().is_empty():
 		return {}
