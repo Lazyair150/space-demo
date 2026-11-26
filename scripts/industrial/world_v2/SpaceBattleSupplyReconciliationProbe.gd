@@ -1,4 +1,5 @@
 extends RefCounted
+class_name SpaceBattleSupplyReconciliationProbe
 ## Synthetic contract checks for the read-only Parser/Core supply reconciliation.
 ## These fixtures test accounting semantics, not production balance values.
 

@@ -68,3 +68,9 @@ The documents distinguish the implemented policy/settlement contracts from the s
 3. Connect an authored exact-version Reward Profile / Curve Catalog to the Hangar bundle and battle settlement callback.
 4. Coordinate campaign clear and progression XP through an explicit recoverable outbox or single durable transaction; do not sequence two independent saves and call them atomic.
 5. Run the full Space/Core integration suite after the module batch, then desktop GUI acceptance.
+
+## Follow-up: first exact-pin integration log diagnosis
+
+The run triggered by the main-branch synchronization (`45871207456`) completed with failure. Its first fatal GDScript issue was not a supply-accounting failure: `SpaceDomainContractProbe` called `SpaceBattleSupplyReconciliationProbe.run()`, but that probe script had no `class_name SpaceBattleSupplyReconciliationProbe`, so the global class identifier was not registered. The expected negative-case `push_error` diagnostics from ownership/fingerprint rejection probes were not the harness failure; the harness specifically rejects script/parse/compile/SceneTree errors.
+
+The missing global class declaration is now added to the probe script. The progression Reward Profile batch was also committed while the exact-pin run was in progress; the next workflow run must validate both the class registration correction and the reward-policy code together.
