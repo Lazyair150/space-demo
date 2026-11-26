@@ -13,6 +13,14 @@ func ingest_energy_stone(pickup_id: String, stone_type: String, volume: float) -
     return _probe_parser.ingest_stone(pickup_id, stone_type, volume)
 
 func _ready() -> void:
+    var battle_scene := load("res://scenes/game/Game.tscn") as PackedScene
+    assert(battle_scene != null, "combat scene must load for supply HUD integration")
+    var battle_root := battle_scene.instantiate()
+    var supply_hud := battle_root.get_node_or_null("JarObserver")
+    assert(supply_hud != null and supply_hud.has_method("_render_supply_reconciliation"),
+        "combat HUD must expose the read-only Parser/Core supply observation")
+    battle_root.free()
+
     var parser_probe := SpaceOreParserRuntimeProbe.run()
     assert(bool(parser_probe.get("passed", false)), "Space ore parser unit probe must pass")
     var save_store_probe := SpaceBattleEffectStateStoreProbe.run()
