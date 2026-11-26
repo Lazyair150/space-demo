@@ -289,7 +289,7 @@ SpaceBattlePauseControllerProbe.gd:85
 
 设置 `GODOT_VERBOSE=1` 并重跑完整脚本。关键验收点：
 
-1. battle-navigation 输出 `passed terminal-menu-transition=true)，且不再有 `data.tree is null` / `SCRIPT ERROR`。
+1. battle-navigation 输出 `passed terminal-menu-transition=true`，且不再有 `data.tree is null` / `SCRIPT ERROR`。
 2. Domain contracts 与 Parser ingress 中 3 个无路径 Node、对应 3 条 `get_path` 错误消失。
 3. Buff 修正器绑定警告仍然消失，增强的 Buff/StatCalculator 状态、幂等及到期撤销断言通过。
 4. 继续记录 ObjectDB / Resource / StringName 数量与具体资源清单；只有证据充分时才关闭泄漏项。
