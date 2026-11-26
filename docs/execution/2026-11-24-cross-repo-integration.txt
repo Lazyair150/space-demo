@@ -279,3 +279,17 @@ The user confirmed that the requested cross-repository verification completed su
 - The user did not include the raw command output or final marker in the confirmation. This record therefore records the user's success confirmation, not independently inspected per-probe output.
 - Core xUnit was not rerun; no need to repeat its already-green 1040/1040 exact-source regression.
 - Next acceptance boundary is desktop GUI: default Hangar loadout, enter battle, pause/resume, return to menu, and enter battle again. Headless success is not a substitute for this manual GUI pass.
+
+
+2026-11-26 LIVE HANGAR FAILURE — CORE BOARD SCHEMA COMPATIBILITY
+
+User reproduced a real desktop Hangar build failure on Godot 4.7.1. The OptionButton is connected and the build callback reaches Game._begin_ship_world. Core rejects the frozen board with: boardRuleProfile assignment snapshot identity does not match its frozen Board.
+
+Root cause found in Core WorldV2BoardAssignmentSnapshotOptions.Validate: it required both the Assignment Snapshot and embedded Board Definition to use schema 1. Space currently emits Assignment Snapshot schema 1 containing Board Definition schema 2 (the latter includes production/decomposition sub-area hierarchy). The error text incorrectly made this version mismatch look like an identity/fingerprint mismatch.
+
+Core fix commits:
+- de95fe80012f0c7b9abb7b50c3de9f01e3d587cb — accept Board Definition schema 1 or 2; retain Assignment Snapshot schema 1 and all identity/fingerprint/slot hierarchy checks.
+- bc5e642020852b38f6e03a84b4585241da502e60 — add schema 2 frozen Board positive test.
+- 98e97c6930bcf795f73bf1ff4812ad19a54949a1 — work-record documentation only; current Core branch pin for integration.
+
+Validation is pending. User must update Core branch architecture/core-liquid-identity-consolidation to 98e97c6930bcf795f73bf1ff4812ad19a54949a1, run the Core test suite, then run the Space cross-repository script with CORE_EXPECTED_SHA set to that exact SHA. Do not mark desktop acceptance passed until the actual Hangar build enters battle.
