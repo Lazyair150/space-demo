@@ -8,8 +8,8 @@
   "jarFlowRatePerLogicalTime": 1.0,
   "liquidFlowRatePerLogicalTime": 1.0,
   "workshops": [
-    {"name": "主台", "baseMarks": ["圆罐", "方罐"], "additionalMarks": [], "ban": [], "maxJars": 10, "maxLiquids": 10},
-    {"name": "从台", "baseMarks": ["圆罐", "方罐"], "additionalMarks": [], "ban": [], "maxJars": 10, "maxLiquids": 10}
+    {"name": "主台", "ownedInstanceId": "sandbox.workshop.master", "baseMarks": ["圆罐", "方罐"], "additionalMarks": [], "ban": [], "maxJars": 10, "maxLiquids": 10},
+    {"name": "从台", "ownedInstanceId": "sandbox.workshop.slave", "baseMarks": ["圆罐", "方罐"], "additionalMarks": [], "ban": [], "maxJars": 10, "maxLiquids": 10}
   ],
   "masterWorkshopName": "主台",
   "slaveWorkshopName": "从台",

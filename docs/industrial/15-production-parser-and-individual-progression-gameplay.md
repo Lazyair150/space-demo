@@ -143,10 +143,11 @@ leftlfloor
 当前实现需要分开理解：
 
 - `SpaceSkillBuildContextEvaluator` 使用 Ship 的 `expectedStoneProgressPerSecondByShape`、Parser 的有效处理速率和 `progressPerJarByShape`，计算 Parser 转换能力。它不是从敌人实际击杀节奏推导 Stone Drop 速率。
-- `SpaceJarWorldResourceProfile` 会校验并冻结 Core `producers` 配置，但当前 `build_liquid_economy_resources()` 只投影液体库存、液体生产率和液库容量，不输出形状 Jar 生产率。
+- `SpaceJarWorldResourceProfile` 会校验并冻结 Core `producers` 配置，要求每个 Producer 有稳定唯一 `producerInstanceId`；`build_liquid_economy_resources()` 仍只投影液体库存、液体生产率和液库容量。
+- `SpaceBattleJarSupplyForecast` 单独合成初始 Warehouse、Core Producer 和 Space Parser 三种 Jar 来源，并按 Core/Parser 定点余数计算输出与 Warehouse → Master 流量上限。它使用指定 Encounter 的概率加权期望输入，是预算场景而非逐次掉落回放，也不模拟 Core 实际溢出和 Master Mark 选取。
 - `SpaceBattleEconomyEvaluator` 接收调用方提供的 `shapeJarOutputPerSecond`，而不是自己从 Core Producer 与 Parser 两条来源构建总量。
 
-因此生产级构筑预测还需要一个按来源分解的 Jar Supply Forecast：初始 Warehouse Jar、Core Time-based Producer、Space Parser 的有限输入期望产出分别列出，再合并成每形状总预算。Parser 输入预测应由版本化 Drop Profile 与 Encounter 的敌人击败/掉落节奏场景推导；Ship 的 expected stone progress 只作为当前平衡预测输入，除非已用真实掉落样本校准，不能再当成一份额外 Stone 供给。每个来源只能记一次。
+因此生产级构筑预测的剩余工作不是再造一个总产率字段，而是把版本化 Drop Profile 和有限 Stage 的敌人数量/时序映射为可审计的 Low / Baseline / High 场景，并在战斗中用实际 Pickup ID、Parser checkpoint 与 Core Warehouse receipt 逐步校正预估。Ship 的 `expectedStoneProgressPerSecondByShape` 目前仍是技能构筑平衡的预估输入，不是第二份原石来源；不能与 Encounter Drop 体积重复相加。
 
 ## 4. Jar 是离散资源个体，不是可折算的液体容器
 
@@ -360,7 +361,7 @@ Precision Parser 的 productionPercentage 是 90%，但它的 per-shape processi
 5. Ship Liquid Inventory 初始余额与 Core Liquid Producer 产出；
 6. 从仓库/自机账户流向 Master、再到 Slave 的有效流率和容量边界。
 
-当前的 `SpaceBattleEconomyEvaluator` 采用全装备技能共同 fulfillment fraction，是确定性的共享资源上界预测；但输入的供给率必须先由上面的来源合成器正确构造。未给出敌人击败频率或掉落场景时，Parser 供给应报告 Low / Baseline / High 等显式假设，不得拿单一 Ship 预估值伪装成真实掉落频率。
+当前 `SpaceBattleJarSupplyForecast` 已完成来源拆分与固定点预算投影；`SpaceBattleEconomyEvaluator` 仍采用全装备技能共同 fulfillment fraction。二者尚未接成自动的一键 Loadout → Encounter → Skill Economy 预测管线，也没有逐 Tick 模拟原石掉落、Core 仓库溢出、Jar Flow、Workshop 收货/消耗和 Passive 触发时序。未提供 Encounter 假设时不得拿 Ship 预估率伪装成真实掉落频率。
 
 ## 10. 玩家需要观察和理解的反馈
 

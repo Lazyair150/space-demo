@@ -35,6 +35,9 @@ func _ready() -> void:
     var supply_forecast_probe := SpaceBattleJarSupplyForecastProbe.run()
     assert(bool(supply_forecast_probe.get("passed", false)),
         "dual-source Jar supply forecast probe must pass: " + String(supply_forecast_probe.get("reason", "")))
+    print("[SpaceBattleJarSupplyForecastProbe] passed gross_warehouse=",
+        supply_forecast_probe.get("grossWarehouseJarSupplyByShape", {}),
+        " master_flow_upper_bound=", supply_forecast_probe.get("masterJarFlowQuotaUpperBound", 0))
 
     var drop_profile := SpaceEnergyStoneDropProfile.new()
     drop_profile.profile_id = &"probe-energy-stone-drop"
