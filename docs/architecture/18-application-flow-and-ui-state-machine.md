@@ -123,7 +123,7 @@ For each screen:
 - pause UI uses `PROCESS_MODE_ALWAYS` or `WHEN_PAUSED` intentionally; gameplay stays pausable;
 - focus loss pauses gameplay but focus regain never silently resumes it.
 
-The GameOver scene had a VBoxContainer only 40 px wide while its buttons were rendered outside that parent hit area. The parent width is now expanded to 420 px and the full-screen background ColorRect ignores mouse input. This is an interaction geometry defect, not a visual-theme defect.
+The MainMenu and GameOver scenes both had centered VBoxContainers only 40 px wide while their buttons rendered outside those parent hit areas. Both containers now have explicit 420+ px interactive bounds and their full-screen background ColorRects ignore mouse input. Hangar's decorative background also ignores pointer input. These are interaction geometry defects, not visual-theme defects.
 
 ## 6. Battle terminal states and checkpoints
 
