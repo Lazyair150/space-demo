@@ -142,3 +142,36 @@ CHECKPOINT — Parser Catalog probe fixture follows the two-role world contract 
 - SpaceBattleLoadoutSnapshot.validate_data now correctly requires exactly two selected workshop positions with distinct Master/Slave names for every materialized World V2 loadout. This is a current domain invariant, not an optional owned-instance-only constraint.
 - Updated the parser catalog probe fixture to provide a second distinct Slave workshop entry and slaveWorkshopName. No production validation was weakened.
 - Fix commit: 407932714935b33721c0a1198fc1072e7b5f6358. The next cross-repository run must continue from this new exact head; parser ingress and later probes remain unverified until it completes.
+
+
+CHECKPOINT — Progression bootstrap probe parse failure and correction (2026-11-26)
+
+User reran `scripts/ci/verify-world-v2-cross-repo.sh` with Core pinned to `391f318a24fde724a66054e771d0590f0e20c231` and `GODOT_VERBOSE=1`.
+
+Observed in this run:
+- Core World V2 Bridge build succeeded.
+- Space .NET build succeeded.
+- Godot 4.7.1 project initialization and Editor import/class registration completed.
+- HUD feedback probe passed: `21 checks, 0 failures`.
+- Domain contracts then failed during GDScript loading; no final `CROSS-REPO-WORLD-V2-OK` was emitted.
+
+First fatal script error:
+```
+Cannot infer the type of "valid_selection" variable because the value doesn't have a set type.
+SpaceDemoProgressionBootstrapProbe.gd:108
+```
+
+The subsequent `SpaceHangarCatalogOwnershipProbe.gd:707` error (`Nonexistent function 'run' in base 'GDScript'`) occurs at the call to `SpaceDemoProgressionBootstrapProbe.run()` after that target script has already failed parsing. It is tracked as a downstream failure until a successful parse confirms otherwise; the static class invocation was not replaced with a dynamic workaround.
+
+Correction commit: `6ab8d8118ae84589ef58fbed7da3c1b7e7e004c7`.
+- Read `skillSelections` and `boardAssignments` into explicitly typed `Array` locals.
+- Declare `valid_selection: bool` explicitly instead of asking GDScript to infer the type from a Variant-containing expression.
+- Preserve the owned loadout validation conditions and production contracts.
+
+The user log did not include the Space `git rev-parse HEAD`, so its exact tested Space commit is unknown. The correction above has not yet received a new local Godot run. The work record `docs/work-records/2026-11-26-cross-repo-probe-lifecycle.md` contains the full failure classification and next-run acceptance points.
+
+Next run:
+- Pull `world-v2/phase-4.10b-hangar-ui`.
+- Keep Core fixed at `391f318a24fde724a66054e771d0590f0e20c231`; do not repeat the already-passed 1038 Core xUnit tests.
+- Confirm the bootstrap probe parses, the static `.run()` call executes, Domain contracts completes, and the full harness reaches exit code 0 plus `CROSS-REPO-WORLD-V2-OK`.
+- Continue reporting verbose Node/Resource/StringName diagnostics separately; this run did not establish that the previously tracked ownership diagnostics are resolved.
