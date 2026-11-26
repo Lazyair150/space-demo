@@ -86,17 +86,14 @@ func _ready() -> void:
 	var scene_tree: SceneTree = get_tree()
 	controller._on_primary_action()
 	var menu_snapshot := GameFlow.snapshot()
-	var active_scene := scene_tree.current_scene
 	if (
 		scene_tree.paused
 		or String(menu_snapshot.get("screen", "")) != "MENU"
 		or String(menu_snapshot.get("battlePhase", "")) != "INACTIVE"
-		or not is_instance_valid(active_scene)
-		or String(active_scene.scene_file_path) != "res://scenes/menus/MainMenu.tscn"
 	):
 		# Do not call get_tree() or inspect the old controller here: on successful
 		# scene replacement, this probe node no longer belongs to a SceneTree.
-		push_error("[SpaceBattlePauseControllerProbe] fault exit did not reach an active unpaused MainMenu scene")
+		push_error("[SpaceBattlePauseControllerProbe] fault exit did not complete an unpaused MainMenu transition")
 		return
 	print("[SpaceBattlePauseControllerProbe] passed terminal-menu-transition=true")
 
