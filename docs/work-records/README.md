@@ -22,3 +22,5 @@
 - Core 架构审查源文档位于 Jar Core 仓库 `docs/architecture/2026-11-core-multi-angle-audit.md`。
 
 - [2026-11-27 战斗暂停入口与检查点拒绝诊断](2026-11-27-battle-pause-and-checkpoint-rejection.md)
+
+- [2026-11-27 GameOver 输入故障与全程 UI 状态机](2026-11-27-gameover-input-and-application-flow.md)
