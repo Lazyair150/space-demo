@@ -22,6 +22,7 @@ var _passive_order_slots: HFlowContainer
 var _panel: PanelContainer
 var _resource_jars: HFlowContainer
 var _resource_liquids: HBoxContainer
+var _supply_status: Label
 var _master_box: VBoxContainer
 var _slave_box: VBoxContainer
 var _demands_box: VBoxContainer
@@ -152,6 +153,12 @@ func _build() -> void:
 	_resource_liquids = UiKit.hbox(8)
 	column.add_child(_resource_liquids)
 
+	column.add_child(UiKit.title("原石解析 / Core 导入 / 当前库存"))
+	_supply_status = UiKit.label("等待解析器事实", UiKit.FONT_SMALL, UiKit.MUTED)
+	_supply_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_supply_status.custom_minimum_size = Vector2(0, 54)
+	column.add_child(_supply_status)
+
 	column.add_child(UiKit.title("工作台"))
 	_master_box = UiKit.vbox(3)
 	column.add_child(_master_box)
@@ -184,16 +191,21 @@ func _refresh_snapshot() -> void:
 		_set_unavailable("Jar 世界未启动")
 		return
 	var order_presentation: Dictionary = {}
+	var supply_reconciliation: Dictionary = {}
 	var game := get_node_or_null("/root/Game")
 	if game != null and game.has_method("get_order_presentation_metadata"):
 		var raw_presentation: Variant = game.call("get_order_presentation_metadata")
 		if raw_presentation is Dictionary:
 			order_presentation = raw_presentation
+	if game != null and game.has_method("get_supply_reconciliation_snapshot"):
+		var raw_supply: Variant = game.call("get_supply_reconciliation_snapshot")
+		if raw_supply is Dictionary:
+			supply_reconciliation = raw_supply
 	_status.text = "世界时间 %d ms  ·  逻辑时间 %d ms" % [int(snapshot.get("worldTimeMilli", 0)), int(snapshot.get("logicalTimeMilli", 0))]
 	var visual_snapshot: Dictionary = snapshot.duplicate(true)
 	visual_snapshot.erase("worldTimeMilli")
 	visual_snapshot.erase("logicalTimeMilli")
-	var signature := JSON.stringify({"snapshot": visual_snapshot, "orderPresentation": order_presentation})
+	var signature := JSON.stringify({"snapshot": visual_snapshot, "orderPresentation": order_presentation, "supplyReconciliation": supply_reconciliation})
 	if signature == _last_signature:
 		return
 	_emit_snapshot_feedback(snapshot)
@@ -211,6 +223,7 @@ func _refresh_snapshot() -> void:
 	_strip_panel.tooltip_text = _summary_base_text
 	_render_resource_jars(jars)
 	_render_resource_liquids(liquids, liquid_capacity)
+	_render_supply_reconciliation(supply_reconciliation)
 	_render_workshop(_master_box, "主台", master)
 	_render_workshop(_slave_box, "从台", slave)
 	_render_order_skill_hud(demands, snapshot.get("activeSessions", []), order_presentation)
@@ -278,6 +291,39 @@ func _workshop_hud_summary(raw_workshop: Variant) -> String:
 	var jar_count: int = jars.size() if jars is Array else 0
 	return "%d罐/%d液" % [jar_count, _dictionary_total(liquids)]
 
+func _render_supply_reconciliation(raw: Dictionary) -> void:
+	if _supply_status == null:
+		return
+	if not bool(raw.get("success", false)):
+		_supply_status.text = "供给观察暂不可用：" + String(raw.get("reason", "解析器或 Core 快照缺失"))
+		return
+	var rows: Dictionary = raw.get("shapeRows", {})
+	var shapes: Array = rows.keys()
+	shapes.sort()
+	var lines: Array[String] = []
+	for shape_value in shapes:
+		var shape := String(shape_value)
+		var row: Dictionary = rows[shape]
+		lines.append("%s：解析 %d · 待导入 %d · 已确认 %d · 精确入库 %d / 丢弃 %d · 当前仓库 %d / 主台 %d / 从台 %d" % [
+			shape,
+			int(row.get("parserCompletedJarCount", 0)),
+			int(row.get("parserPendingCoreImportJarCount", 0)),
+			int(row.get("parserAcknowledgedCoreImportJarCount", 0)),
+			int(row.get("parserExactCoreStoredJarCount", 0)),
+			int(row.get("parserExactCoreDiscardedJarCount", 0)),
+			int(row.get("coreWarehouseCurrentJarCount", 0)),
+			int(row.get("masterWorkshopCurrentJarCount", 0)),
+			int(row.get("slaveWorkshopCurrentJarCount", 0))
+		])
+	if not bool(raw.get("parserReceiptHistoryComplete", false)):
+		lines.append("历史导入回执不完整：部分旧批次结果未知")
+	if not bool(raw.get("perShapeCoreOutcomeHistoryComplete", false)):
+		lines.append("逐形状入库/丢弃历史不完整：不补造缺失归属")
+	if not bool(raw.get("sourceAttributionAvailable", false)):
+		lines.append("注意：当前账户余额与历史 Parser 入库量分开显示；没有逐罐来源关联")
+	_supply_status.text = "\n".join(lines) if not lines.is_empty() else "暂无已记录的原石解析产出"
+
+
 func _set_unavailable(message: String) -> void:
 	_last_signature = ""
 	_previous_snapshot.clear()
@@ -293,6 +339,8 @@ func _set_unavailable(message: String) -> void:
 	_active_order_slots.add_child(UiKit.label(message, UiKit.FONT_SMALL, UiKit.MUTED))
 	_passive_order_slots.add_child(UiKit.label(message, UiKit.FONT_SMALL, UiKit.MUTED))
 	_status.text = message
+	if _supply_status != null:
+		_supply_status.text = message
 	UiKit.clear_children(_resource_jars)
 	UiKit.clear_children(_resource_liquids)
 	UiKit.clear_children(_master_box)
