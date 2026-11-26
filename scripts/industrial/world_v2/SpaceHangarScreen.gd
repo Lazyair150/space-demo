@@ -206,6 +206,7 @@ func _build_interface() -> void:
 	footer.add_theme_constant_override("separation", 12)
 	root.add_child(footer)
 	var menu_button := Button.new()
+	menu_button.name = "MainMenuButton"
 	menu_button.text = "返回主菜单"
 	menu_button.focus_mode = Control.FOCUS_ALL
 	footer.add_child(menu_button)
