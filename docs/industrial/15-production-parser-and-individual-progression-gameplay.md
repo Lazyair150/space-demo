@@ -369,7 +369,7 @@ Precision Parser 的 productionPercentage 是 90%，但它的 per-shape processi
 
 ### 9.1 Parser → Core 实际导入回执
 
-Parser Runtime checkpoint schema 5 除了已接受 Pickup、队列、分形状进度、累计 Jar 和 pending outbox，还会保存每批 Core Import Receipt。回执确认与 outbox 删除属于同一个 Parser 状态变更；结构校验失败时批次仍保持 pending。Core 的持久回执现在能在 duplicate replay 中重放首次逐 shape requested/stored/discarded 结果，Parser 将其记录为 `duplicate_exact`，校验并保留逐形状 requested/stored/discarded maps；旧 Core duplicate 0/0/0 仍以 `duplicate_confirmation_only` 明确标记未知。只读 observation snapshot 暴露接受/处理体积、完成 Jar、pending 数量、已确认请求数、精确存储/丢弃汇总及逐形状 maps、精确重复批次与未知历史结果；旧 receipt v1 的聚合数字不会被人为分摊到形状。
+Parser Runtime checkpoint schema 5 除了已接受 Pickup、队列、分形状进度、累计 Jar 和 pending outbox，还会保存每批 Core Import Receipt。回执确认与 outbox 删除属于同一个 Parser 状态变更；结构校验失败时批次仍保持 pending。Core 的持久回执现在能在 duplicate replay 中重放首次逐 shape requested/stored/discarded 结果，Parser 将其记录为 `duplicate_exact`，校验并保留逐形状 requested/stored/discarded maps；旧 Core duplicate 0/0/0 仍以 `duplicate_confirmation_only` 明确标记未知；旧 receipt v1 的聚合数字不会被分摊到各个 shape，`perShapeCoreOutcomeHistoryComplete` 会显式标记不完整。只读 observation snapshot 暴露接受/处理体积、完成 Jar、pending 数量、已确认请求数、精确存储/丢弃汇总及逐形状 maps、精确重复批次与未知历史结果；旧 receipt v1 的聚合数字不会被人为分摊到形状。
 
 旧 Parser schema 2/3 没有完整的 Core 导入回执历史；schema 4 已有 receipt schema 1，但其 duplicate 结果可能未知。它们仍可迁移，不能假装补齐旧回执；schema 4 维持原有 history-complete 标记，只有新建 Parser 或能够证明完整记录的 schema 5 状态才可以声明完整。
 

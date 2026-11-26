@@ -5,7 +5,7 @@
 - 仓库：`Lazyair150/space-demo`
 - 分支：`world-v2/phase-4.10b-hangar-ui`
 - 源 HEAD：`0b800dad7c572b508aee10901bc06f81fcdd9acb`
-- Core 精确源：`7e9f2cc8cf7feb492f1aa656bf7ac19cd8737f2d`
+- Core 精确源：`da57eeecece87b6e2af7548f86b748cc24f2a559`
 - 基线自动化：Space PR #2 run `45787796492` 对应 `0b800dad7c572b508aee10901bc06f81fcdd9acb`，SUCCESS。
 - 本轮不重复执行该基线上的供给/Parser 测试。
 
@@ -41,12 +41,18 @@
 2. 用对账视图驱动生产可见性 HUD 和战后结算事实采集，不把预估供给当成实际结算。
 3. 在事实对账稳定后，再接入基于已确认事件的 XP Reward Profile；不提前制造生产奖励数值。
 
+## 本轮 Space 分支最终落点
+
+- 当前目标分支 HEAD：`3aba7b180c3f597d82578aef504cd5b10760fe5c`。
+- 最新 Core 依赖：`da57eeecece87b6e2af7548f86b748cc24f2a559`。
+- PR #2 维持 Open/Draft；本轮不等待 CI，测试状态以未运行明确记录。
+
 
 ## 2026-11-26 Core 精确回执接入（过程追加）
 
 ### 实施依据
 
-Core 分支新增提交 `0faffd14e2660b94d2c08ef0c9cbb06c0cbdcb2e`、`3cd18335134e736740f11d4c0d9e3c5187e94d70` 与 `7e9f2cc8cf7feb492f1aa656bf7ac19cd8737f2d`，在 ResourceLedger 持久保存每个外部导入批次的请求/入库/丢弃逐形状数量、payload 指纹，并纳入 schema 11 检查点；导入 DTO 同时返回首次逐形状入库/丢弃 maps。Space 不读取事件日志推断历史结果。
+Core 分支新增提交 `0faffd14e2660b94d2c08ef0c9cbb06c0cbdcb2e`、`3cd18335134e736740f11d4c0d9e3c5187e94d70`、`7e9f2cc8cf7feb492f1aa656bf7ac19cd8737f2d`、`55ff24bed2fb19e93f3e93b6a4690a8c07573c5d` 与 `da57eeecece87b6e2af7548f86b748cc24f2a559`，在 ResourceLedger 持久保存每个外部导入批次的请求/入库/丢弃逐形状数量、payload 指纹，并纳入 schema 11 检查点；导入 DTO 同时返回首次逐形状入库/丢弃 maps。Space 不读取事件日志推断历史结果。
 
 ### Space 侧成组修改
 
@@ -59,4 +65,8 @@ Core 分支新增提交 `0faffd14e2660b94d2c08ef0c9cbb06c0cbdcb2e`、`3cd1833513
 
 ### 验证状态
 
-本轮所有相关文件按一个 Core + 一个 Space 提交成组推进；当前仍以代码和过程记录为依据。Core .NET build/xUnit 与 Godot 4.7.1 .NET import/Headless SceneTree Probe 需在最后集中执行，未执行前不标记通过。
+- Core 分支最终提交：`da57eeecece87b6e2af7548f86b748cc24f2a559`。
+- Space 分支本轮成组提交：`ab0a813b17f77f8464bee4ac5ea1cd65c7f3ee07`、`8c56c6efbd56d16ae19249fdeced34a958d3ce10`、`3aba7b180c3f597d82578aef504cd5b10760fe5c`。
+- 当前开发工作站没有挂载两个仓库的本地工作树，也未检测到 `dotnet` / Godot 可执行文件；因此没有实际运行 xUnit、Godot .NET 编译、Headless Probe 或 GUI 试玩。
+- 已对两仓关键 DTO、字段映射、schema、restore 分支、回执 map conservation、旧 schema 兼容和测试用例做源码静态核对。此核对不等同于运行通过。
+- 本轮不等待 GitHub Actions / CL，也不以它们作为开发节奏的阻塞条件。
