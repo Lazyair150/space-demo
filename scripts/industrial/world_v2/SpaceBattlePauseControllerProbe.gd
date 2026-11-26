@@ -63,6 +63,7 @@ func _ready() -> void:
 		return
 	# A rejected scene path must restore the complete fault and pause state.
 	get_tree().paused = true
+	print("[SpaceBattlePauseControllerProbe] testing expected missing-scene rollback")
 	if GameFlow.return_to_menu("res://scenes/menus/__missing_main_menu_probe__.tscn"):
 		_fail_probe(controller, "missing main-menu scene must be rejected")
 		return
