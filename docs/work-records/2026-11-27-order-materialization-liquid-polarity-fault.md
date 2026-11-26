@@ -51,3 +51,12 @@ The cross-repository script now requires both markers. This prevents the expecte
 - Pause/resume → return Main Menu → re-enter battle: pending.
 
 Do not close P0 until the exact Core run, Space integration run, and desktop GUI path are all recorded.
+
+
+## Repository pointers after documentation/probe synchronization
+
+- Space PR #2 head: `d75b4ae68b30e6b045673e059a87cf299ab571cf`.
+- Core PR #63 head: `712c4b834d8320c9b535dc807ae8ab1217a68e57`.
+- Space workflow and README pin the exact Core source/test revision `93f050fabb201c37a4bc1601f45e6c0aaff33cdd`.
+- Core Verify run `45859573824` for that exact source/test revision was still `in_progress` at the time of this update.
+- Space workflow requires both the expected rollback marker and the real MainMenu transition marker; it also requires the Board Assignment schema-v2 golden fingerprint marker.
