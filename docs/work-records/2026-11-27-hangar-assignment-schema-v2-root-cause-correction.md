@@ -60,7 +60,9 @@ Core 分支 `architecture/core-liquid-identity-consolidation`：
 ## 验证状态（写记录时）
 
 - Core schema 2 实现与测试：已提交。
-- Core PR #63 精确头 CI：运行中，尚未宣告通过。
-- Space workflow 对 Core pin 的更新：已提交，待对应 Space CI。
+- Core PR #63 schema 2 源码/测试提交 `ba84182eba7555b3456d66ffceb58845d97a1bea` 的 Verify run `45856292385`：SUCCESS；xUnit 1044 total / 0 errors / 0 failed / 0 skipped，Bridge Release build、4004/4004 solver differential、replay、security、QUALITY-OK、VERDICT=OK 全部通过。
+- Core 后续头 `b03af7edeb96cfe478c46a1887747870c12f8b50` 仅增加 XML 注释；验证的运行时代码和测试代码未变化。
+- Space workflow 与 README 已同步 pin 到已验证的 Core 源码/测试 SHA `ba84182eba7555b3456d66ffceb58845d97a1bea`。
+- Space PR 当前没有自动 workflow run：该 workflow 文件尚不在 base `main`，GitHub 对该 PR head 返回 0 个关联 workflow run。需本地执行仓库脚本验证。
 - 实际桌面 Hangar → Battle：待用户本地复验。
 - 在 Core CI、Space cross-repo CI 和桌面 GUI 均通过前，本故障状态仍为 OPEN。
