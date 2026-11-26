@@ -104,7 +104,9 @@ static func _build_default_owned_loadout(
 		var selection: Dictionary = view.get("selection", {})
 		var master_id := String(selection.get("masterWorkshopInstanceId", ""))
 		var slave_id := String(selection.get("slaveWorkshopInstanceId", ""))
-		var valid_selection := (
+		var skill_selections: Array = selection.get("skillSelections", [])
+		var board_assignments: Array = selection.get("boardAssignments", [])
+		var valid_selection: bool = (
 			bool(view.get("canBuild", false))
 			and not String(selection.get("shipInstanceId", "")).is_empty()
 			and String(selection.get("parserId", "")) == "demo.parser.universal"
@@ -112,8 +114,8 @@ static func _build_default_owned_loadout(
 			and not master_id.is_empty()
 			and not slave_id.is_empty()
 			and master_id != slave_id
-			and selection.get("skillSelections", []).size() == 2
-			and selection.get("boardAssignments", []).size() >= 5
+			and skill_selections.size() == 2
+			and board_assignments.size() >= 5
 		)
 		if valid_selection:
 			var candidate := controller.build_loadout_snapshot()
