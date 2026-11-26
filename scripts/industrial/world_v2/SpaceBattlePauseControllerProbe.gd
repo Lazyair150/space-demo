@@ -80,15 +80,23 @@ func _ready() -> void:
 	# current add-child/ready traversal before replacing the active scene. A normal
 	# player button press arrives in a later input callback, after this phase.
 	await get_tree().process_frame
+	# SceneTree.change_scene_to_file() replaces this probe's owning scene. Keep a
+	# direct SceneTree reference before invoking the controller; this Node and its
+	# controller are expected to be detached/freed after a successful transition.
+	var scene_tree: SceneTree = get_tree()
 	controller._on_primary_action()
 	var menu_snapshot := GameFlow.snapshot()
+	var active_scene := scene_tree.current_scene
 	if (
-		get_tree().paused
+		scene_tree.paused
 		or String(menu_snapshot.get("screen", "")) != "MENU"
 		or String(menu_snapshot.get("battlePhase", "")) != "INACTIVE"
-		or controller._overlay.visible
+		or not is_instance_valid(active_scene)
+		or String(active_scene.scene_file_path) != "res://scenes/menus/MainMenu.tscn"
 	):
-		_fail_probe(controller, "fault exit must unpause, clear battle ownership, and hide the old overlay")
+		# Do not call get_tree() or inspect the old controller here: on successful
+		# scene replacement, this probe node no longer belongs to a SceneTree.
+		push_error("[SpaceBattlePauseControllerProbe] fault exit did not reach an active unpaused MainMenu scene")
 		return
 	print("[SpaceBattlePauseControllerProbe] passed terminal-menu-transition=true")
 
