@@ -99,7 +99,7 @@ P0 未关闭时不得扩展玩法或把版本标记为可试玩。修复只有�
 
 ### 9.1 Board Assignment schema 2
 
-Space 的 `SpaceHangarBoardAssignment.build_snapshot()` 发送外层 Assignment Snapshot schema 2，并在每条 assignment 中携带 `areaId`、`subAreaId`。Core 曾只接受外层 schema 1，导致 Hangar 点击建造后在 World 初始化前失败。Core schema 2 支持和 golden vector 已通过 Core run `45856292385`；Space 新版跨仓库验证和桌面复验仍需核实，详见对应工作记录。
+Space 的 `SpaceHangarBoardAssignment.build_snapshot()` 发送外层 Assignment Snapshot schema 2，并在每条 assignment 中携带 `areaId`、`subAreaId`。Core 曾只接受外层 schema 1，导致 Hangar 点击建造后在 World 初始化前失败。Core schema 2 支持和 golden vector 已通过 Core run `45856292385`；当前 Space PR #2 的精确 Core pin 跨仓库验证已于 Run `45875481227` 成功。桌面 GUI 复验仍待完成，详见对应工作记录。
 
 ### 9.2 World liquid polarity 必须完整传播
 
@@ -114,3 +114,13 @@ World 的液体词汇不是只有 `liquids` 名称数组，而是不可拆分的
 战斗中必须同时提供可见的屏幕暂停按钮和 Escape 快捷键；快捷键不能是唯一入口。暂停面板必须同时提供继续和返回主菜单。返回主菜单必须由 `Game.gd` 结束战斗生命周期并释放 World V2 Host，再由 `GameFlow.return_to_menu` 执行转场，禁止 UI 直接切场景。
 
 订单效果提交必须原子持久化效果状态和 Dispatcher EventId；只有完整运行时检查点可安全捕获时，才将其与效果状态一起提交。有限关卡活动波次期间不能伪造可恢复检查点：效果可在内存中幂等应用，但 Jar 事件必须保持 pending，直到无敌人阶段间隔成功持久化；死亡/终局关闭不得尝试生成可恢复检查点。检查点身份必须与冻结 Loadout 的 `shipWorldId/loadoutId/loadoutVersion/loadoutFingerprint` 一致。设计见 [Battle Pause UI and Runtime Checkpoint Contract](architecture/17-battle-pause-ui-and-checkpoint-contract.md)。
+
+
+## 11. 当前跨仓库集成检查点（2026-11-27）
+
+- Core：PR #63，分支 `architecture/core-liquid-identity-consolidation`，集成固定 SHA `116c0bb7e3589a2850bf1b85f6da4c48de8c0a28`。
+- Space：PR #2，分支 `world-v2/phase-4.10b-hangar-ui`，当前工作提交 `72782e95d3c36b0485d6d8c3ea616b5cf16b35c3`。
+- 精确跨仓库 Run `45875481227`：completed / success。它证明当前 SHA 组合的 Bridge、Space、Godot Headless 和脚本化领域/生命周期探针通过，不替代桌面 GUI。
+- 主场景 `main.tscn` → `Main.gd` → Main Menu → Hangar。演示目录资源位于 `data/hangar/demo_catalog_bundle.tres` 与 `demo_board.tres`；首次启动通过显式 DEMO bootstrap 建立原型 Owned Inventory，并由 Hangar draft 生成默认 owned-instance 配置。
+- 桌面验收仍需人工完成：主菜单启动、机库默认装配、进入战斗、订单/资源变化、暂停/继续、返回主菜单、再次进入战斗、GameOver 返回机库/主菜单、窗口关闭。
+- Reward Coordinator 已接入 Hangar 可选恢复入口；demo 资源包尚未配置正式 Reward Profile / Curve Catalog，因此不会在未定义 XP 平衡的情况下自动发放成长奖励。

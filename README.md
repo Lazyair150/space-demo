@@ -101,7 +101,7 @@ From `space-demo`:
 
 ```sh
 CORE_REPO_DIR="../jar-system-dotnet" \
-CORE_EXPECTED_SHA="35f666720115fed0b2103001ad1c450fba4a65c9" \
+CORE_EXPECTED_SHA="116c0bb7e3589a2850bf1b85f6da4c48de8c0a28" \
 GODOT_BIN="godot" \
 bash scripts/ci/verify-world-v2-cross-repo.sh
 ```
@@ -131,7 +131,11 @@ The cross-language coding, architecture, lifecycle, protocol, error-handling, an
 
 ## Current validation boundary
 
-- Core integration pin: `35f666720115fed0b2103001ad1c450fba4a65c9`. Board Assignment schema-v2 baseline passed Core Verify run `45856292385` (1044 xUnit, 0 failures). The additional non-default liquid-polarity propagation regression is included in the current pin; the two initial exact-head runs `45859139265` and `45859573824` caught test-only xUnit2013 analyzer issues, both corrected in this pin. A fresh exact-head Core Verify run is pending.
-- The cross-repository workflow file currently exists on this PR branch but not base `main`, so GitHub has no PR-triggered run attached to the current Space head. Run `scripts/ci/verify-world-v2-cross-repo.sh` locally with the exact pin above.
-- The Space schema 2 golden-vector probe is included in the Hangar Board probe path; it remains pending execution in Godot.
-- Headless success does not replace local GUI acceptance on the target OS/GPU. The desktop Hangar-to-Battle fault remains OPEN until that acceptance is recorded.
+- Core integration pin: `116c0bb7e3589a2850bf1b85f6da4c48de8c0a28` (Jar Core PR #63 branch `architecture/core-liquid-identity-consolidation`).
+- Latest Space PR #2 head: `72782e95d3c36b0485d6d8c3ea616b5cf16b35c3`.
+- Exact-pin cross-repository workflow `45875481227`: **completed / success** on that Space head and the Core pin above. It built the Core Bridge and Space, imported/parses the Godot project, and ran the configured HUD/domain/Parser/World V2/lifecycle/navigation probes.
+- Main scene routes to Main Menu; the demo Hangar resource bundle and Board are present. First-run bootstrap creates the prototype starter owned inventory, and the Hangar draft chooses a valid default owned-instance build.
+- **Desktop GUI acceptance is still pending.** Headless success does not prove mouse hit testing, visible layout, pause overlay cleanup, or the full player path on the target OS/GPU.
+- The demo bundle does not yet author a production Reward Profile / Progression Curve Catalog. The durable reward coordinator is integrated, but automatic XP recovery remains disabled until both exact-version resources are authored. No production XP balance values have been invented.
+
+The repository is therefore a **buildable, launchable prototype candidate**, not yet a GUI-accepted release. Use the exact clone/build commands above, then complete the manual acceptance sequence in [Project Development Guide](docs/PROJECT_DEVELOPMENT_GUIDE.md) and the latest work records.
