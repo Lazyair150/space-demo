@@ -365,3 +365,66 @@ Invalid call. Nonexistent function 'run' in base 'GDScript'.
 3. Domain contracts 输出其最终通过标记，Parser ingress 与后续 Runtime / Lifecycle / Navigation 探针继续完成。
 4. Verbose 下检查 Node / ObjectDB / Resource / StringName 退出诊断；当前日志未提供足以更新上节泄漏结论的新归因证据。
 5. 只有完整脚本退出码为 0 且输出 `CROSS-REPO-WORLD-V2-OK` 才能关闭本轮联合验证。
+
+
+## 十、复跑确认选择字段的实际类型，并追踪最后一个 leaked Node
+
+### 新运行结果
+
+用户再次运行联合脚本后：
+
+- Core Bridge 构建成功。
+- Space .NET 构建成功。
+- Godot Editor import / class registration 成功。
+- HUD：`21 checks, 0 failures`。
+- 前一轮的 `valid_selection` 类型推断解析错误已消失。
+- `SpaceDemoProgressionBootstrapProbe.run()` 已执行到默认 Owned Loadout 装配 helper。
+- 本次首个脚本运行错误是把 `boardAssignments` 的 Dictionary 赋给 Array：
+  ```
+  Trying to assign value of type 'Dictionary' to a variable of type 'Array'.
+  SpaceDemoProgressionBootstrapProbe.gd:108
+  ```
+
+### 类型事实与修正
+
+检查 `SpaceHangarSelectionController.get_view_model()`、`SpaceHangarSelectionDraft.snapshot_data()` 和 Board Assignment 构造路径后，实际结构为：
+
+- `skillSelections`：Array，逐项记录 skill/order 选择。
+- `boardAssignments`：Dictionary，以 Board Slot ID 为 key，value 为该槽位的冻结 Assignment entry。
+
+已在提交 `4c718904204aa9b0add63a85a5998de7cd17ed96` 修正：
+
+```gdscript
+var skill_selections: Array = selection.get("skillSelections", [])
+var board_assignments: Dictionary = selection.get("boardAssignments", {})
+```
+
+验证条件仍然只检查两项 skill 和至少五个 board assignment；没有改变装配规则或运行时选择内容。
+
+### 剩余 Node 泄漏与本次错误的关系
+
+本次 verbose Domain contracts 退出只列出一个 `Leaked instance: Node:`，且同时出现：
+
+```
+Cannot get path of node as it is not in a scene tree.
+56 ObjectDB instances were leaked at exit
+42 resources still in use at exit
+263 unclaimed string names at exit
+```
+
+`_build_default_owned_loadout()` 在此错误之前已经创建 `SpaceHangarPreparation.new()`，而释放语句 `preparation.free()` 位于出错赋值之后。GDScript 执行在该行中止，因此该 Node 没有走到释放语句。这个调用栈与“恰好一个无 SceneTree path 的 leaked Node”相吻合，是当前最强的根因解释；修正字段类型后，预期 helper 能执行到 controller 解除引用与 preparation.free()。这仍需新 verbose 运行确认，不能提前标记 Node 泄漏已清除。
+
+ObjectDB / Resource / StringName 总数也会因探针在中途退出而受到影响。本次没有足够依据把剩余 GDScript、资源子资源和 StringName 报告全部归为独立的永久泄漏；必须先让完整 Domain probe 跑完，再比较最终退出清单。不得通过禁用 verbose 或放松 Node 泄漏门禁绕过问题。
+
+### 下一步
+
+下一次运行需确认：
+
+1. `boardAssignments` 类型赋值错误消失。
+2. `SpaceDemoProgressionBootstrapProbe` 输出 `default-owned-hangar-assembly=passed`、`legacy-loadout-polarity-migration=passed`、`unknown-legacy-liquid-mapping=fail-closed`。
+3. Domain contracts 继续到最终 `all-domain-contracts=passed`。
+4. verbose 清单中不再有 `Leaked instance: Node:`，且不再有 detached Node 的 `get_path` 错误。
+5. 再依据完整运行的 ObjectDB / Resource / StringName 清单继续归因。
+6. 通过 Domain 后继续完整脚本所有后续探针，最终以退出码 0 和 `CROSS-REPO-WORLD-V2-OK` 为联合验证完成条件。
+
+当前代码修正提交：`4c718904204aa9b0add63a85a5998de7cd17ed96`。该提交尚无新的本地运行结果。
