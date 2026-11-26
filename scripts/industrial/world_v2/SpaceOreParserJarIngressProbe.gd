@@ -32,6 +32,10 @@ func _ready() -> void:
     assert(bool(build_context_probe.get("passed", false)),
         "parser percentage build-context probe must pass: " + String(build_context_probe.get("reason", "")))
 
+    var supply_forecast_probe := SpaceBattleJarSupplyForecastProbe.run()
+    assert(bool(supply_forecast_probe.get("passed", false)),
+        "dual-source Jar supply forecast probe must pass: " + String(supply_forecast_probe.get("reason", "")))
+
     var drop_profile := SpaceEnergyStoneDropProfile.new()
     drop_profile.profile_id = &"probe-energy-stone-drop"
     drop_profile.profile_version = 1
