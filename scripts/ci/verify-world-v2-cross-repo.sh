@@ -113,7 +113,13 @@ run_godot_checked "faulted-commands" "[WorldV2FaultedCommandsProbe] passed" \
 run_godot_checked "snapshot-isolation" "[WorldV2SnapshotIsolationProbe] passed" \
   --headless --path "$SPACE_ROOT" --scene "res://scenes/industrial/WorldV2SnapshotIsolationProbe.tscn" --quit-after 180
 
-run_godot_checked "battle-navigation" "[SpaceBattlePauseControllerProbe] passed terminal-menu-transition=true" \
+run_godot_checked "battle-navigation" "[SpaceBattlePauseControllerProbe] passed real-main-menu-transition=true" \
   --headless --path "$SPACE_ROOT" --scene "res://scenes/industrial/SpaceBattlePauseControllerProbe.tscn" --quit-after 180
+
+NAVIGATION_LOG="${RUNNER_TEMP:-/tmp}/godot-battle-navigation.log"
+if ! grep -Fq "[SpaceBattlePauseControllerProbe] expected-transition-rejection=passed" "$NAVIGATION_LOG"; then
+  echo "Battle navigation probe did not verify failed-transition rollback; log: $NAVIGATION_LOG" >&2
+  exit 1
+fi
 
 echo "CROSS-REPO-WORLD-V2-OK core=$ACTUAL_CORE_SHA"
