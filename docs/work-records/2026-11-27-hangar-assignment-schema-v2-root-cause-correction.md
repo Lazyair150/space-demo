@@ -66,3 +66,13 @@ Core 分支 `architecture/core-liquid-identity-consolidation`：
 - Space PR 当前没有自动 workflow run：该 workflow 文件尚不在 base `main`，GitHub 对该 PR head 返回 0 个关联 workflow run。需本地执行仓库脚本验证。
 - 实际桌面 Hangar → Battle：待用户本地复验。
 - 在 Core CI、Space cross-repo CI 和桌面 GUI 均通过前，本故障状态仍为 OPEN。
+
+
+## 最新仓库指针（2026-11-27）
+
+- Space PR #2 head：`a2da666df81924e4bf05d19862b0e4d070feddfd`。
+- Core PR #63 head：`799937d6f164500a7d1e3a7c3850e120bab0eb80`。
+- Space workflow / README 固定 Core source+test pin：`ba84182eba7555b3456d66ffceb58845d97a1bea`。
+- Core 当前 head 相对该 pin 仅有工作记录更新与 XML 注释；compare 显示未改动运行逻辑或测试逻辑。
+- Space 新增 GDScript golden vector，并在 `verify-world-v2-cross-repo.sh` 中要求日志出现 `[SpaceHangarBoardDefinitionProbe] assignment-schema-v2-fingerprint=passed`。该门禁尚未在本轮实际执行。
+- Space PR head 没有可关联的 Actions run；workflow 文件尚未进入 base `main`。不能将“workflow 文件已写入 PR 分支”表述成“自动 CI 已运行”。
