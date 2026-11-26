@@ -427,12 +427,15 @@ static func _probe_assignment_schema_v2_fingerprint() -> bool:
 		}
 	}
 	var snapshot := SpaceHangarBoardAssignment.build_snapshot(board, assignments)
-	return (
+	var passed := (
 		int(snapshot.get("schemaVersion", 0)) == 2
 		and String(snapshot.get("assignmentFingerprint", "")) == "ceaf7b2038384d1d65b5767ca1ca3183b92455567291179f87a9f7f6b06f0bb1"
 		and String(snapshot.get("assignments", [])[0].get("areaId", "")) == "production"
 		and String(snapshot.get("assignments", [])[0].get("subAreaId", "")) == "decomposition"
 	)
+	if passed:
+		print("[SpaceHangarBoardDefinitionProbe] assignment-schema-v2-fingerprint=passed")
+	return passed
 
 static func _probe_assignments() -> bool:
 	var inventory := {
