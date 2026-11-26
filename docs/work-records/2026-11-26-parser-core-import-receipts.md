@@ -70,3 +70,38 @@ Core 分支新增提交 `0faffd14e2660b94d2c08ef0c9cbb06c0cbdcb2e`、`3cd1833513
 - 当前开发工作站没有挂载两个仓库的本地工作树，也未检测到 `dotnet` / Godot 可执行文件；因此没有实际运行 xUnit、Godot .NET 编译、Headless Probe 或 GUI 试玩。
 - 已对两仓关键 DTO、字段映射、schema、restore 分支、回执 map conservation、旧 schema 兼容和测试用例做源码静态核对。此核对不等同于运行通过。
 - 本轮不等待 GitHub Actions / CL，也不以它们作为开发节奏的阻塞条件。
+
+
+## 2026-11-26 精确 Core 依赖错位审计与修正
+
+### 精确证据
+
+- Space PR #2 分支：`world-v2/phase-4.10b-hangar-ui`，待修正前 HEAD：`0ee21ab7b464da6cec7b142009f8e159f6af1364`。
+- Core PR #63 分支：`architecture/core-liquid-identity-consolidation`，当前 HEAD：`391f318a24fde724a66054e771d0590f0e20c231`。
+- Core 对应验证：Run `45822480114`，`verify` Job completed / success。
+- Space 对应失败：Run `45796547789`，失败 Job `139828547247`。
+
+### 根因
+
+Space 工作流仍将 Core checkout 与 `CORE_EXPECTED_SHA` 固定到旧提交 `e1e89cad5e0f11f369c8ade814140a7b4cc8df74`。该旧 Core Bridge 能成功编译，但其 `WorldV2ProducedJarImportResultDto` 尚未包含 Space 当前 `WorldV2RuntimeNode.ImportProducedJars` 正在读取的三个精确回执成员：
+
+- `HasExactReceipt`
+- `StoredJarCountsByShape`
+- `DiscardedJarCountsByShape`
+
+失败发生在 Space C# 编译阶段；尚未进入 Godot 项目导入或 Headless probes。不能把这次失败描述为 Parser 运行时或资源回执行为失败。
+
+### 已实施修正
+
+- `.github/workflows/world-v2-cross-repo.yml` 的 Core checkout ref 和 `CORE_EXPECTED_SHA` 统一更新到 `391f318a24fde724a66054e771d0590f0e20c231`。
+- `README.md` 的依赖版本、克隆/checkout 和验证命令统一更新到同一精确 Core SHA。
+- `docs/execution/2026-11-24-cross-repo-integration.txt` 的权威状态区更新为当前 Space/Core HEAD、精确 CI 证据和此次失败根因。
+- 本记录追加本次核验，不覆盖此前历史基线。
+
+### 验证边界与后续
+
+- 已确认 Core 当前源码的导入 DTO 定义包含上述三个成员；Core Bridge 构建日志本身成功。
+- Space 仍需在更新 pin 后重新执行完整的跨仓库工作流，确认 Bridge、Space 编译、Godot 导入和各 SceneTree probes。
+- 这次修正没有更改 Space 生产逻辑、Parser receipt schema、Core 账本逻辑或任何平衡数值。
+- 本地 Core 1038 项测试由开发者在本地执行并报告通过；该结果与此次 Space 集成失败分开记录。
+- GUI 试玩仍未验收；Headless 成功也不能代替桌面交互验收。
