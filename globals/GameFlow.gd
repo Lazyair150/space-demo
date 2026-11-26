@@ -33,7 +33,8 @@ func quit_application() -> void:
 		var host := tree.root.get_node_or_null("WorldV2ShipHost")
 		if host != null and host.has_method("EndShipWorld"):
 			host.call("EndShipWorld")
-	_battle_phase = BattlePhase.ENDED if _battle_phase not in [BattlePhase.INACTIVE, BattlePhase.ENDED, BattlePhase.FAULTED] else _battle_phase
+	if not (_battle_phase in [BattlePhase.INACTIVE, BattlePhase.ENDED, BattlePhase.FAULTED]):
+		_battle_phase = BattlePhase.ENDED
 	_pause_reason = PauseReason.NONE
 	_screen = Screen.EXITING
 	_emit_state()
