@@ -91,6 +91,12 @@ run_godot_checked "hud-feedback" "=== 21 checks, 0 failures ===" \
 run_godot_checked "space-domain-contracts" "[SpaceDomainContractProbe] all-domain-contracts=passed" \
   --headless --path "$SPACE_ROOT" --scene "res://tests/space_hangar_contracts.tscn" --quit-after 180
 
+DOMAIN_LOG="${RUNNER_TEMP:-/tmp}/godot-space-domain-contracts.log"
+if ! grep -Fq "[SpaceHangarBoardDefinitionProbe] assignment-schema-v2-fingerprint=passed" "$DOMAIN_LOG"; then
+  echo "Space Hangar Board Assignment schema-v2 golden fingerprint probe did not execute or pass; log: $DOMAIN_LOG" >&2
+  exit 1
+fi
+
 echo "[4/4] Run World V2 integration and lifecycle probes"
 run_godot_checked "parser-ingress" "[SpaceOreParserJarIngressProbe] passed" \
   --headless --path "$SPACE_ROOT" --scene "res://scenes/industrial/SpaceOreParserJarIngressProbe.tscn" --quit-after 180
