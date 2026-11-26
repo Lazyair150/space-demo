@@ -94,6 +94,16 @@ P0 未关闭时不得扩展玩法或把版本标记为可试玩。修复只有�
 
 代码改动涉及模块职责、接口、字段、状态、错误语义、版本或验证流程时，必须同一批提交更新对应模块文档和工作记录。历史结论若被推翻，必须明确写出“更正”，不能让错误结论继续作为现行事实。
 
-## 9. 当前 P0：Board Assignment schema 2
+## 9. 当前 P0：跨模块 World 配置与运行时语义
 
-Space 的 `SpaceHangarBoardAssignment.build_snapshot()` 发送外层 Assignment Snapshot schema 2，并在每条 assignment 中携带 `areaId`、`subAreaId`。Core 曾只接受外层 schema 1，导致 Hangar 点击建造后在 World 初始化前失败。详细契约见 [Board Assignment 与装配流水线](architecture/13-hangar-board-assignment-and-loadout-pipeline.md) 和对应工作记录。当前 Core 修复已提交，Core CI 与 Space 本地桌面复验仍须按工作记录状态核实，不得提前宣告完成。
+### 9.1 Board Assignment schema 2
+
+Space 的 `SpaceHangarBoardAssignment.build_snapshot()` 发送外层 Assignment Snapshot schema 2，并在每条 assignment 中携带 `areaId`、`subAreaId`。Core 曾只接受外层 schema 1，导致 Hangar 点击建造后在 World 初始化前失败。Core schema 2 支持和 golden vector 已通过 Core run `45856292385`；Space 新版跨仓库验证和桌面复验仍需核实，详见对应工作记录。
+
+### 9.2 World liquid polarity 必须完整传播
+
+World 的液体词汇不是只有 `liquids` 名称数组，而是不可拆分的三元组：`shapes + liquids + liquidPolarities`。Core 的 `WorldV2Context` 是映射的唯一权威；任何创建 `Vocabulary`、Jar、Requirement 或订单规格的应用服务必须传递 `context.LiquidPolarities`。不得从液体名称、列表顺序、资源账户字典或旧默认值推断自定义 World 的极性。此次 `AddJarDemandFromTemplate` 丢失映射导致运行时已初始化、订单物化失败；Core 三个应用服务入口已修复并添加非默认映射回归测试，验证状态见 [订单实例化液体极性传播故障记录](work-records/2026-11-27-order-materialization-liquid-polarity-fault.md)。
+
+### 9.3 导航探针必须区分负向与正向结果
+
+导航探针可包含预期失败路径，但必须分别输出“失败回滚验证通过”和“真实 MainMenu 转场通过”标记。集成脚本必须要求两个标记；不得仅凭 GameFlow 的逻辑状态或单一泛化成功字符串宣告场景切换通过。
