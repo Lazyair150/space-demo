@@ -76,7 +76,10 @@ func _ready() -> void:
 		return
 	get_tree().paused = false
 	# Exercise the real fault-exit action, not only the abstract state transitions.
-	# The probe intentionally changes to the actual main-menu scene as its final step.
+	# This probe is still inside _ready(); wait until SceneTree has completed the
+	# current add-child/ready traversal before replacing the active scene. A normal
+	# player button press arrives in a later input callback, after this phase.
+	await get_tree().process_frame
 	controller._on_primary_action()
 	var menu_snapshot := GameFlow.snapshot()
 	if (
