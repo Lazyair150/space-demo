@@ -77,3 +77,8 @@ The commits above are code/document changes, not test evidence. Exact-head CI, G
 - Added Hangar → MainMenu navigation so the startup/preparation path can return to the root menu without entering battle.
 - Centralized application exit in `GameFlow.quit_application()`. The MainMenu Quit action and OS window-close signal now share one path that releases SceneTree pause and ends the World V2 Host before quitting.
 - `Screen.EXITING` is a terminal application state; no gameplay module owns process shutdown.
+
+- Centralized quit/window-close path: `e9e38038aa88e7b15c17f7969493bbca76d3d067`; MainMenu routes Quit through GameFlow: `28bdd15a12e7c9d433b37e47b364fd538d5e246d`.
+- Hangar back-to-menu action: `2ff7194b3dd33fdc4102d3d74f7456834a681ea2`, named control: `9cd236f1332707c04c12ae4be8cc2252e3212e56`, retained reference/transition guard: `bb6fb8e402abe36527023902f2047ca308cde065`.
+- Explicit terminal-phase guard and route documentation: `522cab0db7e5c40e1d94a188877b448926ce2bff`, `51efaa0e89004b44a1187c2cf3f80ebd9aab4271`.
+- This work-record append is the final documentation synchronization commit for the batch; automated/editor/desktop verification is still pending.
