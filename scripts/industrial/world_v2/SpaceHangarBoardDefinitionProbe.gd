@@ -6,6 +6,8 @@ const DEMO_BOARD: SpaceHangarBoardDefinition = preload("res://data/hangar/demo_b
 const DEMO_CATALOG: SpaceHangarCatalogBundleResource = preload("res://data/hangar/demo_catalog_bundle.tres")
 
 static func run() -> bool:
+	if not _probe_assignment_schema_v2_fingerprint():
+		return false
 	if DEMO_CATALOG == null:
 		return false
 	var runtime_catalog := DEMO_CATALOG.create_runtime_bundle()
@@ -371,6 +373,66 @@ static func run() -> bool:
 	var invalid := DEMO_BOARD.duplicate(true) as SpaceHangarBoardDefinition
 	invalid.slots.append(invalid.slots[0].duplicate(true) as SpaceHangarBoardSlotDefinition)
 	return not invalid.get_validation_errors().is_empty()
+
+## Cross-language golden vector shared with WorldV2BoardRuleProfileOptionsTests.
+## This locks the exact schema-2 JSON fields, array order and SHA-256 input.
+static func _probe_assignment_schema_v2_fingerprint() -> bool:
+	var board := SpaceHangarBoardDefinition.new()
+	board.board_id = &"board"
+	board.definition_version = 1
+	board.display_name = "Board"
+	var master := SpaceHangarBoardSlotDefinition.new()
+	master.slot_id = &"workshop.master"
+	master.area_id = "workshop"
+	master.sub_area_id = "none"
+	master.component_kind = "workshop"
+	master.display_name = "Master"
+	master.role_id = "master"
+	master.control_area = "none"
+	master.required = true
+	var slave := SpaceHangarBoardSlotDefinition.new()
+	slave.slot_id = &"workshop.slave"
+	slave.area_id = "workshop"
+	slave.sub_area_id = "none"
+	slave.component_kind = "workshop"
+	slave.display_name = "Slave"
+	slave.role_id = "slave"
+	slave.control_area = "none"
+	slave.required = true
+	var parser := SpaceHangarBoardSlotDefinition.new()
+	parser.slot_id = &"parser"
+	parser.area_id = "production"
+	parser.sub_area_id = "decomposition"
+	parser.component_kind = "ore_parser"
+	parser.display_name = "Parser"
+	parser.role_id = "none"
+	parser.control_area = "none"
+	parser.required = true
+	board.slots = [master, slave, parser]
+	var assignments := {
+		"workshop.master": {
+			"slotId": "workshop.master", "areaId": "workshop", "subAreaId": "none",
+			"componentKind": "workshop", "ownedInstanceId": "m", "definitionId": "m",
+			"definitionVersion": 1, "sourceRevision": 1, "roleId": "master"
+		},
+		"workshop.slave": {
+			"slotId": "workshop.slave", "areaId": "workshop", "subAreaId": "none",
+			"componentKind": "workshop", "ownedInstanceId": "s", "definitionId": "s",
+			"definitionVersion": 1, "sourceRevision": 1, "roleId": "slave"
+		},
+		"parser": {
+			"slotId": "parser", "areaId": "production", "subAreaId": "decomposition",
+			"componentKind": "ore_parser", "ownedInstanceId": "p", "definitionId": "p",
+			"definitionVersion": 1, "sourceRevision": 1
+		}
+	}
+	var snapshot := SpaceHangarBoardAssignment.build_snapshot(board, assignments)
+	return (
+		int(snapshot.get("schemaVersion", 0)) == 2
+		and String(snapshot.get("assignmentFingerprint", "")) == "ceaf7b2038384d1d65b5767ca1ca3183b92455567291179f87a9f7f6b06f0bb1"
+		and String(snapshot.get("assignments", [])[0].get("areaId", "")) == "production"
+		and String(snapshot.get("assignments", [])[0].get("subAreaId", "")) == "decomposition"
+	)
 
 static func _probe_assignments() -> bool:
 	var inventory := {
