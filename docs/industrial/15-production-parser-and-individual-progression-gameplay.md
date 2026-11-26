@@ -262,7 +262,7 @@ Parser 三个成长属性要保持不同语义：
 
 ### 6.2 XP 如何产生：本阶段的玩法决定
 
-**实现状态**：已有精确版本成长曲线资产类型、曲线注册表、成长计算服务和 revision-checked 实例更新。`SpaceProgressionRewardProfile` 已建立版本化内容契约：它把显式配置的 source kind 映射为兼容的 Owned Instance kind、最终整数 XP 和 exact Curve ID / Version，并将 `rewardProfileId@rewardProfileVersion` 写入每条 award。未知来源、缺失规则、错误归属、重复事件或混用政策版本均 fail closed。`SpaceProgressionRewardService` 继续负责按 Owned Instance 汇总、精确曲线计算和 settlement + source event 双层 SHA-256 收据去重；`GameState.commit_space_progression_reward_settlement()` 先持久化 detached candidate，再发布新状态。XP 收据与 `reward_acquisition_ids` 分开保存，并通过 schema-v3 兼容迁移与确定性探针验证。**当前尚无正式生产 Reward Profile / Curve Catalog 资产，也尚未将真实战斗事实接入该结算入口**；探针数值仅是合成契约数据。
+**实现状态**：已有精确版本成长曲线资产类型、曲线注册表、成长计算服务和 revision-checked 实例更新。`SpaceProgressionRewardProfile` 已建立版本化内容契约：它把显式配置的 source kind 映射为兼容的 Owned Instance kind、最终整数 XP 和 exact Curve ID / Version，并将 `rewardProfileId@rewardProfileVersion` 写入每条 award。未知来源、缺失规则、错误归属、重复事件或混用政策版本均 fail closed。`SpaceProgressionRewardService` 继续负责按 Owned Instance 汇总、精确曲线计算和 settlement + source event 双层 SHA-256 收据去重；`GameState.commit_space_progression_reward_settlement()` 先持久化 detached candidate，再发布新状态。XP 收据与 `reward_acquisition_ids` 分开保存，并通过 schema-v3 兼容迁移与确定性探针验证。`SpaceBattleRewardFactProjection` 已把 Parser 接受的 Pickup ID 和精确 Stage clear candidate 投影为稳定事实，并随 campaign clear result 一起持久化；事实只归属冻结的 Ship Owned Instance。**当前尚无正式生产 Reward Profile / Curve Catalog 资产，也尚未将这些事实接入 XP settlement coordinator**；Parser 实际处理体积、生产设备、Core Workshop 转换和 Skill 周期仍缺各自的稳定 reward fact outbox。探针数值仅是合成契约数据。
 
 建议采用以下奖励原则，待正式曲线和奖励表数据化：
 

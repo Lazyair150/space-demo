@@ -298,6 +298,24 @@ func _try_complete_stage() -> void:
 		"objectiveProgress": _stage_objective_runtime.progress(),
 		"status": "objective_complete"
 	}
+	# The campaign-clear callback persists this exact fact envelope together with the
+	# clear record. It becomes durable only if that callback commits the candidate.
+	var reward_projection := SpaceBattleRewardFactProjection.build_facts(
+		_battle_loadout.to_dictionary(),
+		capture_ore_parser_state(),
+		result,
+		true
+	)
+	if not bool(reward_projection.get("success", false)):
+		stage_settlement_failed.emit(result)
+		_shutdown_battle(true, "progression reward facts could not be projected: " + String(reward_projection.get("reason", "")))
+		return
+	result["progressionRewardSettlementId"] = String(reward_projection.get("settlementId", ""))
+	result["progressionRewardFacts"] = reward_projection.get("facts", []).duplicate(true)
+	result["progressionRewardFactCoverage"] = {
+		"capturedSourceKinds": reward_projection.get("capturedSourceKinds", []).duplicate(true),
+		"notYetCapturedSourceKinds": reward_projection.get("notYetCapturedSourceKinds", []).duplicate(true)
+	}
 	if not _stage_settlement_callback.is_valid() or not bool(_stage_settlement_callback.call(result)):
 		stage_settlement_failed.emit(result)
 		_shutdown_battle(true, "finite-stage clear could not be durably recorded")

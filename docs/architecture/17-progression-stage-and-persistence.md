@@ -12,6 +12,8 @@ Catalog Definition 是可复用内容模板；Owned Instance 是玩家持有的�
 
 The profile accepts only committed fact envelopes (`eventId`, `instanceId`, `sourceKind`, `sourceRef`). It does not create facts, infer provenance from forecasts, or query live UI state. Its output stamps `rewardProfileId` and `rewardProfileVersion` into every award; the settlement fingerprint therefore binds the final awards to the exact policy revision.
 
+`SpaceBattleRewardFactProjection` currently projects only accepted Parser Pickup identities and the exact Stage-clear candidate into stable facts attributed to the frozen Ship Owned Instance. The stage-clear callback persists this envelope inside the campaign clear record, making that record the durable source-fact outbox. Parser processed volume, production work, Workshop rule transitions and Skill cycle facts remain explicitly uncovered until their authoritative subsystems expose stable committed event identities.
+
 The generic reward service remains a settlement mechanism: it validates ownership, exact curves, revisions, duplicate source receipts, and detached candidate state. It does not calculate game balance. The production Reward Profile and Curve Catalog are not yet authored or connected to the battle lifecycle; the current probe values are synthetic contract fixtures only.
 
 ## 2. Roguelike Individual
@@ -22,7 +24,7 @@ The generic reward service remains a settlement mechanism: it validates ownershi
 
 Stage Definition 是版本化内容；Encounter Director 管遭遇节奏；Objective Runtime 管目标进度；Game 管组合；GameState/settlement owner 负责持久化通关事实。
 
-遭遇清空不等于目标完成，也不等于成长奖励已持久化。Campaign clear receipt 与 XP progression receipt 属于两个不同的持久化聚合；不得因为 stage-clear callback 成功就声称 XP 已结算。只有遭遇和目标都完成，且 campaign clear 的 durable settlement callback 成功，才允许发出 Stage Complete。成长奖励必须另有 exact-version Reward Profile、已提交事实和可恢复的持久化协调边界。
+遭遇清空不等于目标完成，也不等于成长奖励已持久化。Stage-clear result carries a versioned progression reward settlement identity and committed-fact envelope; the campaign clear callback persists both with the clear record. Campaign clear receipt 与 XP progression receipt 仍属于两个不同的持久化聚合；不得因为 stage-clear callback 成功就声称 XP 已结算。只有遭遇和目标都完成，且 campaign clear 的 durable settlement callback 成功，才允许发出 Stage Complete。成长奖励必须另有 exact-version Reward Profile、已提交事实和可恢复的持久化协调边界。
 
 ## 4. Checkpoint
 
