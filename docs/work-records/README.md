@@ -20,3 +20,5 @@
 - [2026-11-26 供给场景敏感性区间](2026-11-26-supply-scenario-band.md)
 - [2026-11-25 Core 收敛协作记录](2026-11-25-core-consolidation.md)
 - Core 架构审查源文档位于 Jar Core 仓库 `docs/architecture/2026-11-core-multi-angle-audit.md`。
+
+- [2026-11-27 战斗暂停入口与检查点拒绝诊断](2026-11-27-battle-pause-and-checkpoint-rejection.md)
