@@ -43,37 +43,7 @@ static func run() -> bool:
 	var board := load("res://data/hangar/demo_board.tres") as SpaceHangarBoardDefinition
 	if board == null:
 		return false
-	var preparation := SpaceHangarPreparation.new()
-	preparation.catalog_bundle_resource = bundle
-	preparation.require_owned_instances = true
-	preparation.player_progression_state = complete_state
-	var controller := SpaceHangarSelectionController.new()
-	var identity := {
-		"shipWorldId": "bootstrap-probe-world",
-		"loadoutId": "bootstrap-probe-loadout",
-		"loadoutVersion": 1
-	}
-	if not controller.configure(preparation, identity, board):
-		return false
-	var view_model := controller.get_view_model()
-	if not bool(view_model.get("canBuild", false)):
-		return false
-	var selection: Dictionary = view_model.get("selection", {})
-	if String(selection.get("shipInstanceId", "")).is_empty():
-		return false
-	if String(selection.get("parserId", "")) != "demo.parser.universal":
-		return false
-	if String(selection.get("parserInstanceId", "")) != "demo.parser.universal.01":
-		return false
-	if String(selection.get("masterWorkshopInstanceId", "")).is_empty():
-		return false
-	if String(selection.get("slaveWorkshopInstanceId", "")).is_empty():
-		return false
-	if String(selection.masterWorkshopInstanceId) == String(selection.slaveWorkshopInstanceId):
-		return false
-	if selection.skillSelections.size() != 2 or selection.boardAssignments.size() < 5:
-		return false
-	var default_loadout := controller.build_loadout_snapshot()
+	var default_loadout := _build_default_owned_loadout(bundle, complete_state, board)
 	if default_loadout == null or not SpaceBattleLoadoutSnapshot.validate_data(default_loadout.to_dictionary()).is_empty():
 		return false
 
@@ -109,3 +79,46 @@ static func run() -> bool:
 	print("[SpaceDemoProgressionBootstrapProbe] legacy-loadout-polarity-migration=passed")
 	print("[SpaceDemoProgressionBootstrapProbe] unknown-legacy-liquid-mapping=fail-closed")
 	return true
+
+
+
+## Build a detached frozen snapshot, then release the Node-owned preparation service.
+static func _build_default_owned_loadout(
+	bundle: SpaceHangarCatalogBundleResource,
+	progression: SpacePlayerProgressionState,
+	board: SpaceHangarBoardDefinition
+) -> SpaceBattleLoadoutSnapshot:
+	var preparation := SpaceHangarPreparation.new()
+	preparation.catalog_bundle_resource = bundle
+	preparation.require_owned_instances = true
+	preparation.player_progression_state = progression
+	var controller := SpaceHangarSelectionController.new()
+	var identity := {
+		"shipWorldId": "bootstrap-probe-world",
+		"loadoutId": "bootstrap-probe-loadout",
+		"loadoutVersion": 1
+	}
+	var result: SpaceBattleLoadoutSnapshot
+	if controller.configure(preparation, identity, board):
+		var view := controller.get_view_model()
+		var selection: Dictionary = view.get("selection", {})
+		var master_id := String(selection.get("masterWorkshopInstanceId", ""))
+		var slave_id := String(selection.get("slaveWorkshopInstanceId", ""))
+		var valid_selection := (
+			bool(view.get("canBuild", false))
+			and not String(selection.get("shipInstanceId", "")).is_empty()
+			and String(selection.get("parserId", "")) == "demo.parser.universal"
+			and String(selection.get("parserInstanceId", "")) == "demo.parser.universal.01"
+			and not master_id.is_empty()
+			and not slave_id.is_empty()
+			and master_id != slave_id
+			and selection.get("skillSelections", []).size() == 2
+			and selection.get("boardAssignments", []).size() >= 5
+		)
+		if valid_selection:
+			var candidate := controller.build_loadout_snapshot()
+			if candidate != null and SpaceBattleLoadoutSnapshot.validate_data(candidate.to_dictionary()).is_empty():
+				result = candidate
+	controller = null
+	preparation.free()
+	return result
