@@ -672,7 +672,6 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 	var stage_checkpoint := _capture_stage_runtime_checkpoint()
 	var stage_spawner := get_node_or_null("Spawner")
 	if _selected_stage != null and (stage_checkpoint.is_empty() or stage_spawner == null or not stage_spawner.has_method("can_capture_finite_stage_checkpoint") or not bool(stage_spawner.call("can_capture_finite_stage_checkpoint"))):
-		push_warning("[Game] Finite-stage checkpoint is available only during an enemy-free inter-beat boundary")
 		return {}
 	if jar_checkpoint.is_empty() or int(parser_checkpoint.get("schemaVersion", 0)) != 2:
 		push_error("[Game] Coordinated checkpoint is incomplete: Jar or ore-parser state is missing")
