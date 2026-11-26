@@ -21,7 +21,7 @@ A menu transition must never bypass the Game owner and leave an active World V2 
 
 ## Runtime checkpoint contract
 
-Every order-effect commit captures one coherent checkpoint after the Jar simulation step. Its identity must equal the frozen loadout identity:
+Every order-effect commit persists effect state and Dispatcher EventId atomically. A complete runtime checkpoint is attached only when it can be captured coherently. During a finite-stage active beat, the effect may be applied once in memory, but the Jar outbox event remains pending until an enemy-free inter-beat checkpoint can be saved. Never acknowledge the event or replace a valid checkpoint with a partial one. Its identity must equal the frozen loadout identity:
 
 - `shipWorldId`
 - `loadoutId`
@@ -30,7 +30,7 @@ Every order-effect commit captures one coherent checkpoint after the Jar simulat
 
 The checkpoint contains the Jar execution checkpoint, shared clock remainder, parser runtime and pending pickups, run score/wave/segment, and optional finite-stage director/objective state. The checkpoint schema is 2 for free combat and 3 for finite stages.
 
-The state store validates all required fields before committing. A rejection must identify the exact field and expected type/range; a generic “incomplete checkpoint” message is not sufficient for debugging. Rejection leaves the Jar outbox event pending and must not acknowledge it or silently continue as if it were persisted.
+The state store validates all required fields before committing. A rejection must identify the exact field and expected type/range; a generic “incomplete checkpoint” message is not sufficient for debugging. Rejection leaves the Jar outbox event pending and must not acknowledge it or silently continue as if it were persisted. An empty checkpoint from an active finite-stage beat is an expected deferral, not a fault. Death is terminal: close the World instance and do not request a resumable checkpoint.
 
 ## Verification gates
 
