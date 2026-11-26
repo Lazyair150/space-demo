@@ -107,3 +107,9 @@ World 的液体词汇不是只有 `liquids` 名称数组，而是不可拆分的
 ### 9.3 导航探针必须区分负向与正向结果
 
 导航探针可包含预期失败路径，但必须分别输出“失败回滚验证通过”和“真实 MainMenu 转场通过”标记。集成脚本必须要求两个标记；不得仅凭 GameFlow 的逻辑状态或单一泛化成功字符串宣告场景切换通过。
+
+## 10. 战斗暂停、退出与检查点一致性
+
+战斗中必须同时提供可见的屏幕暂停按钮和 Escape 快捷键；快捷键不能是唯一入口。暂停面板必须同时提供继续和返回主菜单。返回主菜单必须由 `Game.gd` 结束战斗生命周期并释放 World V2 Host，再由 `GameFlow.return_to_menu` 执行转场，禁止 UI 直接切场景。
+
+订单效果提交必须在同一提交边界持久化效果状态、Dispatcher EventId 和完整运行时检查点。检查点身份必须与冻结 Loadout 的 `shipWorldId/loadoutId/loadoutVersion/loadoutFingerprint` 一致。校验失败必须报告具体字段，事件保持 pending，不得确认、不准以默认值掩盖。设计与验证要求见 [Battle Pause UI and Runtime Checkpoint Contract](architecture/17-battle-pause-ui-and-checkpoint-contract.md)。
