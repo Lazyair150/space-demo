@@ -210,6 +210,9 @@ func _ready() -> void:
     assert(bool(first_receipt.get("success", false)), "first Jar import must commit")
     assert(not bool(first_receipt.get("wasDuplicate", true)), "first Jar import must be new")
     assert(bool(first_receipt.get("hasExactReceipt", false)), "first Jar import must expose its exact outcome")
+    var first_stored_by_shape: Dictionary = first_receipt.get("storedJarCountsByShape", {})
+    assert(int(first_stored_by_shape.get("圆罐", 0)) == 1, "Core must expose the stored Jar shape")
+    assert((first_receipt.get("discardedJarCountsByShape", {}) as Dictionary).is_empty(), "no shape should be discarded in this fixture")
     assert(int(first_receipt.get("storedJarCount", 0)) == 1, "Jar must store the completed empty Jar")
 
     # Simulate a process restart after Jar committed but before Space persisted the receipt.
@@ -266,6 +269,12 @@ func _ready() -> void:
         "exact duplicate replay must not be classified as outcome-unknown")
     assert(int(retry_observation.get("exactCoreStoredJarCount", -1)) == 1 and int(retry_observation.get("exactCoreDiscardedJarCount", -1)) == 0,
         "duplicate replay must reproduce the original stored/discarded outcome")
+    var replay_stored_by_shape: Dictionary = retry_observation.get("exactCoreStoredJarCountByShape", {})
+    var replay_discarded_by_shape: Dictionary = retry_observation.get("exactCoreDiscardedJarCountByShape", {})
+    assert(int(replay_stored_by_shape.get("圆罐", 0)) == 1 and replay_discarded_by_shape.is_empty(),
+        "duplicate replay must preserve original shape-specific storage outcome")
+    assert(bool(retry_observation.get("perShapeCoreOutcomeHistoryComplete", false)),
+        "new Core exact receipts must allow complete per-shape outcome history")
     var parser_after_receipt_checkpoint: Dictionary = restored_parser.capture_state()
     var receipt_restored_parser := SpaceOreParserRuntime.new()
     assert(bool(receipt_restored_parser.initialize(

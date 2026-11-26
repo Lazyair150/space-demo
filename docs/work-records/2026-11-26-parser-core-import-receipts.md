@@ -5,7 +5,7 @@
 - 仓库：`Lazyair150/space-demo`
 - 分支：`world-v2/phase-4.10b-hangar-ui`
 - 源 HEAD：`0b800dad7c572b508aee10901bc06f81fcdd9acb`
-- Core 精确源：`0faffd14e2660b94d2c08ef0c9cbb06c0cbdcb2e`
+- Core 精确源：`3cd18335134e736740f11d4c0d9e3c5187e94d70`
 - 基线自动化：Space PR #2 run `45787796492` 对应 `0b800dad7c572b508aee10901bc06f81fcdd9acb`，SUCCESS。
 - 本轮不重复执行该基线上的供给/Parser 测试。
 
@@ -30,7 +30,7 @@
 
 ## 不在本轮宣称完成
 
-- Core 已增加持久化 produced-Jar import receipt，并在重复调用时返回首次精确 totals；旧 schema 10 检查点仍没有该回执，必须继续显示 unknown。
+- Core 已增加持久化 produced-Jar import receipt，并在重复调用时返回首次精确逐形状 requested/stored/discarded maps；旧 schema 10 检查点仍没有该回执，必须继续显示 unknown。
 - 观察快照仍是 Space Parser 侧事实，不等于 Core 当前实时 Warehouse/资源账本完整快照。
 - 外层完整玩家存档的跨文件原子提交协调仍是独立问题。
 - 新增 GDScript、C# bridge 和 Probe 源码已同步；仍需在成组完成后执行 Godot 4.7.1 .NET 编译与 Headless Probe。本工作不把源码写入等同于运行通过。
@@ -46,14 +46,14 @@
 
 ### 实施依据
 
-Core 分支新增提交 `0faffd14e2660b94d2c08ef0c9cbb06c0cbdcb2e`，在 ResourceLedger 持久保存每个外部导入批次的请求/入库/丢弃逐形状数量、payload 指纹，并纳入 schema 11 检查点。Space 不读取事件日志推断历史结果。
+Core 分支新增提交 `0faffd14e2660b94d2c08ef0c9cbb06c0cbdcb2e` 与 `3cd18335134e736740f11d4c0d9e3c5187e94d70`，在 ResourceLedger 持久保存每个外部导入批次的请求/入库/丢弃逐形状数量、payload 指纹，并纳入 schema 11 检查点；导入 DTO 同时返回首次逐形状入库/丢弃 maps。Space 不读取事件日志推断历史结果。
 
 ### Space 侧成组修改
 
-- `WorldV2RuntimeNode.ImportProducedJars` 将 Core 的 `HasExactReceipt` 映射为 Godot 字典字段 `hasExactReceipt`。
+- `WorldV2RuntimeNode.ImportProducedJars` 将 Core 的 `HasExactReceipt`、`StoredJarCountsByShape`、`DiscardedJarCountsByShape` 映射为 Godot 字段 `hasExactReceipt`、`storedJarCountsByShape`、`discardedJarCountsByShape`。
 - `WorldV2ShipHost` 将该字段加入完整回执契约检查；缺字段时拒绝确认，不会删除 Parser pending outbox。
 - Parser Runtime checkpoint schema 升至 5，导入回执 schema 升至 2；仍兼容 schema 4 / receipt schema 1 的历史存档。
-- 新 duplicate 回执若带 `hasExactReceipt=true`，以 `duplicate_exact` 记录并计入精确 stored/discarded 汇总；旧 duplicate 0/0/0 仍标记未知。
+- 新 duplicate 回执若带 `hasExactReceipt=true`，以 `duplicate_exact` 记录并计入逐形状 stored/discarded 汇总；旧 duplicate 0/0/0 仍标记未知。
 - Runtime Probe 新增精确重复回执与 schema4 旧回执迁移断言；Ingress Probe 改为验证 Core 重放返回首次 exact outcome。
 - 没有改动正式掉落率、生产平衡或经验奖励数据。
 

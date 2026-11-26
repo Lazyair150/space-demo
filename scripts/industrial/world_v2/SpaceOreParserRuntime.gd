@@ -264,6 +264,13 @@ func build_supply_observation_snapshot() -> Dictionary:
 			pending_by_shape[shape] = int(pending_by_shape[shape]) + int(counts[raw_shape])
 	var exact_stored := 0
 	var exact_discarded := 0
+	var exact_stored_by_shape := {}
+	var exact_discarded_by_shape := {}
+	var per_shape_outcomes_complete := _core_import_receipt_history_complete
+	for shape_value in shapes:
+		var shape := String(shape_value)
+		exact_stored_by_shape[shape] = 0
+		exact_discarded_by_shape[shape] = 0
 	var duplicate_exact_batches := 0
 	var duplicate_exact_requested := 0
 	var duplicate_unknown_batches := 0
@@ -278,10 +285,23 @@ func build_supply_observation_snapshot() -> Dictionary:
 		if outcome_status in ["exact", "duplicate_exact"]:
 			exact_stored += int(core_response.get("storedJarCount", 0))
 			exact_discarded += int(core_response.get("discardedJarCount", 0))
+			var receipt_schema := int(raw_receipt.get("schemaVersion", 0))
+			if receipt_schema >= 2:
+				var stored_map: Dictionary = core_response.get("storedJarCountsByShape", {})
+				var discarded_map: Dictionary = core_response.get("discardedJarCountsByShape", {})
+				for raw_shape in stored_map:
+					var shape := String(raw_shape)
+					exact_stored_by_shape[shape] = int(exact_stored_by_shape[shape]) + int(stored_map[raw_shape])
+				for raw_shape in discarded_map:
+					var shape := String(raw_shape)
+					exact_discarded_by_shape[shape] = int(exact_discarded_by_shape[shape]) + int(discarded_map[raw_shape])
+			else:
+				per_shape_outcomes_complete = false
 			if outcome_status == "duplicate_exact":
 				duplicate_exact_batches += 1
 				duplicate_exact_requested += int(raw_receipt.get("requestedJarCount", 0))
 		else:
+			per_shape_outcomes_complete = false
 			duplicate_unknown_batches += 1
 			duplicate_unknown_requested += int(raw_receipt.get("requestedJarCount", 0))
 	for shape_value in shapes:
@@ -305,6 +325,9 @@ func build_supply_observation_snapshot() -> Dictionary:
 		"coreImportReceiptHistoryComplete": _core_import_receipt_history_complete,
 		"exactCoreStoredJarCount": exact_stored,
 		"exactCoreDiscardedJarCount": exact_discarded,
+		"exactCoreStoredJarCountByShape": exact_stored_by_shape,
+		"exactCoreDiscardedJarCountByShape": exact_discarded_by_shape,
+		"perShapeCoreOutcomeHistoryComplete": per_shape_outcomes_complete,
 		"duplicateExactBatchCount": duplicate_exact_batches,
 		"duplicateExactRequestedJarCount": duplicate_exact_requested,
 		"duplicateConfirmationBatchCountWithUnknownOutcome": duplicate_unknown_batches,
@@ -325,7 +348,9 @@ func _normalize_core_import_receipt(
 	var submitted: Variant = core_receipt.get("submittedJarCount", null)
 	var stored: Variant = core_receipt.get("storedJarCount", null)
 	var discarded: Variant = core_receipt.get("discardedJarCount", null)
-	if typeof(was_duplicate) != TYPE_BOOL or typeof(has_exact_receipt) != TYPE_BOOL or typeof(submitted) != TYPE_INT or typeof(stored) != TYPE_INT or typeof(discarded) != TYPE_INT:
+	var stored_map: Variant = core_receipt.get("storedJarCountsByShape", null)
+	var discarded_map: Variant = core_receipt.get("discardedJarCountsByShape", null)
+	if typeof(was_duplicate) != TYPE_BOOL or typeof(has_exact_receipt) != TYPE_BOOL or typeof(submitted) != TYPE_INT or typeof(stored) != TYPE_INT or typeof(discarded) != TYPE_INT or not (stored_map is Dictionary) or not (discarded_map is Dictionary):
 		return {}
 	if int(submitted) < 0 or int(stored) < 0 or int(discarded) < 0:
 		return {}
@@ -341,21 +366,39 @@ func _normalize_core_import_receipt(
 	if requested_count <= 0:
 		return {}
 
+	var copied_stored_by_shape := {}
+	var copied_discarded_by_shape := {}
+	var stored_sum := 0
+	var discarded_sum := 0
+	if bool(has_exact_receipt):
+		for raw_shape in stored_map:
+			var shape := String(raw_shape)
+			var amount: Variant = stored_map[raw_shape]
+			if not copied_counts.has(shape) or typeof(amount) != TYPE_INT or int(amount) <= 0:
+				return {}
+			copied_stored_by_shape[shape] = int(amount)
+			stored_sum += int(amount)
+		for raw_shape in discarded_map:
+			var shape := String(raw_shape)
+			var amount: Variant = discarded_map[raw_shape]
+			if not copied_counts.has(shape) or typeof(amount) != TYPE_INT or int(amount) <= 0:
+				return {}
+			copied_discarded_by_shape[shape] = int(amount)
+			discarded_sum += int(amount)
+		for shape in copied_counts:
+			if int(copied_stored_by_shape.get(shape, 0)) + int(copied_discarded_by_shape.get(shape, 0)) != int(copied_counts[shape]):
+				return {}
+		if stored_sum != int(stored) or discarded_sum != int(discarded) or stored_sum + discarded_sum != requested_count or int(submitted) != requested_count:
+			return {}
+	else:
+		if not bool(was_duplicate) or int(submitted) != 0 or int(stored) != 0 or int(discarded) != 0 or not stored_map.is_empty() or not discarded_map.is_empty():
+			return {}
+
 	var outcome_status := "exact"
 	if bool(was_duplicate):
-		if bool(has_exact_receipt):
-			if int(submitted) != requested_count or int(stored) + int(discarded) != int(submitted):
-				return {}
-			outcome_status = "duplicate_exact"
-		else:
-			# Legacy Core receipts can prove that the operation was already committed,
-			# but cannot reconstruct the original capacity outcome.
-			if int(submitted) != 0 or int(stored) != 0 or int(discarded) != 0:
-				return {}
-			outcome_status = "duplicate_confirmation_only"
-	else:
-		if not bool(has_exact_receipt) or int(submitted) != requested_count or int(stored) + int(discarded) != int(submitted):
-			return {}
+		outcome_status = "duplicate_exact" if bool(has_exact_receipt) else "duplicate_confirmation_only"
+	elif not bool(has_exact_receipt):
+		return {}
 
 	return {
 		"schemaVersion": IMPORT_RECEIPT_SCHEMA_VERSION,
@@ -367,7 +410,9 @@ func _normalize_core_import_receipt(
 			"hasExactReceipt": bool(has_exact_receipt),
 			"submittedJarCount": int(submitted),
 			"storedJarCount": int(stored),
-			"discardedJarCount": int(discarded)
+			"discardedJarCount": int(discarded),
+			"storedJarCountsByShape": copied_stored_by_shape,
+			"discardedJarCountsByShape": copied_discarded_by_shape
 		},
 		"outcomeStatus": outcome_status
 	}
@@ -384,7 +429,7 @@ func _validate_core_import_receipt(operation_id: String, value: Variant) -> bool
 	var raw_response: Variant = receipt.get("coreResponse", null)
 	var outcome_status := String(receipt.get("outcomeStatus", ""))
 	var legacy_receipt := int(receipt_schema) == 1
-	if not (raw_counts is Dictionary) or raw_counts.is_empty() or typeof(raw_requested_count) != TYPE_INT or not (raw_response is Dictionary) or raw_response.size() != (4 if legacy_receipt else 5):
+	if not (raw_counts is Dictionary) or raw_counts.is_empty() or typeof(raw_requested_count) != TYPE_INT or not (raw_response is Dictionary) or raw_response.size() != (4 if legacy_receipt else 7):
 		return false
 	var requested_count := 0
 	for raw_shape in raw_counts:
@@ -411,17 +456,39 @@ func _validate_core_import_receipt(operation_id: String, value: Variant) -> bool
 		return false
 
 	var raw_has_exact: Variant = raw_response.get("hasExactReceipt", null)
-	if typeof(raw_has_exact) != TYPE_BOOL:
+	var raw_stored_map: Variant = raw_response.get("storedJarCountsByShape", null)
+	var raw_discarded_map: Variant = raw_response.get("discardedJarCountsByShape", null)
+	if typeof(raw_has_exact) != TYPE_BOOL or not (raw_stored_map is Dictionary) or not (raw_discarded_map is Dictionary):
 		return false
 	if bool(raw_has_exact):
 		if int(raw_submitted) != requested_count or int(raw_stored) + int(raw_discarded) != int(raw_submitted):
+			return false
+		var stored_sum := 0
+		var discarded_sum := 0
+		for raw_shape in raw_stored_map:
+			var shape := String(raw_shape)
+			var amount: Variant = raw_stored_map[raw_shape]
+			if not raw_counts.has(shape) or typeof(amount) != TYPE_INT or int(amount) <= 0:
+				return false
+			stored_sum += int(amount)
+		for raw_shape in raw_discarded_map:
+			var shape := String(raw_shape)
+			var amount: Variant = raw_discarded_map[raw_shape]
+			if not raw_counts.has(shape) or typeof(amount) != TYPE_INT or int(amount) <= 0:
+				return false
+			discarded_sum += int(amount)
+		for raw_shape in raw_counts:
+			var shape := String(raw_shape)
+			if int(raw_stored_map.get(shape, 0)) + int(raw_discarded_map.get(shape, 0)) != int(raw_counts[raw_shape]):
+				return false
+		if stored_sum != int(raw_stored) or discarded_sum != int(raw_discarded):
 			return false
 		if outcome_status == "exact":
 			return not bool(raw_duplicate)
 		if outcome_status == "duplicate_exact":
 			return bool(raw_duplicate)
 		return false
-	return outcome_status == "duplicate_confirmation_only" and bool(raw_duplicate) and int(raw_submitted) == 0 and int(raw_stored) == 0 and int(raw_discarded) == 0
+	return outcome_status == "duplicate_confirmation_only" and bool(raw_duplicate) and int(raw_submitted) == 0 and int(raw_stored) == 0 and int(raw_discarded) == 0 and raw_stored_map.is_empty() and raw_discarded_map.is_empty()
 
 
 func capture_state() -> Dictionary:

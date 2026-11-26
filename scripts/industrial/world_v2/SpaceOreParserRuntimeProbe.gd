@@ -406,18 +406,30 @@ static func run() -> Dictionary:
 		"hasExactReceipt": true,
 		"submittedJarCount": pending_jar_count + 1,
 		"storedJarCount": pending_jar_count + 1,
-		"discardedJarCount": 0
+		"discardedJarCount": 0,
+		"storedJarCountsByShape": pending_counts.duplicate(true),
+		"discardedJarCountsByShape": {}
 	}
 	var before_bad_receipt := restored.capture_state()
 	if restored.acknowledge_output_batch(pending_id, malformed_receipt) or restored.capture_state() != before_bad_receipt:
 		return _failure("malformed Core import receipt must reject without removing the pending batch")
+	var exact_stored_by_shape := pending_counts.duplicate(true)
+	var exact_discarded_by_shape := {}
+	var first_shape := String(exact_stored_by_shape.keys()[0])
+	if int(exact_stored_by_shape[first_shape]) == 1:
+		exact_stored_by_shape.erase(first_shape)
+	else:
+		exact_stored_by_shape[first_shape] = int(exact_stored_by_shape[first_shape]) - 1
+	exact_discarded_by_shape[first_shape] = 1
 	var exact_receipt := {
 		"success": true,
 		"wasDuplicate": false,
 		"hasExactReceipt": true,
 		"submittedJarCount": pending_jar_count,
 		"storedJarCount": pending_jar_count - 1,
-		"discardedJarCount": 1
+		"discardedJarCount": 1,
+		"storedJarCountsByShape": exact_stored_by_shape,
+		"discardedJarCountsByShape": exact_discarded_by_shape
 	}
 	if not restored.acknowledge_output_batch(pending_id, exact_receipt):
 		return _failure("complete Core import receipt was not accepted")
@@ -453,7 +465,9 @@ static func run() -> Dictionary:
 		"hasExactReceipt": true,
 		"submittedJarCount": 1,
 		"storedJarCount": 1,
-		"discardedJarCount": 0
+		"discardedJarCount": 0,
+		"storedJarCountsByShape": {"圆罐": 1},
+		"discardedJarCountsByShape": {}
 	}
 	if not fresh_history_runtime.acknowledge_output_batch(String(fresh_batch.operationId), fresh_exact_receipt):
 		return _failure("fresh Parser could not commit its exact Core receipt")
@@ -476,13 +490,18 @@ static func run() -> Dictionary:
 		"hasExactReceipt": true,
 		"submittedJarCount": 1,
 		"storedJarCount": 0,
-		"discardedJarCount": 1
+		"discardedJarCount": 1,
+		"storedJarCountsByShape": {},
+		"discardedJarCountsByShape": {"圆罐": 1}
 	}
 	if not duplicate_exact_runtime.acknowledge_output_batch(String(duplicate_exact_batch.operationId), duplicate_exact_response):
 		return _failure("Core duplicate with durable exact receipt was not accepted")
 	var duplicate_exact_observation: Dictionary = duplicate_exact_runtime.build_supply_observation_snapshot()
 	if int(duplicate_exact_observation.get("exactCoreDiscardedJarCount", -1)) != 1 or int(duplicate_exact_observation.get("duplicateExactBatchCount", -1)) != 1 or int(duplicate_exact_observation.get("duplicateConfirmationBatchCountWithUnknownOutcome", -1)) != 0:
 		return _failure("exact duplicate receipt was incorrectly classified as unknown")
+	var duplicate_discarded_by_shape: Dictionary = duplicate_exact_observation.get("exactCoreDiscardedJarCountByShape", {})
+	if int(duplicate_discarded_by_shape.get("圆罐", 0)) != 1 or not bool(duplicate_exact_observation.get("perShapeCoreOutcomeHistoryComplete", false)):
+		return _failure("exact duplicate receipt did not preserve its per-shape outcome")
 
 	# Parser schema 4 / receipt schema 1 remains loadable and preserves unknown outcome.
 	var legacy_receipt_state := captured_receipts.duplicate(true)
@@ -490,6 +509,8 @@ static func run() -> Dictionary:
 	var legacy_receipt: Dictionary = legacy_receipt_state["coreImportReceipts"].values()[0].duplicate(true)
 	legacy_receipt["schemaVersion"] = 1
 	legacy_receipt["coreResponse"].erase("hasExactReceipt")
+	legacy_receipt["coreResponse"].erase("storedJarCountsByShape")
+	legacy_receipt["coreResponse"].erase("discardedJarCountsByShape")
 	legacy_receipt["coreResponse"]["wasDuplicate"] = true
 	legacy_receipt["coreResponse"]["submittedJarCount"] = 0
 	legacy_receipt["coreResponse"]["storedJarCount"] = 0

@@ -254,13 +254,23 @@ public partial class WorldV2RuntimeNode : Node
 
         var result = RequireOperationalSession().ImportProducedJars(operationId, copiedCounts);
         EmitSignal(SignalName.SnapshotChanged);
+        var storedByShape = new GDictionary();
+        if (result.StoredJarCountsByShape != null)
+            foreach (var item in result.StoredJarCountsByShape)
+                storedByShape[item.Key] = item.Value;
+        var discardedByShape = new GDictionary();
+        if (result.DiscardedJarCountsByShape != null)
+            foreach (var item in result.DiscardedJarCountsByShape)
+                discardedByShape[item.Key] = item.Value;
         return new GDictionary
         {
             ["wasDuplicate"] = result.WasDuplicate,
             ["submittedJarCount"] = result.SubmittedJarCount,
             ["storedJarCount"] = result.StoredJarCount,
             ["discardedJarCount"] = result.DiscardedJarCount,
-            ["hasExactReceipt"] = result.HasExactReceipt
+            ["hasExactReceipt"] = result.HasExactReceipt,
+            ["storedJarCountsByShape"] = storedByShape,
+            ["discardedJarCountsByShape"] = discardedByShape
         };
     }
 

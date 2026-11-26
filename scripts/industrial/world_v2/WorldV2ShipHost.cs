@@ -314,7 +314,9 @@ public partial class WorldV2ShipHost : Node
                 !result.ContainsKey("submittedJarCount") ||
                 !result.ContainsKey("storedJarCount") ||
                 !result.ContainsKey("discardedJarCount") ||
-                !result.ContainsKey("hasExactReceipt"))
+                !result.ContainsKey("hasExactReceipt") ||
+                !result.ContainsKey("storedJarCountsByShape") ||
+                !result.ContainsKey("discardedJarCountsByShape"))
             {
                 return new GDictionary
                 {
