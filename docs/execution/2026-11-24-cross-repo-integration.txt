@@ -13,9 +13,11 @@ CURRENT AUTHORITATIVE STATUS — 2026-11-26 (Verbose run reached final navigatio
 - Effect State Store now passed with real `StatCalculator` binding. The two former `StatusEffectManager` unbound warnings no longer appeared.
 - The pause probe no longer emitted `Parent node is busy adding/removing children`. However, it failed after the actual MainMenu scene replacement because it dereferenced `get_tree()` through the old, detached probe Node at line 85. This was a probe post-transition assertion error; it was not evidence of production `GameFlow.return_to_menu()` failure.
 - Fixed the navigation probe to keep a `SceneTree` reference before scene replacement and inspect only the still-live SceneTree plus GameFlow autoload state after the old probe/controller are freed. It no longer assumes `current_scene` is non-null in the same transition frame.
+- The cross-repo harness now fails on `Cannot get path of node as it is not in a scene tree`; with `GODOT_VERBOSE=1`, it also fails if Domain contracts or Parser ingress lists any `Leaked instance: Node:`. Resource/GDScript/StringName reports remain diagnostic until their owners are established.
 - Verbose exit output showed 99 leaked ObjectDB instances, 42 resources still in use, 283 unclaimed StringNames, three `get_path` errors on detached Nodes, and exactly three leaked Node instances with empty paths.
 - Static ownership audit found exactly three unfreed `SpaceHangarPreparation.new()` Nodes: two in `SpaceHangarCatalogOwnershipProbe.gd` and one in `SpaceDemoProgressionBootstrapProbe.gd`. All three helpers were refactored to release their RefCounted controller and then explicitly free the Node-owned preparation after producing detached probe results.
 - Code commits after the user run: `3bd18b384ab1e5430aea449dc641892ac4d6816e` and `296fcc071580a4d74ced06835b27e85ccbe6aca4` (navigation probe lifetime), `2f88ade03c4248aaef96530e97934fe0a995cdc1` and `e57da5091e2ebfe8532dcb3e022211fef26830a6` (three Hangar preparation Node owners), `9f0cda14c5a70c595095a56bbacb5a7c1694ac0f` (explicit nullable snapshot initialization).
+- Leak regression gate commit: `44668cd131dcb0777f579fbd4fcefc476ce0db52`.
 - The work record is updated at `docs/work-records/2026-11-26-cross-repo-probe-lifecycle.md`.
 - These latest commits have not been run locally; neither the navigation fix nor the expected decrease in leaked Node count is verified. The 42 Resource and 283 StringName diagnostics remain unresolved until another verbose run.
 - No final `CROSS-REPO-WORLD-V2-OK` marker was present in the uploaded output. The run ended on the battle-navigation probe's `SCRIPT ERROR`; do not mark the full integration green.
@@ -27,7 +29,7 @@ NEXT LOCAL VALIDATION
 2. Keep Core at `391f318a24fde724a66054e771d0590f0e20c231`; do not repeat the already passed Core 1038 xUnit suite.
 3. Rerun `verify-world-v2-cross-repo.sh` with `GODOT_VERBOSE=1`.
 4. Require `[SpaceBattlePauseControllerProbe] passed terminal-menu-transition=true` and the final `CROSS-REPO-WORLD-V2-OK` marker; the harness rejects `SCRIPT ERROR` and SceneTree busy diagnostics.
-5. Confirm all three detached Node/get_path leak entries disappear. Re-assess the remaining Resource/StringName lines from the new log rather than presuming they are harmless or resolved.
+5. Require zero detached Node leak entries and zero `get_path` errors (the harness now fails on either). Re-assess the remaining Resource/StringName lines from the new log rather than presuming they are harmless or resolved.
 6. Keep desktop GUI navigation and repeated battle entry for separate manual acceptance.
 
 PREVIOUS AUTHORITATIVE STATUS — superseded by the verbose local run and ownership audit
