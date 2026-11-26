@@ -5,15 +5,16 @@ Space branch: world-v2/phase-4.10b-hangar-ui
 Core PR: #63
 Core branch: architecture/core-liquid-identity-consolidation
 
-CURRENT AUTHORITATIVE STATUS — 2026-11-26
+CURRENT AUTHORITATIVE STATUS — 2026-11-26 (pin correction pending verification)
 
-- Space PR #2 current code head before the pin-alignment change: a0bff57489d3ab696e9a3779c8f98f4525bda609 (Draft/Open; not merged).
-- Core PR #63 current source head: e1e89cad5e0f11f369c8ade814140a7b4cc8df74 (Draft/Open; not merged).
-- Core exact-head push and pull_request verify runs 45773000798 and 45773009044 both completed successfully.
-- Space exact-head run 45775968520 passed for Space a0bff57489d3ab696e9a3779c8f98f4525bda609, but the checked-in workflow at that head still used Core pin 18a0b26407ee51c6df722f093165c3b3770c31a7. That success does NOT prove integration against the current Core head e1e89cad5e0f11f369c8ade814140a7b4cc8df74.
-- This checkpoint change updates the workflow ref and CORE_EXPECTED_SHA, README checkout instructions and this record to one exact Core PR #63 SHA. A new Space run must pass before the current cross-repository combination is called green.
-- The workflow intentionally pins one exact Core commit. It does not silently follow a moving branch; advancing Core requires an explicit reviewed pin update and a fresh exact-head integration run.
-- Existing Space headless evidence remains valid only for the Core SHA recorded by its corresponding run. It does not replace GUI acceptance on the target OS/GPU.
+- Space PR #2 code head: 0ee21ab7b464da6cec7b142009f8e159f6af1364 (Draft/Open; not merged).
+- Core PR #63 source head: 391f318a24fde724a66054e771d0590f0e20c231 (Draft/Open; not merged).
+- Core exact-head verify run 45822480114 completed successfully for 391f318a24fde724a66054e771d0590f0e20c231.
+- Space exact-head run 45796547789 failed while building Space against stale Core pin e1e89cad5e0f11f369c8ade814140a7b4cc8df74; Core Bridge itself built successfully, but Space compilation failed because the older Core DTO did not expose HasExactReceipt, StoredJarCountsByShape and DiscardedJarCountsByShape expected by Space WorldV2RuntimeNode.
+- Root cause is an integration source-pin mismatch, not a failure in the new Core receipt implementation or a Godot runtime probe: the checked-in workflow and CORE_EXPECTED_SHA selected e1e89cad5e0f11f369c8ade814140a7b4cc8df74, while Space source already consumes the expanded exact-receipt DTO.
+- Corrective change: align both workflow checkout ref and CORE_EXPECTED_SHA to 391f318a24fde724a66054e771d0590f0e20c231; README build instructions and this checkpoint are aligned to the same exact Core commit.
+- A fresh Space cross-repository run is required before the pair can be called integrated/green. The pin correction itself is not treated as validation.
+- Both PRs remain Open/Draft and unmerged. No GUI acceptance is claimed.
 
 INTEGRATION CONTRACT
 
