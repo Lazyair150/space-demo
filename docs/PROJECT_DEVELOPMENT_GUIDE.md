@@ -29,6 +29,7 @@ Space 是 Godot 游戏客户端；Jar Core 是同级独立仓库。当前目标�
 ## 3. 模块文档地图
 
 - [总体架构与模块地图](architecture/00-system-architecture-and-module-map.md)
+- [应用全生命周期与 UI 状态机](architecture/18-application-flow-and-ui-state-machine.md)
 - [Hangar、Board Assignment 与冻结装配协议](architecture/13-hangar-board-assignment-and-loadout-pipeline.md)
 - [World V2 Host、GameFlow 与战斗生命周期](architecture/14-world-v2-host-runtime-and-failure-boundary.md)
 - [生产、原石 Parser 与资源供给](architecture/15-production-parser-and-resource-supply.md)
@@ -112,4 +113,4 @@ World 的液体词汇不是只有 `liquids` 名称数组，而是不可拆分的
 
 战斗中必须同时提供可见的屏幕暂停按钮和 Escape 快捷键；快捷键不能是唯一入口。暂停面板必须同时提供继续和返回主菜单。返回主菜单必须由 `Game.gd` 结束战斗生命周期并释放 World V2 Host，再由 `GameFlow.return_to_menu` 执行转场，禁止 UI 直接切场景。
 
-订单效果提交必须在同一提交边界持久化效果状态、Dispatcher EventId 和完整运行时检查点。检查点身份必须与冻结 Loadout 的 `shipWorldId/loadoutId/loadoutVersion/loadoutFingerprint` 一致。校验失败必须报告具体字段，事件保持 pending，不得确认、不准以默认值掩盖。设计与验证要求见 [Battle Pause UI and Runtime Checkpoint Contract](architecture/17-battle-pause-ui-and-checkpoint-contract.md)。
+订单效果提交必须原子持久化效果状态和 Dispatcher EventId；只有完整运行时检查点可安全捕获时，才将其与效果状态一起提交。有限关卡活动波次期间不能伪造可恢复检查点：效果可在内存中幂等应用，但 Jar 事件必须保持 pending，直到无敌人阶段间隔成功持久化；死亡/终局关闭不得尝试生成可恢复检查点。检查点身份必须与冻结 Loadout 的 `shipWorldId/loadoutId/loadoutVersion/loadoutFingerprint` 一致。设计见 [Battle Pause UI and Runtime Checkpoint Contract](architecture/17-battle-pause-ui-and-checkpoint-contract.md)。
