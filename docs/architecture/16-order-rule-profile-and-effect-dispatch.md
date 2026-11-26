@@ -41,3 +41,8 @@ Jar Core Order completion fact
 ## 6. 源码入口
 
 `SpaceRuleContributionResolver.gd`、`SpaceBoardRuntimeProfileSet.gd`、`SpaceCoreOrderTemplateDefinition.gd`、`SpaceOrderEffectDispatcher.gd`、`SpaceOrderEffectCommitter.gd`、`SpaceBattleEffectStateStore.gd`。详细规则范围见 [14 — Ability and Workshop Rule Scopes](../industrial/14-space-ability-and-workshop-rule-scopes.md)。
+
+
+## Order materialization and World vocabulary
+
+Space sends only the Core-owned template key and scheduling metadata for template-backed Jar orders. Core resolves the immutable template against the active World. The active World vocabulary is the complete tuple `(Shapes, Liquids, LiquidPolarities)`; template materialization must use the mapping already stored in `WorldV2Context`, not reconstruct a legacy default vocabulary. A materialization failure faults the launch and prevents combat time from starting. The non-default identity regression is recorded in Core test `ApplicationOperationsPreserveExplicitNonDefaultLiquidPolarities` and Space work record `docs/work-records/2026-11-27-order-materialization-liquid-polarity-fault.md`.
