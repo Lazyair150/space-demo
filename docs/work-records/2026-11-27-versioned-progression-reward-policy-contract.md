@@ -57,9 +57,10 @@ The documents distinguish the implemented policy/settlement contracts from the s
 ## Validation status
 
 - Core exact-head verify remains SUCCESS on `116c0bb7...`.
-- Space source changes have been committed as one grouped Git tree update.
-- A new Space cross-repository workflow result has not yet been confirmed for this code head.
-- No Godot import/parse, SceneTree probe, desktop GUI or full battle reward-loop result is claimed by this record.
+- Space source changes were committed as one grouped Git tree update, followed by the missing global probe class declaration.
+- Space cross-repository Run `45872350494` completed SUCCESS on exact Space HEAD `068d89f0ec36164a5b6868a756527d995e729603` with exact Core pin `116c0bb7e3589a2850bf1b85f6da4c48de8c0a28`.
+- Core Bridge build, Space .NET build, Godot 4.7.1 import/parse, HUD feedback, all-domain contracts (including both new progression reward probes), Parser/Core ingress, runtime, lifecycle, fault, disposed/faulted commands, snapshot isolation and battle-navigation probes passed.
+- No desktop GUI acceptance or production battle reward-loop completion is claimed by this record.
 
 ## Next grouped implementation batch
 
@@ -74,3 +75,14 @@ The documents distinguish the implemented policy/settlement contracts from the s
 The run triggered by the main-branch synchronization (`45871207456`) completed with failure. Its first fatal GDScript issue was not a supply-accounting failure: `SpaceDomainContractProbe` called `SpaceBattleSupplyReconciliationProbe.run()`, but that probe script had no `class_name SpaceBattleSupplyReconciliationProbe`, so the global class identifier was not registered. The expected negative-case `push_error` diagnostics from ownership/fingerprint rejection probes were not the harness failure; the harness specifically rejects script/parse/compile/SceneTree errors.
 
 The missing global class declaration is now added to the probe script. The progression Reward Profile batch was also committed while the exact-pin run was in progress; the next workflow run must validate both the class registration correction and the reward-policy code together.
+
+
+## Exact integration result
+
+- Run: [45872350494](https://github.com/Lazyair150/space-demo/actions/runs/45872350494)
+- Space HEAD: `068d89f0ec36164a5b6868a756527d995e729603`
+- Core pin: `116c0bb7e3589a2850bf1b85f6da4c48de8c0a28`
+- Result: `SUCCESS`
+- Both `progression-reward-profile` and `progression-reward-settlement` reported passed inside `SpaceDomainContractProbe`.
+- The earlier failure was the missing global class declaration on `SpaceBattleSupplyReconciliationProbe.gd`; after adding it, the full integration script passed.
+- The profile remains a contract, not an authored production balance asset. Battle fact collection and recoverable cross-aggregate reward settlement remain future work.
