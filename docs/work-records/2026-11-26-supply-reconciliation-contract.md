@@ -143,3 +143,32 @@ Core 导入回执目前按 operation 与 shape 汇总，不将每个导入 Jar �
 
 最新 Space HEAD：`b322040708c5adccf9ef3b48f3b0ac4bb9d43384`。
 最新跨仓库验证：Run `45826120969`，verify Job `139930613248`，运行中。
+
+## 八、跨仓库运行发现的形状零值断言缺陷（2026-11-26）
+
+### 实际验证结果
+
+- Space 精确集成 Run：`45826677268`，Job：`139932503548`，结论：failure。
+- Core Bridge 构建成功：0 warning / 0 error。
+- Space C# 构建成功：0 warning / 0 error。
+- Godot 4.7.1 .NET 项目导入和脚本类扫描通过。
+- HUD 反馈探针：`21 checks, 0 failures`。
+- Domain contracts：`[SpaceDomainContractProbe] all-domain-contracts=passed`。
+- Parser/Core 端到端 ingress 在 `SpaceOreParserJarIngressProbe.gd:290` 触发断言，后续 integration/lifecycle probes 因此没有执行。
+
+### 根因
+
+`SpaceOreParserRuntime.build_supply_observation_snapshot()` 为每个配置形状预先创建完整的 `exactCoreStoredJarCountByShape` 和 `exactCoreDiscardedJarCountByShape` 映射，并将无结果的形状显式表示为 0。这是逐形状观察快照的 total-map 契约，避免调用方把“该形状没有丢弃”与“该形状未被观察/缺字段”混为一谈。
+
+端到端探针此前却使用 `replay_discarded_by_shape.is_empty()` 来断言没有丢弃。由于该映射有意保留每个形状的零值键，这个判断必然为 false。此前的断言已经证明 aggregate stored/discarded 数、duplicate exact 状态、unknown duplicate 数和回执计数均符合预期；因此本次失败是 Probe 对观察映射形状的误读，不是 Core 重复导入回执丢失。
+
+### 修正
+
+- Probe 改为逐个配置形状验证：圆罐 stored=1、方罐 stored=0；圆罐 discarded=0、方罐 discarded=0。
+- 保留运行时 total-map 的完整零值表达，不改变 Core 回执、不改 Parser 收据标准化/恢复校验，也不通过删掉零值键来迁就断言。
+- 修正提交：`b61875addfa4f826d8e225b5646e401ee9655768`。
+- 该修正尚未取得新 HEAD 的 Godot 运行结果，不能标记 Parser ingress 或整条跨仓库集成为通过。
+
+### 额外诊断项
+
+这次 ingress 退出时 Godot 还报告 `108 ObjectDB instances were leaked` 和 `44 resources still in use`。这些信息不是触发第 290 行断言的根因，但也不应被静默当作正常；待本轮断言修正后，继续区分探针主动创建对象未释放、场景生命周期遗留和真实资源泄漏。Negative contract probes 输出的若干 `ERROR: ... rejected` 后跟随对应 `...=passed`，是它们主动走拒绝分支的日志；不能仅凭普通 ERROR 文本判为脚本断言失败。
