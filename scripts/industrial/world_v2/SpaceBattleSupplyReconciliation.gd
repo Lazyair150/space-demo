@@ -19,18 +19,18 @@ static func build_snapshot(
     if typeof(parser_history_complete) != TYPE_BOOL or typeof(per_shape_history_complete) != TYPE_BOOL:
         return _failure("parser receipt history flags are missing or invalid")
 
-    var completed := _normalize_count_map(parser_observation.get("completedJarCountByShape", null))
-    var pending := _normalize_count_map(parser_observation.get("pendingCoreImportJarCountByShape", null))
-    var acknowledged := _normalize_count_map(parser_observation.get("acknowledgedCoreImportJarCountByShape", null))
-    var unattributed := _normalize_count_map(parser_observation.get("unattributedCompletedJarCountByShape", null))
-    var exact_stored := _normalize_count_map(parser_observation.get("exactCoreStoredJarCountByShape", null))
-    var exact_discarded := _normalize_count_map(parser_observation.get("exactCoreDiscardedJarCountByShape", null))
+    var completed: Variant = _normalize_count_map(parser_observation.get("completedJarCountByShape", null))
+    var pending: Variant = _normalize_count_map(parser_observation.get("pendingCoreImportJarCountByShape", null))
+    var acknowledged: Variant = _normalize_count_map(parser_observation.get("acknowledgedCoreImportJarCountByShape", null))
+    var unattributed: Variant = _normalize_count_map(parser_observation.get("unattributedCompletedJarCountByShape", null))
+    var exact_stored: Variant = _normalize_count_map(parser_observation.get("exactCoreStoredJarCountByShape", null))
+    var exact_discarded: Variant = _normalize_count_map(parser_observation.get("exactCoreDiscardedJarCountByShape", null))
     if completed == null or pending == null or acknowledged == null or unattributed == null or exact_stored == null or exact_discarded == null:
         return _failure("parser observation contains an invalid per-shape count map")
 
-    var warehouse := _count_jar_shapes(core_world_snapshot.get("resourceJars", null))
-    var master := _count_workshop_jars(core_world_snapshot.get("master", null))
-    var slave := _count_workshop_jars(core_world_snapshot.get("slave", null))
+    var warehouse: Variant = _count_jar_shapes(core_world_snapshot.get("resourceJars", null))
+    var master: Variant = _count_workshop_jars(core_world_snapshot.get("master", null))
+    var slave: Variant = _count_workshop_jars(core_world_snapshot.get("slave", null))
     if warehouse == null or master == null or slave == null:
         return _failure("Core snapshot is missing a valid Warehouse/Master/Slave Jar inventory")
 
