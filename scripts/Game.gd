@@ -793,6 +793,22 @@ func get_order_presentation_metadata() -> Dictionary:
 		return {}
 	return _battle_loadout.order_presentation_metadata()
 
+## Read-only join of Space parser history and the current Core-owned Jar accounts.
+## This does not attribute current Jars to historical parser batches or mutate either system.
+func get_supply_reconciliation_snapshot() -> Dictionary:
+	if _ore_parser_runtime == null:
+		return {}
+	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if jar_host == null or not jar_host.has_method("GetWorldSnapshot"):
+		return {}
+	var core_snapshot: Variant = jar_host.call("GetWorldSnapshot")
+	if not (core_snapshot is Dictionary):
+		return {}
+	return SpaceBattleSupplyReconciliation.build_snapshot(
+		_ore_parser_runtime.build_supply_observation_snapshot(),
+		core_snapshot
+	)
+
 ## Save integration captures processed EventIds and Jar world identity with the frozen loadout identity.
 func capture_order_dispatcher_state() -> Dictionary:
 	if _order_effect_dispatcher == null:
