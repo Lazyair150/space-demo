@@ -160,6 +160,10 @@ static func _probe_effect_manager_restore() -> Dictionary:
     definition.definition_version = 2
     definition.duration = 10.0
     definition.max_stacks = 3
+    definition.stack_policy = BuffDefinition.StackPolicy.ADD_STACK
+    definition.modifiers = [
+        {"stat": &"probe_attack", "stage": StatCalculator.Stage.FLAT, "value": 5.0}
+    ]
     if not definition.is_valid():
         return {"passed": false, "reason": "synthetic exact-version Buff definition is invalid"}
 
@@ -175,51 +179,85 @@ static func _probe_effect_manager_restore() -> Dictionary:
     if frozen_definition == null or absf(frozen_definition.duration - 10.0) > 0.000001:
         return {"passed": false, "reason": "catalog leaked its owned Resource to a caller"}
 
+    var source_stats := StatCalculator.new()
+    var restored_stats := StatCalculator.new()
     var source := StatusEffectManager.new()
+    var restored := StatusEffectManager.new()
+    source.bind_stats(source_stats)
+    restored.bind_stats(restored_stats)
+
     var applied := source.apply_order_event("checkpoint-probe-event", frozen_definition)
     if applied == null:
-        return {"passed": false, "reason": "source manager could not apply probe event"}
+        return _finish_effect_probe("source manager could not apply probe event", source, restored, source_stats, restored_stats)
+    var stacked := source.apply_order_event("checkpoint-probe-event-2", frozen_definition)
+    if stacked == null or stacked.stacks != 2:
+        return _finish_effect_probe("source manager did not apply the declared ADD_STACK policy", source, restored, source_stats, restored_stats)
     applied.remaining = 3.5
-    applied.stacks = 2
+    if source_stats.modifier_count(&"probe_attack") != 1 or not is_equal_approx(source_stats.value_of(&"probe_attack", 20.0), 30.0):
+        return _finish_effect_probe("source manager did not register the two-stack StatCalculator modifier", source, restored, source_stats, restored_stats)
     var snapshot := source.capture_runtime_state()
-
-    var restored := StatusEffectManager.new()
     var definition_resolver := func(definition_id: String, version: int) -> BuffDefinition:
         return catalog.resolve_buff(definition_id, version)
     var target_resolver := func(_target_key: String) -> Node:
         return null
     if not restored.restore_runtime_state(snapshot, definition_resolver, target_resolver):
-        return {"passed": false, "reason": "manager rejected a valid exact-version effect snapshot"}
-    if restored.count() != 1 or not restored.has_processed_order_event("checkpoint-probe-event"):
-        return {"passed": false, "reason": "restored effect/event identity was lost"}
+        return _finish_effect_probe("manager rejected a valid exact-version effect snapshot", source, restored, source_stats, restored_stats)
+    if restored.count() != 1 or not restored.has_processed_order_event("checkpoint-probe-event") or not restored.has_processed_order_event("checkpoint-probe-event-2"):
+        return _finish_effect_probe("restored effect/event identity was lost", source, restored, source_stats, restored_stats)
     if absf(restored.remaining(definition.id) - 3.5) > 0.000001 or restored.stacks(definition.id) != 2:
-        return {"passed": false, "reason": "restored Buff duration or stacks changed"}
+        return _finish_effect_probe("restored Buff duration or stacks changed", source, restored, source_stats, restored_stats)
+    if restored_stats.modifier_count(&"probe_attack") != 1 or not is_equal_approx(restored_stats.value_of(&"probe_attack", 20.0), 30.0):
+        return _finish_effect_probe("restored StatCalculator modifier does not match the frozen two-stack Buff", source, restored, source_stats, restored_stats)
 
     var non_finite_snapshot := snapshot.duplicate(true)
     non_finite_snapshot["instances"][0]["remaining"] = INF
     if restored.restore_runtime_state(non_finite_snapshot, definition_resolver, target_resolver):
-        return {"passed": false, "reason": "non-finite Buff duration was accepted"}
-    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001:
-        return {"passed": false, "reason": "rejected non-finite restore partially mutated the live manager"}
+        return _finish_effect_probe("non-finite Buff duration was accepted", source, restored, source_stats, restored_stats)
+    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001 or restored_stats.modifier_count(&"probe_attack") != 1 or not is_equal_approx(restored_stats.value_of(&"probe_attack", 20.0), 30.0):
+        return _finish_effect_probe("rejected non-finite restore partially mutated live Buff or stats", source, restored, source_stats, restored_stats)
 
     var wrong_version_snapshot := snapshot.duplicate(true)
     wrong_version_snapshot["instances"][0]["definitionVersion"] = 3
     if restored.restore_runtime_state(wrong_version_snapshot, definition_resolver, target_resolver):
-        return {"passed": false, "reason": "wrong exact Buff definition version was accepted"}
-    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001:
-        return {"passed": false, "reason": "rejected version mismatch partially mutated the live manager"}
+        return _finish_effect_probe("wrong exact Buff definition version was accepted", source, restored, source_stats, restored_stats)
+    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001 or restored_stats.modifier_count(&"probe_attack") != 1 or not is_equal_approx(restored_stats.value_of(&"probe_attack", 20.0), 30.0):
+        return _finish_effect_probe("rejected version mismatch partially mutated live Buff or stats", source, restored, source_stats, restored_stats)
 
     var unresolved_target_snapshot := snapshot.duplicate(true)
     unresolved_target_snapshot["instances"][0]["targetKey"] = "missing-target"
     if restored.restore_runtime_state(unresolved_target_snapshot, definition_resolver, target_resolver):
-        return {"passed": false, "reason": "unresolved stable Buff target was silently restored"}
-    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001:
-        return {"passed": false, "reason": "rejected target restore partially mutated the live manager"}
+        return _finish_effect_probe("unresolved stable Buff target was silently restored", source, restored, source_stats, restored_stats)
+    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001 or restored_stats.modifier_count(&"probe_attack") != 1 or not is_equal_approx(restored_stats.value_of(&"probe_attack", 20.0), 30.0):
+        return _finish_effect_probe("rejected target restore partially mutated live Buff or stats", source, restored, source_stats, restored_stats)
 
     restored.apply_order_event("checkpoint-probe-event", frozen_definition)
-    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001:
-        return {"passed": false, "reason": "replayed processed event duplicated or refreshed the restored Buff"}
-    return {"passed": true}
+    if restored.count() != 1 or absf(restored.remaining(definition.id) - 3.5) > 0.000001 or restored.stacks(definition.id) != 2 or restored_stats.modifier_count(&"probe_attack") != 1:
+        return _finish_effect_probe("replayed processed event duplicated, refreshed, or re-registered the restored Buff", source, restored, source_stats, restored_stats)
+    restored.advance(3.5)
+    if restored.count() != 0 or restored_stats.modifier_count(&"probe_attack") != 0 or not is_equal_approx(restored_stats.value_of(&"probe_attack", 20.0), 20.0):
+        return _finish_effect_probe("expired restored Buff did not remove its StatCalculator modifier", source, restored, source_stats, restored_stats)
+    return _finish_effect_probe("", source, restored, source_stats, restored_stats)
+
+
+## Release every Node created by the RefCounted probe on both success and failure paths.
+static func _finish_effect_probe(
+    reason: String,
+    source: StatusEffectManager,
+    restored: StatusEffectManager,
+    source_stats: StatCalculator,
+    restored_stats: StatCalculator
+) -> Dictionary:
+    source.clear_all()
+    restored.clear_all()
+    source.free()
+    restored.free()
+    source_stats.clear()
+    restored_stats.clear()
+    source_stats.free()
+    restored_stats.free()
+    if reason.is_empty():
+        return {"passed": true}
+    return {"passed": false, "reason": reason}
 
 static func _cleanup(absolute_path: String) -> void:
     for suffix in ["", ".pending", ".previous"]:
