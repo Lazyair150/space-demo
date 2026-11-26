@@ -176,114 +176,114 @@ func _valid_dispatcher_state(dispatcher: Dictionary, identity: Dictionary, effec
     return true
 
 func _valid_runtime_checkpoint(runtime_checkpoint: Dictionary, loadout_identity: Dictionary) -> bool:
-	var reason := _runtime_checkpoint_validation_error(runtime_checkpoint, loadout_identity)
-	if not reason.is_empty():
-		push_error("[BattleStateStore] Runtime checkpoint rejected: " + reason)
-		return false
-	return true
+    var reason := _runtime_checkpoint_validation_error(runtime_checkpoint, loadout_identity)
+    if not reason.is_empty():
+        push_error("[BattleStateStore] Runtime checkpoint rejected: " + reason)
+        return false
+    return true
 
 ## Keep validation strict, but report the exact broken contract instead of collapsing
 ## every malformed field into the same "incomplete checkpoint" message.
 func _runtime_checkpoint_validation_error(runtime_checkpoint: Dictionary, loadout_identity: Dictionary) -> String:
-	var runtime_schema := int(runtime_checkpoint.get("schemaVersion", 0))
-	if runtime_schema not in [2, 3]:
-		return "unsupported schemaVersion=%d (expected 2 or 3)" % runtime_schema
-	var checkpoint_identity: Variant = runtime_checkpoint.get("loadoutIdentity", null)
-	if not _loadout_identity_matches(checkpoint_identity, loadout_identity):
-		return "runtime loadoutIdentity mismatch: captured=%s expected=%s" % [JSON.stringify(checkpoint_identity), JSON.stringify(loadout_identity)]
-	if runtime_schema == 3:
-		var stage_runtime: Variant = runtime_checkpoint.get("stageRuntime", null)
-		if not (stage_runtime is Dictionary):
-			return "schema 3 requires stageRuntime object"
-		if int(stage_runtime.get("schemaVersion", 0)) != 1:
-			return "stageRuntime schemaVersion must be 1"
-		if String(stage_runtime.get("stageId", "")).strip_edges().is_empty():
-			return "stageRuntime.stageId is empty"
-		if int(stage_runtime.get("definitionVersion", 0)) <= 0:
-			return "stageRuntime.definitionVersion must be positive"
-		if not _loadout_identity_matches(stage_runtime.get("loadoutIdentity", null), loadout_identity):
-			return "stageRuntime.loadoutIdentity mismatch"
-		if not (stage_runtime.get("directorState", null) is Dictionary):
-			return "stageRuntime.directorState is missing or malformed"
-		if not (stage_runtime.get("objectiveState", null) is Dictionary):
-			return "stageRuntime.objectiveState is missing or malformed"
-		if typeof(stage_runtime.get("encountersCompleted", null)) != TYPE_BOOL:
-			return "stageRuntime.encountersCompleted must be bool"
-		if typeof(stage_runtime.get("completionEmitted", null)) != TYPE_BOOL:
-			return "stageRuntime.completionEmitted must be bool"
-	var jar_json: Variant = runtime_checkpoint.get("jarExecutionCheckpointJson", null)
-	if typeof(jar_json) != TYPE_STRING or String(jar_json).is_empty():
-		return "jarExecutionCheckpointJson is missing or empty"
-	var run_state: Variant = runtime_checkpoint.get("runState", null)
-	if not (run_state is Dictionary):
-		return "runState is missing or malformed"
-	if int(run_state.get("schemaVersion", 0)) != 1:
-		return "runState.schemaVersion must be 1"
-	var score_value: Variant = run_state.get("score", null)
-	var wave_value: Variant = run_state.get("wave", null)
-	if not _is_safe_non_negative_integer(score_value):
-		return "runState.score must be a non-negative safe integer (actual type=%s value=%s)" % [type_string(typeof(score_value)), str(score_value)]
-	if not _is_safe_non_negative_integer(wave_value):
-		return "runState.wave must be a non-negative safe integer (actual type=%s value=%s)" % [type_string(typeof(wave_value)), str(wave_value)]
-	if typeof(run_state.get("segment", null)) != TYPE_STRING:
-		return "runState.segment must be a string"
-	var run_wave := int(wave_value)
-	var run_segment := String(run_state.get("segment", ""))
-	if not ["", "热身", "压力", "精英", "喘息"].has(run_segment):
-		return "runState.segment has unsupported value '%s'" % run_segment
-	if run_wave == 0:
-		if not run_segment.is_empty():
-			return "runState.segment must be empty when wave is zero"
-	else:
-		var expected_segments := ["热身", "压力", "精英", "喘息"]
-		var expected_segment := String(expected_segments[(run_wave - 1) % expected_segments.size()])
-		if run_segment != expected_segment:
-			return "runState.segment '%s' does not match wave %d (expected '%s')" % [run_segment, run_wave, expected_segment]
-	var clock: Variant = runtime_checkpoint.get("spaceClockRemainderMilli", null)
-	if (typeof(clock) != TYPE_INT and typeof(clock) != TYPE_FLOAT) or not is_finite(float(clock)) or float(clock) < 0.0 or float(clock) >= 1.0:
-		return "spaceClockRemainderMilli must be finite and in [0,1)"
-	var parser: Variant = runtime_checkpoint.get("oreParserState", null)
-	if not (parser is Dictionary):
-		return "oreParserState is missing or malformed"
-	if int(parser.get("schemaVersion", 0)) != 2:
-		return "oreParserState.schemaVersion must be 2"
-	var parser_runtime: Variant = parser.get("parserRuntime", null)
-	if not (parser_runtime is Dictionary) or int(parser_runtime.get("schemaVersion", 0)) != 2:
-		return "oreParserState.parserRuntime must be schema 2"
-	var next_pickup_sequence: Variant = parser.get("nextPickupSequence", null)
-	if not _is_safe_positive_integer(next_pickup_sequence):
-		return "oreParserState.nextPickupSequence must be a positive safe integer (actual type=%s value=%s)" % [type_string(typeof(next_pickup_sequence)), str(next_pickup_sequence)]
-	var drop_rng_state: Variant = parser.get("dropRngState", null)
-	if not _is_safe_integer(drop_rng_state):
-		return "oreParserState.dropRngState must be a safe integer (actual type=%s value=%s)" % [type_string(typeof(drop_rng_state)), str(drop_rng_state)]
-	if not (parser.get("pendingPickups", null) is Array):
-		return "oreParserState.pendingPickups must be an array"
-	return ""
+    var runtime_schema := int(runtime_checkpoint.get("schemaVersion", 0))
+    if runtime_schema not in [2, 3]:
+        return "unsupported schemaVersion=%d (expected 2 or 3)" % runtime_schema
+    var checkpoint_identity: Variant = runtime_checkpoint.get("loadoutIdentity", null)
+    if not _loadout_identity_matches(checkpoint_identity, loadout_identity):
+        return "runtime loadoutIdentity mismatch: captured=%s expected=%s" % [JSON.stringify(checkpoint_identity), JSON.stringify(loadout_identity)]
+    if runtime_schema == 3:
+        var stage_runtime: Variant = runtime_checkpoint.get("stageRuntime", null)
+        if not (stage_runtime is Dictionary):
+            return "schema 3 requires stageRuntime object"
+        if int(stage_runtime.get("schemaVersion", 0)) != 1:
+            return "stageRuntime schemaVersion must be 1"
+        if String(stage_runtime.get("stageId", "")).strip_edges().is_empty():
+            return "stageRuntime.stageId is empty"
+        if int(stage_runtime.get("definitionVersion", 0)) <= 0:
+            return "stageRuntime.definitionVersion must be positive"
+        if not _loadout_identity_matches(stage_runtime.get("loadoutIdentity", null), loadout_identity):
+            return "stageRuntime.loadoutIdentity mismatch"
+        if not (stage_runtime.get("directorState", null) is Dictionary):
+            return "stageRuntime.directorState is missing or malformed"
+        if not (stage_runtime.get("objectiveState", null) is Dictionary):
+            return "stageRuntime.objectiveState is missing or malformed"
+        if typeof(stage_runtime.get("encountersCompleted", null)) != TYPE_BOOL:
+            return "stageRuntime.encountersCompleted must be bool"
+        if typeof(stage_runtime.get("completionEmitted", null)) != TYPE_BOOL:
+            return "stageRuntime.completionEmitted must be bool"
+    var jar_json: Variant = runtime_checkpoint.get("jarExecutionCheckpointJson", null)
+    if typeof(jar_json) != TYPE_STRING or String(jar_json).is_empty():
+        return "jarExecutionCheckpointJson is missing or empty"
+    var run_state: Variant = runtime_checkpoint.get("runState", null)
+    if not (run_state is Dictionary):
+        return "runState is missing or malformed"
+    if int(run_state.get("schemaVersion", 0)) != 1:
+        return "runState.schemaVersion must be 1"
+    var score_value: Variant = run_state.get("score", null)
+    var wave_value: Variant = run_state.get("wave", null)
+    if not _is_safe_non_negative_integer(score_value):
+        return "runState.score must be a non-negative safe integer (actual type=%s value=%s)" % [type_string(typeof(score_value)), str(score_value)]
+    if not _is_safe_non_negative_integer(wave_value):
+        return "runState.wave must be a non-negative safe integer (actual type=%s value=%s)" % [type_string(typeof(wave_value)), str(wave_value)]
+    if typeof(run_state.get("segment", null)) != TYPE_STRING:
+        return "runState.segment must be a string"
+    var run_wave := int(wave_value)
+    var run_segment := String(run_state.get("segment", ""))
+    if not ["", "热身", "压力", "精英", "喘息"].has(run_segment):
+        return "runState.segment has unsupported value '%s'" % run_segment
+    if run_wave == 0:
+        if not run_segment.is_empty():
+            return "runState.segment must be empty when wave is zero"
+    else:
+        var expected_segments := ["热身", "压力", "精英", "喘息"]
+        var expected_segment := String(expected_segments[(run_wave - 1) % expected_segments.size()])
+        if run_segment != expected_segment:
+            return "runState.segment '%s' does not match wave %d (expected '%s')" % [run_segment, run_wave, expected_segment]
+    var clock: Variant = runtime_checkpoint.get("spaceClockRemainderMilli", null)
+    if (typeof(clock) != TYPE_INT and typeof(clock) != TYPE_FLOAT) or not is_finite(float(clock)) or float(clock) < 0.0 or float(clock) >= 1.0:
+        return "spaceClockRemainderMilli must be finite and in [0,1)"
+    var parser: Variant = runtime_checkpoint.get("oreParserState", null)
+    if not (parser is Dictionary):
+        return "oreParserState is missing or malformed"
+    if int(parser.get("schemaVersion", 0)) != 2:
+        return "oreParserState.schemaVersion must be 2"
+    var parser_runtime: Variant = parser.get("parserRuntime", null)
+    if not (parser_runtime is Dictionary) or int(parser_runtime.get("schemaVersion", 0)) != 2:
+        return "oreParserState.parserRuntime must be schema 2"
+    var next_pickup_sequence: Variant = parser.get("nextPickupSequence", null)
+    if not _is_safe_positive_integer(next_pickup_sequence):
+        return "oreParserState.nextPickupSequence must be a positive safe integer (actual type=%s value=%s)" % [type_string(typeof(next_pickup_sequence)), str(next_pickup_sequence)]
+    var drop_rng_state: Variant = parser.get("dropRngState", null)
+    if not _is_safe_integer(drop_rng_state):
+        return "oreParserState.dropRngState must be a safe integer (actual type=%s value=%s)" % [type_string(typeof(drop_rng_state)), str(drop_rng_state)]
+    if not (parser.get("pendingPickups", null) is Array):
+        return "oreParserState.pendingPickups must be an array"
+    return ""
 
 func _loadout_identity_matches(actual: Variant, expected: Dictionary) -> bool:
-	if not (actual is Dictionary):
-		return false
-	return (
-		String(actual.get("shipWorldId", "")) == String(expected.get("shipWorldId", ""))
-		and String(actual.get("loadoutId", "")) == String(expected.get("loadoutId", ""))
-		and _is_safe_positive_integer(actual.get("loadoutVersion", null))
-		and int(actual.get("loadoutVersion", 0)) == int(expected.get("loadoutVersion", 0))
-		and String(actual.get("loadoutFingerprint", "")) == String(expected.get("loadoutFingerprint", ""))
-	)
+    if not (actual is Dictionary):
+        return false
+    return (
+        String(actual.get("shipWorldId", "")) == String(expected.get("shipWorldId", ""))
+        and String(actual.get("loadoutId", "")) == String(expected.get("loadoutId", ""))
+        and _is_safe_positive_integer(actual.get("loadoutVersion", null))
+        and int(actual.get("loadoutVersion", 0)) == int(expected.get("loadoutVersion", 0))
+        and String(actual.get("loadoutFingerprint", "")) == String(expected.get("loadoutFingerprint", ""))
+    )
 
 func _is_safe_integer(value: Variant) -> bool:
-	if typeof(value) == TYPE_INT:
-		return true
-	if typeof(value) != TYPE_FLOAT:
-		return false
-	var number := float(value)
-	return is_finite(number) and absf(number) <= 9007199254740991.0 and floor(number) == number
+    if typeof(value) == TYPE_INT:
+        return true
+    if typeof(value) != TYPE_FLOAT:
+        return false
+    var number := float(value)
+    return is_finite(number) and absf(number) <= 9007199254740991.0 and floor(number) == number
 
 func _is_safe_non_negative_integer(value: Variant) -> bool:
-	return _is_safe_integer(value) and int(value) >= 0
+    return _is_safe_integer(value) and int(value) >= 0
 
 func _is_safe_positive_integer(value: Variant) -> bool:
-	return _is_safe_integer(value) and int(value) > 0
+    return _is_safe_integer(value) and int(value) > 0
 
 func _valid_loadout_identity(identity: Variant) -> bool:
     if not (identity is Dictionary):
