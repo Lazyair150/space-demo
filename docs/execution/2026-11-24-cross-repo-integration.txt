@@ -205,3 +205,34 @@ These totals are not yet treated as independent permanent leaks: the Domain prob
 The full investigation and acceptance conditions are recorded in `docs/work-records/2026-11-26-cross-repo-probe-lifecycle.md` Section 10. Core remains pinned to `391f318a24fde724a66054e771d0590f0e20c231`; its 1038-test run is not repeated.
 
 The correction has not yet been run locally. Do not claim Domain, Parser ingress, battle navigation, or the full cross-repo workflow passed until the new run reaches exit code 0 and `CROSS-REPO-WORLD-V2-OK`.
+
+
+CHECKPOINT — Full local World V2 cross-repository verification passed (2026-11-26)
+
+User reran `scripts/ci/verify-world-v2-cross-repo.sh` with Core pinned to `391f318a24fde724a66054e771d0590f0e20c231`. The run reached the final marker:
+
+```
+CROSS-REPO-WORLD-V2-OK core=391f318a24fde724a66054e771d0590f0e20c231
+```
+
+All four phases completed:
+1. Exact Core World V2 Bridge .NET build succeeded.
+2. Space .NET build against the sibling exact Bridge project succeeded.
+3. Godot 4.7.1 import/class registration, HUD feedback (`21 checks, 0 failures`), Hangar/Progression and Domain contracts succeeded. The default owned loadout assembly and legacy polarity migration markers passed.
+4. Parser/Core ingress, World V2 runtime, lifecycle, fault, disposed commands, faulted commands, snapshot isolation and battle-navigation all reached their expected completion markers.
+
+Notable acceptance details:
+- `SpaceHangarSelectionDraft.snapshot_data()` returns `skillSelections` as an Array and `boardAssignments` as a slot-ID keyed Dictionary. The earlier runtime type mismatch is corrected.
+- Progression Bootstrap reached `default-owned-hangar-assembly=passed`, `legacy-loadout-polarity-migration=passed`, and `unknown-legacy-liquid-mapping=fail-closed`.
+- The helper reached its controller release and `SpaceHangarPreparation.free()` cleanup.
+- Domain and Parser ingress verbose shutdown showed normal tracked-instance unloading and no leaked Node, detached-node path, ObjectDB leak, Resource still-in-use, or unclaimed StringName report. The prior incomplete-run counts (56 ObjectDB / 42 Resource / 263 StringName) no longer appeared in these two processes.
+- Parser ingress reported `parsed=1 duplicate_receipt_retained=1 duplicate_capacity_outcome=exact_per_shape shared_clock=1 workshop_bypass=0`.
+- Navigation reported `passed terminal-menu-transition=true`, including the test's intentionally missing-menu rollback case.
+
+Several Godot `ERROR:` log lines are expected negative-path tests (tampered fingerprints/roles/revisions, invalid catalog entries, invalid checkpoints, fault injection and missing-menu rollback). Their corresponding probes passed and the harness completed. Do not remove those fail-closed tests just to make logs visually silent.
+
+PR #2 remains Draft / Open / Unmerged. Current GitHub PR head is `70370118f51a0042ec99889d6543ff722e72a651`; the user ran after the preceding instruction to pull that head, but did not print local `git rev-parse HEAD` in the supplied output. The exact local run SHA is therefore not independently captured here. GitHub has no attached status check / PR workflow run for that head; the validation evidence is the user-provided local .NET + Godot run.
+
+The detailed run record is in `docs/work-records/2026-11-26-cross-repo-probe-lifecycle.md` Section 11.
+
+Next phase: stop repeating the already-green headless harness; perform desktop GUI acceptance for menu → default hangar assembly → battle → pause/resume → return to menu → re-enter battle. Then verify live supply HUD / Parser-Core reconciliation against actual battle state. Jar source/transfer lineage and event-driven progression reward integration remain subsequent design tasks; balance coefficients stay in versioned content data.
