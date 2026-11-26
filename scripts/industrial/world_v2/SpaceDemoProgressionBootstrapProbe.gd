@@ -105,7 +105,8 @@ static func _build_default_owned_loadout(
 		var master_id := String(selection.get("masterWorkshopInstanceId", ""))
 		var slave_id := String(selection.get("slaveWorkshopInstanceId", ""))
 		var skill_selections: Array = selection.get("skillSelections", [])
-		var board_assignments: Array = selection.get("boardAssignments", [])
+		# Board assignments are a slot-id keyed map, unlike skillSelections.
+		var board_assignments: Dictionary = selection.get("boardAssignments", {})
 		var valid_selection: bool = (
 			bool(view.get("canBuild", false))
 			and not String(selection.get("shipInstanceId", "")).is_empty()
