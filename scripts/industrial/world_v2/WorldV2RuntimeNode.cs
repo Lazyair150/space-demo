@@ -259,7 +259,8 @@ public partial class WorldV2RuntimeNode : Node
             ["wasDuplicate"] = result.WasDuplicate,
             ["submittedJarCount"] = result.SubmittedJarCount,
             ["storedJarCount"] = result.StoredJarCount,
-            ["discardedJarCount"] = result.DiscardedJarCount
+            ["discardedJarCount"] = result.DiscardedJarCount,
+            ["hasExactReceipt"] = result.HasExactReceipt
         };
     }
 

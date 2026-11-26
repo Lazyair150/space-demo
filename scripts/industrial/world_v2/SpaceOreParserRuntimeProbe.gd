@@ -403,6 +403,7 @@ static func run() -> Dictionary:
 	var malformed_receipt := {
 		"success": true,
 		"wasDuplicate": false,
+		"hasExactReceipt": true,
 		"submittedJarCount": pending_jar_count + 1,
 		"storedJarCount": pending_jar_count + 1,
 		"discardedJarCount": 0
@@ -413,6 +414,7 @@ static func run() -> Dictionary:
 	var exact_receipt := {
 		"success": true,
 		"wasDuplicate": false,
+		"hasExactReceipt": true,
 		"submittedJarCount": pending_jar_count,
 		"storedJarCount": pending_jar_count - 1,
 		"discardedJarCount": 1
@@ -448,6 +450,7 @@ static func run() -> Dictionary:
 	var fresh_exact_receipt := {
 		"success": true,
 		"wasDuplicate": false,
+		"hasExactReceipt": true,
 		"submittedJarCount": 1,
 		"storedJarCount": 1,
 		"discardedJarCount": 0
@@ -456,6 +459,52 @@ static func run() -> Dictionary:
 		return _failure("fresh Parser could not commit its exact Core receipt")
 	if not bool(fresh_history_runtime.build_supply_observation_snapshot().get("coreImportReceiptHistoryComplete", false)):
 		return _failure("new Parser with complete exact receipts did not retain its complete-history status")
+
+	# A duplicate response carrying the durable Core receipt is exact, not unknown.
+	var duplicate_exact_runtime := SpaceOreParserRuntime.new()
+	if not bool(duplicate_exact_runtime.initialize(definition, "duplicate-exact-parser", ["圆罐", "方罐"]).get("success", false)):
+		return _failure("duplicate-exact parser initialization failed")
+	if not bool(duplicate_exact_runtime.ingest_stone("duplicate-exact-stone", "圆罐", 4.0).get("success", false)):
+		return _failure("duplicate-exact parser rejected its stone fixture")
+	var duplicate_exact_parse := duplicate_exact_runtime.advance(1000)
+	if not bool(duplicate_exact_parse.get("success", false)) or duplicate_exact_parse.get("newBatches", []).size() != 1:
+		return _failure("duplicate-exact parser did not produce its batch")
+	var duplicate_exact_batch: Dictionary = duplicate_exact_parse.newBatches[0]
+	var duplicate_exact_response := {
+		"success": true,
+		"wasDuplicate": true,
+		"hasExactReceipt": true,
+		"submittedJarCount": 1,
+		"storedJarCount": 0,
+		"discardedJarCount": 1
+	}
+	if not duplicate_exact_runtime.acknowledge_output_batch(String(duplicate_exact_batch.operationId), duplicate_exact_response):
+		return _failure("Core duplicate with durable exact receipt was not accepted")
+	var duplicate_exact_observation: Dictionary = duplicate_exact_runtime.build_supply_observation_snapshot()
+	if int(duplicate_exact_observation.get("exactCoreDiscardedJarCount", -1)) != 1 or int(duplicate_exact_observation.get("duplicateExactBatchCount", -1)) != 1 or int(duplicate_exact_observation.get("duplicateConfirmationBatchCountWithUnknownOutcome", -1)) != 0:
+		return _failure("exact duplicate receipt was incorrectly classified as unknown")
+
+	# Parser schema 4 / receipt schema 1 remains loadable and preserves unknown outcome.
+	var legacy_receipt_state := captured_receipts.duplicate(true)
+	legacy_receipt_state["schemaVersion"] = 4
+	var legacy_receipt: Dictionary = legacy_receipt_state["coreImportReceipts"].values()[0].duplicate(true)
+	legacy_receipt["schemaVersion"] = 1
+	legacy_receipt["coreResponse"].erase("hasExactReceipt")
+	legacy_receipt["coreResponse"]["wasDuplicate"] = true
+	legacy_receipt["coreResponse"]["submittedJarCount"] = 0
+	legacy_receipt["coreResponse"]["storedJarCount"] = 0
+	legacy_receipt["coreResponse"]["discardedJarCount"] = 0
+	legacy_receipt["outcomeStatus"] = "duplicate_confirmation_only"
+	var legacy_receipt_id := String(legacy_receipt.get("operationId", ""))
+	legacy_receipt_state["coreImportReceipts"][legacy_receipt_id] = legacy_receipt
+	var legacy_receipt_runtime := SpaceOreParserRuntime.new()
+	legacy_receipt_runtime.initialize(definition, "probe-ship-world-parser", ["圆罐", "方罐"])
+	if not bool(legacy_receipt_runtime.restore_state(legacy_receipt_state).get("success", false)):
+		return _failure("schema 4 legacy receipt checkpoint was not accepted")
+	var legacy_receipt_observation: Dictionary = legacy_receipt_runtime.build_supply_observation_snapshot()
+	if int(legacy_receipt_observation.get("duplicateConfirmationBatchCountWithUnknownOutcome", 0)) != 1 or bool(legacy_receipt_observation.get("coreImportReceiptHistoryComplete", false)) != bool(captured_receipts.coreImportReceiptHistoryComplete):
+		return _failure("schema 4 legacy receipt did not preserve its unknown outcome / history flag")
+
 	# Schema 3 had cumulative output accounting but no Core receipt ledger. It remains
 	# loadable, but must advertise that historical import outcomes are incomplete.
 	var legacy_schema_three := checkpoint.duplicate(true)

@@ -8,8 +8,8 @@ class_name SpaceOreParserRuntime
 
 const MICRO: int = 1000000
 const RATE_DENOMINATOR: int = 100000
-const STATE_SCHEMA_VERSION: int = 4
-const IMPORT_RECEIPT_SCHEMA_VERSION: int = 1
+const STATE_SCHEMA_VERSION: int = 5
+const IMPORT_RECEIPT_SCHEMA_VERSION: int = 2
 const MAX_INT32: int = 2147483647
 const MAX_INT64: int = 9223372036854775807
 const MAX_FIXED_POINT_UNITS: float = 1000000000.0
@@ -264,6 +264,8 @@ func build_supply_observation_snapshot() -> Dictionary:
 			pending_by_shape[shape] = int(pending_by_shape[shape]) + int(counts[raw_shape])
 	var exact_stored := 0
 	var exact_discarded := 0
+	var duplicate_exact_batches := 0
+	var duplicate_exact_requested := 0
 	var duplicate_unknown_batches := 0
 	var duplicate_unknown_requested := 0
 	for raw_receipt in _core_import_receipts.values():
@@ -272,9 +274,13 @@ func build_supply_observation_snapshot() -> Dictionary:
 		for raw_shape in request_counts:
 			var shape := String(raw_shape)
 			acknowledged_by_shape[shape] = int(acknowledged_by_shape[shape]) + int(request_counts[raw_shape])
-		if String(raw_receipt.get("outcomeStatus", "")) == "exact":
+		var outcome_status := String(raw_receipt.get("outcomeStatus", ""))
+		if outcome_status in ["exact", "duplicate_exact"]:
 			exact_stored += int(core_response.get("storedJarCount", 0))
 			exact_discarded += int(core_response.get("discardedJarCount", 0))
+			if outcome_status == "duplicate_exact":
+				duplicate_exact_batches += 1
+				duplicate_exact_requested += int(raw_receipt.get("requestedJarCount", 0))
 		else:
 			duplicate_unknown_batches += 1
 			duplicate_unknown_requested += int(raw_receipt.get("requestedJarCount", 0))
@@ -299,6 +305,8 @@ func build_supply_observation_snapshot() -> Dictionary:
 		"coreImportReceiptHistoryComplete": _core_import_receipt_history_complete,
 		"exactCoreStoredJarCount": exact_stored,
 		"exactCoreDiscardedJarCount": exact_discarded,
+		"duplicateExactBatchCount": duplicate_exact_batches,
+		"duplicateExactRequestedJarCount": duplicate_exact_requested,
 		"duplicateConfirmationBatchCountWithUnknownOutcome": duplicate_unknown_batches,
 		"duplicateConfirmationRequestedJarCountWithUnknownOutcome": duplicate_unknown_requested
 	}
@@ -313,10 +321,11 @@ func _normalize_core_import_receipt(
 	if typeof(raw_success) != TYPE_BOOL or not bool(raw_success) or not (counts is Dictionary) or counts.is_empty():
 		return {}
 	var was_duplicate: Variant = core_receipt.get("wasDuplicate", null)
+	var has_exact_receipt: Variant = core_receipt.get("hasExactReceipt", null)
 	var submitted: Variant = core_receipt.get("submittedJarCount", null)
 	var stored: Variant = core_receipt.get("storedJarCount", null)
 	var discarded: Variant = core_receipt.get("discardedJarCount", null)
-	if typeof(was_duplicate) != TYPE_BOOL or typeof(submitted) != TYPE_INT or typeof(stored) != TYPE_INT or typeof(discarded) != TYPE_INT:
+	if typeof(was_duplicate) != TYPE_BOOL or typeof(has_exact_receipt) != TYPE_BOOL or typeof(submitted) != TYPE_INT or typeof(stored) != TYPE_INT or typeof(discarded) != TYPE_INT:
 		return {}
 	if int(submitted) < 0 or int(stored) < 0 or int(discarded) < 0:
 		return {}
@@ -331,17 +340,23 @@ func _normalize_core_import_receipt(
 		copied_counts[shape] = int(amount)
 	if requested_count <= 0:
 		return {}
+
 	var outcome_status := "exact"
 	if bool(was_duplicate):
-		# Core's current idempotent replay DTO returns 0/0/0 for a duplicate. It confirms
-		# the same operation/payload was previously committed, but not the original
-		# capacity outcome. Never reinterpret those zeroes as the original discard result.
-		if int(submitted) != 0 or int(stored) != 0 or int(discarded) != 0:
-			return {}
-		outcome_status = "duplicate_confirmation_only"
+		if bool(has_exact_receipt):
+			if int(submitted) != requested_count or int(stored) + int(discarded) != int(submitted):
+				return {}
+			outcome_status = "duplicate_exact"
+		else:
+			# Legacy Core receipts can prove that the operation was already committed,
+			# but cannot reconstruct the original capacity outcome.
+			if int(submitted) != 0 or int(stored) != 0 or int(discarded) != 0:
+				return {}
+			outcome_status = "duplicate_confirmation_only"
 	else:
-		if int(submitted) != requested_count or int(stored) + int(discarded) != int(submitted):
+		if not bool(has_exact_receipt) or int(submitted) != requested_count or int(stored) + int(discarded) != int(submitted):
 			return {}
+
 	return {
 		"schemaVersion": IMPORT_RECEIPT_SCHEMA_VERSION,
 		"operationId": operation_id,
@@ -349,6 +364,7 @@ func _normalize_core_import_receipt(
 		"requestedJarCount": requested_count,
 		"coreResponse": {
 			"wasDuplicate": bool(was_duplicate),
+			"hasExactReceipt": bool(has_exact_receipt),
 			"submittedJarCount": int(submitted),
 			"storedJarCount": int(stored),
 			"discardedJarCount": int(discarded)
@@ -360,13 +376,15 @@ func _validate_core_import_receipt(operation_id: String, value: Variant) -> bool
 	if not (value is Dictionary):
 		return false
 	var receipt: Dictionary = value
-	if receipt.size() != 6 or typeof(receipt.get("schemaVersion", null)) != TYPE_INT or int(receipt.get("schemaVersion", 0)) != IMPORT_RECEIPT_SCHEMA_VERSION or String(receipt.get("operationId", "")) != operation_id:
+	var receipt_schema: Variant = receipt.get("schemaVersion", null)
+	if receipt.size() != 6 or typeof(receipt_schema) != TYPE_INT or int(receipt_schema) not in [1, IMPORT_RECEIPT_SCHEMA_VERSION] or String(receipt.get("operationId", "")) != operation_id:
 		return false
 	var raw_counts: Variant = receipt.get("requestedJarCounts", null)
 	var raw_requested_count: Variant = receipt.get("requestedJarCount", null)
 	var raw_response: Variant = receipt.get("coreResponse", null)
 	var outcome_status := String(receipt.get("outcomeStatus", ""))
-	if not (raw_counts is Dictionary) or raw_counts.is_empty() or typeof(raw_requested_count) != TYPE_INT or not (raw_response is Dictionary) or raw_response.size() != 4:
+	var legacy_receipt := int(receipt_schema) == 1
+	if not (raw_counts is Dictionary) or raw_counts.is_empty() or typeof(raw_requested_count) != TYPE_INT or not (raw_response is Dictionary) or raw_response.size() != (4 if legacy_receipt else 5):
 		return false
 	var requested_count := 0
 	for raw_shape in raw_counts:
@@ -385,11 +403,26 @@ func _validate_core_import_receipt(operation_id: String, value: Variant) -> bool
 		return false
 	if int(raw_submitted) < 0 or int(raw_stored) < 0 or int(raw_discarded) < 0:
 		return false
-	if outcome_status == "exact":
-		return not bool(raw_duplicate) and int(raw_submitted) == requested_count and int(raw_stored) + int(raw_discarded) == int(raw_submitted)
-	if outcome_status == "duplicate_confirmation_only":
-		return bool(raw_duplicate) and int(raw_submitted) == 0 and int(raw_stored) == 0 and int(raw_discarded) == 0
-	return false
+	if legacy_receipt:
+		if outcome_status == "exact":
+			return not bool(raw_duplicate) and int(raw_submitted) == requested_count and int(raw_stored) + int(raw_discarded) == int(raw_submitted)
+		if outcome_status == "duplicate_confirmation_only":
+			return bool(raw_duplicate) and int(raw_submitted) == 0 and int(raw_stored) == 0 and int(raw_discarded) == 0
+		return false
+
+	var raw_has_exact: Variant = raw_response.get("hasExactReceipt", null)
+	if typeof(raw_has_exact) != TYPE_BOOL:
+		return false
+	if bool(raw_has_exact):
+		if int(raw_submitted) != requested_count or int(raw_stored) + int(raw_discarded) != int(raw_submitted):
+			return false
+		if outcome_status == "exact":
+			return not bool(raw_duplicate)
+		if outcome_status == "duplicate_exact":
+			return bool(raw_duplicate)
+		return false
+	return outcome_status == "duplicate_confirmation_only" and bool(raw_duplicate) and int(raw_submitted) == 0 and int(raw_stored) == 0 and int(raw_discarded) == 0
+
 
 func capture_state() -> Dictionary:
 	if _definition == null:
@@ -413,7 +446,7 @@ func restore_state(state: Dictionary) -> Dictionary:
 	if _definition == null:
 		return _failure("ore parser runtime is not initialized")
 	var state_schema := int(state.get("schemaVersion", 0))
-	if state_schema not in [2, 3, STATE_SCHEMA_VERSION]:
+	if state_schema not in [2, 3, 4, STATE_SCHEMA_VERSION]:
 		return _failure("unsupported ore parser state schema")
 	if String(state.get("parserInstanceId", "")) != _parser_instance_id:
 		return _failure("ore parser instance identity does not match")

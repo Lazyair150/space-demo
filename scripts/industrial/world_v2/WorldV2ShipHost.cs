@@ -313,7 +313,8 @@ public partial class WorldV2ShipHost : Node
                 !result.ContainsKey("wasDuplicate") ||
                 !result.ContainsKey("submittedJarCount") ||
                 !result.ContainsKey("storedJarCount") ||
-                !result.ContainsKey("discardedJarCount"))
+                !result.ContainsKey("discardedJarCount") ||
+                !result.ContainsKey("hasExactReceipt"))
             {
                 return new GDictionary
                 {

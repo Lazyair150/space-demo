@@ -209,6 +209,7 @@ func _ready() -> void:
     )
     assert(bool(first_receipt.get("success", false)), "first Jar import must commit")
     assert(not bool(first_receipt.get("wasDuplicate", true)), "first Jar import must be new")
+    assert(bool(first_receipt.get("hasExactReceipt", false)), "first Jar import must expose its exact outcome")
     assert(int(first_receipt.get("storedJarCount", 0)) == 1, "Jar must store the completed empty Jar")
 
     # Simulate a process restart after Jar committed but before Space persisted the receipt.
@@ -259,12 +260,12 @@ func _ready() -> void:
     var retry_observation: Dictionary = restored_parser.build_supply_observation_snapshot()
     assert(int(retry_observation.get("acknowledgedImportBatchCount", 0)) == 1,
         "duplicate Core confirmation must survive in the parser observation")
-    assert(int(retry_observation.get("duplicateConfirmationBatchCountWithUnknownOutcome", 0)) == 1,
-        "duplicate replay must not fabricate original stored/discarded totals")
-    assert(int(retry_observation.get("duplicateConfirmationRequestedJarCountWithUnknownOutcome", 0)) == 1,
-        "duplicate replay must retain the locally known requested count")
-    assert(int(retry_observation.get("exactCoreStoredJarCount", -1)) == 0 and int(retry_observation.get("exactCoreDiscardedJarCount", -1)) == 0,
-        "unknown duplicate capacity outcome must not be reported as exact zero stored/discarded")
+    assert(int(retry_observation.get("duplicateExactBatchCount", 0)) == 1,
+        "duplicate replay must be recognized as carrying the durable exact Core result")
+    assert(int(retry_observation.get("duplicateConfirmationBatchCountWithUnknownOutcome", 0)) == 0,
+        "exact duplicate replay must not be classified as outcome-unknown")
+    assert(int(retry_observation.get("exactCoreStoredJarCount", -1)) == 1 and int(retry_observation.get("exactCoreDiscardedJarCount", -1)) == 0,
+        "duplicate replay must reproduce the original stored/discarded outcome")
     var parser_after_receipt_checkpoint: Dictionary = restored_parser.capture_state()
     var receipt_restored_parser := SpaceOreParserRuntime.new()
     assert(bool(receipt_restored_parser.initialize(
