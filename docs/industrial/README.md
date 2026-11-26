@@ -1,5 +1,7 @@
 # Space / World V2 documentation index
 
+Project-wide development entry: [Project Development Guide](../PROJECT_DEVELOPMENT_GUIDE.md). Module ownership and dependencies: [System Architecture and Module Map](../architecture/00-system-architecture-and-module-map.md).
+
 This directory contains the current World V2 ↔ Space integration contracts. The current local playable entry path is documented in the repository root [README](../../README.md).
 
 ## Current integration and ownership
@@ -24,3 +26,12 @@ This directory contains the current World V2 ↔ Space integration contracts. Th
 - Manual workshop replacement is an isolated future module and is not required for the current playable path.
 - Space balance/catalog production authoring and complete player-facing visual polish remain later content work.
 - Jar solver, feasibility, resource accounting, and order execution rules remain Core-owned; do not duplicate them in Space.
+
+
+## Architecture module documents
+
+- [Hangar, Board Assignment and Loadout pipeline](../architecture/13-hangar-board-assignment-and-loadout-pipeline.md)
+- [World V2 Host, runtime and fault boundary](../architecture/14-world-v2-host-runtime-and-failure-boundary.md)
+- [Production, Parser and resource supply](../architecture/15-production-parser-and-resource-supply.md)
+- [Order, Rule Profile and effect dispatch](../architecture/16-order-rule-profile-and-effect-dispatch.md)
+- [Progression, Stage and persistence](../architecture/17-progression-stage-and-persistence.md)
