@@ -349,7 +349,7 @@ Precision Parser 的 productionPercentage 是 90%，但它的 per-shape processi
 
 以上仅是对当前 Demo 资源文件的算术审计，不代表真实敌人频率、产能瓶颈、Warehouse 溢出或技能平衡已经通过验证。
 
-## 8. 供给预测的实现验收点
+## 9. 供给预测的实现验收点
 
 在把 Battle Economy Forecast 用作技能平衡依据前，需要同时提供并分别展示：
 
