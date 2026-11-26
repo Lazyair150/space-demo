@@ -11,11 +11,14 @@ var _overlay: Control
 var _reason_label: Label
 var _title_label: Label
 var _primary_button: Button
+var _menu_button: Button
+var _pause_button: Button
 var _faulted := false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_overlay()
+	_build_pause_button()
 	_sync_overlay()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -68,6 +71,22 @@ func _on_primary_action() -> void:
 	else:
 		set_paused(false)
 
+func _on_menu_action() -> void:
+	if _faulted:
+		_on_primary_action()
+		return
+	var battle := get_parent()
+	if battle == null or not battle.has_method("end_battle_for_menu"):
+		push_error("[BattlePause] Main-menu exit has no battle lifecycle owner")
+		return
+	_menu_button.disabled = true
+	if not bool(battle.call("end_battle_for_menu")):
+		_menu_button.disabled = false
+		_overlay.visible = true
+
+func _on_pause_button_pressed() -> void:
+	set_paused(true, "player")
+
 func set_paused(value: bool, reason: String = "player") -> void:
 	if _faulted or not is_inside_tree() or _paused == value:
 		return
@@ -94,6 +113,23 @@ func set_paused(value: bool, reason: String = "player") -> void:
 	_sync_overlay()
 	pause_changed.emit(_paused, _reason)
 
+func _build_pause_button() -> void:
+	_pause_button = Button.new()
+	_pause_button.name = "PauseButton"
+	_pause_button.text = "Ⅱ  暂停"
+	_pause_button.tooltip_text = "暂停战斗（Esc）"
+	_pause_button.process_mode = Node.PROCESS_MODE_ALWAYS
+	_pause_button.anchor_left = 1.0
+	_pause_button.anchor_right = 1.0
+	_pause_button.anchor_top = 0.0
+	_pause_button.anchor_bottom = 0.0
+	_pause_button.offset_left = -124.0
+	_pause_button.offset_top = 18.0
+	_pause_button.offset_right = -24.0
+	_pause_button.offset_bottom = 62.0
+	_pause_button.pressed.connect(_on_pause_button_pressed)
+	add_child(_pause_button)
+
 func _build_overlay() -> void:
 	_overlay = Control.new()
 	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -108,7 +144,7 @@ func _build_overlay() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_overlay.add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(320, 170)
+	panel.custom_minimum_size = Vector2(360, 230)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -128,11 +164,19 @@ func _build_overlay() -> void:
 	_primary_button.text = "继续游戏  /  Resume"
 	_primary_button.pressed.connect(_on_primary_action)
 	column.add_child(_primary_button)
+	_menu_button = Button.new()
+	_menu_button.text = "返回主菜单  /  Main Menu"
+	_menu_button.pressed.connect(_on_menu_action)
+	column.add_child(_menu_button)
 
 func _sync_overlay() -> void:
 	if not is_instance_valid(_overlay):
 		return
 	_overlay.visible = _paused or _faulted
+	if is_instance_valid(_pause_button):
+		_pause_button.visible = not _paused and not _faulted
+	if is_instance_valid(_menu_button):
+		_menu_button.visible = not _faulted
 	if is_instance_valid(_reason_label):
 		if _faulted:
 			_reason_label.text = _reason if not _reason.is_empty() else "运行时发生故障，模拟已终止"
