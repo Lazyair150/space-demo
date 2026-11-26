@@ -8,7 +8,7 @@ The desktop screenshot shows GAME OVER and two visible buttons, but neither butt
 
 In `scenes/menus/GameOver.tscn`, the centered VBoxContainer was only 40 px wide (`offset_left=-20`, `offset_right=20`) while its child buttons rendered much wider. The visible button surfaces extended outside their parent Control's hit-test rectangle. The full-screen ColorRect also retained its default mouse filter, allowing decorative UI to participate in pointer hit-testing.
 
-This is why the buttons could look correct while pointer input was not reliably delivered.
+This is why the buttons could look correct while pointer input was not reliably delivered. A source audit found the same 40×40 centered-container pattern in MainMenu, so that screen was corrected in the same batch rather than leaving the startup route broken. Hangar's full-screen decorative ColorRect was also set to ignore pointer input.
 
 ## Corrections committed
 
@@ -61,3 +61,10 @@ Reviewed Godot official docs for Control input propagation and pause process mod
 - Exact Space PR #2 head before this final work-record update: `8a08c49fa575bc88f62c320e34be26f5c3feeaa4`; this record update produces the next head.
 
 The commits above are code/document changes, not test evidence. Exact-head CI, Godot editor import, cross-repository verification and desktop pointer tests remain pending.
+
+
+### Startup and Hangar UI audit additions
+
+- MainMenu root and VBoxContainer were corrected; Start/Quit buttons receive explicit size/focus and runtime geometry validation. MainMenu actions now disable duplicate clicks and restore controls on rejected navigation.
+- Hangar's decorative background ColorRect now uses `MOUSE_FILTER_IGNORE`, so it cannot compete with interactive content.
+- These are additive presentation/input corrections; no combat rules or frozen loadout data are changed.
