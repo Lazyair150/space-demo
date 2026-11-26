@@ -71,3 +71,9 @@ The commits above are code/document changes, not test evidence. Exact-head CI, G
 
 - Startup-route audit additions: MainMenu scene bounds/background filter `7d60a581a81a62f46d06cc5bbf4479d1b2fe89ea`; MainMenu actions and runtime geometry check `f1ed8f1485358a1d0768c14838ee3d0ebdd1556e`; Hangar background pointer filter `019c93686fc34c83e18035ec0115b48382c682fe`.
 - Architecture/work-record audit update commits: `cbd57affda7c756491f42d77109a531ec69cb9f5`, `8f2520d7ebdd295130d67f0675a6c7192c6dbbc8`.
+
+### Full route closure
+
+- Added Hangar → MainMenu navigation so the startup/preparation path can return to the root menu without entering battle.
+- Centralized application exit in `GameFlow.quit_application()`. The MainMenu Quit action and OS window-close signal now share one path that releases SceneTree pause and ends the World V2 Host before quitting.
+- `Screen.EXITING` is a terminal application state; no gameplay module owns process shutdown.
