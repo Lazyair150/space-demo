@@ -9,12 +9,12 @@ CURRENT AUTHORITATIVE STATUS — 2026-11-27
 
 - Core PR #63: Open / Draft / not merged; exact HEAD 116c0bb7e3589a2850bf1b85f6da4c48de8c0a28.
 - Core verify Run 45869214849: SUCCESS on that exact HEAD.
-- Space PR #2: Open / Draft / not merged; exact HEAD 068d89f0ec36164a5b6868a756527d995e729603; GitHub reports mergeable=true.
+- Space PR #2: Open / Draft / not merged; latest code HEAD 82d5cbdd72138de40e8e7e932e407121d94b99f2; GitHub reports mergeable=true.
 - Space branch includes main HEAD 8805ea665b0ff6eafa528b08630e5e8060fcad02 through non-force merge commit 85c01d6cbb3dd2f00cb0cf8043f9dd2a056c3499. The newer feature-branch supply reconciliation record was preserved.
 - Space workflow and README are pinned to Core 116c0bb7e3589a2850bf1b85f6da4c48de8c0a28. Compared with the prior pin f4f2151d, the Core change was documentation-only.
-- Space cross-repository Run 45872350494: SUCCESS on exact Space HEAD 068d89f0 and exact Core pin 116c0bb7.
-- The successful workflow includes Core Bridge build, Space .NET build, Godot 4.7.1 import/parse, HUD feedback, Hangar/domain contracts, progression Reward Profile and settlement probes, Parser/Core ingress, runtime, lifecycle, fault, disposed/faulted commands, snapshot isolation and battle-navigation probes.
-- The run first exposed a missing `class_name SpaceBattleSupplyReconciliationProbe`; the declaration was added and the corrected exact HEAD passed. Earlier failures 45871207456 and 45872164444 are historical and superseded by 45872350494.
+- Space cross-repository Run 45873311127: SUCCESS on exact Space code HEAD 82d5cbdd and exact Core pin 116c0bb7.
+- Successful workflow includes Core Bridge build, Space .NET build, Godot 4.7.1 import/parse, HUD feedback, Hangar/domain contracts, battle reward fact projection, Reward Profile and reward settlement probes, Parser/Core ingress, runtime, lifecycle, fault, disposed/faulted commands, snapshot isolation and battle-navigation probes.
+- The missing `class_name SpaceBattleSupplyReconciliationProbe` was corrected before Run 45872350494; that earlier run passed the policy/settlement batch. Run 45873311127 additionally passed the new battle reward fact projection and stage-clear outbox changes.
 - Supply reconciliation is already displayed as read-only battle HUD data; do not duplicate it.
 - Both PRs remain Open/Draft and unmerged. No desktop GUI acceptance is claimed.
 

@@ -6,7 +6,7 @@ This repository contains the Space game client and the Godot presentation/runtim
 
 The Hangar uses the demo board and catalog resources under `data/hangar/`. The player can select the ship, parser, workshop instances/roles, optional devices and skills, choose free combat or an unlocked finite stage, then launch the battle. The Jar simulation is hosted by `WorldV2ShipHost`; Jar rules and execution remain owned by the sibling `jar-system-dotnet` repository.
 
-> **Prototype status:** this is a gameplay prototype candidate, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. Core PR #63 is verified on the exact pinned revision below. The Space branch has incorporated the two commits missing from main, and the latest exact-pin cross-repository verification passed (Space HEAD 068d89f0, Core 116c0bb7). Desktop GUI acceptance is still pending. Do not treat the intended entry path as accepted until the P0 release gates in the project guide and work record are complete.
+> **Prototype status:** this is a gameplay prototype candidate, not a finished commercial build. The current catalog/balance and presentation are demo content. Workshop replacement is intentionally not part of the playable path yet. Core PR #63 is verified on the exact pinned revision below. The Space branch has incorporated the two commits missing from main, and the latest exact-pin cross-repository verification passed (Space code HEAD 82d5cbdd, Core 116c0bb7; Run 45873311127). Desktop GUI acceptance is still pending. Do not treat the intended entry path as accepted until the P0 release gates in the project guide and work record are complete.
 
 ## Requirements
 

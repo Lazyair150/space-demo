@@ -47,5 +47,13 @@ The projection reports these source kinds as not yet captured. It does not infer
 
 - Added `battle-reward-fact-projection` to `SpaceDomainContractProbe`.
 - The probe covers exact Ship attribution, stable Pickup/Stage event identity, deterministic ordering, failed-stage rejection, Parser identity mismatch and explicit unimplemented source coverage.
-- The previous exact integration Run `45872350494` validates the Reward Profile/service batch only; it does not include this new projection commit.
-- The new code requires a new exact-head cross-repository run. Desktop GUI acceptance remains separate.
+- Exact cross-repository Run `45873311127` completed SUCCESS on Space code HEAD `82d5cbdd72138de40e8e7e932e407121d94b99f2` and Core pin `116c0bb7e3589a2850bf1b85f6da4c48de8c0a28`.
+- Both .NET builds succeeded; Godot 4.7.1 import/parse, HUD feedback, battle reward fact projection, Reward Profile, reward settlement, all domain contracts, Parser/Core ingress, runtime, lifecycle, fault, disposed/faulted commands, snapshot isolation and battle-navigation probes passed.
+- Desktop GUI acceptance remains separate.
+
+
+## Exact integration evidence
+
+- [Space Run 45873311127](https://github.com/Lazyair150/space-demo/actions/runs/45873311127): SUCCESS.
+- Log markers: `battle-reward-fact-projection=passed`, `progression-reward-profile=passed`, `progression-reward-settlement=passed`, `all-domain-contracts=passed`, `CROSS-REPO-WORLD-V2-OK core=116c0bb7...`.
+- No desktop GUI result is inferred from this headless workflow.
