@@ -36,4 +36,4 @@ func _on_quit() -> void:
 	start_button.disabled = true
 	quit_button.disabled = true
 	print("[MainMenu] action=quit")
-	get_tree().quit()
+	GameFlow.quit_application()
