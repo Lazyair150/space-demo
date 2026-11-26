@@ -5,7 +5,30 @@ Space branch: world-v2/phase-4.10b-hangar-ui
 Core PR: #63
 Core branch: architecture/core-liquid-identity-consolidation
 
-CURRENT AUTHORITATIVE STATUS — 2026-11-26 (Parser ingress probe correction committed; fresh rerun required)
+CURRENT AUTHORITATIVE STATUS — 2026-11-26 (Local cross-repository run completed; new probe hardening awaits rerun)
+
+- Core PR #63 integration source remains pinned to `391f318a24fde724a66054e771d0590f0e20c231`. The user's previously reported Core xUnit result is 1038/1038 passed; the precise Core commit's GitHub verify run `45822480114` succeeded.
+- The latest user-provided local `verify-world-v2-cross-repo.sh` output ended with `CROSS-REPO-WORLD-V2-OK core=391f318a24fde724a66054e771d0590f0e20c231`. By the script's then-current control flow, this means all build/import/probe subprocesses returned success and their required completion markers were present.
+- That run confirmed Core Bridge build, Space C# build, Godot 4.7.1 project import, HUD 21/21, Space domain contracts, Parser/Core exact import receipt replay, World V2 runtime/lifecycle/fault/disposal/faulted-command/snapshot-isolation probes, and terminal navigation marker.
+- The pasted local output did not include Space `git rev-parse HEAD`; do not infer the exact Space source SHA from it. Record both local branch HEADs before the next run.
+- Parser ingress's former total-map zero-value assertion no longer fails. It now reports `parsed=1`, `duplicate_receipt_retained=1`, and `duplicate_capacity_outcome=exact_per_shape`.
+- The final pause probe emitted `Parent node is busy adding/removing children`. Source inspection showed the probe synchronously invoked the actual scene replacement from inside its own `_ready()` traversal. This is a test scheduling defect until proven otherwise, not evidence that the normal Button `pressed` callback reproduces the issue. No production GameFlow state/rollback code was changed.
+- The Effect State Store probe emitted missing-StatCalculator warnings because it created StatusEffectManager instances without calling `bind_stats()`. The probe now provides real StatCalculator instances and validates modifier add/restore/idempotency/expiry, instead of leaving its modifier behavior untested.
+- New Space commits: `5cc9be6a92f91279d6eedfcfdb2318498e302f7f` (wait until SceneTree ready phase completes before the real navigation test), `e900de7ad1b2707384d5dfb07c6bc3c92523ff60` (bind StatCalculator and strengthen Buff restore probe), `122e83f42ab100c565ed62c47c3d6634a449caf2` (fail on SceneTree busy error; optional verbose logging for domain/ingress probes).
+- The harness now rejects the SceneTree busy diagnostic instead of accepting the final marker while that error is present. Set `GODOT_VERBOSE=1` to add `--verbose` only to Domain contracts and Parser ingress, for ObjectDB/Resource exit diagnostics.
+- The prior run still emitted `108 ObjectDB instances were leaked` and `44 resources still in use`. Explicit cleanup was added for four Nodes directly allocated by the Effect State Store probe, but the remaining leak count and ownership are unresolved until a verbose run confirms the change.
+- The new probe and harness changes have not yet been run locally. Do not attribute a green result to these latest commits yet.
+- Space PR #2 and Core PR #63 remain unmerged; desktop GUI acceptance is not claimed.
+
+NEXT LOCAL VALIDATION
+
+1. Pull the Space branch and record the exact `git rev-parse HEAD`; pull Core and ensure its HEAD remains `391f318a24fde724a66054e771d0590f0e20c231`.
+2. Run `verify-world-v2-cross-repo.sh` with `GODOT_VERBOSE=1`. The revised harness will fail if the SceneTree busy message appears.
+3. Confirm the StatCalculator warning is gone and the strengthened modifier lifecycle assertions pass.
+4. Use verbose output to identify remaining ObjectDB/Resource owners; do not mark the leak item resolved from a lower count alone.
+5. Keep GUI navigation, pause/resume, repeated battle entry and MainMenu return for a separate desktop acceptance pass.
+
+PREVIOUS AUTHORITATIVE STATUS — superseded by the user-provided local run and follow-up probe hardening
 
 - Space PR #2 failed-run source head: 374942d8989f4a836c0ae831ea4faab4bcf8df99; the parser-ingress probe correction is source commit b61875addfa4f826d8e225b5646e401ee9655768. PR remains Draft/Open and unmerged.
 - Space parser-ingress probe correction: b61875addfa4f826d8e225b5646e401ee9655768. The following work-record commit documents the correction and current evidence.
