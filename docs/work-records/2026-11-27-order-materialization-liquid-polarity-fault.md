@@ -29,9 +29,9 @@ The desktop stack hit the third path. The Core application service rebuilt `Voca
 
 Core commit `fe0b068c9e80cc232b76c91111d42fa257c227e9` changes all three call sites to pass `context.LiquidPolarities`. No Space-side name-based fallback was introduced and no Core validation was weakened.
 
-Core regression test was introduced in `b593f4a2effcd7091f80e1a31d703072c2d5f6b4`; the collection assertion was corrected in `93f050fabb201c37a4bc1601f45e6c0aaff33cdd`. The test `ApplicationOperationsPreserveExplicitNonDefaultLiquidPolarities` creates a custom World mapping `coolant → Cathode`, `fuel → Anode`, then exercises direct demand creation, Core template materialization and produced-Jar import.
+Core regression test was introduced in `b593f4a2effcd7091f80e1a31d703072c2d5f6b4`; the collection assertion was corrected in `35f666720115fed0b2103001ad1c450fba4a65c9`. The test `ApplicationOperationsPreserveExplicitNonDefaultLiquidPolarities` creates a custom World mapping `coolant → Cathode`, `fuel → Anode`, then exercises direct demand creation, Core template materialization and produced-Jar import.
 
-Space cross-repository workflow and README are now pinned to Core source/test SHA `93f050fabb201c37a4bc1601f45e6c0aaff33cdd`. The first Core CI run `45859139265` caught an xUnit analyzer error in the new test (`Assert.Equal` used for collection size). That test-only analyzer issue was corrected in the pinned SHA above. CI for the corrected head is pending; no success is claimed yet.
+Space cross-repository workflow and README are now pinned to Core source/test SHA `35f666720115fed0b2103001ad1c450fba4a65c9`. The first Core CI run `45859139265` caught an xUnit analyzer error in the new test (`Assert.Equal` used for collection size). That test-only analyzer issue was corrected in the pinned SHA above. CI for the corrected head is pending; no success is claimed yet.
 
 ## Navigation probe clarification
 
@@ -45,7 +45,7 @@ The cross-repository script now requires both markers. This prevents the expecte
 ## Validation state
 
 - Board Assignment schema-v2 Core verification: previously passed (run `45856292385`).
-- Liquid-polarity propagation Core verification: pending run for commit `93f050fabb201c37a4bc1601f45e6c0aaff33cdd`.
+- Liquid-polarity propagation Core verification: pending run for commit `35f666720115fed0b2103001ad1c450fba4a65c9`.
 - Space cross-repository script with the new Core pin: pending.
 - Desktop Hangar → World initialization → order materialization → combat: pending.
 - Pause/resume → return Main Menu → re-enter battle: pending.
@@ -57,6 +57,6 @@ Do not close P0 until the exact Core run, Space integration run, and desktop GUI
 
 - Space PR #2 head: `d75b4ae68b30e6b045673e059a87cf299ab571cf`.
 - Core PR #63 head: `712c4b834d8320c9b535dc807ae8ab1217a68e57`.
-- Space workflow and README pin the exact Core source/test revision `93f050fabb201c37a4bc1601f45e6c0aaff33cdd`.
+- Space workflow and README pin the exact Core source/test revision `35f666720115fed0b2103001ad1c450fba4a65c9`.
 - Core Verify run `45859573824` for that exact source/test revision was still `in_progress` at the time of this update.
 - Space workflow requires both the expected rollback marker and the real MainMenu transition marker; it also requires the Board Assignment schema-v2 golden fingerprint marker.
