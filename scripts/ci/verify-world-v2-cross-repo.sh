@@ -67,8 +67,13 @@ run_godot_checked() {
     return "$command_status"
   fi
 
-  if grep -Eq 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script|Failed to create an autoload|Failed to instantiate|Cannot instantiate C# script|Assertion failed|Parent node is busy adding/removing children' "$log_file"; then
-    echo "Godot reported script, class, or assertion errors despite a zero exit code; log: $log_file" >&2
+  if grep -Eq 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script|Failed to create an autoload|Failed to instantiate|Cannot instantiate C# script|Assertion failed|Parent node is busy adding/removing children|Cannot get path of node as it is not in a scene tree' "$log_file"; then
+    echo "Godot reported script, class, SceneTree, or assertion errors despite a zero exit code; log: $log_file" >&2
+    return 1
+  fi
+
+  if [[ "${GODOT_VERBOSE:-0}" == "1" && ( "$log_name" == "space-domain-contracts" || "$log_name" == "parser-ingress" ) ]] && grep -Eq '^Leaked instance: Node:' "$log_file"; then
+    echo "Godot leaked detached Node instances during $log_name; log: $log_file" >&2
     return 1
   fi
 
