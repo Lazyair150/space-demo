@@ -1,4 +1,5 @@
 extends RefCounted
+class_name SpaceBattleSupplyReconciliation
 ## Read-only join of Space parser facts and the current Core-owned inventory snapshot.
 ## Historical parser import outcomes and live account balances are deliberately kept separate.
 
