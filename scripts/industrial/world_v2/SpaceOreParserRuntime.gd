@@ -221,7 +221,7 @@ func get_core_import_receipts() -> Dictionary:
 	return _core_import_receipts.duplicate(true)
 
 ## Read-only observation of actual Space parser facts and retained Core import responses.
-## Duplicate Core confirmations deliberately keep original stored/discarded totals unknown.
+## Duplicate Core confirmations replay exact stored/discarded outcomes when the Core ledger retained a schema-11 receipt; legacy tombstones without an exact receipt remain explicitly unknown.
 func build_supply_observation_snapshot() -> Dictionary:
 	if _definition == null:
 		return {}
