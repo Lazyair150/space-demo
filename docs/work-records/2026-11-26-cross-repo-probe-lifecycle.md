@@ -197,3 +197,102 @@ bash .\scripts\ci\verify-world-v2-cross-repo.sh
 |Parser / Core 事件驱动 XP 结算|待供给事实链稳定后设计|
 |正式 XP 数值和平衡配置|仍应由版本化内容数据提供|
 |桌面 GUI 试玩|未验收|
+
+
+## 八、用户在 Space HEAD `c25d618c19bbbca395e632154805630fad01fefa` 的 verbose 联合运行
+
+### 已通过的步骤
+
+Core 依赖仍为 `391f318a24fde724a66054e771d0590f0e20c231`。用户确认 Space HEAD 为 `c25d618c19bbbca395e632154805630fad01fefa`，并设置 `GODOT_VERBOSE=1` 运行联合脚本。
+
+本次输出显示：
+
+- Core World V2 Bridge 构建成功。
+- Space .NET 项目构建成功。
+- Godot 4.7.1 Editor import / class registration 完成。
+- HUD：`21 checks, 0 failures`。
+- Hangar/Board/Progression domain contracts 输出 `all-domain-contracts=passed`。
+- Parser → Core 精确回执/检查点恢复输出 `[SpaceOreParserJarIngressProbe] passed`，结果保留 `parsed=1`、`duplicate_receipt_retained=1`、`duplicate_capacity_outcome=exact_per_shape`。
+- World V2 runtime、lifecycle、fault、disposed commands、faulted commands 和 snapshot isolation 均输出各自通过标记。
+- Buff/StatusEffectManager 恢复探针输出 `battle-effect-state-store=passed`；之前因探针没有绑定 `StatCalculator` 而产生的两条“修正器不会生效”警告已消失。
+- 暂停探针没有再次输出 `Parent node is busy adding/removing children`，说明延后到 SceneTree 当前挂载阶段之后执行导航的修正起效。
+
+### 当前运行真正失败的位置
+
+联合脚本没有打印最终 `CROSS-REPO-WORLD-V2-OK`。最后一个 battle-navigation 探针发生新的脚本错误：
+
+```
+ERROR: Parameter "data.tree" is null.
+SCRIPT ERROR: Invalid access to property or key 'paused' on a base object of type 'null instance'.
+SpaceBattlePauseControllerProbe.gd:85
+```
+
+根因是探针在调用 `controller._on_primary_action()` 后，真实主菜单切换已经卸载了当前 Probe 场景；旧 Probe Node 不再属于 SceneTree。探针随后调用自身的 `get_tree()` 和读取旧 controller overlay，访问了已经失效的场景节点。此错误发生在场景替换后的探针断言阶段，不是生产 `GameFlow.return_to_menu()` 返回失败；此前没有输出 SceneTree busy 错误。
+
+已进一步修正为在触发真实场景切换之前保留 `SceneTree` 引用，切换后只通过该引用和仍存活的 `GameFlow` autoload 检查暂停闸、Screen 和 BattlePhase，不再解引用旧 Probe / Controller 节点。成功与否仍依靠 `GameFlow.return_to_menu()` 的事务式状态回滚语义区分：成功转场保留 MENU/INACTIVE，失败则恢复 FAULTED 及原暂停状态。
+
+代码提交：
+
+- `3bd18b384ab1e5430aea449dc641892ac4d6816e`：初次保存 SceneTree 引用并修正转场后的检查边界。
+- `296fcc071580a4d74ced06835b27e85ccbe6aca4`：移除对 `current_scene` 在转场当帧的即时非空假设，只验证稳定的 SceneTree pause 与 GameFlow 状态。
+  
+以上导航修正尚未经过新的本地运行。
+
+### ObjectDB / Resource 泄漏的新证据与定位
+
+本次 verbose 输出将先前的数字从 108 / 44 缩小到：
+
+- `99 ObjectDB instances were leaked`
+- `42 resources still in use`
+- `283 unclaimed string names at exit`
+- 三次 `Cannot get path of node as it is not in a scene tree`
+- 每个相关进程的 leaked-instance 清单均列出 3 个 `Node`，Node path 为空。
+
+通过对 Domain contracts 的调用链及所有 `SpaceHangarPreparation.new()` 的创建路径进行静态核对，找到了恰好三处没有释放的 Node：
+
+1. `SpaceHangarCatalogOwnershipProbe.gd` 的未配置机库路径创建 `unconfigured_preparation`。
+2. 同一 Probe 的 Owned inventory 路径创建 `owned_preparation`。
+3. `SpaceDemoProgressionBootstrapProbe.gd` 创建用于真实默认 Owned 装配的 `preparation`。
+
+三者的类型都继承自 Node，但并未加入 SceneTree，也没有在探针结束时调用 `free()`。它们由 `SpaceHangarSelectionController` 引用并不意味着该 RefCounted controller 会替调用方释放 Node。该静态证据与 verbose 中恰好 3 个无路径 leaked Node 和 3 条 get_path 错误相吻合。
+
+已修正为显式所有权：
+
+- 将两个 Catalog Ownership 检查抽取成 helper；每条正常/拒绝路径都在 helper 末尾先释放 RefCounted controller，再释放 Node preparation。
+- 将 Progression Bootstrap 的默认装配抽取成 helper；先取得独立冻结的 `SpaceBattleLoadoutSnapshot`，释放 controller 和 preparation 后再验证/迁移这个快照。
+- 对可选快照局部变量显式初始化为 null。
+- 不再让测试 Node 逃逸到外层调用者，也不改变生产 Hangar 运行期的 Node 所有权。
+
+相关提交：
+
+- `2f88ade03c4248aaef96530e97934fe0a995cdc1`：修复两个 Catalog Ownership Probe 中的 Node 所有权。
+- `e57da5091e2ebfe8532dcb3e022211fef26830a6`：修复 Progression Bootstrap Probe 的 Node 所有权。
+- `9f0cda14c5a70c595095a56bbacb5a7c1694ac0f`：显式初始化可选冻结快照。
+
+这三个修正尚未取得新 verbose 退出日志；不能提前宣称 99 个 ObjectDB 或 42 个 Resource 已清零。Resource 和 StringName 留存也尚未全部归因：verbose 中大量仍在使用的对象来自预加载的 Hangar GDScript / `demo_catalog_bundle.tres` 及其内嵌资源，必须在 Node 修复后重新观察，不能仅凭名字列表将其认定为永久泄漏或全部判作引擎正常缓存。
+
+### 当前代码批次
+
+在上述代码更改后，分支后续提交包括：
+
+- `3bd18b384ab1e5430aea449dc641892ac4d6816e`
+- `296fcc071580a4d74ced06835b27e85ccbe6aca4`
+- `2f88ade03c4248aaef96530e97934fe0a995cdc1`
+- `e57da5091e2ebfe8532dcb3e022211fef26830a6`
+- `9f0cda14c5a70c595095a56bbacb5a7c1694ac0f`
+
+新代码没有用户本地复跑结果，当前不能标记跨仓库验证通过。
+
+### 下一步集中验证
+
+只需拉取 Space 分支；Core 继续固定到精确 SHA `391f318a24fde724a66054e771d0590f0e20c231`，不重复运行 Core 的 1038 项 xUnit。
+
+设置 `GODOT_VERBOSE=1` 并重跑完整脚本。关键验收点：
+
+1. battle-navigation 输出 `passed terminal-menu-transition=true)，且不再有 `data.tree is null` / `SCRIPT ERROR`。
+2. Domain contracts 与 Parser ingress 中 3 个无路径 Node、对应 3 条 `get_path` 错误消失。
+3. Buff 修正器绑定警告仍然消失，增强的 Buff/StatCalculator 状态、幂等及到期撤销断言通过。
+4. 继续记录 ObjectDB / Resource / StringName 数量与具体资源清单；只有证据充分时才关闭泄漏项。
+5. 以最终 `CROSS-REPO-WORLD-V2-OK` 和脚本退出码作为联合验证完成条件。
+
+桌面 GUI 的主菜单/机库/战斗/暂停/恢复/故障退出仍须单独手工验收。
