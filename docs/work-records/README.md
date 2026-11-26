@@ -11,6 +11,7 @@
 - 本目录为版本化文档区；仅 `_local/` 导出临时产物被忽略。
 
 当前重点：
+- [2026-11-26 真实 Hangar Board Schema 运行时故障与 Core 兼容修复](2026-11-26-live-hangar-board-schema-runtime-fault.md)
 - [2026-11-26 跨仓库探针生命周期与诊断修正](2026-11-26-cross-repo-probe-lifecycle.md)
 - [2026-11-26 供给对账观察契约](2026-11-26-supply-reconciliation-contract.md)
 - [2026-11-26 Parser Core 导入回执留存](2026-11-26-parser-core-import-receipts.md)
