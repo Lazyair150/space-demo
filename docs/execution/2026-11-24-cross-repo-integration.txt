@@ -175,3 +175,33 @@ Next run:
 - Keep Core fixed at `391f318a24fde724a66054e771d0590f0e20c231`; do not repeat the already-passed 1038 Core xUnit tests.
 - Confirm the bootstrap probe parses, the static `.run()` call executes, Domain contracts completes, and the full harness reaches exit code 0 plus `CROSS-REPO-WORLD-V2-OK`.
 - Continue reporting verbose Node/Resource/StringName diagnostics separately; this run did not establish that the previously tracked ownership diagnostics are resolved.
+
+
+CHECKPOINT — Board Assignment is a dictionary and caused the remaining detached Node (2026-11-26)
+
+The next user-provided verbose run confirmed that the previous GDScript type-inference error was gone and the static `SpaceDemoProgressionBootstrapProbe.run()` call executed. It then failed in `_build_default_owned_loadout()` with:
+
+```
+Trying to assign value of type 'Dictionary' to a variable of type 'Array'.
+SpaceDemoProgressionBootstrapProbe.gd:108
+```
+
+The authored selection contract was rechecked:
+- `skillSelections` is an Array.
+- `boardAssignments` is a Dictionary keyed by Board Slot ID, whose values are frozen assignment entries.
+
+Correction commit: `4c718904204aa9b0add63a85a5998de7cd17ed96`.
+The helper now uses `var skill_selections: Array` and `var board_assignments: Dictionary`. The count-based completeness checks remain unchanged.
+
+The same run listed exactly one `Leaked instance: Node:` and one detached-node path error. The helper had created `SpaceHangarPreparation.new()`, but execution aborted on the incorrect Array type assignment before reaching `preparation.free()`. This is a strong call-stack explanation for the remaining Node, but requires another verbose run to confirm the Node report disappears.
+
+Counts from this incomplete run:
+- 56 ObjectDB instances leaked.
+- 42 resources still in use.
+- 263 unclaimed StringNames.
+
+These totals are not yet treated as independent permanent leaks: the Domain probe terminated early and the preparation helper did not reach normal cleanup. Re-run the full Domain probe first, then inspect the complete verbose exit list before classifying script/resource/StringName retention.
+
+The full investigation and acceptance conditions are recorded in `docs/work-records/2026-11-26-cross-repo-probe-lifecycle.md` Section 10. Core remains pinned to `391f318a24fde724a66054e771d0590f0e20c231`; its 1038-test run is not repeated.
+
+The correction has not yet been run locally. Do not claim Domain, Parser ingress, battle navigation, or the full cross-repo workflow passed until the new run reaches exit code 0 and `CROSS-REPO-WORLD-V2-OK`.
