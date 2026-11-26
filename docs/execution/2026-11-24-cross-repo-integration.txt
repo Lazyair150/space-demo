@@ -5,7 +5,32 @@ Space branch: world-v2/phase-4.10b-hangar-ui
 Core PR: #63
 Core branch: architecture/core-liquid-identity-consolidation
 
-CURRENT AUTHORITATIVE STATUS — 2026-11-26 (Local cross-repository run completed; new probe hardening awaits rerun)
+CURRENT AUTHORITATIVE STATUS — 2026-11-26 (Verbose run reached final navigation probe; latest fixes await rerun)
+
+- Core integration SHA remains `391f318a24fde724a66054e771d0590f0e20c231`; the previously reported Core xUnit result is 1038/1038 passed and exact-head verify Run `45822480114` succeeded.
+- User's verbose local Space run used Space HEAD `c25d618c19bbbca395e632154805630fad01fefa` and Core HEAD `391f318a24fde724a66054e771d0590f0e20c231`.
+- On that Space HEAD, Core Bridge build, Space .NET build, Godot 4.7.1 import, HUD 21/21, Hangar/Board/Progression domain contracts, Parser/Core ingress, Runtime, Lifecycle, Fault, Disposed Commands, Faulted Commands and Snapshot Isolation all passed their required markers.
+- Effect State Store now passed with real `StatCalculator` binding. The two former `StatusEffectManager` unbound warnings no longer appeared.
+- The pause probe no longer emitted `Parent node is busy adding/removing children`. However, it failed after the actual MainMenu scene replacement because it dereferenced `get_tree()` through the old, detached probe Node at line 85. This was a probe post-transition assertion error; it was not evidence of production `GameFlow.return_to_menu()` failure.
+- Fixed the navigation probe to keep a `SceneTree` reference before scene replacement and inspect only the still-live SceneTree plus GameFlow autoload state after the old probe/controller are freed. It no longer assumes `current_scene` is non-null in the same transition frame.
+- Verbose exit output showed 99 leaked ObjectDB instances, 42 resources still in use, 283 unclaimed StringNames, three `get_path` errors on detached Nodes, and exactly three leaked Node instances with empty paths.
+- Static ownership audit found exactly three unfreed `SpaceHangarPreparation.new()` Nodes: two in `SpaceHangarCatalogOwnershipProbe.gd` and one in `SpaceDemoProgressionBootstrapProbe.gd`. All three helpers were refactored to release their RefCounted controller and then explicitly free the Node-owned preparation after producing detached probe results.
+- Code commits after the user run: `3bd18b384ab1e5430aea449dc641892ac4d6816e` and `296fcc071580a4d74ced06835b27e85ccbe6aca4` (navigation probe lifetime), `2f88ade03c4248aaef96530e97934fe0a995cdc1` and `e57da5091e2ebfe8532dcb3e022211fef26830a6` (three Hangar preparation Node owners), `9f0cda14c5a70c595095a56bbacb5a7c1694ac0f` (explicit nullable snapshot initialization).
+- The work record is updated at `docs/work-records/2026-11-26-cross-repo-probe-lifecycle.md`.
+- These latest commits have not been run locally; neither the navigation fix nor the expected decrease in leaked Node count is verified. The 42 Resource and 283 StringName diagnostics remain unresolved until another verbose run.
+- No final `CROSS-REPO-WORLD-V2-OK` marker was present in the uploaded output. The run ended on the battle-navigation probe's `SCRIPT ERROR`; do not mark the full integration green.
+- Space PR #2 and Core PR #63 remain open/unmerged. Desktop GUI acceptance is not claimed.
+
+NEXT LOCAL VALIDATION
+
+1. Pull the latest `world-v2/phase-4.10b-hangar-ui` branch and record its exact `git rev-parse HEAD`.
+2. Keep Core at `391f318a24fde724a66054e771d0590f0e20c231`; do not repeat the already passed Core 1038 xUnit suite.
+3. Rerun `verify-world-v2-cross-repo.sh` with `GODOT_VERBOSE=1`.
+4. Require `[SpaceBattlePauseControllerProbe] passed terminal-menu-transition=true` and the final `CROSS-REPO-WORLD-V2-OK` marker; the harness rejects `SCRIPT ERROR` and SceneTree busy diagnostics.
+5. Confirm all three detached Node/get_path leak entries disappear. Re-assess the remaining Resource/StringName lines from the new log rather than presuming they are harmless or resolved.
+6. Keep desktop GUI navigation and repeated battle entry for separate manual acceptance.
+
+PREVIOUS AUTHORITATIVE STATUS — superseded by the verbose local run and ownership audit
 
 - Core PR #63 integration source remains pinned to `391f318a24fde724a66054e771d0590f0e20c231`. The user's previously reported Core xUnit result is 1038/1038 passed; the precise Core commit's GitHub verify run `45822480114` succeeded.
 - The latest user-provided local `verify-world-v2-cross-repo.sh` output ended with `CROSS-REPO-WORLD-V2-OK core=391f318a24fde724a66054e771d0590f0e20c231`. By the script's then-current control flow, this means all build/import/probe subprocesses returned success and their required completion markers were present.
