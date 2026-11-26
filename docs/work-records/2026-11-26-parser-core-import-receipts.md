@@ -43,7 +43,7 @@
 
 ## 本轮 Space 分支最终落点
 
-- 当前目标分支 HEAD：`3aba7b180c3f597d82578aef504cd5b10760fe5c`。
+- 行为实现最后一组提交（后续仅做过程记录同步）：`3aba7b180c3f597d82578aef504cd5b10760fe5c`。
 - 最新 Core 依赖：`da57eeecece87b6e2af7548f86b748cc24f2a559`。
 - PR #2 维持 Open/Draft；本轮不等待 CI，测试状态以未运行明确记录。
 
