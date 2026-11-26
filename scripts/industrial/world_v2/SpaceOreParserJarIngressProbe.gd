@@ -287,8 +287,14 @@ func _ready() -> void:
         "duplicate replay must reproduce the original stored/discarded outcome")
     var replay_stored_by_shape: Dictionary = retry_observation.get("exactCoreStoredJarCountByShape", {})
     var replay_discarded_by_shape: Dictionary = retry_observation.get("exactCoreDiscardedJarCountByShape", {})
-    assert(int(replay_stored_by_shape.get("圆罐", 0)) == 1 and replay_discarded_by_shape.is_empty(),
-        "duplicate replay must preserve original shape-specific storage outcome")
+    # The observation map is total over configured shapes, so zero outcomes stay explicit.
+    assert(
+        int(replay_stored_by_shape.get("圆罐", -1)) == 1
+        and int(replay_stored_by_shape.get("方罐", -1)) == 0
+        and int(replay_discarded_by_shape.get("圆罐", -1)) == 0
+        and int(replay_discarded_by_shape.get("方罐", -1)) == 0,
+        "duplicate replay must preserve original shape-specific storage outcome"
+    )
     assert(bool(retry_observation.get("perShapeCoreOutcomeHistoryComplete", false)),
         "new Core exact receipts must allow complete per-shape outcome history")
     var parser_after_receipt_checkpoint: Dictionary = restored_parser.capture_state()
