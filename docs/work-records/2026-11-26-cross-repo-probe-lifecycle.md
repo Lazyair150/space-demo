@@ -175,7 +175,7 @@ git rev-parse HEAD
 确认 Core HEAD 仍是 `391f318a24fde724a66054e771d0590f0e20c231` 后，在 Space 根目录运行：
 
 ```powershell
-$env:CORE_REPO_DIR = (Resolve-Path ..\jar-system-dotnet).Path.Replace('\\','/')
+$env:CORE_REPO_DIR = (Resolve-Path ..\jar-system-dotnet).Path.Replace('\','/')
 $env:CORE_EXPECTED_SHA = "391f318a24fde724a66054e771d0590f0e20c231"
 $env:GODOT_BIN = "godot"
 $env:GODOT_VERBOSE = "1"
