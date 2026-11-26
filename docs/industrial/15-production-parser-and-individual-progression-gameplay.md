@@ -117,6 +117,37 @@ leftlfloor
 
 当前战斗运行时要求一个分解槽位和一个解析器实例。多解析器不是简单放宽数量限制：必须先定义每颗原石唯一分配给哪个解析器、队列路由、设备失效、更新顺序、输出批次身份和存档恢复规则。本阶段不将“一个解析器”改成未经路由设计的多解析器。
 
+### 3.5 三种供给与流转不能混成一种产率
+
+当前玩法中至少有三条不同的产出/流转路径：
+
+| 路径 | 输入 | 输出归属 | 时间/资源语义 |
+|---|---|---|---|
+| Space Ore Parser | 玩家实际拾取的有限 Energy Stone Volume | Parser 生成的整数 Jar 批次，经 Import 进入 Core Central Warehouse | 有限输入队列；按形状处理速率；保留未加工体积和部分 Jar 进度 |
+| Core Time-based Producer | World V2 配置的时间驱动生产率 | Core Central Warehouse | `WorldV2Options.Producers[].Rates`，单位为每个 Core logical time unit；不消耗 Energy Stone |
+| Core Liquid Producer | World V2 配置的液体生产率 | Ship Liquid Inventory | `LiquidProductionRates`，单位为每个 Core logical time unit；不是 Workshop Staging 的直接入账 |
+
+另外，`jarFlowRatePerLogicalTime` 和 `liquidFlowRatePerLogicalTime` 描述资源流转能力，不是额外的生产源。Jar 生产进入 Central Warehouse 后还要按 Core 的流率和准入规则进入 Master；Ship Liquid Inventory 的液体也不能被视为已经在 Workshop staging 内。
+
+**同一场战斗可以同时启用 Core Time-based Producer 和 Space Ore Parser。** 两者最终都向 Central Warehouse 提供 Jar，因此在玩法经济上是两笔独立供给；若都启用，必须相加且各自保留来源，不能把 Parser 输出又当作 Core Producer 输出重复计入。若某一模式本来应该停用，必须在 World 构筑数据里明确关闭，而不是依赖 UI 隐藏。
+
+当前 Demo 的两个 World Profile 都包含 Core Time-based Producer：
+
+- `demo.world.starter`：圆罐 1.0、方罐 0.8、三角罐 0.6、长条罐 0.5、六边罐 0.4（每逻辑时间单位）。
+- `demo.world.deep_field`：圆罐 0.7、方罐 0.9、三角罐 1.0、长条罐 0.8、六边罐 0.6（每逻辑时间单位）。
+
+因此当前 Demo 的 Jar 供给不只有原石解析器。上表数值是演示配置，不代表正式经济目标。
+
+### 3.6 当前经济预测的连接缺口
+
+当前实现需要分开理解：
+
+- `SpaceSkillBuildContextEvaluator` 使用 Ship 的 `expectedStoneProgressPerSecondByShape`、Parser 的有效处理速率和 `progressPerJarByShape`，计算 Parser 转换能力。它不是从敌人实际击杀节奏推导 Stone Drop 速率。
+- `SpaceJarWorldResourceProfile` 会校验并冻结 Core `producers` 配置，但当前 `build_liquid_economy_resources()` 只投影液体库存、液体生产率和液库容量，不输出形状 Jar 生产率。
+- `SpaceBattleEconomyEvaluator` 接收调用方提供的 `shapeJarOutputPerSecond`，而不是自己从 Core Producer 与 Parser 两条来源构建总量。
+
+因此生产级构筑预测还需要一个按来源分解的 Jar Supply Forecast：初始 Warehouse Jar、Core Time-based Producer、Space Parser 的有限输入期望产出分别列出，再合并成每形状总预算。Parser 输入预测应由版本化 Drop Profile 与 Encounter 的敌人击败/掉落节奏场景推导；Ship 的 expected stone progress 只作为当前平衡预测输入，除非已用真实掉落样本校准，不能再当成一份额外 Stone 供给。每个来源只能记一次。
+
 ## 4. Jar 是离散资源个体，不是可折算的液体容器
 
 每只 Jar 有稳定 Jar ID，并携带：
@@ -168,7 +199,20 @@ Jar 相关操作按资源归属区分：
 
 订单区是最终目标和交付边界，不是普通仓库。Jar 只在目标状态、数量、阶段和资源清单全部满足后才算交付成功。
 
-### 5.3 订单完成与技能效果
+### 5.3 Jar Order Template 与实际液体成本
+
+Space 的 Core Order Template 每个 `requirements` 项代表一只独立 Jar：字段只有 `shape` 和可选的目标 `liquid`。重复 Shape 是多个实体需求，不是一个数量字段；当前模板最多 10 项。空 Jar 需求必须排在填充液体 Jar 需求之前。模板描述最终 Jar 状态，不描述操作步骤，也不包含数值型 `liquidUnits`。
+
+一个要求“圆罐 + 冷却液”的 Jar，只说明交付时该 Jar 内部必须是冷却液；**不能据此认定必须从游离液体库存额外扣一单位**。实际外部液体需求由 Core 对具体执行路径计算：
+
+- `POUR_IN`：从当前工作台游离液体/订单暂存账户消耗恰好 1 单位目标液体。
+- 空罐 `RESHAPE`：从当前工作台游离液体账户消耗恰好 1 单位改形成本液体。
+- 满罐 `RESHAPE`：消耗 Jar 自己内部的液体，不再额外消耗一单位工作台游离液体。
+- `POUR_OUT`：把 Jar 原有液体返回当前订单的 staging 余额；实际接收仍受该 staging 的 Ban/容量规则约束，拒收和丢弃由 Core 记账。
+
+`WorldOrderResourceManifest` 根据解出的具体操作路径计算初始供液峰值、最终余额、以及 B 类 Slave 所需的初始液体。A 类只在 Master 执行；B 类先验证 Slave 可做的部分，再证明 Master 执行后仍保留 Slave 精确需要的资源，最终只转移 Slave 路径需要的数量，不把多余液体全部泵过去。Space 的配方成本估计只能作为带假设名称的 Forecast；存在真实 Solve Plan / Manifest 时，以 Manifest 为准。
+
+### 5.4 订单完成与技能效果
 
 技能是 Space 的玩家能力定义。一个 Skill 绑定：
 
@@ -305,7 +349,20 @@ Precision Parser 的 productionPercentage 是 90%，但它的 per-shape processi
 
 以上仅是对当前 Demo 资源文件的算术审计，不代表真实敌人频率、产能瓶颈、Warehouse 溢出或技能平衡已经通过验证。
 
-## 8. 玩家需要观察和理解的反馈
+## 8. 供给预测的实现验收点
+
+在把 Battle Economy Forecast 用作技能平衡依据前，需要同时提供并分别展示：
+
+1. 起始 Central Warehouse 中每种形状的完整 Jar 数量；
+2. Core Time-based Producer 在战斗时长内的预估产出；
+3. 基于实际 Drop Profile / Encounter 场景的 Stone 输入量；
+4. Parser 对这些有限输入的每形状预计消耗量、整 Jar 产出量和未完成进度；
+5. Ship Liquid Inventory 初始余额与 Core Liquid Producer 产出；
+6. 从仓库/自机账户流向 Master、再到 Slave 的有效流率和容量边界。
+
+当前的 `SpaceBattleEconomyEvaluator` 采用全装备技能共同 fulfillment fraction，是确定性的共享资源上界预测；但输入的供给率必须先由上面的来源合成器正确构造。未给出敌人击败频率或掉落场景时，Parser 供给应报告 Low / Baseline / High 等显式假设，不得拿单一 Ship 预估值伪装成真实掉落频率。
+
+## 10. 玩家需要观察和理解的反馈
 
 战斗内至少让玩家看见：
 
@@ -319,7 +376,7 @@ Precision Parser 的 productionPercentage 是 90%，但它的 per-shape processi
 
 UI 只能读权威快照和展示层数据，不自己计算 Ban、容量、极性、订单可行性或资源成本。Shape 色彩沿用 [13 — Resource HUD and shape visual language](13-resource-hud-and-shape-visual-language.md) 的字形/名称/颜色三重识别；颜色不能成为唯一信息载体。
 
-## 9. 首个可玩闭环与实现顺序
+## 11. 首个可玩闭环与实现顺序
 
 把“能从战斗拾取走到技能生效”作为这一轮的验收，不再以继续抽象通用框架作为交付。
 
@@ -353,7 +410,7 @@ UI 只能读权威快照和展示层数据，不自己计算 Ban、容量、极�
 - 战斗结算更新玩家 Owned Instance；下一场战斗重新冻结成长配置。
 - 用重复结算、丢失回执、旧 Revision 覆盖、曲线升级和载入旧存档测试验证去重及兼容性。
 
-## 10. 还没有定稿的内容与明确不做的事
+## 12. 还没有定稿的内容与明确不做的事
 
 本文件不虚构以下正式数值或能力：
 
