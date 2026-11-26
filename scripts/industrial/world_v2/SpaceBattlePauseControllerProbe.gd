@@ -16,13 +16,19 @@ func _ready() -> void:
 	if controller.process_mode != Node.PROCESS_MODE_ALWAYS:
 		_fail_probe(controller, "pause controller must process while paused")
 		return
+	if not controller._pause_button.visible or controller._pause_button.text != "Ⅱ  暂停":
+		_fail_probe(controller, "running battle must expose a visible on-screen pause button")
+		return
 	controller.set_paused(true, "probe")
 	if not get_tree().paused or not controller.is_paused() or not controller._overlay.visible or String(GameFlow.snapshot().get("battlePhase", "")) != "PAUSED":
 		_fail_probe(controller, "pause must freeze the SceneTree and show its always-process overlay")
 		return
+	if controller._pause_button.visible or not controller._menu_button.visible or controller._menu_button.text != "返回主菜单  /  Main Menu":
+		_fail_probe(controller, "paused overlay must replace the pause button with Resume and Main Menu actions")
+		return
 	controller.set_paused(false)
-	if get_tree().paused or controller.is_paused() or controller._overlay.visible or String(GameFlow.snapshot().get("battlePhase", "")) != "RUNNING":
-		_fail_probe(controller, "resume must release both pause gates and hide the overlay")
+	if get_tree().paused or controller.is_paused() or controller._overlay.visible or not controller._pause_button.visible or String(GameFlow.snapshot().get("battlePhase", "")) != "RUNNING":
+		_fail_probe(controller, "resume must release both pause gates, restore the pause button, and hide the overlay")
 		return
 	# Window focus loss must pause, and focus regain must never auto-resume.
 	controller._notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
