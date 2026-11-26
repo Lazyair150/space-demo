@@ -3,6 +3,7 @@ extends Node
 ## All numeric values are synthetic fixtures, not production balance settings.
 
 const SupplyReconciliation = preload("res://scripts/industrial/world_v2/SpaceBattleSupplyReconciliation.gd")
+const SupplyReconciliationProbe = preload("res://scripts/industrial/world_v2/SpaceBattleSupplyReconciliationProbe.gd")
 
 var _probe_parser: SpaceOreParserRuntime
 
@@ -40,6 +41,10 @@ func _ready() -> void:
     print("[SpaceBattleJarSupplyForecastProbe] passed gross_warehouse=",
         supply_forecast_probe.get("grossWarehouseJarSupplyByShape", {}),
         " master_flow_upper_bound=", supply_forecast_probe.get("masterJarFlowQuotaUpperBound", 0))
+
+    var supply_reconciliation_probe := SupplyReconciliationProbe.run()
+    assert(bool(supply_reconciliation_probe.get("passed", false)),
+        "Parser/Core supply reconciliation contract probe must pass: " + String(supply_reconciliation_probe.get("reason", "")))
 
     var drop_profile := SpaceEnergyStoneDropProfile.new()
     drop_profile.profile_id = &"probe-energy-stone-drop"
