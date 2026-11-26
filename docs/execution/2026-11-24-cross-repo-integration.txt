@@ -293,3 +293,45 @@ Core fix commits:
 - 98e97c6930bcf795f73bf1ff4812ad19a54949a1 — work-record documentation only; current Core branch pin for integration.
 
 Validation is pending. User must update Core branch architecture/core-liquid-identity-consolidation to 98e97c6930bcf795f73bf1ff4812ad19a54949a1, run the Core test suite, then run the Space cross-repository script with CORE_EXPECTED_SHA set to that exact SHA. Do not mark desktop acceptance passed until the actual Hangar build enters battle.
+
+
+CORRECTION — Hangar Board Assignment schema 2 ingress failure and cross-repository pin repair (2026-11-27)
+
+This correction supersedes the preceding 2026-11-26 LIVE HANGAR FAILURE section. Its diagnosis that the outer Assignment Snapshot was schema 1 was incorrect.
+
+Confirmed producer/consumer mismatch:
+- Space `SpaceHangarBoardAssignment.build_snapshot()` emits outer Assignment Snapshot `schemaVersion = 2`.
+- Schema 2 entries carry `areaId` and `subAreaId` and hash those fields.
+- Core previously accepted only outer Assignment schema 1. It already accepted nested Board Definition schema 2, which is why the earlier nested-schema-only fix did not solve the desktop fault.
+- The composite error `boardRuleProfile assignment snapshot identity does not match its frozen Board` masked the unsupported outer schema.
+
+Core implementation:
+- Accept Assignment Snapshot schema 1 and 2.
+- Add AreaId/SubAreaId DTO fields.
+- For schema 2, validate area hierarchy against the exact frozen Board Slot and include both fields in the canonical assignment fingerprint.
+- Preserve schema 1 fingerprint compatibility and stable SlotId ordering.
+- Split the composite identity error into actionable field-level diagnostics.
+- Add schema 2 positive, hierarchy mismatch, unsupported schema diagnostic tests, and a cross-language golden fingerprint vector.
+
+Core verification:
+- Core PR #63 source/test commit: `ba84182eba7555b3456d66ffceb58845d97a1bea`.
+- Verify run `45856292385` completed SUCCESS. The run checked out merge ref `24a8d50cb2a1d3bd0c38f246bdc0c4c7b476f2aa`, containing the tested source/test commit.
+- Full build and World V2 Bridge Release build succeeded.
+- xUnit: Total 1044, Errors 0, Failed 0, Skipped 0.
+- Solver differential: 4004/4004 agree.
+- Replay, security, `QUALITY-OK`, and `VERDICT=OK` passed.
+- A later Core commit `b03af7edeb96cfe478c46a1887747870c12f8b50` adds comments only; no production/test behavior changed.
+
+Space synchronization:
+- Space workflow and README now pin Core `ba84182eba7555b3456d66ffceb58845d97a1bea`, replacing stale `391f318a24fde724a66054e771d0590f0e20c231`.
+- Added a Space GDScript golden-vector probe in `SpaceHangarBoardDefinitionProbe`, using the same payload/hash expected by Core xUnit.
+- Added project guide and architecture module documents 00 and 13–17.
+- The workflow file exists on the Space PR branch but not on the current base `main`; GitHub therefore has no PR-triggered run attached to this Space head. The local `scripts/ci/verify-world-v2-cross-repo.sh` is required for this PR until the workflow itself is present on the base branch.
+- Current Space PR head after these changes must be read from PR #2; no Space cross-repository success is claimed in this record.
+
+Remaining release gate:
+1. Run the Space cross-repository script with Core SHA `ba84182eba7555b3456d66ffceb58845d97a1bea`; it must reach `CROSS-REPO-WORLD-V2-OK`.
+2. Confirm the new Space golden-vector probe executes in that run.
+3. Run the actual desktop game: default Hangar → Build → battle starts without BATTLE FAULT.
+4. Complete pause/resume → return menu → re-enter battle.
+5. Record both exact local HEAD SHAs and the actual output. Until then, P0 remains open for desktop acceptance.
