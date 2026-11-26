@@ -1,0 +1,91 @@
+SPACE DEMO / JAR CORE CROSS-REPOSITORY INTEGRATION CHECKPOINT
+Date: 2026-11-26
+Space PR: #2
+Space branch: world-v2/phase-4.10b-hangar-ui
+Core PR: #63
+Core branch: architecture/core-liquid-identity-consolidation
+
+CURRENT AUTHORITATIVE STATUS — 2026-11-26 (latest exact source state)
+
+- Space PR #2 current head: 374942d8989f4a836c0ae831ea4faab4bcf8df99 (Draft/Open; not merged).
+- Core PR #63 current source head: 391f318a24fde724a66054e771d0590f0e20c231 (Draft/Open; not merged).
+- Core exact-head verify Run 45822480114 completed successfully for the current Core source head.
+- Space workflow and README are pinned to that exact Core SHA; the earlier stale-pin failure Run 45796547789 is historical and not the current dependency configuration.
+- Latest completed Space attempt Run 45826120969 tested Space code head b322040708c5adccf9ef3b48f3b0ac4bb9d43384 against Core 391f318a. Core Bridge build and Space C# build both succeeded with 0 warnings / 0 errors; Godot asset import completed.
+- That Space attempt then failed in the HUD feedback probe because the new reconciliation service inferred Variant-returning helper values with `:=`, and the project treats the resulting GDScript warning as an error (lines 22–27 and 31–33 of SpaceBattleSupplyReconciliation.gd).
+- Corrective source commit 374942d explicitly declares those nine locals as Variant. This exact newer Space head has not yet been validated; do not transfer the older run's build/probe result to it.
+- The failed attempt did not reach the Parser/Core ingress and reconciliation probes after the HUD failure.
+- Both PRs remain Open/Draft and unmerged. No desktop GUI acceptance is claimed.
+
+INTEGRATION CONTRACT
+
+- Space owns combat, player progression, ship inventory, Hangar composition, production devices, skill/effect semantics, stage progression, presentation and scene lifecycle.
+- Jar Core owns Jar resources, workshop rules, order feasibility/admission/execution, reservations, logical time and its resource ledger.
+- Core's World V2 Bridge is built from the exact checked-out Core revision; Space must not copy Core rule or solver implementations.
+- Parser output remains Space outbox -> Host ImportProducedJars -> Core durable idempotent receipt. Core producer output independently enters the Central Warehouse. Both sources share the same Jar warehouse/flow boundary after admission.
+- Core time-driven producer rates and jar-flow rates are expressed per logical time unit; parser rates consume finite picked-up stone volume. They must not be combined without preserving their separate input and rounding semantics.
+- GUI first-play, visual Hangar composition, target GPU/OS behavior and manual scene navigation have not been observed in this environment.
+
+The remaining sections below are chronological historical checkpoints. Their “not yet run”, old Core SHA and old failure statements describe those dates only; the authoritative current result is this section.
+
+CORE DEPENDENCY
+- Space project references the Core WorldV2Bridge project as a sibling checkout by default.
+- space-demo.csproj supports JarSystemWorldV2BridgeProject override.
+- Required Core source revision for this integration checkpoint: 18a0b26407ee51c6df722f093165c3b3770c31a7.
+- Core PR #63 source branch: architecture/core-liquid-identity-consolidation; exact-head verify runs 45597874582 and 45597884119: SUCCESS (868/868).
+- Do not substitute Core main for this integration source until PR #63 is reviewed and merged.
+
+SPACE CHANGES IN THIS CHECKPOINT
+1. SpaceHangarOwnedLoadoutAssembler recomputes the frozen Board Assignment SHA-256 fingerprint.
+2. Validates Board Definition schema/version/display identity and exact slot structure.
+3. Validates one Master slot, one Slave slot, one parser slot, required slot occupancy, area/component/role/control-area pairings.
+4. Validates Owned Instance identity, Definition ID/version, and sourceRevision against current progression_revision.
+5. Validates exact slot projection:
+   - parser slot -> selected parser instance
+   - Master/Slave role -> selected workshop instance
+   - device slot -> exact selected device
+   - skill order slot/controlArea -> exact selected skill
+6. SpaceHangarSelectionController disables owned production assembly when no Board Definition is supplied.
+7. Probes added for fingerprint tampering, rehashed invalid role, stale progression revision, swapped Master/Slave instances, and owned selection without Board Definition.
+8. Added scripts/ci/verify-world-v2-cross-repo.sh. It verifies exact Core SHA, builds Core Bridge + Space, imports/parses Godot project, then runs parser ingress, runtime, lifecycle, fault, disposed-command, faulted-command, and snapshot-isolation probes.
+
+CROSS-REPO API SOURCE AUDIT
+- Core WorldV2BridgeSession exposes AddJarDemandFromTemplate(templateName, area, cooldownDurationLogicalMilli, orderDefinitionKey).
+- Core WorldV2BridgeSession exposes ImportProducedJars(operationId, jarCounts).
+- Space WorldV2RuntimeNode calls those exact APIs.
+- Space template-backed orders pass only Core template identity + scheduling metadata; no duplicate inline type/requirements.
+- Parser flow remains Space outbox -> Host ImportProducedJars -> Core durable idempotent receipt.
+- Existing SpaceOreParserJarIngressProbe covers ambiguous transport outcome and checkpoint/retry semantics.
+
+VALIDATION LIMITS
+- This environment does not contain dotnet or Godot executables.
+- No Godot 4.7.1 .NET build, GDScript parse, SceneTree probe, or battle runtime result is claimed.
+- The cross-repo harness is authored but not executed.
+- Exact Core source revision above is verified; Space PR #2 remains Draft/Open/unmerged.
+
+NEXT STEPS
+1. Run scripts/ci/verify-world-v2-cross-repo.sh with:
+   CORE_REPO_DIR=<sibling jar-system-dotnet checkout>
+   CORE_EXPECTED_SHA=3e4a5195d9640fa166359217a5f69ff143439d8d
+   GODOT_BIN=<Godot 4.7.1 .NET executable>
+2. Fix any .NET compile, GDScript import, or probe failures at their actual source boundary.
+3. Validate production Hangar -> frozen owned loadout -> WorldV2ShipHost -> Core template materialization -> parser import -> A/B execution -> Space effect dispatch -> checkpoint/restore.
+4. Only after the cross-repo closure is green, perform repository cleanup and remove stale compatibility paths that have no remaining production/probe callers.
+
+
+CHECKPOINT — Unified battle snapshot probe correction (2026-11-24)
+
+- Cross-repository run 45421741608 on Space head d51f738778648f803276def450648a975a60b091 successfully built the exact Core Bridge and Space C# project and completed Godot project import/script scanning. The first runtime probe then failed in SpaceBattleEffectStateStoreProbe: effect/dispatcher state was not preserved in the unified snapshot.
+- The failure occurred at a probe assertion comparing in-memory dictionaries directly with values read back from JSON. The persistence contract accepts integral numeric values represented by Godot as either integer or float; direct Variant equality at the test boundary was too strict.
+- Updated SpaceBattleEffectStateStoreProbe to normalize expected values through the same JSON.stringify → JSON.parse_string boundary before comparing them with loaded snapshots. Applied this to effect state, dispatcher state, and runtime checkpoint comparisons, including post-rejection preservation checks.
+- Latest fix commits: 4c0ca87c1f3bcdb5cdf173ab111a0edf9a941517 and indentation-only follow-up 90e46344ef8376640dfb2cc831712227b131aa53. This is a test/probe correction; no production snapshot format or gameplay behavior was changed.
+- A new cross-repository run was triggered for the corrected head; its final result is not yet recorded here. Do not claim the parser-ingress or subsequent lifecycle/fault probes have passed until the new run reaches them.
+- Continue from the first failing runtime probe. Once it passes, fix any subsequent probe failure at its actual owning boundary rather than treating the overall workflow as a single opaque red/green result.
+
+
+CHECKPOINT — Parser Catalog probe fixture follows the two-role world contract (2026-11-24)
+
+- Corrected-head run 45423503329 passed the unified battle snapshot store probe and progressed to SpaceOreParserCatalogProbe. It then failed because the probe's synthetic jarWorldOptions still contained only one workshop and omitted slaveWorkshopName.
+- SpaceBattleLoadoutSnapshot.validate_data now correctly requires exactly two selected workshop positions with distinct Master/Slave names for every materialized World V2 loadout. This is a current domain invariant, not an optional owned-instance-only constraint.
+- Updated the parser catalog probe fixture to provide a second distinct Slave workshop entry and slaveWorkshopName. No production validation was weakened.
+- Fix commit: 407932714935b33721c0a1198fc1072e7b5f6358. The next cross-repository run must continue from this new exact head; parser ingress and later probes remain unverified until it completes.
