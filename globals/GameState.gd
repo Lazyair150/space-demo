@@ -114,6 +114,50 @@ func set_space_progression_state(state: SpacePlayerProgressionState) -> bool:
 	space_progression_state_changed.emit(space_progression_state)
 	return true
 
+## Commit a whole battle XP settlement against the current player aggregate.
+## Exact duplicate replays succeed without writes; stale first-time commits fail closed.
+func commit_space_progression_reward_settlement(
+	expected_state: SpacePlayerProgressionState,
+	curve_catalog: SpaceProgressionCurveCatalog,
+	settlement_id: String,
+	awards: Array
+) -> Dictionary:
+	if expected_state == null or space_progression_state == null or expected_state.player_id != space_progression_state.player_id:
+		return {"success": false, "reason": "player progression identity changed before reward settlement"}
+	var prepared := SpaceProgressionRewardService.prepare_settlement(
+		space_progression_state, curve_catalog, settlement_id, awards
+	)
+	if not bool(prepared.get("success", false)):
+		return prepared
+	if bool(prepared.get("duplicate", false)):
+		return {
+			"success": true,
+			"duplicate": true,
+			"settlementId": settlement_id,
+			"settlementFingerprint": String(prepared.get("settlementFingerprint", "")),
+			"stateRevision": space_progression_state.state_revision
+		}
+	if expected_state != space_progression_state:
+		return {"success": false, "reason": "player progression revision changed; first-time settlement must be rebased"}
+	var candidate: Variant = prepared.get("candidateState", null)
+	if not (candidate is SpacePlayerProgressionState) or not _save_progression_candidate(candidate):
+		push_error("Battle progression reward settlement was rejected because the durable save failed")
+		return {"success": false, "reason": "progression save failed; live player state was not changed"}
+	if space_progression_state.progression_changed.is_connected(_on_space_progression_changed):
+		space_progression_state.progression_changed.disconnect(_on_space_progression_changed)
+	space_progression_state = candidate
+	space_progression_state.progression_changed.connect(_on_space_progression_changed)
+	space_progression_state_changed.emit(space_progression_state)
+	return {
+		"success": true,
+		"duplicate": false,
+		"settlementId": settlement_id,
+		"settlementFingerprint": String(prepared.get("settlementFingerprint", "")),
+		"stateRevision": candidate.state_revision,
+		"updatedInstances": prepared.get("updatedInstances", []),
+		"awardedExperienceByInstance": prepared.get("awardedExperienceByInstance", {})
+	}
+
 ## Reward acquisition is committed on a detached aggregate and persisted before publication.
 func acquire_space_reward_instance(
 	expected_state: SpacePlayerProgressionState,

@@ -3,7 +3,7 @@ class_name SpacePlayerProgressionState
 ## Persistent player progression aggregate: unlocks and owned item instances.
 ## It stores references to exact catalog versions, never copies catalog definitions as mutable state.
 
-const CURRENT_SCHEMA_VERSION := 2
+const CURRENT_SCHEMA_VERSION := 3
 
 signal progression_changed(state_revision: int)
 
@@ -12,8 +12,10 @@ signal progression_changed(state_revision: int)
 @export var state_revision: int = 1
 @export var unlocked_definition_keys: PackedStringArray = PackedStringArray()
 @export var owned_instances: Array[SpaceOwnedProgressionInstance] = []
-## Stable receipt identities for one-time roguelike reward acquisitions.
+## Stable receipt identities for one-time roguelike reward acquisitions. These are not XP receipts.
 @export var reward_acquisition_ids: PackedStringArray = PackedStringArray()
+## SHA-256 receipts keyed as settlement:<id> or event:<id>; prevents replay across saves.
+@export var progression_reward_receipts: Dictionary = {}
 
 func get_validation_errors() -> PackedStringArray:
 	var errors := PackedStringArray()
@@ -31,6 +33,14 @@ func get_validation_errors() -> PackedStringArray:
 		if reward_id.strip_edges().is_empty() or reward_ids.has(reward_id):
 			errors.append("reward acquisition identities must be non-empty and unique")
 		reward_ids[reward_id] = true
+
+	for receipt_id in progression_reward_receipts:
+		var receipt_key := String(receipt_id)
+		var fingerprint: Variant = progression_reward_receipts[receipt_id]
+		if (not receipt_key.begins_with("settlement:") and not receipt_key.begins_with("event:")) or receipt_key.length() <= receipt_key.find(":") + 1:
+			errors.append("progression reward receipt identities must use settlement:<id> or event:<id>")
+		if typeof(fingerprint) != TYPE_STRING or not _is_sha256_fingerprint(String(fingerprint)):
+			errors.append("progression reward receipt fingerprints must be lowercase SHA-256 values")
 	var instances := {}
 	for instance in owned_instances:
 		if instance == null:
@@ -98,6 +108,31 @@ func build_owned_instance_snapshot(instance_id: String) -> Dictionary:
 	var instance := resolve_instance(instance_id)
 	return instance.build_frozen_snapshot() if instance != null else {}
 
+## Add a set of settlement/event receipts as one aggregate revision.
+## All entries are validated before the dictionary is changed.
+func record_progression_reward_receipts(receipts: Dictionary) -> bool:
+	if receipts.is_empty():
+		return false
+	var staged := {}
+	for raw_id in receipts:
+		var receipt_id := String(raw_id)
+		var fingerprint: Variant = receipts[raw_id]
+		if (not receipt_id.begins_with("settlement:") and not receipt_id.begins_with("event:")) or receipt_id.length() <= receipt_id.find(":") + 1:
+			return false
+		if typeof(fingerprint) != TYPE_STRING or not _is_sha256_fingerprint(String(fingerprint)):
+			return false
+		if progression_reward_receipts.has(receipt_id) or staged.has(receipt_id):
+			return false
+		staged[receipt_id] = String(fingerprint)
+	for receipt_id in staged:
+		progression_reward_receipts[receipt_id] = staged[receipt_id]
+	state_revision += 1
+	progression_changed.emit(state_revision)
+	return true
+
+func progression_reward_receipt_fingerprint(receipt_id: String) -> String:
+	return String(progression_reward_receipts.get(receipt_id, ""))
+
 func replace_instance_progression(updated: SpaceOwnedProgressionInstance) -> bool:
 	if updated == null or not updated.get_validation_errors().is_empty():
 		return false
@@ -129,7 +164,8 @@ static func from_data(source: Dictionary) -> SpacePlayerProgressionState:
 	var raw_unlocks: Variant = source.get("unlockedDefinitionKeys", null)
 	var raw_instances: Variant = source.get("ownedInstances", null)
 	var raw_reward_ids: Variant = source.get("rewardAcquisitionIds", []) if source_schema >= 2 else []
-	if not (raw_unlocks is Array) or not (raw_instances is Array) or not (raw_reward_ids is Array):
+	var raw_progression_receipts: Variant = source.get("progressionRewardReceipts", {}) if source_schema >= 3 else {}
+	if not (raw_unlocks is Array) or not (raw_instances is Array) or not (raw_reward_ids is Array) or not (raw_progression_receipts is Dictionary):
 		return null
 	for raw_key in raw_unlocks:
 		if not (raw_key is String):
@@ -139,6 +175,10 @@ static func from_data(source: Dictionary) -> SpacePlayerProgressionState:
 		if typeof(raw_reward_id) != TYPE_STRING:
 			return null
 		state.reward_acquisition_ids.append(String(raw_reward_id))
+	for raw_receipt_id in raw_progression_receipts:
+		if typeof(raw_receipt_id) != TYPE_STRING or typeof(raw_progression_receipts[raw_receipt_id]) != TYPE_STRING:
+			return null
+		state.progression_reward_receipts[String(raw_receipt_id)] = String(raw_progression_receipts[raw_receipt_id])
 	for raw_instance in raw_instances:
 		if not (raw_instance is Dictionary):
 			return null
@@ -182,10 +222,19 @@ func to_data() -> Dictionary:
 		"stateRevision": state_revision,
 		"unlockedDefinitionKeys": Array(unlocked_definition_keys),
 		"ownedInstances": instances,
-		"rewardAcquisitionIds": Array(reward_acquisition_ids)
+		"rewardAcquisitionIds": Array(reward_acquisition_ids),
+		"progressionRewardReceipts": progression_reward_receipts.duplicate(true)
 	}
 
 static func _definition_key(item_kind: String, definition_id: String, version: int) -> String:
 	if not SpaceOwnedProgressionInstance.ITEM_KINDS.has(item_kind) or definition_id.strip_edges().is_empty() or version <= 0:
 		return ""
 	return "%s:%s@%d" % [item_kind, definition_id, version]
+
+static func _is_sha256_fingerprint(value: String) -> bool:
+	if value.length() != 64:
+		return false
+	for character in value:
+		if not "0123456789abcdef".contains(character):
+			return false
+	return true

@@ -262,7 +262,7 @@ Parser 三个成长属性要保持不同语义：
 
 ### 6.2 XP 如何产生：本阶段的玩法决定
 
-**现状**：已有精确版本成长曲线资产类型、曲线注册表、成长计算服务和 revision-checked 实例更新；本次检查没有找到接入正常战斗结算的统一 XP Award Service，也没有在 Hangar Catalog Bundle 中接入正式 Progression Curve Catalog。当前演示精密解析器的成长属性由 Demo Bootstrap 直接写入，是演示存档初始化，不是正式奖励循环。
+**实现状态**：已有精确版本成长曲线资产类型、曲线注册表、成长计算服务和 revision-checked 实例更新。新增的 `SpaceProgressionRewardService` 已提供事件来源类型校验、按 Owned Instance 汇总整数 XP、精确 Curve ID / Version 计算，以及 settlement + source event 双层 SHA-256 收据去重；`GameState.commit_space_progression_reward_settlement()` 先持久化 detached candidate，再发布新状态。XP 收据与 `reward_acquisition_ids` 分开保存，并通过 schema-v3 兼容迁移与确定性探针验证。当前演示精密解析器的成长属性仍由 Demo Bootstrap 直接写入，不是正式奖励循环。
 
 建议采用以下奖励原则，待正式曲线和奖励表数据化：
 
@@ -302,7 +302,7 @@ Parser 三个成长属性要保持不同语义：
 6. Progression Aggregate 以旧 Progression Revision 为基准提交更新；过期 Revision 拒绝覆盖。
 7. 保存玩家成长状态与已处理的 Reward ID；下场战斗冻结更新后的实例快照。
 
-目前 `reward_acquisition_ids` 是 Owned Instance 获取回执，不应直接复用为 XP 结算回执。XP 需要单独的奖励事件去重身份，并与战斗结算存档一起恢复。若 Parser 只完成部分进度，累计 XP 的取整/余数政策也要明确，不能把未达一只 Jar 的加工劳动无声丢掉或重复计算。
+`reward_acquisition_ids` 仍只表示 Owned Instance 获取回执；XP 现在使用独立的 `progression_reward_receipts`，同时记录整场 Settlement ID 和每个实际 Source Event ID。相同 Settlement ID + 相同规范化载荷会成为无副作用重复结果；同一 ID 对应不同载荷、或事件被另一场 Settlement 再次认领，则 fail closed。XP 系数和小数进度如何统一取整仍由版本化 Reward Profile 决定；通用结算服务只接收最终正整数 XP，不能把未达一只 Jar 的加工劳动无声丢掉或重复计算。
 
 ## 7. 生产、技能与资源经济的平衡原则
 
@@ -407,7 +407,7 @@ UI 只能读权威快照和展示层数据，不自己计算 Ban、容量、极�
 
 - 给 Parser、Workshop、Skill 至少各配置一份 exact-version Growth Curve 资产。
 - 决定经验奖励来源、系数、曲线阈值和最大等级；这些数字由内容/平衡数据提供，不写进通用计算器。
-- 实现可持久化 XP Reward Receipt，按 Owned Instance 分配奖励。
+- 已实现可持久化 XP Settlement / Source Event Receipt、来源归属校验、按 Owned Instance 汇总及整批 detached-candidate 持久化；下一步接入真实战斗/Parser/Core 已提交事件并装配 Reward Profile 与 Curve Catalog。
 - 战斗结算更新玩家 Owned Instance；下一场战斗重新冻结成长配置。
 - 用重复结算、丢失回执、旧 Revision 覆盖、曲线升级和载入旧存档测试验证去重及兼容性。
 
