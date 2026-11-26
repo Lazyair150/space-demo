@@ -269,6 +269,15 @@ SpaceBattlePauseControllerProbe.gd:85
 - `e57da5091e2ebfe8532dcb3e022211fef26830a6`：修复 Progression Bootstrap Probe 的 Node 所有权。
 - `9f0cda14c5a70c595095a56bbacb5a7c1694ac0f`：显式初始化可选冻结快照。
 
+验证脚本还增加了针对这些所有权回归的明确门禁：
+
+- `Cannot get path of node as it is not in a scene tree` 会使对应 Godot 子步骤失败。
+- 在 `GODOT_VERBOSE=1` 下，Domain contracts 和 Parser ingress 若仍出现 `Leaked instance: Node:`，即使业务 marker 已输出也会失败。
+- 暂不把 `Resource still in use` 或 GDScript/StringName 缓存直接设为总失败条件，因为这些列表仍包含预加载脚本和作者资源，归属尚未完全确定。
+
+该门禁提交：`44668cd131dcb0777f579fbd4fcefc476ce0db52`。
+
+
 这三个修正尚未取得新 verbose 退出日志；不能提前宣称 99 个 ObjectDB 或 42 个 Resource 已清零。Resource 和 StringName 留存也尚未全部归因：verbose 中大量仍在使用的对象来自预加载的 Hangar GDScript / `demo_catalog_bundle.tres` 及其内嵌资源，必须在 Node 修复后重新观察，不能仅凭名字列表将其认定为永久泄漏或全部判作引擎正常缓存。
 
 ### 当前代码批次
