@@ -267,3 +267,15 @@ CROSS-REPO-WORLD-V2-OK core=94750d6728c416381a66ddf92492dd90146fbd65
 ```
 
 This is a new exact-dependency integration check, not a request to repeat the already-green Core test suite or the prior probes on the old Core SHA. Desktop GUI acceptance remains separate: default Hangar assembly, enter battle, pause/resume, return to menu, and enter battle again.
+
+
+CROSS-REPOSITORY VERIFICATION — latest Core pin accepted (2026-11-26)
+
+The user confirmed that the requested cross-repository verification completed successfully with the updated Core dependency pin.
+
+- Core expected revision: `94750d6728c416381a66ddf92492dd90146fbd65` (documentation-only descendant of the source/test revision `fce78edd54c85ddcba8fd5aae4da0b8897659e85`; exact Core xUnit and verify evidence is recorded above).
+- Space branch at the time of the verification instruction: `world-v2/phase-4.10b-hangar-ui`, HEAD `8c9672cfc21f084554f58f27ec415511bde8df8d`.
+- User-reported outcome: passed.
+- The user did not include the raw command output or final marker in the confirmation. This record therefore records the user's success confirmation, not independently inspected per-probe output.
+- Core xUnit was not rerun; no need to repeat its already-green 1040/1040 exact-source regression.
+- Next acceptance boundary is desktop GUI: default Hangar loadout, enter battle, pause/resume, return to menu, and enter battle again. Headless success is not a substitute for this manual GUI pass.
