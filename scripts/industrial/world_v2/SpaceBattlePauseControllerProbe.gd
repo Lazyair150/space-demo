@@ -15,9 +15,16 @@ func _ready() -> void:
 		return
 	# Match production topology: current_scene is this probe, while the
 	# battle lifecycle owner is a separate root child, like /root/Game.
+	# _ready() is still inside the current scene's child-setup traversal, so
+	# defer the root attachment and continue after that traversal has completed.
+	var scene_tree: SceneTree = get_tree()
 	var battle_owner := PROBE_BATTLE_OWNER.new() as Node
 	battle_owner.name = "SpaceBattlePauseProbeOwner"
-	get_tree().root.add_child(battle_owner)
+	scene_tree.root.call_deferred("add_child", battle_owner)
+	await scene_tree.process_frame
+	if not battle_owner.is_inside_tree():
+		push_error("[SpaceBattlePauseControllerProbe] root-level battle owner could not be attached")
+		return
 	var controller := SpaceBattlePauseController.new()
 	battle_owner.add_child(controller)
 	if controller.process_mode != Node.PROCESS_MODE_ALWAYS:
