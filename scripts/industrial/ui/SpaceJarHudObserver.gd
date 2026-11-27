@@ -36,6 +36,7 @@ var _feedback_tween: Tween
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build()
+	_layout_responsive_controls()
 	_refresh_snapshot()
 
 func _process(delta: float) -> void:
@@ -45,11 +46,47 @@ func _process(delta: float) -> void:
 	_elapsed = 0.0
 	_refresh_snapshot()
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_layout_responsive_controls()
+
+func _layout_responsive_controls() -> void:
+	if not is_instance_valid(_strip_panel):
+		return
+	var viewport_size := get_viewport_rect().size
+	var viewport_width := maxf(360.0, viewport_size.x)
+	var viewport_height := maxf(300.0, viewport_size.y)
+	var passive_width := minf(250.0, maxf(180.0, viewport_width * 0.28))
+	var strip_width := maxf(180.0, viewport_width - passive_width - 60.0)
+	_strip_panel.position = Vector2(20.0, 62.0)
+	_strip_panel.custom_minimum_size = Vector2(0.0, 40.0)
+	_strip_panel.size = Vector2(strip_width, 40.0)
+	if is_instance_valid(_feedback_label):
+		_feedback_label.position = Vector2(20.0, 108.0)
+		_feedback_label.custom_minimum_size = Vector2(strip_width, 18.0)
+	if is_instance_valid(_active_dock):
+		var active_width := minf(600.0, maxf(280.0, viewport_width * 0.48))
+		_active_dock.custom_minimum_size = Vector2(active_width, 100.0)
+		_active_dock.offset_left = -active_width - 20.0
+		_active_dock.offset_top = -120.0
+		_active_dock.offset_right = -20.0
+		_active_dock.offset_bottom = -20.0
+	if is_instance_valid(_passive_dock):
+		_passive_dock.custom_minimum_size = Vector2(passive_width, 90.0)
+		_passive_dock.offset_left = -passive_width - 20.0
+		_passive_dock.offset_top = 66.0
+		_passive_dock.offset_right = -20.0
+		_passive_dock.offset_bottom = 156.0
+	if is_instance_valid(_panel):
+		var detail_width := minf(620.0, maxf(280.0, viewport_width - 40.0))
+		var detail_height := minf(360.0, maxf(180.0, viewport_height - 160.0))
+		_panel.position = Vector2(20.0, 130.0)
+		_panel.custom_minimum_size = Vector2(detail_width, detail_height)
+		_panel.size = Vector2(detail_width, detail_height)
+
 func _build() -> void:
 	_strip_panel = PanelContainer.new()
-	_strip_panel.position = Vector2(20, 62)
-	_strip_panel.custom_minimum_size = Vector2(960, 34)
-	_strip_panel.size = Vector2(960, 34)
+	_strip_panel.custom_minimum_size = Vector2(0, 40)
 	var strip_style := StyleBoxFlat.new()
 	strip_style.bg_color = Color("101923")
 	strip_style.border_color = Color("35475b")
@@ -59,8 +96,14 @@ func _build() -> void:
 	_strip_panel.add_theme_stylebox_override("panel", strip_style)
 	_strip_panel.tooltip_text = "持续可见的战斗资源状态栏。数量来自 Host 快照；点击右侧详情查看 Jar 与工作台明细。"
 	add_child(_strip_panel)
+	var strip_scroll := ScrollContainer.new()
+	strip_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	strip_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	strip_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	strip_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_strip_panel.add_child(strip_scroll)
 	var strip_row := UiKit.hbox(10)
-	_strip_panel.add_child(strip_row)
+	strip_scroll.add_child(strip_row)
 	_jar_total_label = UiKit.label("JAR  —", UiKit.FONT_BODY, UiKit.TEXT)
 	strip_row.add_child(_jar_total_label)
 	_shape_counts = UiKit.hbox(7)
@@ -128,15 +171,15 @@ func _build() -> void:
 	passive_column.add_child(_passive_order_slots)
 
 	_feedback_label = UiKit.label("", UiKit.FONT_SMALL, UiKit.ACCENT)
-	_feedback_label.position = Vector2(20, 98)
-	_feedback_label.custom_minimum_size = Vector2(720, 18)
+	_feedback_label.position = Vector2(20, 108)
+	_feedback_label.custom_minimum_size = Vector2(0, 18)
 	_feedback_label.modulate.a = 0.0
 	_feedback_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_feedback_label)
 
 	_panel = UiKit.panel("JarObserverPanel", UiKit.PANEL)
-	_panel.position = Vector2(20, 120)
-	_panel.custom_minimum_size = Vector2(620, 360)
+	_panel.position = Vector2(20, 130)
+	_panel.custom_minimum_size = Vector2(0, 0)
 	_panel.size = Vector2(620, 360)
 	_panel.visible = false
 	add_child(_panel)
