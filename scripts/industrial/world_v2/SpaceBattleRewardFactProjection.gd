@@ -30,6 +30,8 @@ static func build_facts(
 		return _failure("frozen Ship Owned Instance ID is missing")
 
 	var parser_instance_id := ""
+	var parser_owned_instance: Dictionary = {}
+	var parser_profile: Dictionary = {}
 	var parser_count := 0
 	var devices: Variant = loadout_data.get("productionDeviceSelections", null)
 	if not (devices is Array):
@@ -39,9 +41,21 @@ static func build_facts(
 			continue
 		parser_count += 1
 		var owned_parser: Variant = raw_device.get("ownedInstance", null)
-		if not (owned_parser is Dictionary):
-			return _failure("frozen Ore Parser has no exact Owned Instance")
-		parser_instance_id = _required_text(owned_parser, "instanceId")
+		var raw_profile: Variant = raw_device.get("oreParserProfile", null)
+		if not (owned_parser is Dictionary) or not (raw_profile is Dictionary):
+			return _failure("frozen Ore Parser must retain its exact Owned Instance and composed runtime profile")
+		parser_owned_instance = owned_parser
+		parser_profile = raw_profile
+		parser_instance_id = _required_text(parser_owned_instance, "instanceId")
+		if parser_instance_id.is_empty():
+			return _failure("frozen Ore Parser Owned Instance ID is missing")
+		if parser_profile.get("ownedInstance", null) != parser_owned_instance:
+			return _failure("composed Parser profile does not retain the same frozen Owned Instance")
+		if (
+			_required_text(parser_profile, "parserId") != _required_text(raw_device, "definitionId")
+			or int(parser_profile.get("definitionVersion", 0)) != int(raw_device.get("definitionVersion", 0))
+		):
+			return _failure("composed Parser profile differs from the frozen Parser Definition identity")
 	if parser_count != 1 or parser_instance_id.is_empty():
 		return _failure("reward fact projection requires exactly one owned Ore Parser")
 
@@ -50,8 +64,16 @@ static func build_facts(
 	var parser_runtime: Variant = parser_checkpoint.get("parserRuntime", null)
 	if not (parser_runtime is Dictionary) or int(parser_runtime.get("schemaVersion", 0)) != PARSER_RUNTIME_SCHEMA_VERSION:
 		return _failure("reward fact projection requires the current Parser runtime checkpoint")
-	if String(parser_runtime.get("parserInstanceId", "")) != parser_instance_id:
-		return _failure("Parser checkpoint identity does not match the frozen Owned Parser")
+	# Runtime identity is deliberately scoped to the ship World and exact Owned Parser.
+	# Use the same canonicalizer as Game._initialize_ore_parser; it also preserves the
+	# explicitly supported definition-scoped identity for a legacy checkpoint restore.
+	var expected_runtime_identity := SpaceOreParserRuntime.build_runtime_instance_id(
+		ship_world_id, parser_profile, parser_runtime
+	)
+	if expected_runtime_identity.is_empty():
+		return _failure("frozen Owned Parser cannot produce a valid runtime identity")
+	if String(parser_runtime.get("parserInstanceId", "")) != expected_runtime_identity:
+		return _failure("Parser checkpoint identity does not match the frozen Owned Parser runtime identity")
 	var seen_pickups: Variant = parser_runtime.get("seenPickups", null)
 	if not (seen_pickups is Dictionary):
 		return _failure("Parser accepted-pickup identity ledger is missing")

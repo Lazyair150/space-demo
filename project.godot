@@ -94,7 +94,9 @@ pierce={
 
 3d/physics_engine="Jolt Physics"
 
+; Keep the Mobile renderer. Vulkan is selected on Windows while investigating
+; the reported D3D12 DXGI_ERROR_DEVICE_REMOVED device-loss cascade on RTX 2060.
 [rendering]
 
-rendering_device/driver.windows="d3d12"
+rendering_device/driver.windows="vulkan"
 renderer/rendering_method="mobile"
