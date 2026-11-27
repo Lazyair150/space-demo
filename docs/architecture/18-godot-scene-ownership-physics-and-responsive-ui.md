@@ -150,3 +150,6 @@ Do not add a third-party framework solely for architecture fashion. First finish
 | Restart flow | Scene/lifecycle probes | Main Menu → Hangar → Battle → Menu → Hangar → Battle works repeatedly |
 
 A successful Headless import/build is not a substitute for desktop GUI acceptance. Record which matrix cells are automated, manually observed, or still pending.
+
+
+The player-death route also replaces current_scene with GameOver while Game remains a root child. The death transition now queues the same Game owner for deletion after GameFlow accepts the GameOver scene. This makes root-level battle disposal apply to both player-requested Menu return and terminal GameOver navigation.
