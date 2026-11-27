@@ -1,0 +1,24 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceHangarScreen.gd" id="1_screen"]
+[ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceHangarPreparation.gd" id="2_preparation"]
+[ext_resource type="Resource" path="res://data/stages/campaign_01/catalog.tres" id="3_stage_catalog"]
+[ext_resource type="Resource" path="res://data/hangar/demo_catalog_bundle.tres" id="4_demo_bundle"]
+[ext_resource type="Resource" path="res://data/hangar/demo_board.tres" id="5_demo_board"]
+
+[node name="SpaceHangar" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_screen")
+loadout_identity = {"shipWorldId": "demo.ship_world", "loadoutId": "starter.loadout", "loadoutVersion": 1}
+board_definition = ExtResource("5_demo_board")
+stage_catalog = ExtResource("3_stage_catalog")
+
+[node name="Preparation" type="Node" parent="."]
+script = ExtResource("2_preparation")
+catalog_bundle_resource = ExtResource("4_demo_bundle")
+require_owned_instances = true

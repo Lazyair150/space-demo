@@ -1,6 +1,6 @@
 # World V2 × Space — resource, order-effect, and event contract
 
-Status: skill semantics are settled at the domain boundary. Jar orders are execution/cost blueprints for equipped Space skills; Jar owns resource consumption/execution/cooldown, while Space owns skill benefit/effect definitions, versions, targets, stacking, and duration. Concrete catalog content and trigger policies remain implementation/data work.
+Status (2026-11-25): the resource, order-event, parser-ingress, and host boundaries are implemented and covered by the successful cross-repository run `45438436612` at Space `74a93ed` against Core `b342259`. Space still owns effect meaning and policy; production content calibration, full battle save/load orchestration, and non-Buff effect executors remain separate work. Older progress paragraphs are chronological checkpoints; the the current PR head consists of documentation-status cleanup after the HUD probe annotation change; its exact SHA and validation state are tracked in `docs/execution/2026-11-24-cross-repo-integration.txt`, and it has not yet received a successful exact-head run.
 
 ## 1. Settled gameplay model
 
@@ -157,7 +157,7 @@ For order effects:
 
 Space and Jar do not share one database transaction. Save recovery must use stable operation/event IDs and idempotent application, not assume cross-system atomic writes.
 
-Space now has a frozen-loadout snapshot contract and a callback-driven order-effect dispatcher boundary. The dispatcher will not acknowledge an event until the injected Space commit callback reports that both the effect state and processed EventId were durably saved. The callback and battle save/load wiring remain to be implemented; until then, the dispatcher must not be treated as an active effect path.
+Space has a frozen-loadout snapshot contract, callback-driven order-effect dispatcher, concrete effect committer, and checkpoint store. The cross-repository probes exercise event delivery and persistence boundaries. This does not by itself claim that the complete production battle save/load coordinator or every future effect category is finished.
 
 ## 8. Explicitly not decided
 
@@ -174,13 +174,15 @@ These are separate design/data tasks. The boundary is fixed: Jar reports success
 
 ## 9. Skill activation and Active/Passive assignment
 
-The loadout's Active/Passive area is a player-facing control assignment:
-- **Active**: the player chooses when to request the skill. The request still enters Jar's normal admission/execution path; unavailable resources, incompatible requirements, and cooldown prevent execution.
-- **Passive**: a Space-owned trigger/automation policy decides when to request the skill. Passive does not mean free, always-on, or continuously active; each execution still consumes its Jar-configured resources and observes Jar cooldown.
-- A skill's benefit type is independent of its area. Active skills may create timed effects; Passive skills may produce discrete triggered effects.
-- Exact trigger conditions, priorities, target policy, and automation behavior belong to versioned Space skill data, not Jar.
+Every player-configurable combat capability is a Space skill, regardless of whether its effect is a projectile, beam, missile, shield, support unit, reconnaissance action, or combat modifier. Effect category is independent of control area.
 
-The current code has the Active/Passive loadout area field and the effect-dispatch foundation. Manual activation commands and passive trigger scheduling are not yet implemented.
+- **Active**: the player requests the exact demand ID. The request enters Jar's normal admission/execution path; Core decides feasibility, resource availability and cooldown.
+- **Passive**: Jar Core's Passive demand scheduler owns automatic admission attempts. Passive is not free or continuously active; every successful cycle consumes the configured resources and observes the same Core cooldown rules.
+- Space owns the benefit/effect definition, target policy, duration, stacking, and the implementation that creates the projectile/beam/shield/drone/recon effect.
+- Any future battlefield-context trigger policy belongs to Space, but it may only decide whether to submit a request; it must not duplicate Jar feasibility or cooldown logic.
+- Active/Passive is independent of effect category. A shield, beam, missile or drone may occupy either lane.
+
+The current effect registry is Buff-first. Typed non-Buff effect definitions and executors remain implementation work; do not model a projectile or support unit as a fake BuffDefinition.
 
 Space effect implementation added on the current branch:
 - Buff definitions carry explicit positive versions and are resolved by exact version through SpaceEffectCatalog.

@@ -1,5 +1,10 @@
 extends Node2D
 
+signal stage_completed(result: Dictionary)
+signal stage_failed(result: Dictionary)
+signal stage_settlement_failed(result: Dictionary)
+signal stage_faulted(reason: String)
+
 const ENERGY_STONE_PICKUP_SCENE: PackedScene = preload("res://scenes/industrial/SpaceEnergyStonePickup.tscn")
 
 const ARENA_RECT:=Rect2(80,80,1120,560)
@@ -15,6 +20,14 @@ var _camera_home:Vector2
 var _shake_time:float
 var _shake_strength:float
 var _battle_loadout: SpaceBattleLoadoutSnapshot
+var _stage_director: SpaceStageEncounterDirector
+var _selected_stage: SpaceStageDefinition
+var _stage_objective_runtime: SpaceStageObjectiveRuntime
+var _stage_encounters_completed: bool = false
+var _stage_completion_emitted: bool = false
+var _stage_failure_emitted: bool = false
+var _stage_settlement_callback: Callable
+var _stage_protected_target: Node
 var _order_effect_dispatcher: SpaceOrderEffectDispatcher
 var _order_effect_commit_callback: Callable
 var _persisted_order_dispatcher_state: Dictionary = {}
@@ -27,8 +40,12 @@ var _persisted_run_state: Dictionary = {}
 var _persisted_effect_state: Dictionary = {}
 var _effect_catalog: SpaceEffectCatalog
 var _effect_target_resolver: Callable
+var _battle_shutdown_started: bool = false
+var _last_completed_world_time_milli: int = -1
+var _last_completed_logical_time_milli: int = -1
 
-@export var allow_sandbox_world_for_development: bool = true
+## Explicit opt-in for isolated development scenes only. Normal launches require Hangar's frozen Owned Loadout.
+@export var allow_sandbox_world_for_development: bool = false
 
 ## Hangar must call this before adding the combat scene to the SceneTree.
 func configure_battle_loadout(
@@ -47,6 +64,35 @@ func configure_battle_loadout(
 	_persisted_space_clock_remainder_milli = persisted_space_clock_remainder_milli
 	return true
 
+## A finite stage must be frozen with the same owned-instance snapshots as the battle loadout.
+## Call before adding the combat scene to the SceneTree.
+## A finite-stage launch must supply a durable clear-ledger callback before entering the SceneTree.
+func configure_stage_settlement_callback(callback: Callable) -> bool:
+	if is_inside_tree() or not callback.is_valid():
+		return false
+	_stage_settlement_callback = callback
+	return true
+
+func configure_battle_stage(stage: SpaceStageDefinition, protected_target: Node = null) -> bool:
+	if is_inside_tree() or stage == null or not stage.is_valid() or _battle_loadout == null or not _persisted_jar_execution_checkpoint_json.is_empty():
+		return false
+	var objective_runtime := SpaceStageObjectiveRuntime.new()
+	if not objective_runtime.configure(stage, protected_target):
+		return false
+	var director := SpaceStageEncounterDirector.new()
+	if not director.configure(stage, _battle_loadout.to_dictionary()):
+		return false
+	_selected_stage = stage
+	_stage_director = director
+	_stage_objective_runtime = objective_runtime
+	_stage_protected_target = protected_target
+	_stage_failure_emitted = false
+	return true
+
+## Read by the child Spawner during its _ready; configuration is pre-tree only.
+func get_stage_director_for_spawner() -> SpaceStageEncounterDirector:
+	return _stage_director
+
 ## The callback must atomically persist Space effect state and dispatcher state before returning true.
 func configure_order_effect_commit_callback(callback: Callable) -> bool:
 	if is_inside_tree() or not callback.is_valid():
@@ -61,7 +107,9 @@ func configure_battle_loadout_from_checkpoint(
 	saved_snapshot: Dictionary,
 	commit_callback: Callable = Callable(),
 	effect_catalog: SpaceEffectCatalog = null,
-	effect_target_resolver: Callable = Callable()
+	effect_target_resolver: Callable = Callable(),
+	stage: SpaceStageDefinition = null,
+	protected_target: Node = null
 ) -> bool:
 	if loadout == null or int(saved_snapshot.get("schemaVersion", 0)) != 3:
 		return false
@@ -78,9 +126,18 @@ func configure_battle_loadout_from_checkpoint(
 	var runtime_checkpoint: Variant = saved_snapshot.get("runtimeCheckpoint", null)
 	var dispatcher_state: Variant = saved_snapshot.get("dispatcherState", null)
 	var effect_state: Variant = saved_snapshot.get("effectState", null)
-	if not (runtime_checkpoint is Dictionary) or int(runtime_checkpoint.get("schemaVersion", 0)) != 2 or not (dispatcher_state is Dictionary) or not (effect_state is Dictionary):
+	if not (runtime_checkpoint is Dictionary) or int(runtime_checkpoint.get("schemaVersion", 0)) not in [2, 3] or not (dispatcher_state is Dictionary) or not (effect_state is Dictionary):
+		return false
+	var runtime_schema := int(runtime_checkpoint.get("schemaVersion", 0))
+	if (runtime_schema == 2 and stage != null) or (runtime_schema == 3 and stage == null):
+		return false
+	var stage_runtime: Variant = runtime_checkpoint.get("stageRuntime", {})
+	if runtime_schema == 3 and not (stage_runtime is Dictionary):
 		return false
 	if int(effect_state.get("schemaVersion", 0)) != 1 or not (effect_state.get("instances", null) is Array) or not (effect_state.get("processedOrderEventIds", null) is Array):
+		return false
+	if not _checkpoint_event_ledgers_match(effect_state, dispatcher_state, expected_identity):
+		push_error("[Game] Saved effect and dispatcher event ledgers do not match")
 		return false
 	if effect_catalog == null or not effect_target_resolver.is_valid():
 		push_error("[Game] Resuming a battle requires the exact effect catalog and target resolver")
@@ -105,17 +162,64 @@ func configure_battle_loadout_from_checkpoint(
 		return false
 	_persisted_run_state = run_state.duplicate(true)
 	_persisted_effect_state = effect_state.duplicate(true)
+	if runtime_schema == 3 and not restore_battle_stage_from_checkpoint(stage, stage_runtime, protected_target):
+		push_error("[Game] Finite-stage checkpoint identity/state restore failed")
+		return false
 	_effect_catalog = effect_catalog
 	_effect_target_resolver = effect_target_resolver
 	if commit_callback.is_valid() and not configure_order_effect_commit_callback(commit_callback):
 		return false
 	return true
 
+func _checkpoint_event_ledgers_match(effect_state: Dictionary, dispatcher_state: Dictionary, expected_identity: Dictionary) -> bool:
+	if int(dispatcher_state.get("schemaVersion", 0)) != 1:
+		return false
+	if String(dispatcher_state.get("shipWorldId", "")) != String(expected_identity.get("shipWorldId", "")) or String(dispatcher_state.get("loadoutId", "")) != String(expected_identity.get("loadoutId", "")) or int(dispatcher_state.get("loadoutVersion", 0)) != int(expected_identity.get("loadoutVersion", 0)) or String(dispatcher_state.get("loadoutFingerprint", "")) != String(expected_identity.get("loadoutFingerprint", "")):
+		return false
+	var effect_ids: Variant = effect_state.get("processedOrderEventIds", null)
+	var dispatcher_ids: Variant = dispatcher_state.get("processedEventIds", null)
+	if not (effect_ids is Array) or not (dispatcher_ids is Array) or effect_ids.size() != dispatcher_ids.size():
+		return false
+	var world_instance_id := String(dispatcher_state.get("jarWorldInstanceId", ""))
+	if effect_ids.is_empty():
+		if not world_instance_id.is_empty():
+			return false
+	elif world_instance_id.is_empty():
+		return false
+	var expected := {}
+	for raw_id in effect_ids:
+		if typeof(raw_id) != TYPE_STRING or String(raw_id).is_empty() or expected.has(String(raw_id)):
+			return false
+		var event_id := String(raw_id)
+		if not event_id.begins_with(world_instance_id + ":"):
+			return false
+		var suffix := event_id.trim_prefix(world_instance_id + ":").split(":")
+		if suffix.size() != 2 or not suffix[0].is_valid_int() or not suffix[1].is_valid_int() or int(suffix[0]) <= 0 or int(suffix[1]) <= 0 or str(int(suffix[0])) != suffix[0] or str(int(suffix[1])) != suffix[1]:
+			return false
+		expected[event_id] = true
+	var actual := {}
+	for raw_id in dispatcher_ids:
+		if typeof(raw_id) != TYPE_STRING or String(raw_id).is_empty() or actual.has(String(raw_id)):
+			return false
+		actual[String(raw_id)] = true
+	return expected == actual
+
 func _ready() -> void:
+	if not GameFlow.begin_battle_preparation():
+		push_error("[Game] Application flow rejected battle scene entry")
+		# This instance never acquired the battle lifecycle or Host ownership.
+		# Its teardown must not fault/dispose another active battle.
+		_battle_shutdown_started = true
+		process_mode = Node.PROCESS_MODE_DISABLED
+		return
+	if not _persisted_jar_execution_checkpoint_json.is_empty() and not GameFlow.begin_battle_resuming():
+		push_error("[Game] Application flow rejected checkpoint resume phase")
+		_shutdown_battle(true, "battle initialization failed")
+		return
 	if not _persisted_run_state.is_empty():
 		if not GameState.restore_run_state(_persisted_run_state):
 			push_error("[Game] Saved transient run state is invalid")
-			process_mode = Node.PROCESS_MODE_DISABLED
+			_shutdown_battle(true, "battle initialization failed")
 			return
 	elif _persisted_jar_execution_checkpoint_json.is_empty():
 		GameState.reset_run()
@@ -125,19 +229,126 @@ func _ready() -> void:
 		player.effects.external_time_authority = true
 	if not _restore_saved_effect_state():
 		push_error("[Game] Saved Space effect state could not be restored")
-		process_mode = Node.PROCESS_MODE_DISABLED
+		_shutdown_battle(true, "battle initialization failed")
 		return
 	if not _begin_ship_world():
 		push_error("[Game] Ship world initialization failed; combat build is not allowed to proceed")
-		process_mode = Node.PROCESS_MODE_DISABLED
+		var initialization_reason := "battle initialization failed"
+		var failed_host := get_node_or_null("/root/WorldV2ShipHost")
+		if failed_host != null and failed_host.IsFaulted and not String(failed_host.FaultReason).is_empty():
+			initialization_reason = "World V2 Host fault: " + String(failed_host.FaultReason)
+		_shutdown_battle(true, initialization_reason)
 		return
-	_camera_home=camera_2d.position
+	var active_jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if active_jar_host != null and not active_jar_host.ShipWorldFaulted.is_connected(_on_ship_world_faulted):
+		active_jar_host.ShipWorldFaulted.connect(_on_ship_world_faulted)
+	_refresh_last_completed_simulation_position(active_jar_host)
+	if not _persisted_jar_execution_checkpoint_json.is_empty():
+		if not GameFlow.mark_battle_resume_ready():
+			push_error("[Game] Application flow could not enter resume-ready state")
+			_shutdown_battle(true, "battle initialization failed")
+			return
+		var pause_controller := get_node_or_null("PauseController")
+		if pause_controller == null or not pause_controller.has_method("enter_resume_ready") or not bool(pause_controller.call("enter_resume_ready")):
+			push_error("[Game] Restored battle could not acquire the mandatory resume-ready pause gates")
+			_shutdown_battle(true, "battle initialization failed")
+			return
+	else:
+		if not GameFlow.mark_battle_running():
+			push_error("[Game] Application flow could not enter the running battle phase")
+			_shutdown_battle(true, "battle initialization failed")
+			return
+	_camera_home = camera_2d.position
 	_scatter_asteroids()
+	var spawner := get_node_or_null("Spawner")
+	if spawner != null:
+		if spawner.has_signal("encounters_completed") and not spawner.encounters_completed.is_connected(_on_stage_encounters_completed):
+			spawner.encounters_completed.connect(_on_stage_encounters_completed)
+		if spawner.has_signal("stage_faulted") and not spawner.stage_faulted.is_connected(_on_stage_faulted):
+			spawner.stage_faulted.connect(_on_stage_faulted)
 	if player:
 		if not player.died.is_connected(_on_player_died):
 			player.died.connect(_on_player_died)
 		if not player.damaged.is_connected(_on_player_damaged):
 			player.damaged.connect(_on_player_damaged)
+
+## Player-requested terminal exit from the pause menu.
+## The battle owner disposes Jar and closes the lifecycle before navigation.
+func end_battle_for_menu() -> bool:
+	if not _battle_shutdown_started:
+		_shutdown_battle(false, "player returned to main menu")
+	if not GameFlow.return_to_menu("res://scenes/menus/MainMenu.tscn"):
+		return false
+	# Hangar attaches the configured battle as a root-level sibling, not as
+	# SceneTree.current_scene. Replacing the current scene therefore cannot
+	# remove this node; the lifecycle owner must release its own composition root.
+	queue_free()
+	return true
+
+## Encounter completion is not objective completion or reward settlement.
+func _on_stage_encounters_completed(result: Dictionary) -> void:
+	if _selected_stage == null or _stage_objective_runtime == null or _battle_shutdown_started:
+		return
+	var identity: Variant = result.get("stageIdentity", null)
+	if not (identity is Dictionary) or String(identity.get("stageId", "")) != String(_selected_stage.stage_id) or int(identity.get("definitionVersion", 0)) != _selected_stage.definition_version:
+		_shutdown_battle(true, "finite stage encounter identity mismatch")
+		return
+	_stage_encounters_completed = true
+	_stage_objective_runtime.mark_encounters_completed()
+	_try_complete_stage()
+
+func _try_complete_stage() -> void:
+	if _selected_stage == null or _stage_objective_runtime == null or _battle_shutdown_started or _stage_completion_emitted or not _stage_encounters_completed or not _stage_objective_runtime.is_complete():
+		return
+	var result := {
+		"stageIdentity": {"stageId": String(_selected_stage.stage_id), "definitionVersion": _selected_stage.definition_version},
+		"objectiveProgress": _stage_objective_runtime.progress(),
+		"status": "objective_complete"
+	}
+	# The campaign-clear callback persists this exact fact envelope together with the
+	# clear record. It becomes durable only if that callback commits the candidate.
+	var reward_projection := SpaceBattleRewardFactProjection.build_facts(
+		_battle_loadout.to_dictionary(),
+		capture_ore_parser_state(),
+		result,
+		true
+	)
+	if not bool(reward_projection.get("success", false)):
+		stage_settlement_failed.emit(result)
+		_shutdown_battle(true, "progression reward facts could not be projected: " + String(reward_projection.get("reason", "")))
+		return
+	result["progressionRewardSettlementId"] = String(reward_projection.get("settlementId", ""))
+	result["progressionRewardFacts"] = reward_projection.get("facts", []).duplicate(true)
+	result["progressionRewardFactCoverage"] = {
+		"capturedSourceKinds": reward_projection.get("capturedSourceKinds", []).duplicate(true),
+		"notYetCapturedSourceKinds": reward_projection.get("notYetCapturedSourceKinds", []).duplicate(true)
+	}
+	if not _stage_settlement_callback.is_valid() or not bool(_stage_settlement_callback.call(result)):
+		stage_settlement_failed.emit(result)
+		_shutdown_battle(true, "finite-stage clear could not be durably recorded")
+		return
+	_stage_completion_emitted = true
+	stage_completed.emit(result)
+
+func get_stage_boss_definition_id() -> String:
+	if _selected_stage == null or _selected_stage.objective != "boss":
+		return ""
+	return String(_selected_stage.objective_parameters.get("boss_definition_id", ""))
+
+func record_stage_boss_defeated(definition_id: String) -> bool:
+	if _stage_objective_runtime == null or not _stage_objective_runtime.record_boss_defeated(definition_id):
+		return false
+	_try_complete_stage()
+	return true
+
+func get_stage_objective_progress() -> Dictionary:
+	return _stage_objective_runtime.progress() if _stage_objective_runtime != null else {}
+
+
+
+func _on_stage_faulted(reason: String) -> void:
+	stage_faulted.emit(reason)
+	_shutdown_battle(true, "finite stage runtime fault: " + reason)
 
 func _restore_saved_effect_state() -> bool:
 	if _persisted_effect_state.is_empty():
@@ -183,8 +394,6 @@ func _begin_ship_world() -> bool:
 		# The checkpoint already contains selected demands, sessions, resources and
 		# ledger receipts. Never materialize the frozen orders a second time.
 		if not jar_host.RestoreExecutionCheckpointJson(_persisted_jar_execution_checkpoint_json):
-			if jar_host.IsShipWorldActive:
-				jar_host.EndShipWorld()
 			push_error("[Game] Jar execution checkpoint restore failed")
 			return false
 	else:
@@ -192,20 +401,15 @@ func _begin_ship_world() -> bool:
 			_battle_loadout.selected_order_bindings()
 		)
 		if not bool(materialized.get("success", false)):
-			if jar_host.IsShipWorldActive:
-				jar_host.EndShipWorld()
 			push_error("[Game] Selected order materialization failed: " + str(materialized.get("error", "")))
 			return false
 
 	if _persisted_space_clock_remainder_milli >= 0.0:
 		if not jar_host.RestoreSpaceClockRemainderMilli(_persisted_space_clock_remainder_milli):
-			jar_host.EndShipWorld()
 			push_error("[Game] Saved Space clock remainder is invalid or was restored too late")
 			return false
 
 	if not _initialize_ore_parser():
-		if jar_host.IsShipWorldActive:
-			jar_host.EndShipWorld()
 		return false
 	return true
 
@@ -222,7 +426,17 @@ func _initialize_ore_parser() -> bool:
 		push_error("[Game] Frozen Jar world has no shape vocabulary for the ore parser")
 		return false
 	_ore_parser_runtime = SpaceOreParserRuntime.new()
-	var parser_instance_id := _battle_loadout.ship_world_id() + ":" + String(definition.parser_id)
+	# Production owned loadouts namespace parser state by the exact installed copy,
+	# not merely by its shared Definition. Definition-only IDs remain a development fallback.
+	var persisted_parser_runtime: Variant = _persisted_ore_parser_state.get("parserRuntime", {})
+	var persisted_identity_state: Dictionary = persisted_parser_runtime if persisted_parser_runtime is Dictionary else {}
+	var parser_instance_id := SpaceOreParserRuntime.build_runtime_instance_id(
+		_battle_loadout.ship_world_id(), parser_profile, persisted_identity_state
+	)
+	if parser_instance_id.is_empty():
+		push_error("[Game] Frozen parser profile has invalid Owned Instance provenance")
+		_ore_parser_runtime = null
+		return false
 	var initialized := _ore_parser_runtime.initialize(definition, parser_instance_id, shape_names)
 	if not bool(initialized.get("success", false)):
 		push_error("[Game] Ore parser initialization failed: " + String(initialized.get("reason", "")))
@@ -371,7 +585,11 @@ func _restore_pending_energy_stone_pickups(
 func ingest_energy_stone(pickup_id: String, stone_type: String, volume: float) -> Dictionary:
 	if _ore_parser_runtime == null:
 		return {"success": false, "reason": "no frozen ore parser is active"}
-	return _ore_parser_runtime.ingest_stone(pickup_id, stone_type, volume)
+	var receipt := _ore_parser_runtime.ingest_stone(pickup_id, stone_type, volume)
+	if bool(receipt.get("success", false)) and _stage_objective_runtime != null:
+		_stage_objective_runtime.record_resource("energy_stone", volume)
+		_try_complete_stage()
+	return receipt
 
 ## Spawner reads the frozen Jar vocabulary; an enemy drop cannot invent a new stone type.
 func get_ore_parser_shape_vocabulary() -> Array:
@@ -420,8 +638,7 @@ func spawn_energy_stone_drop(
 		pickup.free()
 		return {"success": false, "reason": "rolled energy-stone data failed pickup validation"}
 
-	add_child(pickup)
-	pickup.global_position = world_position
+	call_deferred("_attach_energy_stone_pickup", pickup, world_position)
 	return {
 		"success": true,
 		"dropped": true,
@@ -431,6 +648,17 @@ func spawn_energy_stone_drop(
 		"profileId": String(roll.profileId),
 		"profileVersion": int(roll.profileVersion)
 	}
+
+## Deferred because enemy death can originate inside Area2D/body_entered while
+## PhysicsServer2D is flushing overlap queries. Never register a new Area2D there.
+func _attach_energy_stone_pickup(pickup: SpaceEnergyStonePickup, world_position: Vector2) -> void:
+	if not is_instance_valid(pickup):
+		return
+	if not is_inside_tree() or _battle_shutdown_started:
+		pickup.free()
+		return
+	add_child(pickup)
+	pickup.global_position = world_position
 
 ## Persist this beside the frozen loadout and Jar execution checkpoint.
 func capture_ore_parser_state() -> Dictionary:
@@ -474,20 +702,153 @@ func capture_jar_space_runtime_checkpoint() -> Dictionary:
 		"loadoutVersion": _battle_loadout.loadout_version(),
 		"loadoutFingerprint": _battle_loadout.loadout_fingerprint()
 	}
+	var jar_checkpoint := String(jar_host.CaptureExecutionCheckpointJson())
+	var parser_checkpoint := capture_ore_parser_state()
+	var stage_checkpoint := _capture_stage_runtime_checkpoint()
+	var stage_spawner := get_node_or_null("Spawner")
+	if _selected_stage != null and (stage_checkpoint.is_empty() or stage_spawner == null or not stage_spawner.has_method("can_capture_finite_stage_checkpoint") or not bool(stage_spawner.call("can_capture_finite_stage_checkpoint"))):
+		return {}
+	if jar_checkpoint.is_empty() or int(parser_checkpoint.get("schemaVersion", 0)) != 2:
+		push_error("[Game] Coordinated checkpoint is incomplete: Jar or ore-parser state is missing")
+		return {}
 	return {
-		"schemaVersion": 2,
+		"schemaVersion": 3 if _selected_stage != null else 2,
 		"loadoutIdentity": identity,
-		"jarExecutionCheckpointJson": jar_host.CaptureExecutionCheckpointJson(),
+		"jarExecutionCheckpointJson": jar_checkpoint,
 		"spaceClockRemainderMilli": jar_host.CaptureSpaceClockRemainderMilli(),
-		"oreParserState": capture_ore_parser_state(),
-		"runState": GameState.capture_run_state()
+		"oreParserState": parser_checkpoint,
+		"runState": GameState.capture_run_state(),
+		"stageRuntime": stage_checkpoint
 	}
+
+func _capture_stage_runtime_checkpoint() -> Dictionary:
+	if _selected_stage == null:
+		return {}
+	if _stage_director == null or _stage_objective_runtime == null or _battle_loadout == null:
+		return {}
+	var director_state := _stage_director.capture_state()
+	var objective_state := _stage_objective_runtime.capture_state()
+	if director_state.is_empty() or objective_state.is_empty():
+		return {}
+	return {
+		"schemaVersion": 1,
+		"stageId": String(_selected_stage.stage_id),
+		"definitionVersion": _selected_stage.definition_version,
+		"loadoutIdentity": {
+			"shipWorldId": _battle_loadout.ship_world_id(),
+			"loadoutId": _battle_loadout.loadout_id(),
+			"loadoutVersion": _battle_loadout.loadout_version(),
+			"loadoutFingerprint": _battle_loadout.loadout_fingerprint()
+		},
+		"directorState": director_state,
+		"objectiveState": objective_state,
+		"encountersCompleted": _stage_encounters_completed,
+		"completionEmitted": _stage_completion_emitted
+	}
+
+## Restore only against the exact stage and frozen loadout identities.
+func restore_battle_stage_from_checkpoint(stage: SpaceStageDefinition, source: Dictionary, protected_target: Node = null) -> bool:
+	if is_inside_tree() or _battle_loadout == null or stage == null or not stage.is_valid() or _selected_stage != null:
+		return false
+	if int(source.get("schemaVersion", 0)) != 1 or String(source.get("stageId", "")) != String(stage.stage_id) or int(source.get("definitionVersion", 0)) != stage.definition_version:
+		return false
+	var expected_loadout := {
+		"shipWorldId": _battle_loadout.ship_world_id(),
+		"loadoutId": _battle_loadout.loadout_id(),
+		"loadoutVersion": _battle_loadout.loadout_version(),
+		"loadoutFingerprint": _battle_loadout.loadout_fingerprint()
+	}
+	if source.get("loadoutIdentity", {}) != expected_loadout:
+		return false
+	var director_state: Variant = source.get("directorState", null)
+	var objective_state: Variant = source.get("objectiveState", null)
+	if not (director_state is Dictionary) or not (objective_state is Dictionary):
+		return false
+	var director := SpaceStageEncounterDirector.new()
+	if not director.restore_state(stage, _battle_loadout.to_dictionary(), director_state):
+		return false
+	if director.state() != SpaceStageEncounterDirector.State.ACTIVE or bool(source.get("completionEmitted", false)):
+		return false
+	var objective := SpaceStageObjectiveRuntime.new()
+	if not objective.restore_state(stage, objective_state, protected_target):
+		return false
+	var encounters_completed := bool(source.get("encountersCompleted", false))
+	if encounters_completed != (director.state() == SpaceStageEncounterDirector.State.COMPLETE):
+		return false
+	var completion_emitted := bool(source.get("completionEmitted", false))
+	if completion_emitted and not objective.is_complete():
+		return false
+	_selected_stage = stage
+	_stage_director = director
+	_stage_objective_runtime = objective
+	_stage_protected_target = protected_target
+	_stage_encounters_completed = encounters_completed
+	_stage_completion_emitted = completion_emitted
+	_stage_failure_emitted = false
+	return true
+func _refresh_last_completed_simulation_position(jar_host: Node) -> void:
+	if jar_host == null or not jar_host.has_method("GetWorldSnapshot"):
+		return
+	var snapshot: Variant = jar_host.call("GetWorldSnapshot")
+	if not (snapshot is Dictionary) or not bool(snapshot.get("available", false)):
+		return
+	var world_time: Variant = snapshot.get("worldTimeMilli", null)
+	var logical_time: Variant = snapshot.get("logicalTimeMilli", null)
+	if typeof(world_time) == TYPE_INT and int(world_time) >= 0 and typeof(logical_time) == TYPE_INT and int(logical_time) >= 0:
+		_last_completed_world_time_milli = int(world_time)
+		_last_completed_logical_time_milli = int(logical_time)
 
 func _fail_ore_parser(jar_host: WorldV2ShipHost, reason: String) -> void:
 	push_error("[Game] Ore parser/ingress failed closed: " + reason)
-	process_mode = Node.PROCESS_MODE_DISABLED
-	if jar_host != null and jar_host.IsShipWorldActive:
+	_shutdown_battle(true, "ore parser/ingress failure")
+
+## Idempotent terminal boundary for every failed, ended, or externally removed battle.
+## Host disposal and the SceneTree pause release happen before any scene transition.
+func _shutdown_battle(faulted: bool, reason: String) -> void:
+	if _battle_shutdown_started:
+		return
+	_battle_shutdown_started = true
+	if not reason.is_empty():
+		print("[Game] Battle shutdown: " + reason)
+	var tree := get_tree()
+	if tree != null:
+		tree.paused = false
+	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if jar_host != null:
 		jar_host.EndShipWorld()
+	if faulted:
+		GameFlow.fault_battle(reason, _last_completed_world_time_milli, _last_completed_logical_time_milli)
+		var pause_controller := get_node_or_null("PauseController")
+		if pause_controller != null and pause_controller.has_method("show_fault"):
+			var fault_presentation := reason
+			if _last_completed_world_time_milli >= 0 and _last_completed_logical_time_milli >= 0:
+				fault_presentation += "\\nLast completed step: world %d ms / logical %d ms" % [_last_completed_world_time_milli, _last_completed_logical_time_milli]
+			pause_controller.call("show_fault", fault_presentation)
+	else:
+		GameFlow.end_battle()
+	process_mode = Node.PROCESS_MODE_DISABLED
+
+## Presentation-only metadata frozen with the battle loadout; it never enters Jar's order contract.
+func get_order_presentation_metadata() -> Dictionary:
+	if _battle_loadout == null:
+		return {}
+	return _battle_loadout.order_presentation_metadata()
+
+## Read-only join of Space parser history and the current Core-owned Jar accounts.
+## This does not attribute current Jars to historical parser batches or mutate either system.
+func get_supply_reconciliation_snapshot() -> Dictionary:
+	if _ore_parser_runtime == null:
+		return {}
+	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
+	if jar_host == null or not jar_host.has_method("GetWorldSnapshot"):
+		return {}
+	var core_snapshot: Variant = jar_host.call("GetWorldSnapshot")
+	if not (core_snapshot is Dictionary):
+		return {}
+	return SpaceBattleSupplyReconciliation.build_snapshot(
+		_ore_parser_runtime.build_supply_observation_snapshot(),
+		core_snapshot
+	)
 
 ## Save integration captures processed EventIds and Jar world identity with the frozen loadout identity.
 func capture_order_dispatcher_state() -> Dictionary:
@@ -496,6 +857,20 @@ func capture_order_dispatcher_state() -> Dictionary:
 	return _order_effect_dispatcher.capture_state()
 
 func _physics_process(delta: float) -> void:
+	if _stage_objective_runtime != null:
+		_stage_objective_runtime.advance(delta)
+		if _stage_objective_runtime.is_failed() and not _stage_failure_emitted:
+			_stage_failure_emitted = true
+			var failure_result := {
+				"stageIdentity": {"stageId": String(_selected_stage.stage_id), "definitionVersion": _selected_stage.definition_version} if _selected_stage != null else {},
+				"objectiveProgress": _stage_objective_runtime.progress(),
+				"reason": _stage_objective_runtime.failure_reason(),
+				"status": "objective_failed"
+			}
+			stage_failed.emit(failure_result)
+			_shutdown_battle(false, "stage objective failed: " + _stage_objective_runtime.failure_reason())
+			return
+		_try_complete_stage()
 	# Buffs, the Space-owned ore parser, and Jar all consume the same authorized simulation step.
 	if player != null and player.effects != null:
 		player.effects.advance_from_space_world(delta)
@@ -515,6 +890,11 @@ func _physics_process(delta: float) -> void:
 				_fail_ore_parser(jar_host, String(ingress.get("reason", "Jar import failed")))
 				return
 		jar_step_advanced = jar_host.AdvanceSpaceSimulationMilliseconds(shared_delta_milli)
+		if jar_host.IsFaulted:
+			_on_ship_world_faulted(String(jar_host.FaultReason))
+			return
+	if jar_step_advanced:
+		_refresh_last_completed_simulation_position(jar_host)
 	if jar_step_advanced and delta > 0.0 and _order_effect_dispatcher != null and _order_effect_commit_callback.is_valid():
 		_order_effect_dispatcher.drain_pending(jar_host, _order_effect_commit_callback)
 	if _shake_time > 0.0:
@@ -525,15 +905,23 @@ func _physics_process(delta: float) -> void:
 			camera_2d.position=_camera_home
 
 func _exit_tree() -> void:
-	# Leaving the owning ship-world is terminal for this Jar session.
-	var jar_host := get_node_or_null("/root/WorldV2ShipHost")
-	if jar_host != null:
-		jar_host.EndShipWorld()
+	# Unexpected removal of a live battle is a fault, not a successful end.
+	if not _battle_shutdown_started:
+		_shutdown_battle(true, "combat scene removed before terminal shutdown")
+
+func _on_ship_world_faulted(message: String) -> void:
+	push_error("[Game] Ship world faulted: " + message)
+	_shutdown_battle(true, "World V2 Host fault: " + message)
 
 func _on_player_died()->void:
+	_shutdown_battle(false, "player died")
 	GameState.report_game_over()
-	await get_tree().create_timer(1.0).timeout
-	get_tree().change_scene_to_file("res://scenes/menus/GameOver.tscn")
+	await get_tree().create_timer(1.0, false).timeout
+	if GameFlow.request_scene_transition(GameFlow.Screen.GAME_OVER, "res://scenes/menus/GameOver.tscn"):
+		# GameOver replaces Hangar/current_scene, not this root-level battle child.
+		queue_free()
+	else:
+		push_error("[Game] GameOver scene transition was rejected after battle shutdown")
 
 func _on_player_damaged()->void:
 	_shake_time=0.28

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="SpaceStageDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/stages/SpaceStageDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+stage_id = &"ore_convoy"
+definition_version = 1
+campaign_id = &"rift_frontier"
+sequence_index = 3
+display_name = "Ore Convoy"
+briefing = "护送原石运输队，击破敌机并回收能量石。"
+objective = "collect_resource"
+objective_parameters = {"resource_type":"energy_stone","target_amount":5.0}
+recommended_loadout_level = 3
+estimated_minutes = 6
+wave_plans = Array[Dictionary]([{"segment":"warmup","chaser_count":3,"shooter_count":1,"elite_count":0,"break_seconds":2.0},{"segment":"pressure","chaser_count":4,"shooter_count":2,"elite_count":0,"break_seconds":2.0},{"segment":"rest","chaser_count":0,"shooter_count":0,"elite_count":0,"break_seconds":5.0},{"segment":"pressure","chaser_count":3,"shooter_count":3,"elite_count":1,"break_seconds":3.0}])
+completion_rewards = {}
+difficulty_profile = {"under_level_assistance_per_level":0.06,"over_level_pressure_per_level":0.08,"minimum_encounter_scale":0.8,"maximum_encounter_scale":1.4}

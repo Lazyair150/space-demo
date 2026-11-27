@@ -1,0 +1,215 @@
+extends Node
+## Authoritative application navigation and simulation lifecycle owner.
+## Screen owners request transitions; only this node calls change_scene_to_file.
+
+signal state_changed(snapshot: Dictionary)
+signal transition_failed(target_screen: int, scene_path: String, error_code: int)
+
+enum Screen { MENU, HANGAR, BATTLE, GAME_OVER, EXITING }
+enum BattlePhase { INACTIVE, PREPARING, RUNNING, PAUSED, RESUMING, RESUME_READY, ENDED, FAULTED }
+enum PauseReason { NONE, PLAYER, WINDOW_FOCUS_LOST, SYSTEM }
+
+var _screen: int = Screen.MENU
+var _battle_phase: int = BattlePhase.INACTIVE
+var _pause_reason: int = PauseReason.NONE
+var _transition_sequence: int = 0
+var _fault_reason: String = ""
+var _fault_world_time_milli: int = -1
+var _fault_logical_time_milli: int = -1
+
+func _ready() -> void:
+	var root_window := get_tree().root
+	if not root_window.close_requested.is_connected(_on_window_close_requested):
+		root_window.close_requested.connect(_on_window_close_requested)
+
+func _on_window_close_requested() -> void:
+	quit_application()
+
+## Single application shutdown path for the menu button and operating-system close request.
+func quit_application() -> void:
+	var tree := get_tree()
+	if tree != null:
+		tree.paused = false
+		var host := tree.root.get_node_or_null("WorldV2ShipHost")
+		if host != null and host.has_method("EndShipWorld"):
+			host.call("EndShipWorld")
+	if not (_battle_phase in [BattlePhase.INACTIVE, BattlePhase.ENDED, BattlePhase.FAULTED]):
+		_battle_phase = BattlePhase.ENDED
+	_pause_reason = PauseReason.NONE
+	_screen = Screen.EXITING
+	_emit_state()
+	if tree != null:
+		tree.quit()
+
+func snapshot() -> Dictionary:
+	return {
+		"schemaVersion": 5,
+		"screen": Screen.keys()[_screen],
+		"battlePhase": BattlePhase.keys()[_battle_phase],
+		"pauseReason": PauseReason.keys()[_pause_reason],
+		"transitionSequence": _transition_sequence,
+		"faultReason": _fault_reason,
+		"lastCompletedWorldTimeMilli": _fault_world_time_milli,
+		"lastCompletedLogicalTimeMilli": _fault_logical_time_milli
+	}
+
+func request_scene_transition(next_screen: int, scene_path: String) -> bool:
+	if scene_path.is_empty() or next_screen < 0 or next_screen >= Screen.keys().size():
+		return false
+	var previous_screen := _screen
+	var previous_phase := _battle_phase
+	var previous_reason := _pause_reason
+	if not enter_screen(next_screen):
+		return false
+	var error_code := get_tree().change_scene_to_file(scene_path)
+	if error_code == OK:
+		return true
+	_screen = previous_screen
+	_battle_phase = previous_phase
+	_pause_reason = previous_reason
+	_emit_state()
+	transition_failed.emit(next_screen, scene_path, error_code)
+	push_error("[GameFlow] Scene transition failed (%d): %s" % [error_code, scene_path])
+	return false
+
+
+## Fault/ended battles may leave only through this explicit terminal navigation path.
+## Release the SceneTree pause and reset the battle lifecycle before changing scenes.
+func return_to_menu(scene_path: String) -> bool:
+	if scene_path.is_empty() or not (_battle_phase in [BattlePhase.FAULTED, BattlePhase.ENDED, BattlePhase.INACTIVE]):
+		push_error("[GameFlow] Main-menu return rejected while battle is still active")
+		return false
+	var previous_screen := _screen
+	var previous_phase := _battle_phase
+	var previous_reason := _pause_reason
+	var previous_fault := _fault_reason
+	var previous_fault_world_time := _fault_world_time_milli
+	var previous_fault_logical_time := _fault_logical_time_milli
+	var tree := get_tree()
+	var previous_tree_paused := tree.paused if tree != null else false
+	if tree != null:
+		tree.paused = false
+	_battle_phase = BattlePhase.INACTIVE
+	_pause_reason = PauseReason.NONE
+	_fault_reason = ""
+	_fault_world_time_milli = -1
+	_fault_logical_time_milli = -1
+	_screen = Screen.MENU
+	_emit_state()
+	var error_code := tree.change_scene_to_file(scene_path) if tree != null else ERR_UNCONFIGURED
+	if error_code == OK:
+		return true
+	_screen = previous_screen
+	_battle_phase = previous_phase
+	_pause_reason = previous_reason
+	_fault_reason = previous_fault
+	_fault_world_time_milli = previous_fault_world_time
+	_fault_logical_time_milli = previous_fault_logical_time
+	if tree != null:
+		tree.paused = previous_tree_paused
+	_emit_state()
+	transition_failed.emit(Screen.MENU, scene_path, error_code)
+	push_error("[GameFlow] Main-menu return failed (%d): %s" % [error_code, scene_path])
+	return false
+
+func enter_screen(next_screen: int) -> bool:
+	if next_screen < 0 or next_screen >= Screen.keys().size():
+		return false
+	if _battle_phase in [BattlePhase.PREPARING, BattlePhase.RUNNING, BattlePhase.PAUSED, BattlePhase.RESUMING, BattlePhase.RESUME_READY] and next_screen != Screen.BATTLE:
+		push_error("[GameFlow] Cannot leave an active battle before it has ended")
+		return false
+	if next_screen == Screen.BATTLE:
+		return begin_battle_preparation()
+	if next_screen == Screen.GAME_OVER and not (_battle_phase in [BattlePhase.ENDED, BattlePhase.FAULTED]):
+		push_error("[GameFlow] GameOver requires an ended or faulted battle")
+		return false
+	_screen = next_screen
+	_emit_state()
+	return true
+
+func begin_battle_preparation() -> bool:
+	# Re-entry is idempotent only while the same launch is still preparing.
+	# A second scene must never replace a live/paused/resuming battle.
+	if _battle_phase == BattlePhase.PREPARING:
+		return _screen == Screen.BATTLE
+	if _battle_phase in [BattlePhase.RUNNING, BattlePhase.PAUSED, BattlePhase.RESUMING, BattlePhase.RESUME_READY]:
+		return false
+	_battle_phase = BattlePhase.PREPARING
+	_pause_reason = PauseReason.NONE
+	_fault_reason = ""
+	_fault_world_time_milli = -1
+	_fault_logical_time_milli = -1
+	_screen = Screen.BATTLE
+	_emit_state()
+	return true
+
+func begin_battle_resuming() -> bool:
+	if _screen != Screen.BATTLE or _battle_phase != BattlePhase.PREPARING:
+		return false
+	_battle_phase = BattlePhase.RESUMING
+	_pause_reason = PauseReason.NONE
+	_emit_state()
+	return true
+
+func mark_battle_resume_ready() -> bool:
+	if _screen != Screen.BATTLE or _battle_phase != BattlePhase.RESUMING:
+		return false
+	_battle_phase = BattlePhase.RESUME_READY
+	_pause_reason = PauseReason.SYSTEM
+	_emit_state()
+	return true
+
+func confirm_resume_battle() -> bool:
+	if _screen != Screen.BATTLE or _battle_phase != BattlePhase.RESUME_READY:
+		return false
+	_battle_phase = BattlePhase.RUNNING
+	_pause_reason = PauseReason.NONE
+	_emit_state()
+	return true
+
+func mark_battle_running() -> bool:
+	if not (_battle_phase in [BattlePhase.PREPARING, BattlePhase.RESUMING]):
+		return false
+	_battle_phase = BattlePhase.RUNNING
+	_pause_reason = PauseReason.NONE
+	_emit_state()
+	return true
+
+func pause_battle(reason: int = PauseReason.PLAYER) -> bool:
+	if _screen != Screen.BATTLE or _battle_phase != BattlePhase.RUNNING or reason <= PauseReason.NONE or reason >= PauseReason.size():
+		return false
+	_battle_phase = BattlePhase.PAUSED
+	_pause_reason = reason
+	_emit_state()
+	return true
+
+func resume_battle() -> bool:
+	if _screen != Screen.BATTLE or _battle_phase != BattlePhase.PAUSED:
+		return false
+	_battle_phase = BattlePhase.RUNNING
+	_pause_reason = PauseReason.NONE
+	_emit_state()
+	return true
+
+func end_battle() -> bool:
+	if _battle_phase in [BattlePhase.INACTIVE, BattlePhase.ENDED, BattlePhase.FAULTED]:
+		return false
+	_battle_phase = BattlePhase.ENDED
+	_pause_reason = PauseReason.NONE
+	_emit_state()
+	return true
+
+func fault_battle(reason: String = "", last_completed_world_time_milli: int = -1, last_completed_logical_time_milli: int = -1) -> bool:
+	if _battle_phase in [BattlePhase.INACTIVE, BattlePhase.ENDED, BattlePhase.FAULTED]:
+		return false
+	_battle_phase = BattlePhase.FAULTED
+	_pause_reason = PauseReason.NONE
+	_fault_reason = reason.strip_edges()
+	_fault_world_time_milli = last_completed_world_time_milli
+	_fault_logical_time_milli = last_completed_logical_time_milli
+	_emit_state()
+	return true
+
+func _emit_state() -> void:
+	_transition_sequence += 1
+	state_changed.emit(snapshot())

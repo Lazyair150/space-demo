@@ -41,5 +41,11 @@ func resolve_balance_metrics(definition_id: String, version: int) -> Dictionary:
 func contains(definition_id: String, version: int) -> bool:
 	return resolve_buff(definition_id, version) != null
 
+func is_empty() -> bool:
+	return _definitions.is_empty()
+
+func definition_count() -> int:
+	return _definitions.size()
+
 func _key(definition_id: String, version: int) -> String:
 	return "%s@%d" % [definition_id, version]

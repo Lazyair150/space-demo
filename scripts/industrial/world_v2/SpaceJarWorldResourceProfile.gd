@@ -72,6 +72,28 @@ static func validate_world_options(options: Dictionary) -> Array[String]:
 	for liquid in liquids:
 		liquid_set[String(liquid)] = true
 
+	var polarities: Variant = options.get("liquidPolarities", null)
+	if not (polarities is Dictionary) or polarities.size() != 2:
+		errors.append("liquidPolarities must explicitly map both liquid identities")
+	else:
+		var cathode_count := 0
+		var anode_count := 0
+		for liquid in liquids:
+			if not polarities.has(String(liquid)):
+				errors.append("liquidPolarities is missing liquid identity: " + String(liquid))
+		for liquid_key in polarities:
+			if not liquid_set.has(String(liquid_key)):
+				errors.append("liquidPolarities contains an unknown liquid identity: " + String(liquid_key))
+			var polarity_name := String(polarities[liquid_key])
+			if polarity_name == "Cathode":
+				cathode_count += 1
+			elif polarity_name == "Anode":
+				anode_count += 1
+			else:
+				errors.append("liquidPolarity must be Cathode or Anode: " + String(liquid_key))
+		if cathode_count != 1 or anode_count != 1:
+			errors.append("liquidPolarities must assign exactly one Cathode and one Anode")
+
 	var capacity: Variant = options.get("shipLiquidCapacity", null)
 	if typeof(capacity) != TYPE_INT or int(capacity) < 0:
 		errors.append("shipLiquidCapacity must be a non-negative integer")
@@ -112,6 +134,7 @@ static func validate_world_options(options: Dictionary) -> Array[String]:
 		errors.append("producers must be an array")
 	else:
 		var producer_names := {}
+		var producer_instance_ids := {}
 		for producer in producers:
 			if not (producer is Dictionary) or String(producer.get("name", "")).strip_edges().is_empty():
 				errors.append("producer entries require a name")
@@ -120,6 +143,13 @@ static func validate_world_options(options: Dictionary) -> Array[String]:
 			if producer_names.has(producer_name):
 				errors.append("producer names must be unique: " + producer_name)
 			producer_names[producer_name] = true
+			var producer_instance_id := String(producer.get("producerInstanceId", "")).strip_edges()
+			if producer_instance_id.is_empty() or producer_instance_id.length() > 128 or producer_instance_id.contains(" "):
+				errors.append("producer entries require a stable non-empty producerInstanceId: " + producer_name)
+			elif producer_instance_ids.has(producer_instance_id):
+				errors.append("producerInstanceId values must be unique: " + producer_instance_id)
+			else:
+				producer_instance_ids[producer_instance_id] = true
 			var producer_rates: Variant = producer.get("rates", null)
 			if not (producer_rates is Dictionary):
 				errors.append("producer rates must be a dictionary")
@@ -147,7 +177,7 @@ static func validate_world_options(options: Dictionary) -> Array[String]:
 				workshop_names[name] = true
 			if not (workshop.get("baseMarks", null) is Array) or not (workshop.get("additionalMarks", null) is Array):
 				errors.append("workshop shape marks must be arrays: " + name)
-		else:
+			else:
 				for mark in workshop.baseMarks + workshop.additionalMarks:
 					if not shape_set.has(String(mark)):
 						errors.append("workshop references an unknown shape: " + String(mark))

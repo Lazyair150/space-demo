@@ -13,7 +13,7 @@ func register_definition(definition: SpaceOreParserDefinition) -> bool:
 		return false
 	if not _register_definition_snapshot(definition):
 		return false
-	definitions.append(SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile()))
+	definitions.append(definition.duplicate(true) as SpaceOreParserDefinition)
 	return true
 
 ## Rebuild after loading/editing the exported definitions array in a .tres Resource.
@@ -41,7 +41,7 @@ func _register_definition_snapshot(definition: SpaceOreParserDefinition) -> bool
 	if _definitions.has(key):
 		push_error("Duplicate ore parser definition version: " + key)
 		return false
-	_definitions[key] = SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
+	_definitions[key] = definition.duplicate(true) as SpaceOreParserDefinition
 	return true
 
 func resolve_definition(parser_id: String, version: int) -> SpaceOreParserDefinition:
@@ -52,7 +52,7 @@ func resolve_definition(parser_id: String, version: int) -> SpaceOreParserDefini
 	var definition := _definitions.get(_key(parser_id, version), null) as SpaceOreParserDefinition
 	if definition == null:
 		return null
-	return SpaceOreParserDefinition.from_runtime_profile(definition.build_runtime_profile())
+	return definition.duplicate(true) as SpaceOreParserDefinition
 
 func create_device_selection(
 	parser_id: String,

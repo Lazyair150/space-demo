@@ -21,7 +21,9 @@ static func assemble(
 	skill_selections: Array,
 	balance_profile: SpaceSkillBalanceProfile,
 	expected_battle_duration_logical_milli: float,
-	effect_catalog: SpaceEffectCatalog
+	effect_catalog: SpaceEffectCatalog,
+	master_workshop_id: String = "",
+	slave_workshop_id: String = ""
 ) -> SpaceBattleLoadoutSnapshot:
 	if ship_catalog == null or device_catalog == null or parser_catalog == null:
 		return _reject("required ship/device/parser catalog is missing")
@@ -34,7 +36,7 @@ static func assemble(
 		return _reject("loadout identity is invalid")
 
 	var workshop_selection := workshop_catalog.create_selection(workshop_id, workshop_version)
-	var jar_options := workshop_catalog.create_jar_world_options(workshop_id, workshop_version)
+	var jar_options := workshop_catalog.create_jar_world_options(workshop_id, workshop_version, master_workshop_id, slave_workshop_id)
 	var workshop_profile := workshop_catalog.create_balance_profile(workshop_id, workshop_version)
 	if workshop_selection.is_empty() or jar_options.is_empty() or workshop_profile.is_empty():
 		return _reject("selected exact workshop combination version cannot be materialized")
@@ -89,7 +91,8 @@ static func assemble(
 			ship_resource_profile,
 			parser_profile.progressPerJarByShape,
 			expected_battle_duration_logical_milli,
-			effect_catalog
+			effect_catalog,
+			jar_options
 		)
 		if binding.is_empty():
 			return _reject("skill could not be bound against the selected build: " + order_key)

@@ -197,10 +197,6 @@ public partial class WorldV2ShipHost : Node
     }
 
     /// <summary>
-    /// Read pending Jar order-cycle events at the Space world-step boundary.
-    /// Repeated reads return the same events until explicitly acknowledged.
-    /// </summary>
-    /// <summary>
     /// Adds the frozen loadout's selected Jar orders before the first simulation step.
     /// Any partial materialization failure disposes the not-yet-started ship world.
     /// </summary>
@@ -229,17 +225,34 @@ public partial class WorldV2ShipHost : Node
                 if (string.IsNullOrWhiteSpace(orderKey) || !orderKeys.Add(orderKey))
                     throw new InvalidOperationException("Selected orderDefinitionKey is empty or duplicated");
                 var jarOrder = order["jarOrder"].AsGodotDictionary();
-                var requirements = jarOrder.ContainsKey("requirements")
-                    ? jarOrder["requirements"].AsGodotArray()
-                    : new GArray();
-                var demandId = _runtime.AddJarDemand(
-                    jarOrder.ContainsKey("type") ? jarOrder["type"].AsString() : "",
-                    jarOrder.ContainsKey("area") ? jarOrder["area"].AsString() : "",
-                    jarOrder.ContainsKey("cooldownDurationLogicalMilli")
-                        ? jarOrder["cooldownDurationLogicalMilli"].AsInt64()
-                        : -1,
-                    orderKey,
-                    requirements);
+                var area = jarOrder.ContainsKey("area") ? jarOrder["area"].AsString() : "";
+                var cooldown = jarOrder.ContainsKey("cooldownDurationLogicalMilli")
+                    ? jarOrder["cooldownDurationLogicalMilli"].AsInt64()
+                    : -1;
+                int demandId;
+                if (jarOrder.ContainsKey("templateName"))
+                {
+                    var templateName = jarOrder["templateName"].AsString();
+                    if (jarOrder.ContainsKey("requirements") || jarOrder.ContainsKey("type"))
+                        throw new InvalidOperationException(
+                            "Template-backed Jar orders must not duplicate Core-owned type or requirements");
+                    demandId = _runtime.AddJarDemandFromTemplate(
+                        templateName, area, cooldown, orderKey);
+                }
+                else
+                {
+                    // Temporary compatibility path for legacy development bindings.
+                    // Production skill definitions must migrate to templateName and remove this branch.
+                    var requirements = jarOrder.ContainsKey("requirements")
+                        ? jarOrder["requirements"].AsGodotArray()
+                        : new GArray();
+                    demandId = _runtime.AddJarDemand(
+                        jarOrder.ContainsKey("type") ? jarOrder["type"].AsString() : "",
+                        area,
+                        cooldown,
+                        orderKey,
+                        requirements);
+                }
                 demandIds.Add(demandId);
             }
 
@@ -252,6 +265,22 @@ public partial class WorldV2ShipHost : Node
             LatchFault("Selected order materialization failed: " + ex.Message);
             return new GDictionary { ["success"] = false, ["error"] = ex.Message };
         }
+    }
+
+    /// <summary>
+    /// Explicit player-facing trigger for an Active-area demand. The Host owns the command
+    /// boundary; Core decides whether the demand can actually start.
+    /// </summary>
+    public GDictionary StartActiveDemand(int demandId)
+    {
+        if (_state != HostState.Active || _runtime == null ||
+            !_runtime.IsInitialized || _runtime.IsDisposed)
+            return new GDictionary
+            {
+                ["success"] = false,
+                ["reason"] = "Jar 世界当前不可执行主动订单"
+            };
+        return _runtime.StartActiveDemand(demandId);
     }
 
     /// <summary>
@@ -277,9 +306,38 @@ public partial class WorldV2ShipHost : Node
             !_runtime.IsInitialized || _runtime.IsDisposed)
             return new GDictionary { ["success"] = false, ["error"] = "Ship world is not active" };
 
-        var result = _runtime.ImportProducedJars(operationId, jarCounts);
-        result["success"] = true;
-        return result;
+        try
+        {
+            var result = _runtime.ImportProducedJars(operationId, jarCounts);
+            if (result == null ||
+                !result.ContainsKey("wasDuplicate") ||
+                !result.ContainsKey("submittedJarCount") ||
+                !result.ContainsKey("storedJarCount") ||
+                !result.ContainsKey("discardedJarCount") ||
+                !result.ContainsKey("hasExactReceipt") ||
+                !result.ContainsKey("storedJarCountsByShape") ||
+                !result.ContainsKey("discardedJarCountsByShape"))
+            {
+                return new GDictionary
+                {
+                    ["success"] = false,
+                    ["error"] = "Jar import returned an incomplete receipt"
+                };
+            }
+
+            // A successful return from the Core import operation is the commit receipt.
+            // Exceptions and incomplete bridge responses must never be acknowledged by Space.
+            result["success"] = true;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            return new GDictionary
+            {
+                ["success"] = false,
+                ["error"] = "Jar import did not return a commit receipt: " + ex.Message
+            };
+        }
     }
 
     /// <summary>
@@ -383,15 +441,7 @@ public partial class WorldV2ShipHost : Node
 
     private static string ReadRuntimeFault(WorldV2RuntimeNode runtime, string fallback)
     {
-        try
-        {
-            var snapshot = runtime.GetWorldSnapshot();
-            var reason = snapshot.ContainsKey("faultReason") ? snapshot["faultReason"].AsString() : "";
-            return string.IsNullOrWhiteSpace(reason) ? fallback : reason;
-        }
-        catch
-        {
-            return fallback;
-        }
+        var reason = runtime.FaultReason;
+        return string.IsNullOrWhiteSpace(reason) ? fallback : reason;
     }
 }

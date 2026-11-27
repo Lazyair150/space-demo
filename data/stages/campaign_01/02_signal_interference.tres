@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="SpaceStageDefinition" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/stages/SpaceStageDefinition.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+stage_id = &"signal_interference"
+definition_version = 1
+campaign_id = &"rift_frontier"
+sequence_index = 2
+display_name = "Signal Interference"
+briefing = "干扰信号源持续召集敌机，优先处理远程火力。"
+objective = "eliminate_all"
+recommended_loadout_level = 2
+estimated_minutes = 5
+wave_plans = Array[Dictionary]([{"segment":"warmup","chaser_count":2,"shooter_count":2,"elite_count":0,"break_seconds":2.0},{"segment":"pressure","chaser_count":3,"shooter_count":3,"elite_count":0,"break_seconds":2.0},{"segment":"elite","chaser_count":1,"shooter_count":2,"elite_count":1,"break_seconds":4.0}])
+completion_rewards = {}
+difficulty_profile = {"under_level_assistance_per_level":0.06,"over_level_pressure_per_level":0.08,"minimum_encounter_scale":0.8,"maximum_encounter_scale":1.4}

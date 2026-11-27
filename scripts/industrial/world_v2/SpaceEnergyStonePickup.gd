@@ -7,12 +7,17 @@ class_name SpaceEnergyStonePickup
 
 signal collected(pickup_id: String, stone_type: String, volume: float)
 
+const ShapeVisuals := preload("res://scripts/industrial/ui/ShapeVisuals.gd")
+
 @export var pickup_id: String = ""
 @export var stone_type: String = ""
 @export var volume: float = 0.0
 
 var _configured := false
 var _collecting := false
+
+@onready var _visual: Polygon2D = get_node_or_null("Visual") as Polygon2D
+@onready var _glyph: Label = get_node_or_null("Glyph") as Label
 
 func configure(stable_pickup_id: String, configured_stone_type: String, stone_volume: float) -> bool:
 	if stable_pickup_id.strip_edges().is_empty() or stable_pickup_id.length() > 128:
@@ -35,14 +40,25 @@ func _ready() -> void:
 		push_error("[SpaceEnergyStonePickup] pickup must be configured with stable identity/type/volume before use")
 		return
 	add_to_group("space_energy_stone_pickups")
+	if _visual != null:
+		_visual.color = ShapeVisuals.color_for(stone_type)
+	if _glyph != null:
+		_glyph.text = ShapeVisuals.glyph_for(stone_type)
+		_glyph.tooltip_text = "能量原石：%s\n体积：%.2f\n飞船接触时自动解析" % [stone_type, volume]
+		_glyph.mouse_filter = Control.MOUSE_FILTER_STOP
 	if not body_entered.is_connected(_on_body_entered):
 		body_entered.connect(_on_body_entered)
 
 func _on_body_entered(body: Node2D) -> void:
 	if _collecting or not _configured or not body.is_in_group("player"):
 		return
-	var game := get_tree().current_scene
-	if game == null or not game.has_method("ingest_energy_stone"):
+	# The combat scene is intentionally attached beside current_scene by the
+	# Hangar launcher. Resolve the owning battle node through this pickup's
+	# ancestry; current_scene is still Hangar and is not the resource authority.
+	var game: Node = get_parent()
+	while game != null and not game.has_method("ingest_energy_stone"):
+		game = game.get_parent()
+	if game == null:
 		return
 
 	_collecting = true

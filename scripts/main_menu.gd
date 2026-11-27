@@ -4,22 +4,36 @@ extends Control
 @onready var high_score: Label = $ColorRect/VBoxContainer/HighScore
 @onready var start_button: Button = $ColorRect/VBoxContainer/StartButton
 @onready var quit_button: Button = $ColorRect/VBoxContainer/QuitButton
-@onready var industrial_button: Button = $ColorRect/VBoxContainer/IndustrialButton
 
 func _ready() -> void:
-	high_score.text ="High Score: %d" % GameState.high_score
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	GameFlow.enter_screen(GameFlow.Screen.MENU)
+	high_score.text = "High Score: %d" % GameState.high_score
+	start_button.custom_minimum_size = Vector2(320, 48)
+	quit_button.custom_minimum_size = Vector2(320, 48)
+	start_button.focus_mode = Control.FOCUS_ALL
+	quit_button.focus_mode = Control.FOCUS_ALL
 	start_button.pressed.connect(_on_start)
 	quit_button.pressed.connect(_on_quit)
-	industrial_button.pressed.connect(_on_industrial)
 	start_button.grab_focus()
+	await get_tree().process_frame
+	var menu_container := $ColorRect/VBoxContainer as Control
+	if not menu_container.get_global_rect().encloses(start_button.get_global_rect()) or not menu_container.get_global_rect().encloses(quit_button.get_global_rect()):
+		push_error("[MainMenu] Visible buttons extend outside their parent hit-test rectangle")
+	else:
+		print("[MainMenu] input-geometry=valid buttons=2 focus=ready")
 
-func _on_start()->void:
+func _on_start() -> void:
+	start_button.disabled = true
+	quit_button.disabled = true
 	GameState.reset_run()
-	get_tree().change_scene_to_file("res://scenes/game/Game.tscn")
+	if not GameFlow.request_scene_transition(GameFlow.Screen.HANGAR, "res://scenes/industrial/SpaceHangar.tscn"):
+		start_button.disabled = false
+		quit_button.disabled = false
+		push_error("[MainMenu] Failed to open Hangar")
 	
-## 直接进工业舱：工业世界在 autoload 的 IndustrialRuntime 里，不进战斗也能开一局。
-func _on_industrial()->void:
-	get_tree().change_scene_to_file("res://scenes/industrial/IndustrialMain.tscn")
-
-func _on_quit()->void:
-	get_tree().quit()
+func _on_quit() -> void:
+	start_button.disabled = true
+	quit_button.disabled = true
+	print("[MainMenu] action=quit")
+	GameFlow.quit_application()

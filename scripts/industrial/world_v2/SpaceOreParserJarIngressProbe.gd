@@ -2,6 +2,9 @@ extends Node
 ## End-to-end probe for Space-owned finite stone parsing -> idempotent Jar warehouse import.
 ## All numeric values are synthetic fixtures, not production balance settings.
 
+const SupplyReconciliation = preload("res://scripts/industrial/world_v2/SpaceBattleSupplyReconciliation.gd")
+const SupplyReconciliationProbe = preload("res://scripts/industrial/world_v2/SpaceBattleSupplyReconciliationProbe.gd")
+
 var _probe_parser: SpaceOreParserRuntime
 
 func ingest_energy_stone(pickup_id: String, stone_type: String, volume: float) -> Dictionary:
@@ -10,6 +13,14 @@ func ingest_energy_stone(pickup_id: String, stone_type: String, volume: float) -
     return _probe_parser.ingest_stone(pickup_id, stone_type, volume)
 
 func _ready() -> void:
+    var battle_scene := load("res://scenes/game/Game.tscn") as PackedScene
+    assert(battle_scene != null, "combat scene must load for supply HUD integration")
+    var battle_root := battle_scene.instantiate()
+    var supply_hud := battle_root.get_node_or_null("JarObserver")
+    assert(supply_hud != null and supply_hud.has_method("_render_supply_reconciliation"),
+        "combat HUD must expose the read-only Parser/Core supply observation")
+    battle_root.free()
+
     var parser_probe := SpaceOreParserRuntimeProbe.run()
     assert(bool(parser_probe.get("passed", false)), "Space ore parser unit probe must pass")
     var save_store_probe := SpaceBattleEffectStateStoreProbe.run()
@@ -31,6 +42,17 @@ func _ready() -> void:
     var build_context_probe := SpaceSkillBuildContextEvaluatorProbe.run()
     assert(bool(build_context_probe.get("passed", false)),
         "parser percentage build-context probe must pass: " + String(build_context_probe.get("reason", "")))
+
+    var supply_forecast_probe := SpaceBattleJarSupplyForecastProbe.run()
+    assert(bool(supply_forecast_probe.get("passed", false)),
+        "dual-source Jar supply forecast probe must pass: " + String(supply_forecast_probe.get("reason", "")))
+    print("[SpaceBattleJarSupplyForecastProbe] passed gross_warehouse=",
+        supply_forecast_probe.get("grossWarehouseJarSupplyByShape", {}),
+        " master_flow_upper_bound=", supply_forecast_probe.get("masterJarFlowQuotaUpperBound", 0))
+
+    var supply_reconciliation_probe := SupplyReconciliationProbe.run()
+    assert(bool(supply_reconciliation_probe.get("passed", false)),
+        "Parser/Core supply reconciliation contract probe must pass: " + String(supply_reconciliation_probe.get("reason", "")))
 
     var drop_profile := SpaceEnergyStoneDropProfile.new()
     drop_profile.profile_id = &"probe-energy-stone-drop"
@@ -54,12 +76,77 @@ func _ready() -> void:
     assert(pickup.configure("probe-pickup-stable-id", "圆罐", 1.0), "pickup must accept a stable typed resource identity")
     pickup.free()
 
-    var jar_host := WorldV2ShipHost.new()
+    var jar_host_script := load("res://scripts/industrial/world_v2/WorldV2ShipHost.cs") as Script
+    assert(jar_host_script != null, "WorldV2ShipHost C# script resource must load")
+    var jar_host = jar_host_script.new()
+    assert(jar_host != null, "WorldV2ShipHost C# script must instantiate")
     add_child(jar_host)
 
     var world_json := FileAccess.get_file_as_string("res://data/industrial/world_v2_sandbox.json")
     assert(not world_json.is_empty(), "sandbox World V2 fixture must be readable")
+    var order_templates: Array = [
+        {
+            "name": "probe.order.active@1",
+            "type": "A",
+            "requirements": [{"shape": "圆罐"}]
+        },
+        {
+            "name": "probe.order.passive@1",
+            "type": "B",
+            "requirements": [
+                {"shape": "方罐"},
+                {"shape": "圆罐", "liquid": "酒"}
+            ]
+        }
+    ]
+    # Preserve source JSON integer tokens; append only the Core template property.
+    world_json = world_json.strip_edges()
+    assert(world_json.ends_with("}"), "sandbox World V2 fixture must be a JSON object")
+    world_json = world_json.substr(0, world_json.length() - 1) + ",\"orderTemplates\":" + JSON.stringify(order_templates) + "}"
     assert(jar_host.BeginShipWorldFromJson(world_json), "Jar host must accept the test world")
+    var selected_orders: Array = [
+        {
+            "orderDefinitionKey": "probe.skill.active",
+            "jarOrder": {
+                "templateName": "probe.order.active@1",
+                "area": "Active",
+                "cooldownDurationLogicalMilli": 0
+            }
+        },
+        {
+            "orderDefinitionKey": "probe.skill.passive",
+            "jarOrder": {
+                "templateName": "probe.order.passive@1",
+                "area": "Passive",
+                "cooldownDurationLogicalMilli": 2500
+            }
+        }
+    ]
+    var materialized: Dictionary = jar_host.MaterializeSelectedOrders(selected_orders)
+    assert(bool(materialized.get("success", false)),
+        "Space must materialize exact Core order templates through Host: " + String(materialized.get("error", "")))
+    var materialized_ids: Array = materialized.get("demandIds", [])
+    assert(materialized_ids.size() == 2, "Core template ingress must return both exact demand IDs")
+    var template_snapshot: Dictionary = jar_host.GetWorldSnapshot()
+    var found_template_keys := {}
+    for raw_demand in template_snapshot.get("demands", []):
+        var demand: Dictionary = raw_demand
+        var order_key := String(demand.get("orderDefinitionKey", ""))
+        if order_key == "probe.skill.active":
+            assert(String(demand.get("type", "")) == "A", "Core must own the Active template order type")
+            assert(String(demand.get("area", "")) == "Active", "Active control area must survive template ingress")
+            assert(demand.get("requirements", []).size() == 1, "Core must instantiate Active template requirements")
+            found_template_keys[order_key] = true
+        elif order_key == "probe.skill.passive":
+            assert(String(demand.get("type", "")) == "B", "Core must own the Passive template order type")
+            assert(String(demand.get("area", "")) == "Passive", "Passive control area must survive template ingress")
+            assert(demand.get("requirements", []).size() == 2, "Core must instantiate Passive template requirements")
+            found_template_keys[order_key] = true
+    assert(found_template_keys.has("probe.skill.active") and found_template_keys.has("probe.skill.passive"),
+        "Core snapshot must retain both opaque Space order keys")
+    var duplicate_materialization: Dictionary = jar_host.MaterializeSelectedOrders(selected_orders)
+    assert(not bool(duplicate_materialization.get("success", false)),
+        "Host must not materialize the same frozen loadout orders twice")
 
     # The Host is the sole fractional-millisecond accumulator. Two 0.75ms deltas
     # must forward 0ms then 1ms, and each prepared delta must be consumed exactly once.
@@ -71,8 +158,11 @@ func _ready() -> void:
     assert(jar_host.AdvanceSpaceSimulationMilliseconds(second_half_milli), "prepared one-ms step must advance Jar")
 
     var before: Dictionary = jar_host.GetWorldSnapshot()
-    var initial_warehouse_count := before.get("resourceJars", []).size()
-    var initial_master_count := before.get("master", {}).get("jars", []).size()
+    var initial_warehouse_jars: Array = before.get("resourceJars", [])
+    var initial_master: Dictionary = before.get("master", {})
+    var initial_master_jars: Array = initial_master.get("jars", [])
+    var initial_warehouse_count: int = initial_warehouse_jars.size()
+    var initial_master_count: int = initial_master_jars.size()
 
     var definition := SpaceOreParserDefinition.new()
     definition.parser_id = &"space-jar-ingress-probe"
@@ -134,6 +224,11 @@ func _ready() -> void:
     )
     assert(bool(first_receipt.get("success", false)), "first Jar import must commit")
     assert(not bool(first_receipt.get("wasDuplicate", true)), "first Jar import must be new")
+    assert(bool(first_receipt.get("hasExactReceipt", false)), "first Jar import must expose its exact outcome")
+    var first_stored_by_shape: Dictionary = first_receipt.get("storedJarCountsByShape", {})
+    assert(int(first_stored_by_shape.get("圆罐", 0)) == 1, "Core must expose the stored Jar shape")
+    var first_discarded_by_shape: Dictionary = first_receipt.get("discardedJarCountsByShape", {})
+    assert(first_discarded_by_shape.is_empty(), "no shape should be discarded in this fixture")
     assert(int(first_receipt.get("storedJarCount", 0)) == 1, "Jar must store the completed empty Jar")
 
     # Simulate a process restart after Jar committed but before Space persisted the receipt.
@@ -157,7 +252,8 @@ func _ready() -> void:
     assert(bool(parser_restored.get("success", false)), "Space parser checkpoint must restore")
     jar_host.EndShipWorld()
 
-    var restored_jar_host := WorldV2ShipHost.new()
+    var restored_jar_host = jar_host_script.new()
+    assert(restored_jar_host != null, "restored WorldV2ShipHost C# script must instantiate")
     add_child(restored_jar_host)
     assert(restored_jar_host.BeginShipWorldFromJson(world_json), "restored Jar Host must initialize")
     assert(restored_jar_host.RestoreExecutionCheckpointJson(jar_checkpoint_json),
@@ -165,12 +261,51 @@ func _ready() -> void:
     assert(restored_jar_host.RestoreSpaceClockRemainderMilli(clock_remainder),
         "Space fractional-millisecond remainder must restore before the next step")
 
+    # A rejected Core import must not be converted into a success receipt or remove
+    # the parser outbox entry. The stable operation ID remains available for a safe retry.
+    var rejected_receipt: Dictionary = restored_jar_host.ImportProducedJars("", batch.jarCounts)
+    assert(not bool(rejected_receipt.get("success", false)),
+        "invalid Core import must return an explicit rejection, never a synthetic success")
+    assert(restored_parser.pending_output_batches().size() == 1,
+        "a rejected import must leave the parser batch pending")
+
     # Retrying the same pending operation after checkpoint restore must receive Jar's
     # persisted duplicate receipt, acknowledge Space's outbox, and create no second Jar.
     var retry := SpaceOreParserJarIngress.flush_pending(restored_parser, restored_jar_host)
     assert(bool(retry.get("success", false)), "pending Jar import retry must succeed after restore")
     assert(int(retry.get("duplicateBatches", 0)) == 1, "restored Jar ledger must recognize the duplicate")
+    assert(int(retry.get("recordedReceipts", 0)) == 1, "duplicate confirmation must be retained as a parser receipt")
     assert(restored_parser.pending_output_batches().is_empty(), "confirmed batch must leave the parser outbox")
+    var retry_observation: Dictionary = restored_parser.build_supply_observation_snapshot()
+    assert(int(retry_observation.get("acknowledgedImportBatchCount", 0)) == 1,
+        "duplicate Core confirmation must survive in the parser observation")
+    assert(int(retry_observation.get("duplicateExactBatchCount", 0)) == 1,
+        "duplicate replay must be recognized as carrying the durable exact Core result")
+    assert(int(retry_observation.get("duplicateConfirmationBatchCountWithUnknownOutcome", 0)) == 0,
+        "exact duplicate replay must not be classified as outcome-unknown")
+    assert(int(retry_observation.get("exactCoreStoredJarCount", -1)) == 1 and int(retry_observation.get("exactCoreDiscardedJarCount", -1)) == 0,
+        "duplicate replay must reproduce the original stored/discarded outcome")
+    var replay_stored_by_shape: Dictionary = retry_observation.get("exactCoreStoredJarCountByShape", {})
+    var replay_discarded_by_shape: Dictionary = retry_observation.get("exactCoreDiscardedJarCountByShape", {})
+    # The observation map is total over configured shapes, so zero outcomes stay explicit.
+    assert(
+        int(replay_stored_by_shape.get("圆罐", -1)) == 1
+        and int(replay_stored_by_shape.get("方罐", -1)) == 0
+        and int(replay_discarded_by_shape.get("圆罐", -1)) == 0
+        and int(replay_discarded_by_shape.get("方罐", -1)) == 0,
+        "duplicate replay must preserve original shape-specific storage outcome"
+    )
+    assert(bool(retry_observation.get("perShapeCoreOutcomeHistoryComplete", false)),
+        "new Core exact receipts must allow complete per-shape outcome history")
+    var parser_after_receipt_checkpoint: Dictionary = restored_parser.capture_state()
+    var receipt_restored_parser := SpaceOreParserRuntime.new()
+    assert(bool(receipt_restored_parser.initialize(
+        definition, "space-jar-ingress-probe-ship", ["圆罐", "方罐"]
+    ).get("success", false)), "receipt-restored parser must initialize")
+    assert(bool(receipt_restored_parser.restore_state(parser_after_receipt_checkpoint).get("success", false)),
+        "Core duplicate confirmation receipt must survive parser checkpoint restore")
+    assert(receipt_restored_parser.get_core_import_receipts() == restored_parser.get_core_import_receipts(),
+        "Core duplicate confirmation receipt changed during checkpoint roundtrip")
 
     # The restored Host must combine its 0.5ms remainder with the next 0.75ms Space step.
     var resumed_delta: int = restored_jar_host.AccumulateSpaceSimulationDelta(0.00075)
@@ -192,6 +327,25 @@ func _ready() -> void:
         "external parser output must not bypass the central warehouse into Master"
     )
 
+    # The reconciliation view keeps parser history and current Core account balances
+    # side by side. It must not claim that current warehouse Jars are parser-originated.
+    var supply_reconciliation: Dictionary = SupplyReconciliation.build_snapshot(
+        retry_observation, after
+    )
+    assert(bool(supply_reconciliation.get("success", false)),
+        "parser/Core supply reconciliation must accept the authoritative snapshots")
+    var round_row: Dictionary = supply_reconciliation.get("shapeRows", {}).get("圆罐", {})
+    assert(int(round_row.get("parserCompletedJarCount", 0)) == 1,
+        "reconciliation must preserve parser cumulative output")
+    assert(int(round_row.get("parserExactCoreStoredJarCount", 0)) == 1,
+        "reconciliation must preserve exact historical Core import outcome")
+    assert(int(round_row.get("parserPendingCoreImportJarCount", -1)) == 0,
+        "reconciliation must show no pending import after acknowledgment")
+    assert(int(round_row.get("coreWarehouseCurrentJarCount", 0)) >= 1,
+        "reconciliation must expose current Core warehouse balance independently")
+    assert(not bool(supply_reconciliation.get("sourceAttributionAvailable", true)),
+        "current Core inventory must not be falsely attributed to the parser without per-Jar provenance")
+
     restored_jar_host.EndShipWorld()
-    print("[SpaceOreParserJarIngressProbe] passed parsed=1 stored=1 retry_after_restore=1 shared_clock=1 workshop_bypass=0")
+    print("[SpaceOreParserJarIngressProbe] passed parsed=1 duplicate_receipt_retained=1 duplicate_capacity_outcome=exact_per_shape shared_clock=1 workshop_bypass=0")
     queue_free()

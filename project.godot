@@ -19,7 +19,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 GameState="*uid://1mrntfgt1sqh"
-IndustrialRuntime="*res://scripts/industrial/runtime/IndustrialRuntime.gd"
+GameFlow="*res://globals/GameFlow.gd"
 WorldV2ShipHost="*res://scripts/industrial/world_v2/WorldV2ShipHost.cs"
 
 [display]
@@ -94,7 +94,9 @@ pierce={
 
 3d/physics_engine="Jolt Physics"
 
+; Keep the Mobile renderer. Vulkan is selected on Windows while investigating
+; the reported D3D12 DXGI_ERROR_DEVICE_REMOVED device-loss cascade on RTX 2060.
 [rendering]
 
-rendering_device/driver.windows="d3d12"
+rendering_device/driver.windows="vulkan"
 renderer/rendering_method="mobile"

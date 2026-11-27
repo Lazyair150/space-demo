@@ -1,6 +1,6 @@
 # World V2 × Space — pre-battle skill loadout and order-effect binding
 
-Status: skill-domain architecture plus initial loadout, event dispatch, versioned effect catalog, Buff snapshot, and single-snapshot persistence foundations. Hangar integration and production battle save/load remain incomplete.
+Status (2026-11-25): Hangar board/assignment and owned-instance selection, frozen-loadout assembly, `SpaceHangarBattleLauncher` production launch routing, Core template ingress, parser ingress, runtime lifecycle, and effect/checkpoint integration probes are present and passed in cross-repository run `45438436612` at Space `74a93ed` against Core `b342259`. Full production battle save/load orchestration, production catalog/balance authoring, and typed non-Buff effect executors remain incomplete. The detailed progress sections below include older chronological notes; consult `docs/execution/2026-11-24-cross-repo-integration.txt` for the authoritative integration head and validation boundary. The current PR head is documentation-only cleanup after the HUD probe annotation change; its exact SHA and validation state are tracked in `docs/execution/2026-11-24-cross-repo-integration.txt`, and it is awaiting a successful exact-head run.
 
 ## 1. Skills are the player-facing capability model
 
@@ -11,10 +11,10 @@ A skill definition is versioned and separates these concerns:
 - **Benefit/effect**: Space-owned effect definition, exact version, parameters, target policy, duration, stacking/refresh behavior, and any tick behavior.
 - **Cost**: a Jar order specification: required jar shapes/counts and other supported resource requirements. This is the actual execution cost, not a second manually maintained cost number.
 - **Cooldown**: Jar order cooldown controls when the skill can execute again. It is distinct from an effect's active duration in Space.
-- **Activation control**: player-manual or automatic policy. This decides who requests execution, not how Jar consumes resources.
+- **Activation control**: Active requests are player-manual; Passive admission attempts are scheduled by Jar Core. This decides who initiates execution, not how Jar consumes resources.
 - **Loadout area**: Active or Passive. Active skills are placed in the player's manual-control region; Passive skills are placed in the automatic/AI-controlled region. The region is an equipment/control assignment, not a different Jar order type.
 
-Active and Passive are not synonyms for one-shot and continuous effects. A passive skill may execute discrete Jar cycles when its trigger policy is satisfied; an active skill may apply a timed Buff. A skill's trigger policy must not bypass Jar feasibility, resource consumption, or cooldown.
+Active and Passive are not synonyms for one-shot and continuous effects. A passive skill may execute discrete Jar cycles through Core's Passive scheduler; an active skill may apply a timed effect. Any future battlefield-context trigger policy belongs to Space, but it can only decide whether to submit a request and must not bypass or duplicate Jar feasibility, resource consumption, or cooldown.
 
 ## 2. Battle resource loop
 
@@ -25,7 +25,7 @@ The conceptual loop is:
 1. Player equips skills and assigns Active/Passive control areas before battle.
 2. Ship fights and acquires resources.
 3. Production devices process those resources into Jar resources.
-4. Manual input or passive trigger policy requests a skill execution.
+4. Manual input requests Active demands; Jar Core schedules Passive demands.
 5. Jar checks requirements, reserves/consumes resources, executes the order, and enforces its cooldown.
 6. On successful completion, Space resolves the exact versioned skill effect and applies its benefit.
 7. Effect duration/ticks and Jar cooldown both advance only with Space simulation time.
@@ -39,9 +39,10 @@ Before entering combat, the player configures four connected dimensions:
 1. Ship selection.
 2. Production-device selection.
 3. Workshop-combination selection.
-4. Order selection.
+4. Workshop-local profile roster and Master/Slave pair selection.
+5. Skill selection and Active/Passive assignment.
 
-These are not four unrelated menus. They form one immutable battle build. A ship may constrain compatible devices/workshops/orders; devices determine which Jar shapes can be produced efficiently from battle pickups; workshop combinations determine the processing/reshaping capabilities available to orders; selected orders determine the capabilities/effects the ship can trigger.
+These are not unrelated menus. They form one immutable battle build. A ship may constrain compatible devices, workshop profiles and skills; devices determine which Jar shapes can be produced efficiently from battle pickups; each workshop profile defines its own local marks, Ban and capacities; the Master/Slave pair selects roles while Core enforces their relationship rules; selected skills bind Jar costs to Space combat effects.
 
 The exact compatibility matrix and balance values remain game-design data. The integration must not hardcode one default combination as the universal build.
 
@@ -355,7 +356,9 @@ The Hangar domain layer now has the first exact-version catalog set:
 
 - `SpaceShipDefinition/Catalog`: a ship definition owns its author-authored expected stone-progress rate by Jar shape. Selection fails unless the map covers the selected workshop's exact Jar shape vocabulary. The catalog stores and returns detached definitions.
 - `SpaceProductionDeviceDefinition/Catalog`: versioned non-parser device identity, slot selection, and an opaque device-owned runtime profile. It deliberately does not invent device execution semantics; device-specific behavior and compatibility rules remain owned by the corresponding subsystem. The universal ore parser remains exclusively resolved through `SpaceOreParserCatalog`.
-- `SpaceWorkshopCombinationDefinition/Catalog`: versioned complete Jar World options plus the workshop operation-cost profile used by the skill difficulty evaluator. It requires the core World V2 option keys, a non-empty shape vocabulary and workshop roster, and authored A/B plus liquid-handling costs. It does not supply a default roster or balance values.
+- `SpaceWorkshopDefinition`: exact-version local workshop marks, Ban, Jar capacity, per-liquid capacity and optional aggregate staging capacity.
+- `SpaceWorkshopPairDefinition`: exact-version Master/Slave role assignment only; relationship rules remain Core-owned.
+- `SpaceWorkshopCombinationDefinition/Catalog`: composes world-level Jar options, a roster of local workshop profiles, one Master/Slave pair selection, and the separate operation-cost forecast profile. It validates local marks/Ban against the configured shape/liquid vocabulary and compiles the Core options dictionary.
 - `SpaceHangarLoadoutAssembler`: resolves the exact ship, non-parser device, parser, workshop, skill, balance-profile, and effect versions; derives each skill binding from the selected ship/device/workshop/parser data; then delegates to `SpaceBattleLoadoutSnapshot.create_with_ore_parser` for the single immutable fingerprinted snapshot.
 
 The assembler accepts the stable battle/loadout identity from its caller and does not generate IDs, select defaults, or silently substitute newer catalog versions. Any unresolved dependency, unsupported shape, duplicate slot/order key, or failed skill balance binding rejects the whole build before a battle Runtime is created.
@@ -412,3 +415,107 @@ The prior positional build API remains temporarily available for existing caller
 - `SpaceHangarPreparation` can now consume this single Resource through its exported `catalog_bundle_resource`; the previous individual dependency exports remain as a compatibility path.
 
 This establishes the editor-authored data-loading seam. It does not create a production `.tres` asset, invent a ship/device/parser/workshop roster, or fabricate skill/effect balance. The next UI increment can load one bundle Resource and expose only definitions actually present in it.
+
+
+### Catalog bundle readiness and resume consistency
+
+- Runtime skill/effect registries now expose definition counts and explicit empty-state checks. A structurally present but empty catalog is not considered a usable Hangar dependency.
+- The editor-authored bundle Resource now fails materialization when required skill/effect content is absent, rather than presenting an apparently valid but unbuildable configuration.
+- The selection-based builder rejects a failed bundle materialization before attempting to access its registries.
+- Resume launch now resolves the effect catalog from the same bundle dependency source used by the Hangar, instead of accidentally depending on a separately assigned legacy export. This keeps restored effect definition versions aligned with the authored bundle.
+- The ownership probe covers empty authored bundle rejection. No production catalog entries are supplied by the probe or runtime.
+
+
+### Hangar selection inventory adapter
+
+- `SpaceHangarCatalogBundleResource.build_selection_inventory()` exposes the exact-version choices present in the authored Resource bundle: ships, non-parser devices, universal parsers, workshop combinations, skills/control areas, and effects.
+- Each choice carries stable definition identity/version; the UI must preserve these exact values and must not silently upgrade to a newer version.
+- The inventory reports `isReady=false` when the runtime bundle cannot be materialized. Empty catalog data remains visible as empty choices rather than being replaced by placeholder gameplay definitions.
+- This is a read-only UI adapter, not a second registry or compatibility authority. The assembler and catalog bundle remain authoritative at final build time.
+- The probe now checks that an empty authored bundle reports unavailable readiness and an empty ship list.
+
+
+### Hangar exact-version selection draft
+
+`SpaceHangarSelectionDraft` is the mutable UI-side state holder built on top of the read-only inventory adapter:
+
+- It accepts one inventory snapshot and refuses selection edits while `isReady=false`.
+- Ship, parser, workshop, and device choices are accepted only when the exact `(id, version)` pair exists in that snapshot. It never upgrades a selection to a newer version.
+- Device slots are unique, and the parser slot cannot collide with an existing or subsequently-added production-device slot.
+- Skill choices must exist at the exact version and the chosen control area must be present in that skill's authored `allowedControlAreas`.
+- Device and skill entries can be replaced/removed by their stable slot/order key. The draft returns detached selection data and creates a `SpaceHangarSelection` only when its domain validation succeeds.
+- This class is intentionally not a compatibility oracle: ship/device/workshop/skill cross-constraints and the final immutable loadout remain the responsibility of `SpaceHangarLoadoutAssembler`.
+
+The draft is UI-independent and can be bound to either a Control-based scene or a later UI framework. No scene, MainMenu route, default build, or production catalog data is introduced by this increment. Godot compilation and runtime probes remain pending.
+
+- `SpaceHangarPreparation.build_loadout_from_draft(identity, draft)` now closes the UI-state-to-domain boundary: it rejects an unavailable/incomplete draft, materializes its validated `SpaceHangarSelection`, and delegates to the existing selection-based preparation path. It does not bypass bundle validation or assembler compatibility checks.
+
+
+### Hangar selection controller and UI view model
+
+`SpaceHangarSelectionController` now coordinates the editor-authored bundle inventory and `SpaceHangarSelectionDraft` as the UI-facing state boundary:
+
+- `configure(preparation, identity)` loads the bundle's inventory and creates a fresh draft. Missing bundle Resources or invalid/empty catalogs produce an explicit unavailable view model with empty choices.
+- Selection methods delegate to the draft and emit `view_model_changed` after accepted or rejected edits. UI code consumes `get_view_model()` for readiness, inventory, current exact-version selections, build availability, validation status, and the latest rejection/build error.
+- `build_loadout_snapshot()` delegates to `SpaceHangarPreparation.build_loadout_from_draft`; the controller does not duplicate compatibility rules, balance evaluation, or snapshot construction.
+- `refresh_inventory()` intentionally starts a new draft because the inventory's authored version set may have changed. A caller should explicitly confirm/discard current choices before invoking it in a live editor flow.
+- The ownership probe now verifies that a controller configured without an authored bundle fails closed and exposes no fabricated ship choices.
+
+This controller/view-model layer is now connected to the first standalone Control-based Hangar scene described below. The scene remains outside the MainMenu route until production catalog assets, complete slot-binding controls, and the owning game-flow identity integration are ready. Godot compilation and runtime probes remain pending.
+
+- The controller also requires the owning game flow to supply stable `shipWorldId`, `loadoutId`, and positive `loadoutVersion`; it never generates identities. The view model keeps build disabled until both the selection and this identity contract are valid.
+
+
+### 独立机库界面场景（首个 UI 切片）
+
+新增 `scenes/industrial/SpaceHangar.tscn` 与 `SpaceHangarScreen.gd`，作为不接入 MainMenu 的独立界面入口：
+
+- 场景持有 `SpaceHangarPreparation` 节点；目录资源包由编辑器配置在该节点上，所属游戏流程通过屏幕的 `loadout_identity` 提供稳定身份。
+- 飞船、原石解析器、工作台组合选择器从真实 inventory 动态填充，显示精确版本，不包含任何硬编码游戏定义或默认选择。
+- 目录未配置、目录无效或身份缺失时显示明确原因；目录库存统计同时展示设备、技能、效果数量。
+- 预计战斗时长必须由操作者输入正值；选择状态由 `SpaceHangarSelectionController` 管理，快照构建仍委托 Preparation/Assembler。
+- 当前 UI 切片尚未提供设备槽位和技能订单绑定控件。只要真实目录中存在设备或技能定义，冻结按钮就保持禁用，避免把未配置的目录内容误当作完整装配。
+- 每次控制器发出 ViewModel 更新后，界面会按精确 `(id, version)` 恢复当前选择，避免刷新状态标签时意外清空用户选择。
+- MainMenu 路由保持不变；该场景可独立打开用于后续 UI 迭代。Godot 编译和场景运行尚未执行。
+
+
+### Sprite-authored Hangar presentation and slot binding UI
+
+The Hangar UI now presents the versioned catalog entries as visual choices without turning presentation assets into gameplay data:
+
+- `SpaceShipDefinition`, `SpaceProductionDeviceDefinition`, `SpaceOreParserDefinition`, `SpaceWorkshopCombinationDefinition`, `SpaceSkillDefinition`, and `BuffDefinition` each expose an optional editor-authored `display_icon: Texture2D`.
+- `SpaceHangarCatalogBundleResource.build_selection_inventory()` carries that texture reference to the UI as `iconTexture`. A missing icon is valid and does not affect catalog validity, selection identity, balance, or runtime semantics.
+- The standalone screen uses category SVG fallbacks in `assets/hangar/` for ship, parser, workshop, device, skill, and effect. An authored definition sprite replaces the category fallback for that exact entry. These SVGs are presentation-only and do not represent fabricated catalog definitions.
+- Device choice rows are generated only from `SpaceHangarScreen.device_slot_ids`, which must be supplied by the owning ship/loadout flow. The parser has its own explicit `parser_slot_id`, also supplied by that flow (there is no guessed default); duplicate device slots and parser-slot collisions fail closed.
+- Skill binding rows are generated only from `skill_order_bindings` entries authored by the owning order flow. Each row selects an exact skill version and one of that definition's authored `allowedControlAreas`. The UI does not invent order keys or control areas.
+- Effect definitions are displayed as referenced catalog content; they are not independently equipped. Skill/effect binding semantics remain in the existing skill and effect catalog pipeline.
+- If a catalog contains devices or skills but the owning flow has not supplied the corresponding slot/order bindings, the freeze action remains disabled. Empty or missing production data is never filled with sample gameplay entries.
+- The UI preserves selection identity/version while rebuilding its view model, and the final selection still flows through `SpaceHangarSelectionController`, `SpaceHangarPreparation`, and `SpaceHangarLoadoutAssembler`.
+
+The SVG category assets are initial visual language, not a final art pass. Production definitions can replace them independently with their own SVG, PNG, or other Godot-supported Texture2D resource in the Inspector. Godot compilation and visual runtime inspection remain pending.
+
+
+### Live assembly preview
+
+`SpaceHangarAssemblyPreview` is a presentation-only view driven by the controller's current inventory and exact-version selection snapshot:
+
+- It renders the selected ship as the visual anchor, then shows the exact selected parser and workshop combination, installed production devices by their owning slot IDs, and skill bindings by their authored order-definition keys and selected control areas.
+- Every item resolves its display texture from the same exact-version inventory entry used by the selectors. Missing textures use the category SVG fallback; missing or stale exact-version selections render as unavailable rather than silently substituting another version.
+- The preview reports incomplete core selections and whether the controller considers the selection structurally buildable. It does not claim cross-catalog compatibility, balance validity, or runtime readiness.
+- The only authoritative compatibility/freeze path remains `SpaceHangarSelectionController.build_loadout_snapshot()` → `SpaceHangarPreparation.build_loadout_from_draft()` → `SpaceHangarLoadoutAssembler.assemble()`.
+- `SpaceHangarAssemblyPreviewProbe` is a synthetic scene-tree probe for the preview's selected-ship, device-slot, and skill-binding rendering. It is source-added but has not been executed in Godot.
+
+The preview is not a combat ship renderer and does not fabricate hardpoints, spatial attachment coordinates, device behavior, or ship geometry. Those require authored ship presentation/layout metadata from the owning ship definitions and should be added as a separate presentation contract when those assets exist. Godot compile and runtime visual inspection remain pending.
+
+
+### Ship-authored hull and component display anchors
+
+Ship definitions now have optional presentation-only `display_hull_texture` and `display_anchors` fields. Each `SpaceShipDisplayAnchor` maps one logical slot identity to a normalized 2D preview coordinate, component kind, rotation, and icon scale:
+
+- `logical_slot_id` remains the exact opaque slot ID supplied by the owning loadout flow. The anchor does not create or rename gameplay slots.
+- `normalized_position` is in the ship preview's [0, 1] coordinate space. It is not a physics transform, hardpoint, collision location, or gameplay mount position.
+- Device and parser anchors are separate component kinds. A parser anchor resolves only against the selected parser slot; a device anchor resolves only against the selected device slot.
+- Hull texture falls back to the category ship SVG. Component anchors display only the selected exact-version definition icon.
+- Display-anchor validation is deliberately separate from `SpaceShipDefinition.get_validation_errors()`: invalid optional presentation metadata is omitted from the preview and cannot invalidate a gameplay ship definition or frozen loadout.
+
+The ownership probe now checks that hull texture and display-anchor metadata survive detached exact-version catalog snapshots. No production ship hulls or anchor coordinates have been invented; those remain editor-authored per ship.

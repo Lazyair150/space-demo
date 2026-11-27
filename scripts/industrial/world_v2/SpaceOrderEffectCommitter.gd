@@ -63,9 +63,12 @@ func commit(event: Dictionary, order_binding: Dictionary, next_dispatcher_state:
 		"loadoutVersion": _loadout.loadout_version(),
 		"loadoutFingerprint": _loadout.loadout_fingerprint()
 	}
+	# A finite stage is only resumable at its enemy-free inter-beat boundary.
+	# During an active beat the effect is applied in memory, but the Jar outbox
+	# event stays pending until a coherent checkpoint can be committed. This is
+	# an expected deferral, not a runtime fault; the dispatcher retries it.
 	var captured: Variant = _runtime_checkpoint_provider.call()
 	if not (captured is Dictionary) or captured.is_empty():
-		push_error("Battle runtime checkpoint provider failed; Jar event must remain pending")
 		return false
 	var runtime_checkpoint: Dictionary = captured
 	return _store.save(

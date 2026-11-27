@@ -31,6 +31,7 @@ public partial class WorldV2RuntimeNode : Node
 
     public bool IsInitialized => _session?.HasWorld == true;
     public bool IsFaulted => _faulted;
+    public string FaultReason => _faultReason ?? "";
     public bool IsDisposed => _disposed;
     public bool CanAcceptCommands => _session != null && !_faulted && !_disposed;
 
@@ -206,6 +207,32 @@ public partial class WorldV2RuntimeNode : Node
     }
 
     /// <summary>
+    /// Materialize a demand from the current world's Core-owned immutable order template.
+    /// Space supplies only the template key and scheduling metadata, never Jar requirements.
+    /// </summary>
+    public int AddJarDemandFromTemplate(
+        string templateName,
+        string area,
+        long cooldownDurationLogicalMilli,
+        string orderDefinitionKey)
+    {
+        if (string.IsNullOrWhiteSpace(templateName))
+            throw new ArgumentException("Order template name cannot be empty", nameof(templateName));
+        if (string.IsNullOrWhiteSpace(orderDefinitionKey))
+            throw new ArgumentException("orderDefinitionKey cannot be empty", nameof(orderDefinitionKey));
+        if (cooldownDurationLogicalMilli < 0)
+            throw new ArgumentOutOfRangeException(nameof(cooldownDurationLogicalMilli));
+        if (!Enum.TryParse<DemandAreaKind>(area, ignoreCase: false, out var demandArea) ||
+            !Enum.IsDefined(demandArea))
+            throw new ArgumentException("Order area must be Active or Passive", nameof(area));
+
+        var demandId = RequireOperationalSession().AddJarDemandFromTemplate(
+            templateName, demandArea, cooldownDurationLogicalMilli, orderDefinitionKey);
+        EmitSignal(SignalName.SnapshotChanged);
+        return demandId;
+    }
+
+    /// <summary>
     /// Imports completed empty Jars produced by a Space-owned parser. The batch ID is
     /// idempotent in Jar Core and survives its execution checkpoint.
     /// </summary>
@@ -227,12 +254,23 @@ public partial class WorldV2RuntimeNode : Node
 
         var result = RequireOperationalSession().ImportProducedJars(operationId, copiedCounts);
         EmitSignal(SignalName.SnapshotChanged);
+        var storedByShape = new GDictionary();
+        if (result.StoredJarCountsByShape != null)
+            foreach (var item in result.StoredJarCountsByShape)
+                storedByShape[item.Key] = item.Value;
+        var discardedByShape = new GDictionary();
+        if (result.DiscardedJarCountsByShape != null)
+            foreach (var item in result.DiscardedJarCountsByShape)
+                discardedByShape[item.Key] = item.Value;
         return new GDictionary
         {
             ["wasDuplicate"] = result.WasDuplicate,
             ["submittedJarCount"] = result.SubmittedJarCount,
             ["storedJarCount"] = result.StoredJarCount,
-            ["discardedJarCount"] = result.DiscardedJarCount
+            ["discardedJarCount"] = result.DiscardedJarCount,
+            ["hasExactReceipt"] = result.HasExactReceipt,
+            ["storedJarCountsByShape"] = storedByShape,
+            ["discardedJarCountsByShape"] = discardedByShape
         };
     }
 
@@ -331,7 +369,10 @@ public partial class WorldV2RuntimeNode : Node
                 ["liquid"] = jar.Liquid ?? "",
                 ["isMarked"] = jar.IsMarked
             }),
+            // The central warehouse and ship liquid inventory are separate accounts.
+            // Expose both explicitly; callers must not infer ship stock from the warehouse.
             ["resourceLiquids"] = ToGodotDictionary(snapshot.ResourceLiquids),
+            ["shipLiquidInventory"] = ToShipLiquidInventoryDictionary(snapshot.ShipLiquidInventory),
             ["master"] = ToWorkshopDictionary(snapshot.Master),
             ["slave"] = ToWorkshopDictionary(snapshot.Slave),
             ["demands"] = ToGodotArray(snapshot.Demands, demand => (Variant)new GDictionary
@@ -471,6 +512,20 @@ public partial class WorldV2RuntimeNode : Node
         foreach (var pair in source)
             result[pair.Key] = pair.Value;
         return result;
+    }
+
+    private static GDictionary ToShipLiquidInventoryDictionary(WorldV2ShipLiquidInventoryDto? source)
+    {
+        if (source == null)
+            return new GDictionary();
+
+        return new GDictionary
+        {
+            ["capacity"] = source.Capacity,
+            ["usedCapacity"] = source.UsedCapacity,
+            ["availableCapacity"] = source.AvailableCapacity,
+            ["balances"] = ToGodotDictionary(source.Balances)
+        };
     }
 
     private static GDictionary ToWorkshopDictionary(WorldV2WorkshopDto? workshop)

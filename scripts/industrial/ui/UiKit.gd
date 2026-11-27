@@ -1,8 +1,7 @@
 extends RefCounted
-## 工业界面共用的小工具：配色、面板样式、常用控件工厂。
+## Space/Jar presentation helper: palette, panel styling, and common control factories.
 ##
-## 只做"画"的事：不读世界状态、不发命令、不认识 DTO。
-## 视觉方向按 03 号文档 §8 的推荐取①冷淡工业风（青灰底 + 琥珀强调），与太空 HUD 同族。
+## View construction only: it does not read world state, issue commands, or interpret domain DTOs.
 
 const BG := Color("0e1117")
 const PANEL := Color("161b24")

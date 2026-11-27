@@ -110,7 +110,7 @@ static func evaluate(
 		float(jar_order.get("cooldownDurationLogicalMilli", 0)),
 		profile.cooldown_floor_logical_milli
 	)
-	var expected_activations := ceil(expected_battle_duration_logical_milli / effective_cooldown)
+	var expected_activations: float = ceil(expected_battle_duration_logical_milli / effective_cooldown)
 	var battle_seconds := expected_battle_duration_logical_milli / 1000.0
 	var total_required_jars := 0.0
 	var total_production_capacity := 0.0
@@ -120,7 +120,7 @@ static func evaluate(
 		var output_jar_rate := float(effective_jar_output_rates.get(shape, 0.0))
 		if output_jar_rate <= 0.0:
 			return _failure("ship drops, selected processors, and Jar conversion must all support shape: " + shape)
-		var required := float(shape_demand[shape]) * expected_activations
+		var required: float = float(shape_demand[shape]) * expected_activations
 		var capacity := output_jar_rate * battle_seconds
 		total_required_jars += required
 		total_production_capacity += capacity

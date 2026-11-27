@@ -1,0 +1,67 @@
+name: World V2 cross-repository integration
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: world-v2-cross-repo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout Space PR
+        uses: actions/checkout@v4
+        with:
+          path: space-demo
+
+      - name: Checkout the exact current Core PR #63 head
+        uses: actions/checkout@v4
+        with:
+          repository: Lazyair150/jar-system-dotnet
+          ref: 116c0bb7e3589a2850bf1b85f6da4c48de8c0a28
+          path: jar-system-dotnet
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Install headless runtime dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libfontconfig1 libx11-6 libxcursor1 libxinerama1 libxi6 \
+            libxrandr2 libxrender1 libxfixes3 libxkbcommon0 \
+            libwayland-client0 libpulse0 libasound2t64 libgl1
+
+      - name: Download and verify Godot 4.7.1 .NET
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/godot-4.7.1-mono-linux-x86_64.zip"
+          install_dir="$RUNNER_TEMP/godot-4.7.1-mono"
+          mkdir -p "$install_dir"
+          curl --fail --location --retry 3 \
+            "https://github.com/godotengine/godot/releases/download/4.7.1-stable/Godot_v4.7.1-stable_mono_linux_x86_64.zip" \
+            --output "$archive"
+          echo "6ca7ff0459f1b806900be683c1b0837c607a9c16834c530dc68c81b9fc3ae1f6  $archive" | sha256sum --check
+          unzip -q "$archive" -d "$install_dir"
+          godot_bin="$(find "$install_dir" -type f -name 'Godot_v4.7.1-stable_mono_linux.x86_64' -print -quit)"
+          test -n "$godot_bin"
+          chmod +x "$godot_bin"
+          echo "GODOT_BIN=$godot_bin" >> "$GITHUB_ENV"
+          "$godot_bin" --headless --version
+
+      - name: Build Core bridge, build Space, parse project and run integration probes
+        working-directory: space-demo
+        env:
+          CORE_REPO_DIR: ${{ github.workspace }}/jar-system-dotnet
+          CORE_EXPECTED_SHA: 116c0bb7e3589a2850bf1b85f6da4c48de8c0a28
+        run: bash scripts/ci/verify-world-v2-cross-repo.sh

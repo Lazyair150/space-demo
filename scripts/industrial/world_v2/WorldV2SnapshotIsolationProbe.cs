@@ -27,8 +27,15 @@ public partial class WorldV2SnapshotIsolationProbe : Node
             first["runtimeFaulted"] = true;
 
             var firstLiquids = first["resourceLiquids"].AsGodotDictionary();
-            Ensure(firstLiquids.ContainsKey("酒"), "snapshot must contain initial 酒 stock");
+            Ensure(firstLiquids.ContainsKey("酒"), "warehouse snapshot must expose the configured liquid key");
+            var expectedWarehouseWine = firstLiquids["酒"].AsInt32();
             firstLiquids["酒"] = 999;
+
+            var firstShipInventory = first["shipLiquidInventory"].AsGodotDictionary();
+            var firstShipBalances = firstShipInventory["balances"].AsGodotDictionary();
+            var expectedShipWine = firstShipBalances["酒"].AsInt32();
+            Ensure(expectedShipWine == 10, "initialLiquidStock must remain in the ship inventory account");
+            firstShipBalances["酒"] = 999;
 
             var firstMaster = first["master"].AsGodotDictionary();
             firstMaster["name"] = "MUTATED";
@@ -51,8 +58,12 @@ public partial class WorldV2SnapshotIsolationProbe : Node
                 "root boolean mutation must not affect a later snapshot");
 
             var secondLiquids = second["resourceLiquids"].AsGodotDictionary();
-            Ensure(int.Parse(secondLiquids["酒"].ToString()) == 10,
-                "nested resource dictionary mutation must not affect Core state");
+            Ensure(secondLiquids["酒"].AsInt32() == expectedWarehouseWine,
+                "nested warehouse dictionary mutation must not affect Core state");
+            var secondShipInventory = second["shipLiquidInventory"].AsGodotDictionary();
+            var secondShipBalances = secondShipInventory["balances"].AsGodotDictionary();
+            Ensure(secondShipBalances["酒"].AsInt32() == expectedShipWine,
+                "nested ship inventory dictionary mutation must not affect Core state");
 
             var secondMaster = second["master"].AsGodotDictionary();
             Ensure(secondMaster["name"].AsString() == "主台",
@@ -70,12 +81,15 @@ public partial class WorldV2SnapshotIsolationProbe : Node
 
             // Mutating the second snapshot must likewise leave a third snapshot intact.
             secondLiquids["酒"] = 123;
+            secondShipBalances["酒"] = 321;
             secondMarks[0] = "SECOND_MUTATION";
             secondRequirement["shape"] = "SECOND_MUTATION";
 
             var third = runtime.GetWorldSnapshot();
-            Ensure(third["resourceLiquids"].AsGodotDictionary()["酒"].AsInt32() == 10,
-                "snapshot dictionaries must be independent between calls");
+            Ensure(third["resourceLiquids"].AsGodotDictionary()["酒"].AsInt32() == expectedWarehouseWine,
+                "warehouse snapshot dictionaries must be independent between calls");
+            Ensure(third["shipLiquidInventory"].AsGodotDictionary()["balances"].AsGodotDictionary()["酒"].AsInt32() == expectedShipWine,
+                "ship inventory snapshot dictionaries must be independent between calls");
             Ensure(third["master"].AsGodotDictionary()["baseMarks"].AsGodotArray()[0].AsString() == "圆罐",
                 "snapshot arrays must be independent between calls");
             var thirdDemand = FindDemand(third["demands"].AsGodotArray(), demandId);

@@ -117,9 +117,8 @@ Core 导入回执目前按 operation 与 shape 汇总，不将每个导入 Jar �
 - 用户本地 Core xUnit：1038 / 1038 通过（用户提供的实际运行结果）。
 - Core 当前精确 HEAD 的 GitHub verify：Run `45822480114` success。
 - Space 旧精确集成 Run `45796547789` failure，根因是 workflow Core pin 落后；不作为新 pin 的验证证据。
-- Space 精确集成 Run `45826120969` 已结束为 failure，测试对象为代码 head `b322040708c5adccf9ef3b48f3b0ac4bb9d43384`，不是最新修复 head。
-- 该 Run 的 Core Bridge 与 Space C# Build 成功（均 0 Warning / 0 Error），Godot 资源导入成功；HUD probe 随后发现 reconciliation service 对 Variant 返回值使用 `:=`，触发 warning-as-error。
-- 已在提交 `374942d8989f4a836c0ae831ea4faab4bcf8df99` 显式声明 9 个 Variant 局部变量。这个修正尚未取得新的 Godot 验证结果。
+- 本轮新增 GDScript 服务、Probe 与 HUD 接入已提交源码；最新 Space 精确集成 Run `45826120969` 正在执行，尚未取得 Build/Probe 结果。
+- 该 Run 的 verify Job `139930613248` 已完成 Space/Core checkout 与 .NET SDK setup，当前仍在安装 Headless runtime dependencies；不能提前标记 Godot import/compile/Headless 通过。
 - 桌面 GUI、主菜单/机库/战斗/暂停/返回主菜单交互仍未验收。
 
 ## 六、下一步
@@ -142,14 +141,34 @@ Core 导入回执目前按 operation 与 shape 汇总，不将每个导入 Jar �
 - Parser observation 被纳入 HUD 刷新签名，因此即使 Core Jar 数量暂时没有变化，Parser 的排队/进度/导入事实变化也会触发详情刷新。
 - Parser/Core 对账契约 Probe 已加入 Parser ingress 主探针；同时检查战斗场景具有供给观察 UI 入口。
 
-引入 HUD 的代码 head：`b322040708c5adccf9ef3b48f3b0ac4bb9d43384`；随后类型修正 head：`374942d8989f4a836c0ae831ea4faab4bcf8df99`。
-最新已完成跨仓库验证：Run `45826120969`，verify Job `139931624951`，failure（Variant 类型推断警告按错误处理）。
+最新 Space HEAD：`b322040708c5adccf9ef3b48f3b0ac4bb9d43384`。
+最新跨仓库验证：Run `45826120969`，verify Job `139930613248`，运行中。
 
+## 八、跨仓库运行发现的形状零值断言缺陷（2026-11-26）
 
-## 八、Variant warning-as-error 修正（待新 Headless 验证）
+### 实际验证结果
 
-Run `45826120969` 的日志表明，Core Bridge、Space C# Build 和 Godot 资源导入均已通过；HUD feedback probe 在加载 `SpaceBattleSupplyReconciliation.gd` 时发现 9 处 `var x := helperReturningVariant(...)`。项目把该推断警告视为错误，导致 `Game.gd` 的依赖脚本编译失败。
+- Space 精确集成 Run：`45826677268`，Job：`139932503548`，结论：failure。
+- Core Bridge 构建成功：0 warning / 0 error。
+- Space C# 构建成功：0 warning / 0 error。
+- Godot 4.7.1 .NET 项目导入和脚本类扫描通过。
+- HUD 反馈探针：`21 checks, 0 failures`。
+- Domain contracts：`[SpaceDomainContractProbe] all-domain-contracts=passed`。
+- Parser/Core 端到端 ingress 在 `SpaceOreParserJarIngressProbe.gd:290` 触发断言，后续 integration/lifecycle probes 因此没有执行。
 
-已在 `374942d8989f4a836c0ae831ea4faab4bcf8df99` 将 completed、pending、acknowledged、unattributed、exact stored/discarded、warehouse、master、slave 九个局部变量全部改为显式 `Variant` 声明。没有关闭 warning、降低项目检查强度或修改资源对账规则。
+### 根因
 
-最新 Space PR head 为 `374942d8989f4a836c0ae831ea4faab4bcf8df99`；该精确提交尚无完整跨仓库验证结果。下一轮必须从该 HEAD 重新运行，确认 HUD、Parser/Core ingress 和后续 World V2 probes。
+`SpaceOreParserRuntime.build_supply_observation_snapshot()` 为每个配置形状预先创建完整的 `exactCoreStoredJarCountByShape` 和 `exactCoreDiscardedJarCountByShape` 映射，并将无结果的形状显式表示为 0。这是逐形状观察快照的 total-map 契约，避免调用方把“该形状没有丢弃”与“该形状未被观察/缺字段”混为一谈。
+
+端到端探针此前却使用 `replay_discarded_by_shape.is_empty()` 来断言没有丢弃。由于该映射有意保留每个形状的零值键，这个判断必然为 false。此前的断言已经证明 aggregate stored/discarded 数、duplicate exact 状态、unknown duplicate 数和回执计数均符合预期；因此本次失败是 Probe 对观察映射形状的误读，不是 Core 重复导入回执丢失。
+
+### 修正
+
+- Probe 改为逐个配置形状验证：圆罐 stored=1、方罐 stored=0；圆罐 discarded=0、方罐 discarded=0。
+- 保留运行时 total-map 的完整零值表达，不改变 Core 回执、不改 Parser 收据标准化/恢复校验，也不通过删掉零值键来迁就断言。
+- 修正提交：`b61875addfa4f826d8e225b5646e401ee9655768`。
+- 该修正尚未取得新 HEAD 的 Godot 运行结果，不能标记 Parser ingress 或整条跨仓库集成为通过。
+
+### 额外诊断项
+
+这次 ingress 退出时 Godot 还报告 `108 ObjectDB instances were leaked` 和 `44 resources still in use`。这些信息不是触发第 290 行断言的根因，但也不应被静默当作正常；待本轮断言修正后，继续区分探针主动创建对象未释放、场景生命周期遗留和真实资源泄漏。Negative contract probes 输出的若干 `ERROR: ... rejected` 后跟随对应 `...=passed`，是它们主动走拒绝分支的日志；不能仅凭普通 ERROR 文本判为脚本断言失败。

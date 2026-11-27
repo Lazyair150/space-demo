@@ -1,14 +1,14 @@
 # World V2 × Space — world host and simulation clock contract
 
-Status: architecture contract derived from the current Space repository audit. The first host/clock integration slice is implemented but has not yet been locally compiled or run in Godot.
+Status (2026-11-25): the World V2 host/clock and lifecycle integration have been built and exercised by the cross-repository workflow at Space commit `74a93ed281d94823608b0c6803edd78dd9f068cc` against Core `b342259fe04363386085dc9a4ca995112954ed43` (run `45438436612`, success). The Space PR later advanced through the HUD probe type-annotation change and subsequent documentation-status cleanup. The exact current branch head is tracked in `docs/execution/2026-11-24-cross-repo-integration.txt`; no successful workflow is recorded for the post-cleanup documentation head, so exact-latest-head verification remains pending. Older implementation-status paragraphs below are chronological checkpoints, not current validation claims.
 
 ## 1. Repository facts verified
 
-- `project.godot` registers `GameState`, the legacy `IndustrialRuntime`, and the new `WorldV2ShipHost` autoload.
+- `project.godot` registers `GameState`, `GameFlow`, and `WorldV2ShipHost`. The legacy `IndustrialRuntime` autoload has been removed.
 - `Game.tscn` is the active combat scene. `Game.gd` currently uses `_physics_process(delta)` only for camera shake; it does not own a general simulation clock.
 - Player movement, firing cooldown, enemy movement, and other combat actors use physics processing and the supplied physics `delta`.
-- `main_menu.gd` enters the combat scene or the legacy industrial scene with `change_scene_to_file`. The current industrial UI is a full scene, not an overlay over the combat world.
-- `IndustrialRuntime.gd` is an autoload and therefore outlives the industrial UI scene. It still implements the old wall-clock/tick model and old wallet/reward behavior; it is not a valid World V2 host.
+- `main_menu.gd` routes Start into `SpaceHangar.tscn`. The Hangar constructs a frozen loadout and calls `SpaceHangarBattleLauncher.launch_new_battle` before attaching the combat scene; the sandbox path remains an explicit development fallback.
+- The legacy IndustrialRuntime, JarCoreBridge, IndustrialMain scene, old industrial panels, sandbox/tradeoff data, and legacy industrial test harness have been deleted. No legacy tick loop remains in the project.
 - `WorldV2RuntimeNode` owns and disposes its Bridge session. Its `_ExitTree` is terminal. Therefore it must not be parented beneath a replaceable UI scene.
 - `WorldV2RuntimeNode.AdvanceWorldTime(long)` is the explicit external-time entry point. Production use must set `AutoAdvance = false`.
 
@@ -94,11 +94,11 @@ The host must never derive Jar time from `Time.get_ticks_msec()`, wall-clock tim
 
 ## 6. UI and scene transitions
 
-The current `IndustrialMain.tscn` is a full scene entered directly from the main menu. That arrangement is incompatible with the settled in-world meaning if the Jar interface is meant to be a presentation of the current ship's Jar system: replacing the combat scene also removes the owning ship-world context.
+The legacy `IndustrialMain.tscn` has been removed. The Jar interface is now designed as a presentation of the active ship-world, not a standalone production scene.
 
 The eventual player-facing integration should make the Jar interface a presentation layer attached to the active ship-world (overlay, subview, or other UI composition), not the owner of the Jar runtime. The exact visual transition and whether opening the interface pauses combat remain gameplay/presentation decisions. Regardless of that decision, presentation visibility must not itself be the clock authority.
 
-The legacy menu shortcut into the old industrial scene must not be treated as the production World V2 entry path. Keep legacy behavior isolated until the new UI and migration plan are explicitly approved.
+The legacy industrial shortcut has been removed. The production Start route now enters the Hangar, which supplies the authored frozen loadout and launch dependencies; direct sandbox startup remains development-only.
 
 ## 7. Boundary rules for future resource and result adapters
 
@@ -115,9 +115,9 @@ The legacy menu shortcut into the old industrial scene must not be treated as th
 2. Create the World V2 RuntimeNode under that host with `AutoAdvance = false`; connect fault/snapshot signals once.
 3. Add exactly one call from the owning Space simulation step. Do not put the call in the Jar UI.
 4. Make the Jar UI consume host snapshots and send only documented World V2 commands.
-5. Replace the old full-scene industrial entry with an in-world presentation route only after its pause/overlay behavior is decided.
+5. (Completed) Remove the old full-scene industrial entry; the production Hangar must attach to the owning ship-world lifecycle.
 6. Implement explicit resource import/export and completion event adapters after their domain semantics are approved.
-7. Retire the legacy industrial autoload and its old wallet/reward coupling only after the new route and save policy are ready.
+7. (Completed) Retire the legacy industrial autoload and old wallet/reward coupling. No legacy rewards or attack upgrades are migrated.
 
 ## 9. Explicitly unresolved
 
@@ -182,3 +182,14 @@ New Space foundations on the current branch:
 - `SpaceBattleEffectStateStore` uses a pending snapshot and recoverable previous file. Its replacement/recovery behavior still needs platform validation; it is not claimed to be a cross-platform filesystem transaction.
 
 Not yet implemented: Skill Catalog content/data, actual Active input requests, Passive trigger/automation policy, target-policy catalog data, full battle save/load orchestration, and Hangar construction of the frozen build. The combat sandbox path remains development-only.
+
+
+## 13. Legacy industrial client retirement (2026-11-23)
+
+The old turn-based industrial client has been removed from the active project:
+- Removed the IndustrialRuntime autoload and legacy JarCoreBridge.
+- Removed IndustrialMain and its menu shortcut, old industrial panels, old sandbox/tradeoff JSON, old industrial tests, and the outdated 01–06 client documents.
+- Removed the old ore/material/attack-upgrade wallet from GameState, the asteroid ore reward, and the HUD's industrial reward/objective prompts. The player weapon now starts from its Space baseline; future permanent weapon profiles belong to the Space ship/skill model.
+- Kept WorldV2ShipHost, WorldV2RuntimeNode, the new World V2 probes, SpaceJarHudObserver, and shape presentation code.
+
+This is source retirement, not proof of a successful Godot build. The production Hangar route, typed non-Buff skill executors, durable effect commit wiring, and full runtime validation remain open.

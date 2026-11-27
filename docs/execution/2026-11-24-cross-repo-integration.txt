@@ -1,21 +1,24 @@
 SPACE DEMO / JAR CORE CROSS-REPOSITORY INTEGRATION CHECKPOINT
-Date: 2026-11-26
+Date: 2026-11-27
 Space PR: #2
 Space branch: world-v2/phase-4.10b-hangar-ui
 Core PR: #63
 Core branch: architecture/core-liquid-identity-consolidation
 
-CURRENT AUTHORITATIVE STATUS — 2026-11-26 (latest exact source state)
+CURRENT AUTHORITATIVE STATUS — 2026-11-27
 
-- Space PR #2 current head: 374942d8989f4a836c0ae831ea4faab4bcf8df99 (Draft/Open; not merged).
-- Core PR #63 current source head: 391f318a24fde724a66054e771d0590f0e20c231 (Draft/Open; not merged).
-- Core exact-head verify Run 45822480114 completed successfully for the current Core source head.
-- Space workflow and README are pinned to that exact Core SHA; the earlier stale-pin failure Run 45796547789 is historical and not the current dependency configuration.
-- Latest completed Space attempt Run 45826120969 tested Space code head b322040708c5adccf9ef3b48f3b0ac4bb9d43384 against Core 391f318a. Core Bridge build and Space C# build both succeeded with 0 warnings / 0 errors; Godot asset import completed.
-- That Space attempt then failed in the HUD feedback probe because the new reconciliation service inferred Variant-returning helper values with `:=`, and the project treats the resulting GDScript warning as an error (lines 22–27 and 31–33 of SpaceBattleSupplyReconciliation.gd).
-- Corrective source commit 374942d explicitly declares those nine locals as Variant. This exact newer Space head has not yet been validated; do not transfer the older run's build/probe result to it.
-- The failed attempt did not reach the Parser/Core ingress and reconciliation probes after the HUD failure.
+- Core PR #63: Open / Draft / not merged; exact HEAD 116c0bb7e3589a2850bf1b85f6da4c48de8c0a28.
+- Core verify Run 45869214849: SUCCESS on that exact HEAD.
+- Space PR #2: Open / Draft / not merged; latest code HEAD 82d5cbdd72138de40e8e7e932e407121d94b99f2; GitHub reports mergeable=true.
+- Space branch includes main HEAD 8805ea665b0ff6eafa528b08630e5e8060fcad02 through non-force merge commit 85c01d6cbb3dd2f00cb0cf8043f9dd2a056c3499. The newer feature-branch supply reconciliation record was preserved.
+- Space workflow and README are pinned to Core 116c0bb7e3589a2850bf1b85f6da4c48de8c0a28. Compared with the prior pin f4f2151d, the Core change was documentation-only.
+- Space cross-repository Run 45873311127: SUCCESS on exact Space code HEAD 82d5cbdd and exact Core pin 116c0bb7.
+- Successful workflow includes Core Bridge build, Space .NET build, Godot 4.7.1 import/parse, HUD feedback, Hangar/domain contracts, battle reward fact projection, Reward Profile and reward settlement probes, Parser/Core ingress, runtime, lifecycle, fault, disposed/faulted commands, snapshot isolation and battle-navigation probes.
+- The missing `class_name SpaceBattleSupplyReconciliationProbe` was corrected before Run 45872350494; that earlier run passed the policy/settlement batch. Run 45873311127 additionally passed the new battle reward fact projection and stage-clear outbox changes.
+- Supply reconciliation is already displayed as read-only battle HUD data; do not duplicate it.
 - Both PRs remain Open/Draft and unmerged. No desktop GUI acceptance is claimed.
+
+The following sections are chronological historical checkpoints. Older SHAs, failures and “not yet run” statements describe their recorded dates only; this status block is authoritative for the current integration state.
 
 INTEGRATION CONTRACT
 

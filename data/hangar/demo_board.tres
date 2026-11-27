@@ -1,0 +1,48 @@
+[gd_resource type="Resource" script_class="SpaceHangarBoardDefinition" format=3 uid="uid://b7hff6ua6cent"]
+
+[ext_resource type="Script" uid="uid://b3rlikhgltvg6" path="res://scripts/industrial/world_v2/SpaceHangarBoardDefinition.gd" id="1_board"]
+[ext_resource type="Script" uid="uid://g5a640y5wy8f" path="res://scripts/industrial/world_v2/SpaceHangarBoardSlotDefinition.gd" id="2_slot"]
+
+[sub_resource type="Resource" id="MasterWorkshopSlot"]
+script = ExtResource("2_slot")
+slot_id = &"workshop.master"
+area_id = "workshop"
+component_kind = "workshop"
+display_name = "主台位置"
+role_id = "master"
+
+[sub_resource type="Resource" id="SlaveWorkshopSlot"]
+script = ExtResource("2_slot")
+slot_id = &"workshop.slave"
+area_id = "workshop"
+component_kind = "workshop"
+display_name = "从台位置"
+role_id = "slave"
+
+[sub_resource type="Resource" id="DecompositionParserSlot"]
+script = ExtResource("2_slot")
+slot_id = &"decomposition.parser.primary"
+area_id = "production"
+sub_area_id = "decomposition"
+component_kind = "ore_parser"
+display_name = "原石分解器"
+
+[sub_resource type="Resource" id="ActiveOrderSlot"]
+script = ExtResource("2_slot")
+slot_id = &"orders.active.primary"
+display_name = "主动订单槽位"
+control_area = "Active"
+required = false
+
+[sub_resource type="Resource" id="PassiveOrderSlot"]
+script = ExtResource("2_slot")
+slot_id = &"orders.passive.recon"
+display_name = "被动订单槽位"
+control_area = "Passive"
+required = false
+
+[resource]
+script = ExtResource("1_board")
+board_id = &"demo.circuit_board"
+display_name = "裂隙前哨规则电路板"
+slots = Array[ExtResource("2_slot")]([SubResource("MasterWorkshopSlot"), SubResource("SlaveWorkshopSlot"), SubResource("DecompositionParserSlot"), SubResource("ActiveOrderSlot"), SubResource("PassiveOrderSlot")])

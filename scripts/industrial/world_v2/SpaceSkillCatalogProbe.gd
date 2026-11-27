@@ -10,6 +10,7 @@ static func run() -> bool:
 	source.jar_order_type = "A"
 	source.jar_cooldown_logical_milli = 1000
 	source.jar_requirements = [{ "shape": "probe_shape", "count": 1 }]
+	source.primary_shape = &"probe_shape"
 	source.allowed_control_areas = ["Active"]
 	source.effect_definition_id = &"probe.effect"
 	source.effect_definition_version = 2
@@ -39,4 +40,4 @@ static func run() -> bool:
 		return false
 	if catalog.resolve_skill("probe.skill", 2) != null:
 		return false
-	return true
+	return SpaceSkillTemplateContractProbe.run()

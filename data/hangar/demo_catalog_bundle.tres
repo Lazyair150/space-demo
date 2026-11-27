@@ -1,0 +1,311 @@
+[gd_resource type="Resource" script_class="SpaceHangarCatalogBundleResource" format=3 uid="uid://c2t6yd42r5giy"]
+
+[ext_resource type="Script" uid="uid://chs81dx34i4dj" path="res://scripts/industrial/world_v2/SpaceHangarCatalogBundleResource.gd" id="1_bundle"]
+[ext_resource type="Script" uid="uid://cqn3ye5mgt8ew" path="res://scripts/industrial/world_v2/SpaceShipCatalog.gd" id="2_ship_catalog"]
+[ext_resource type="Script" uid="uid://c8xyaeljlma0j" path="res://scripts/industrial/world_v2/SpaceShipDefinition.gd" id="3_ship_definition"]
+[ext_resource type="Script" uid="uid://dn8poxk4usifx" path="res://scripts/industrial/world_v2/SpaceOreParserCatalog.gd" id="4_parser_catalog"]
+[ext_resource type="Script" uid="uid://ntalngx53bjp" path="res://scripts/industrial/world_v2/SpaceOreParserDefinition.gd" id="5_parser_definition"]
+[ext_resource type="Script" uid="uid://dxfd68eodloft" path="res://scripts/industrial/world_v2/SpaceRuleContributionDefinition.gd" id="5_s2fd2"]
+[ext_resource type="Script" uid="uid://crwpt45qdds7" path="res://scripts/industrial/world_v2/SpaceProductionDeviceCatalog.gd" id="6_device_catalog"]
+[ext_resource type="Script" uid="uid://i6ie6adq31xg" path="res://scripts/industrial/world_v2/SpaceProductionDeviceDefinition.gd" id="7_device_definition"]
+[ext_resource type="Script" uid="uid://kj501pfldse3" path="res://scripts/industrial/world_v2/SpaceWorkshopCombinationCatalog.gd" id="8_workshop_catalog"]
+[ext_resource type="Script" uid="uid://bitnpcmaumiou" path="res://scripts/industrial/world_v2/SpaceWorkshopCombinationDefinition.gd" id="9_workshop_world"]
+[ext_resource type="Script" uid="uid://cq5jyoif3mgi8" path="res://scripts/industrial/world_v2/SpaceWorkshopDefinition.gd" id="10_workshop_definition"]
+[ext_resource type="Script" uid="uid://61njqu6lq2b0" path="res://scripts/industrial/world_v2/SpaceCoreOrderTemplateDefinition.gd" id="11_order_template"]
+[ext_resource type="Script" uid="uid://dcxhc7qpf0bdd" path="res://scripts/industrial/world_v2/SpaceShipDisplayAnchor.gd" id="11_rno30"]
+[ext_resource type="Script" uid="uid://cx4qcx0maa2c" path="res://scripts/industrial/world_v2/SpaceSkillDefinition.gd" id="12_skill_definition"]
+[ext_resource type="Script" uid="uid://dagmvxg6xjsnt" path="res://scripts/industrial/world_v2/SpaceAbilityShapeProfile.gd" id="13_ability_profile"]
+[ext_resource type="Script" uid="uid://16hgrbg80gmh" path="res://scripts/industrial/world_v2/SpaceSkillBalanceProfile.gd" id="14_balance_profile"]
+[ext_resource type="Script" uid="uid://cl0m1oi1tfohq" path="res://scripts/player/effects/BuffDefinition.gd" id="15_buff_definition"]
+[ext_resource type="Script" uid="uid://bp2xk4d7qmaqp" path="res://scripts/industrial/world_v2/SpaceWorkshopCatalog.gd" id="16_global_workshop_catalog"]
+
+[sub_resource type="Resource" id="AbilityShapeProfile"]
+script = ExtResource("13_ability_profile")
+profile_id = &"demo.ability_shapes"
+shape_by_ability_category = {
+"Defense": "方罐",
+"Offense": "圆罐",
+"Reconnaissance": "长条罐",
+"Support": "三角罐",
+"Utility": "六边罐"
+}
+
+[sub_resource type="Resource" id="SkillBalanceProfile"]
+script = ExtResource("14_balance_profile")
+profile_id = &"demo.skill_balance"
+
+[sub_resource type="Resource" id="RapidFireEffect"]
+script = ExtResource("15_buff_definition")
+id = &"demo.effect.rapid_fire"
+label = "脉冲超载"
+duration = 6.0
+modifiers = [{
+"stage": 1,
+"stat": &"fire_rate",
+"value": 0.75
+}]
+balance_metrics = {
+"control": 0.0,
+"coverage": 0.0,
+"power": 3.0,
+"survivability": 0.0,
+"utility": 0.0
+}
+
+[sub_resource type="Resource" id="ReconSpeedEffect"]
+script = ExtResource("15_buff_definition")
+id = &"demo.effect.recon_speed"
+label = "机动扫描"
+duration = 8.0
+modifiers = [{
+"stage": 1,
+"stat": &"speed",
+"value": 1.2
+}]
+balance_metrics = {
+"control": 0.0,
+"coverage": 0.0,
+"power": 0.0,
+"survivability": 0.0,
+"utility": 2.0
+}
+
+[sub_resource type="Resource" id="ParserDefinition"]
+script = ExtResource("5_parser_definition")
+parser_id = &"demo.parser.universal"
+display_name = "通用能量石解析器"
+production_percentage = 100
+shape_processing_rate_per_second = {
+"三角罐": 1.0,
+"六边罐": 1.0,
+"圆罐": 1.0,
+"方罐": 1.0,
+"长条罐": 1.0
+}
+progress_per_jar_by_shape = {
+"三角罐": 1.0,
+"六边罐": 1.0,
+"圆罐": 1.0,
+"方罐": 1.0,
+"长条罐": 1.0
+}
+
+[sub_resource type="Resource" id="PrecisionParserDefinition"]
+script = ExtResource("5_parser_definition")
+parser_id = &"demo.parser.precision"
+display_name = "精密能量石解析器"
+production_percentage = 90
+shape_processing_rate_per_second = {
+"三角罐": 1.0,
+"六边罐": 0.7,
+"圆罐": 1.4,
+"方罐": 1.2,
+"长条罐": 0.8
+}
+progress_per_jar_by_shape = {
+"三角罐": 1.0,
+"六边罐": 1.2,
+"圆罐": 0.8,
+"方罐": 0.9,
+"长条罐": 1.1
+}
+
+[sub_resource type="Resource" id="ParserCatalog"]
+script = ExtResource("4_parser_catalog")
+definitions = Array[ExtResource("5_parser_definition")]([SubResource("ParserDefinition"), SubResource("PrecisionParserDefinition")])
+
+[sub_resource type="Resource" id="DeviceCatalog"]
+script = ExtResource("6_device_catalog")
+
+[sub_resource type="Resource" id="ShipDefinition"]
+script = ExtResource("3_ship_definition")
+ship_id = &"demo.ship.starter"
+display_name = "巡航护卫舰"
+expected_stone_progress_per_second_by_shape = {
+"三角罐": 1.0,
+"六边罐": 1.0,
+"圆罐": 1.0,
+"方罐": 1.0,
+"长条罐": 1.0
+}
+
+[sub_resource type="Resource" id="ShipCatalog"]
+script = ExtResource("2_ship_catalog")
+definitions = Array[ExtResource("3_ship_definition")]([SubResource("ShipDefinition")])
+
+[sub_resource type="Resource" id="StarterSkill"]
+script = ExtResource("12_skill_definition")
+skill_id = &"demo.skill.rapid_fire"
+display_name = "脉冲超载"
+description = "以冷却液与多形状圆罐订单驱动短时火力强化。"
+jar_order_template_id = &"demo.offense.basic"
+jar_order_template_version = 1
+jar_cooldown_logical_milli = 12000
+primary_shape = &"圆罐"
+allowed_control_areas = Array[String](["Active"])
+effect_definition_id = &"demo.effect.rapid_fire"
+effect_parameters = {
+"durationOverride": 6.0,
+"targetKey": "player"
+}
+
+[sub_resource type="Resource" id="ReconSkill"]
+script = ExtResource("12_skill_definition")
+skill_id = &"demo.skill.recon_scan"
+display_name = "机动扫描"
+description = "通过 Core 被动订单周期维持短时机动增幅。"
+ability_category = "Reconnaissance"
+jar_order_template_id = &"demo.recon.basic"
+jar_order_template_version = 1
+jar_cooldown_logical_milli = 20000
+primary_shape = &"长条罐"
+allowed_control_areas = Array[String](["Passive"])
+effect_definition_id = &"demo.effect.recon_speed"
+effect_parameters = {
+"durationOverride": 8.0,
+"targetKey": "player"
+}
+
+[sub_resource type="Resource" id="WorkshopAlpha"]
+script = ExtResource("10_workshop_definition")
+workshop_id = &"demo.workshop.alpha"
+display_name = "均衡工作台"
+base_marks = Array[String](["圆罐", "方罐"])
+additional_marks = Array[String](["三角罐"])
+max_jars = 8
+max_liquids = 8
+liquid_staging_capacity = 8
+
+[sub_resource type="Resource" id="WorkshopBeta"]
+script = ExtResource("10_workshop_definition")
+workshop_id = &"demo.workshop.beta"
+display_name = "液体处理工作台"
+base_marks = Array[String](["圆罐", "长条罐"])
+additional_marks = Array[String](["六边罐"])
+banned_liquids = Array[String](["燃料"])
+max_jars = 6
+max_liquids = 10
+liquid_staging_capacity = 6
+
+[sub_resource type="Resource" id="GlobalWorkshopCatalog"]
+script = ExtResource("16_global_workshop_catalog")
+definitions = Array[ExtResource("10_workshop_definition")]([SubResource("WorkshopAlpha"), SubResource("WorkshopBeta")])
+
+[sub_resource type="Resource" id="OffenseOrderTemplate"]
+script = ExtResource("11_order_template")
+template_id = &"demo.offense.basic"
+order_type = "B"
+requirements = Array[Dictionary]([{
+"shape": "圆罐"
+}, {
+"shape": "圆罐"
+}, {
+"shape": "方罐"
+}, {
+"liquid": "冷却液",
+"shape": "圆罐"
+}])
+
+[sub_resource type="Resource" id="ReconOrderTemplate"]
+script = ExtResource("11_order_template")
+template_id = &"demo.recon.basic"
+requirements = Array[Dictionary]([{
+"shape": "长条罐"
+}, {
+"shape": "长条罐"
+}, {
+"liquid": "燃料",
+"shape": "长条罐"
+}])
+
+[sub_resource type="Resource" id="DemoWorld"]
+script = ExtResource("9_workshop_world")
+combination_id = &"demo.world.starter"
+display_name = "裂隙前哨规则板"
+jar_world_options = {
+"executionLogicalTimePerUnit": 1000,
+"initialLiquidStock": {
+"冷却液": 12,
+"燃料": 8
+},
+"jarFlowRatePerLogicalTime": 1.0,
+"liquidFlowRatePerLogicalTime": 1.0,
+"liquidProductionRates": {
+"冷却液": 0.2,
+"燃料": 0.1
+},
+"liquids": ["冷却液", "燃料"],
+"liquidPolarities": {"冷却液": "Cathode", "燃料": "Anode"},
+"producers": [{
+"name": "前哨合成器",
+"producerInstanceId": "demo.producer.frontier_synthesizer",
+"rates": {
+"三角罐": 0.6,
+"六边罐": 0.4,
+"圆罐": 1.0,
+"方罐": 0.8,
+"长条罐": 0.5
+}
+}],
+"shapes": ["圆罐", "方罐", "三角罐", "长条罐", "六边罐"]
+}
+core_order_templates = Array[ExtResource("11_order_template")]([SubResource("OffenseOrderTemplate"), SubResource("ReconOrderTemplate")])
+operation_cost_by_order_type = {
+"A": 1.0,
+"B": 2.0
+}
+liquid_handling_operation_cost = 0.5
+
+[sub_resource type="Resource" id="DeepFieldWorld"]
+script = ExtResource("9_workshop_world")
+combination_id = &"demo.world.deep_field"
+display_name = "深空采集规则板"
+jar_world_options = {
+"executionLogicalTimePerUnit": 1000,
+"initialLiquidStock": {
+"冷却液": 8,
+"燃料": 12
+},
+"jarFlowRatePerLogicalTime": 0.9,
+"liquidFlowRatePerLogicalTime": 1.1,
+"liquidProductionRates": {
+"冷却液": 0.1,
+"燃料": 0.2
+},
+"liquids": ["冷却液", "燃料"],
+"liquidPolarities": {"冷却液": "Cathode", "燃料": "Anode"},
+"producers": [{
+"name": "深空压缩阵列",
+"producerInstanceId": "demo.producer.deep_space_compressor",
+"rates": {
+"三角罐": 1.0,
+"六边罐": 0.6,
+"圆罐": 0.7,
+"方罐": 0.9,
+"长条罐": 0.8
+}
+}],
+"shapes": ["圆罐", "方罐", "三角罐", "长条罐", "六边罐"]
+}
+core_order_templates = Array[ExtResource("11_order_template")]([SubResource("OffenseOrderTemplate"), SubResource("ReconOrderTemplate")])
+operation_cost_by_order_type = {
+"A": 1.25,
+"B": 2.5
+}
+liquid_handling_operation_cost = 0.75
+
+[sub_resource type="Resource" id="WorkshopCatalog"]
+script = ExtResource("8_workshop_catalog")
+definitions = Array[ExtResource("9_workshop_world")]([SubResource("DemoWorld"), SubResource("DeepFieldWorld")])
+
+[resource]
+script = ExtResource("1_bundle")
+ship_catalog = SubResource("ShipCatalog")
+production_device_catalog = SubResource("DeviceCatalog")
+ore_parser_catalog = SubResource("ParserCatalog")
+workshop_combination_catalog = SubResource("WorkshopCatalog")
+workshop_catalog = SubResource("GlobalWorkshopCatalog")
+skill_definitions = Array[ExtResource("12_skill_definition")]([SubResource("StarterSkill"), SubResource("ReconSkill")])
+ability_shape_profile = SubResource("AbilityShapeProfile")
+balance_profile = SubResource("SkillBalanceProfile")
+effect_definitions = Array[ExtResource("15_buff_definition")]([SubResource("RapidFireEffect"), SubResource("ReconSpeedEffect")])

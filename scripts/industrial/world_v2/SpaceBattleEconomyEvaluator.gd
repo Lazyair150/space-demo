@@ -63,7 +63,7 @@ static func evaluate(battle: Dictionary, resources: Dictionary, skills: Array) -
 	# Consumption frees room for later production; without a time-resolved trigger schedule,
 	# cumulative supply remains an upper-bound forecast and capacity is reported separately.
 	var liquid_storage_overflow_risk := false
-	var projected_liquid_without_consumption := liquid_budget.total_supply
+	var projected_liquid_without_consumption: float = float(liquid_budget.total_supply)
 	if capacity >= 0.0:
 		liquid_storage_overflow_risk = projected_liquid_without_consumption > capacity
 

@@ -17,6 +17,7 @@ enum StackPolicy {
 ## Increment whenever the gameplay meaning or serialized behavior of this definition changes.
 @export var definition_version: int = 1
 @export var label: String = ""
+@export var display_icon: Texture2D
 @export var duration: float = 5.0
 @export var stack_policy: StackPolicy = StackPolicy.REFRESH
 @export var max_stacks: int = 1

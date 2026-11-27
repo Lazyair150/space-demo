@@ -1,68 +1,43 @@
 extends Node
 
-signal score_changed(new_score:int)
-signal wave_changed(new_wave:int)
-signal player_hp_changed(hp:int)
-signal ore_changed(amount:int)
+signal score_changed(new_score: int)
+signal wave_changed(new_wave: int)
+signal player_hp_changed(hp: int)
 signal game_over_requested
-signal materials_changed(amount:int)
-signal attack_changed(level:int, damage:int)
-signal segment_changed(label:String, wave:int)
+signal space_progression_state_changed(state: SpacePlayerProgressionState)
+signal space_campaign_progress_changed(state: SpaceCampaignProgressState)
+signal segment_changed(label: String, wave: int)
 
-const SAVE_PATH:="user://highscore.cfg"
-## 玩家钱包（矿石/材料/攻击力）的落盘位置。与最高分分开存：钱包是玩法进度，最高分是成绩。
-const WALLET_PATH:="user://player.cfg"
-## 测试开关：自动化测试会把钱包改来改去，若照常落盘就会污染玩家真实存档。
-## 测试脚本拿到 GameState 后把它设为 false。
-var persist_wallet :=true
+const SAVE_PATH := "user://highscore.cfg"
+const SPACE_PROGRESSION_SAVE_PATH := "user://space_progression.cfg"
+const SPACE_CAMPAIGN_SAVE_PATH := "user://space_campaign_progress.cfg"
 
-var score:int=0
-var wave:int=0
-## 当前段落名（参考 tiny-wizard 的"房间节奏"：每个段落回答一个问题）。
-var segment:String=""
-var high_score:int =0
-
-## 工业舱工单结算得来的强化材料：用来提升舰船攻击力。
-var materials:int = 0
-## 攻击力等级：每级 +1 点子弹伤害；0 级就是基础伤害。
-var attack_level:int = 0
-
-## 每升一级攻击力要花多少强化材料，以及上限。
-const ATTACK_COST := 3
-const MAX_ATTACK_LEVEL := 5
-## 基础子弹伤害（0 级时的伤害）。
-const BASE_DAMAGE := 1
-
-# 战斗里打碎残骸得到的矿石：投入工业舱的产线提速用。跨战斗累积，不随 reset_run 清零。
-var ore:int =0
+var score: int = 0
+var wave: int = 0
+var segment: String = ""
+var high_score: int = 0
+var space_progression_state: SpacePlayerProgressionState
+var space_campaign_progress_state: SpaceCampaignProgressState
 
 func _ready() -> void:
 	_load_high_score()
-	load_wallet()
+	_load_space_progression_state()
+	_load_space_campaign_progress_state()
 
-## 退出时落盘（autoload 退出树时触发一次）。
-func _exit_tree()->void:
-	save_wallet()
+func _load_high_score() -> void:
+	var cfg := ConfigFile.new()
+	if cfg.load(SAVE_PATH) == OK:
+		high_score = int(cfg.get_value("score", "high", 0))
 
-
-func _load_high_score()->void:
-	var cfg:=ConfigFile.new()
-	if cfg.load(SAVE_PATH)==OK:
-		high_score=int(cfg.get_value("score","high",0))
-		print("get score")
-	else :
-		print("no scorefile")
-	
-func reset_run()->void:
-	score =0
-	wave =0
-	segment =""
+func reset_run() -> void:
+	score = 0
+	wave = 0
+	segment = ""
 	score_changed.emit(score)
 	wave_changed.emit(wave)
 	segment_changed.emit(segment, wave)
 
-## Transient run state is distinct from the persistent wallet/high-score files.
-## It is captured with the Jar/Space battle checkpoint when resuming an active run.
+## Transient Space run state is captured with the coordinated battle checkpoint.
 func capture_run_state() -> Dictionary:
 	return {
 		"schemaVersion": 1,
@@ -90,113 +65,282 @@ func restore_run_state(state: Dictionary) -> bool:
 			return false
 	else:
 		var expected_segments := ["热身", "压力", "精英", "喘息"]
-		var expected_segment := String(expected_segments[(wave_value - 1) % expected_segments.size()])
-		if segment_value != expected_segment:
+		if segment_value != String(expected_segments[(wave_value - 1) % expected_segments.size()]):
 			return false
 	score = int(raw_score)
-	wave = int(raw_wave)
-	segment = String(raw_segment)
+	wave = wave_value
+	segment = segment_value
 	score_changed.emit(score)
 	wave_changed.emit(wave)
 	segment_changed.emit(segment, wave)
 	return true
 
-## 当前战斗段落名（热身/压力/精英/喘息）。由 Spawner 每波开始时设置，
-## HUD 只负责显示——段落属于战斗节奏数据，不放在界面里。
-func set_segment(label:String)->void:
-	segment =label
+func set_segment(label: String) -> void:
+	segment = label
 	segment_changed.emit(segment, wave)
 
-func add_ore(amount:int)->void:
-	if amount <= 0:
-		return
-	ore += amount
-	ore_changed.emit(ore)
-
-func spend_ore(amount:int)->bool:
-	if amount <= 0:
-		return false
-	if ore < amount:
-		return false
-	ore -= amount
-	ore_changed.emit(ore)
-	return true
-
-## 工单结算发奖：调用方负责保证"同一张工单只发一次"（账本在 IndustrialRuntime 里）。
-func add_material(amount:int)->void:
-	if amount <= 0:
-		return
-	materials += amount
-	materials_changed.emit(materials)
-
-## 当前子弹伤害：基础伤害 + 攻击力等级。
-func attack_damage()->int:
-	return BASE_DAMAGE + attack_level
-
-## 花材料升一级攻击力。材料不够或已到顶返回 false，且不改动任何数值。
-func upgrade_attack()->bool:
-	if attack_level >= MAX_ATTACK_LEVEL:
-		return false
-	if materials < ATTACK_COST:
-		return false
-	materials -= ATTACK_COST
-	attack_level += 1
-	materials_changed.emit(materials)
-	attack_changed.emit(attack_level, attack_damage())
-	return true
-
-## 把钱包落到 user://player.cfg（矿石、强化材料、攻击力等级）。
-func save_wallet()->void:
-	if not persist_wallet:
-		return
-	# 无头运行只可能是自动化测试/CI：不写玩家存档，避免把测试数值带进真实进度。
-	if DisplayServer.get_name() == "headless":
-		return
-	var cfg:=ConfigFile.new()
-	cfg.set_value("wallet","ore",ore)
-	cfg.set_value("wallet","materials",materials)
-	cfg.set_value("wallet","attack_level",attack_level)
-	cfg.save(WALLET_PATH)
-
-## 读档；读不到或字段缺失就保持当前值（新玩家=全 0），不报错不弹窗。
-func load_wallet()->void:
-	var cfg:=ConfigFile.new()
-	if cfg.load(WALLET_PATH)!=OK:
-		return
-	ore=max(0,int(cfg.get_value("wallet","ore",0)))
-	materials=max(0,int(cfg.get_value("wallet","materials",0)))
-	attack_level=clampi(int(cfg.get_value("wallet","attack_level",0)),0,MAX_ATTACK_LEVEL)
-	ore_changed.emit(ore)
-	materials_changed.emit(materials)
-	attack_changed.emit(attack_level,attack_damage())
-
-## 用存档里的数值覆盖钱包并广播（工业运行时读档时调用）。
-func apply_wallet(data:Dictionary)->void:
-	ore=max(0,int(data.get("ore",ore)))
-	materials=max(0,int(data.get("materials",materials)))
-	attack_level=clampi(int(data.get("attack_level",attack_level)),0,MAX_ATTACK_LEVEL)
-	ore_changed.emit(ore)
-	materials_changed.emit(materials)
-	attack_changed.emit(attack_level,attack_damage())
-
-func report_player_hp(hp:int)->void:
+func report_player_hp(hp: int) -> void:
 	player_hp_changed.emit(hp)
 
-func add_score(amount:int)->void:
-	score+=amount
+func add_score(amount: int) -> void:
+	score += amount
 	score_changed.emit(score)
 
-func set_wave(new_wave:int)->void:
-	wave=new_wave
+func set_wave(new_wave: int) -> void:
+	wave = new_wave
 	wave_changed.emit(wave)
 
-func report_game_over()->void:
-	if score>high_score:
-		high_score=score
+func report_game_over() -> void:
+	if score > high_score:
+		high_score = score
 		_save_high_score()
 	game_over_requested.emit()
 
-func _save_high_score()->void:
-	var cfg:=ConfigFile.new()
-	cfg.set_value("score","high",high_score)
+func _save_high_score() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value("score", "high", high_score)
 	cfg.save(SAVE_PATH)
+
+func set_space_progression_state(state: SpacePlayerProgressionState) -> bool:
+	if state == null or not state.get_validation_errors().is_empty():
+		return false
+	var candidate := SpacePlayerProgressionState.from_data(state.to_data())
+	if candidate == null or not _save_progression_candidate(candidate):
+		return false
+	if space_progression_state != null and space_progression_state.progression_changed.is_connected(_on_space_progression_changed):
+		space_progression_state.progression_changed.disconnect(_on_space_progression_changed)
+	space_progression_state = candidate
+	space_progression_state.progression_changed.connect(_on_space_progression_changed)
+	space_progression_state_changed.emit(space_progression_state)
+	return true
+
+## Commit a whole battle XP settlement against the current player aggregate.
+## Exact duplicate replays succeed without writes; stale first-time commits fail closed.
+func commit_space_progression_reward_settlement(
+	expected_state: SpacePlayerProgressionState,
+	curve_catalog: SpaceProgressionCurveCatalog,
+	settlement_id: String,
+	awards: Array
+) -> Dictionary:
+	if expected_state == null or space_progression_state == null or expected_state.player_id != space_progression_state.player_id:
+		return {"success": false, "reason": "player progression identity changed before reward settlement"}
+	var prepared := SpaceProgressionRewardService.prepare_settlement(
+		space_progression_state, curve_catalog, settlement_id, awards
+	)
+	if not bool(prepared.get("success", false)):
+		return prepared
+	if bool(prepared.get("duplicate", false)):
+		return {
+			"success": true,
+			"duplicate": true,
+			"settlementId": settlement_id,
+			"settlementFingerprint": String(prepared.get("settlementFingerprint", "")),
+			"stateRevision": space_progression_state.state_revision
+		}
+	if expected_state != space_progression_state:
+		return {"success": false, "reason": "player progression revision changed; first-time settlement must be rebased"}
+	var raw_candidate: Variant = prepared.get("candidateState", null)
+	if not (raw_candidate is SpacePlayerProgressionState):
+		return {"success": false, "reason": "reward service returned an invalid progression candidate"}
+	var candidate_state: SpacePlayerProgressionState = raw_candidate as SpacePlayerProgressionState
+	if not _save_progression_candidate(candidate_state):
+		push_error("Battle progression reward settlement was rejected because the durable save failed")
+		return {"success": false, "reason": "progression save failed; live player state was not changed"}
+	if space_progression_state.progression_changed.is_connected(_on_space_progression_changed):
+		space_progression_state.progression_changed.disconnect(_on_space_progression_changed)
+	space_progression_state = candidate_state
+	space_progression_state.progression_changed.connect(_on_space_progression_changed)
+	space_progression_state_changed.emit(space_progression_state)
+	return {
+		"success": true,
+		"duplicate": false,
+		"settlementId": settlement_id,
+		"settlementFingerprint": String(prepared.get("settlementFingerprint", "")),
+		"stateRevision": candidate_state.state_revision,
+		"updatedInstances": prepared.get("updatedInstances", []),
+		"awardedExperienceByInstance": prepared.get("awardedExperienceByInstance", {})
+	}
+
+## Reward acquisition is committed on a detached aggregate and persisted before publication.
+func acquire_space_reward_instance(
+	expected_state: SpacePlayerProgressionState,
+	instance: SpaceOwnedProgressionInstance,
+	reward_id: String
+) -> bool:
+	if expected_state == null or expected_state != space_progression_state or instance == null or reward_id.strip_edges().is_empty():
+		return false
+	var candidate := SpacePlayerProgressionState.from_data(space_progression_state.to_data())
+	if candidate == null or not candidate.unlock_and_acquire_instance(instance, reward_id):
+		return false
+	if not _save_progression_candidate(candidate):
+		push_error("Roguelike reward acquisition was rejected because the progression save failed")
+		return false
+	if space_progression_state.progression_changed.is_connected(_on_space_progression_changed):
+		space_progression_state.progression_changed.disconnect(_on_space_progression_changed)
+	space_progression_state = candidate
+	space_progression_state.progression_changed.connect(_on_space_progression_changed)
+	space_progression_state_changed.emit(space_progression_state)
+	return true
+
+func _load_space_progression_state() -> void:
+	var cfg := ConfigFile.new()
+	var load_result := cfg.load(SPACE_PROGRESSION_SAVE_PATH)
+	var backup_path := SPACE_PROGRESSION_SAVE_PATH + ".previous"
+	if load_result != OK and FileAccess.file_exists(backup_path):
+		var backup_cfg := ConfigFile.new()
+		if backup_cfg.load(backup_path) == OK:
+			var absolute_target := ProjectSettings.globalize_path(SPACE_PROGRESSION_SAVE_PATH)
+			var absolute_backup := ProjectSettings.globalize_path(backup_path)
+			if FileAccess.file_exists(SPACE_PROGRESSION_SAVE_PATH):
+				DirAccess.remove_absolute(absolute_target)
+			if DirAccess.rename_absolute(absolute_backup, absolute_target) == OK:
+				cfg = backup_cfg
+				load_result = OK
+	if load_result != OK:
+		return
+	if FileAccess.file_exists(backup_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(backup_path))
+	var pending_path := SPACE_PROGRESSION_SAVE_PATH + ".pending"
+	if FileAccess.file_exists(pending_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(pending_path))
+	var raw: Variant = cfg.get_value("progression", "state", null)
+	if not (raw is Dictionary):
+		push_warning("Space progression save is missing or malformed; no owned Hangar inventory is available")
+		return
+	var restored := SpacePlayerProgressionState.from_data(raw)
+	if restored == null:
+		push_error("Space progression save failed schema/ownership validation")
+		return
+	space_progression_state = restored
+	space_progression_state.progression_changed.connect(_on_space_progression_changed)
+	space_progression_state_changed.emit(space_progression_state)
+
+func _on_space_progression_changed(_revision: int) -> void:
+	_save_space_progression_state()
+
+func record_space_stage_clear(stage: SpaceStageDefinition, result: Dictionary, settlement_id: String) -> bool:
+	if stage == null or result.is_empty() or settlement_id.strip_edges().is_empty():
+		return false
+	var candidate := SpaceCampaignProgressState.from_data(
+		space_campaign_progress_state.to_data()
+	) if space_campaign_progress_state != null else SpaceCampaignProgressState.new()
+	if candidate == null or not candidate.record_stage_clear(stage, result, settlement_id):
+		return false
+	# Persist the detached candidate before publishing it. A disk failure must not
+	# mutate the live unlock ledger or make a retry look like a duplicate clear.
+	if not _save_campaign_progress_candidate(candidate):
+		push_error("Campaign stage clear was not committed because its durable save failed")
+		return false
+	if space_campaign_progress_state != null and space_campaign_progress_state.campaign_progress_changed.is_connected(_on_space_campaign_progress_changed):
+		space_campaign_progress_state.campaign_progress_changed.disconnect(_on_space_campaign_progress_changed)
+	space_campaign_progress_state = candidate
+	space_campaign_progress_state.campaign_progress_changed.connect(_on_space_campaign_progress_changed)
+	space_campaign_progress_changed.emit(space_campaign_progress_state)
+	return true
+
+func _load_space_campaign_progress_state() -> void:
+	var cfg := ConfigFile.new()
+	var load_result := cfg.load(SPACE_CAMPAIGN_SAVE_PATH)
+	var backup_path := SPACE_CAMPAIGN_SAVE_PATH + ".previous"
+	if load_result != OK and FileAccess.file_exists(backup_path):
+		var backup_cfg := ConfigFile.new()
+		if backup_cfg.load(backup_path) == OK:
+			var absolute_target := ProjectSettings.globalize_path(SPACE_CAMPAIGN_SAVE_PATH)
+			var absolute_backup := ProjectSettings.globalize_path(backup_path)
+			if FileAccess.file_exists(SPACE_CAMPAIGN_SAVE_PATH):
+				DirAccess.remove_absolute(absolute_target)
+			if DirAccess.rename_absolute(absolute_backup, absolute_target) == OK:
+				cfg = backup_cfg
+				load_result = OK
+	if load_result == OK and FileAccess.file_exists(backup_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(backup_path))
+	var pending_path := SPACE_CAMPAIGN_SAVE_PATH + ".pending"
+	if FileAccess.file_exists(pending_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(pending_path))
+	if load_result != OK:
+		space_campaign_progress_state = SpaceCampaignProgressState.new()
+	else:
+		var raw: Variant = cfg.get_value("campaign", "state", null)
+		if not (raw is Dictionary):
+			push_warning("Space campaign progress save is missing or malformed; campaign clears start empty")
+			space_campaign_progress_state = SpaceCampaignProgressState.new()
+		else:
+			space_campaign_progress_state = SpaceCampaignProgressState.from_data(raw)
+			if space_campaign_progress_state == null:
+				push_error("Space campaign progress save failed schema validation")
+				space_campaign_progress_state = SpaceCampaignProgressState.new()
+	space_campaign_progress_state.campaign_progress_changed.connect(_on_space_campaign_progress_changed)
+	space_campaign_progress_changed.emit(space_campaign_progress_state)
+
+func _on_space_campaign_progress_changed(_revision: int) -> void:
+	_save_space_campaign_progress_state()
+
+func _save_space_campaign_progress_state() -> bool:
+	return _save_campaign_progress_candidate(space_campaign_progress_state)
+
+func _save_campaign_progress_candidate(candidate: SpaceCampaignProgressState) -> bool:
+	if candidate == null or not candidate.get_validation_errors().is_empty():
+		return false
+	var payload := candidate.to_data()
+	if payload.is_empty():
+		return false
+	var cfg := ConfigFile.new()
+	cfg.set_value("campaign", "state", payload)
+	var pending_path := SPACE_CAMPAIGN_SAVE_PATH + ".pending"
+	if cfg.save(pending_path) != OK:
+		return false
+	var absolute_pending := ProjectSettings.globalize_path(pending_path)
+	var absolute_target := ProjectSettings.globalize_path(SPACE_CAMPAIGN_SAVE_PATH)
+	if FileAccess.file_exists(SPACE_CAMPAIGN_SAVE_PATH):
+		var backup_path := SPACE_CAMPAIGN_SAVE_PATH + ".previous"
+		var absolute_backup := ProjectSettings.globalize_path(backup_path)
+		if FileAccess.file_exists(backup_path):
+			DirAccess.remove_absolute(absolute_backup)
+		if DirAccess.rename_absolute(absolute_target, absolute_backup) != OK:
+			DirAccess.remove_absolute(absolute_pending)
+			return false
+		if DirAccess.rename_absolute(absolute_pending, absolute_target) != OK:
+			DirAccess.rename_absolute(absolute_backup, absolute_target)
+			DirAccess.remove_absolute(absolute_pending)
+			return false
+		DirAccess.remove_absolute(absolute_backup)
+		return true
+	if DirAccess.rename_absolute(absolute_pending, absolute_target) != OK:
+		DirAccess.remove_absolute(absolute_pending)
+		return false
+	return true
+
+func _save_space_progression_state() -> bool:
+	return _save_progression_candidate(space_progression_state)
+
+func _save_progression_candidate(candidate: SpacePlayerProgressionState) -> bool:
+	if candidate == null or not candidate.get_validation_errors().is_empty():
+		return false
+	var payload := candidate.to_data()
+	if payload.is_empty():
+		return false
+	var cfg := ConfigFile.new()
+	cfg.set_value("progression", "state", payload)
+	var pending_path := SPACE_PROGRESSION_SAVE_PATH + ".pending"
+	if cfg.save(pending_path) != OK:
+		return false
+	var absolute_pending := ProjectSettings.globalize_path(pending_path)
+	var absolute_target := ProjectSettings.globalize_path(SPACE_PROGRESSION_SAVE_PATH)
+	var backup_path := SPACE_PROGRESSION_SAVE_PATH + ".previous"
+	var absolute_backup := ProjectSettings.globalize_path(backup_path)
+	if FileAccess.file_exists(SPACE_PROGRESSION_SAVE_PATH):
+		if FileAccess.file_exists(backup_path):
+			DirAccess.remove_absolute(absolute_backup)
+		if DirAccess.rename_absolute(absolute_target, absolute_backup) != OK:
+			DirAccess.remove_absolute(absolute_pending)
+			return false
+		if DirAccess.rename_absolute(absolute_pending, absolute_target) != OK:
+			DirAccess.rename_absolute(absolute_backup, absolute_target)
+			DirAccess.remove_absolute(absolute_pending)
+			return false
+		DirAccess.remove_absolute(absolute_backup)
+		return true
+	if DirAccess.rename_absolute(absolute_pending, absolute_target) != OK:
+		DirAccess.remove_absolute(absolute_pending)
+		return false
+	return true

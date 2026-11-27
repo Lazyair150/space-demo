@@ -36,7 +36,7 @@ static func evaluate(
 	if benefit_score < 0.0:
 		return _failure("benefit profile contains invalid values")
 
-	var jar_count := requirements.size()
+	var jar_count: int = requirements.size()
 	var liquid_jar_count := 0
 	var shapes := {}
 	var liquids := {}

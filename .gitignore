@@ -1,7 +1,42 @@
-# Godot 4+ specific ignores
+# Godot editor/import cache and generated state
 .godot/
-/android/
+.mono/
+.export/
+export.cfg
 
-# 测试截图与本地工具配置（不入库）
-tmp/
+# Platform/export build output
+/android/
+/ios/
+build/
+dist/
+
+# Runtime logs, crash dumps, temporary files
+*.log
+*.tmp
+*.bak
+*.old
+*.dmp
+*.stackdump
+
+# Local tooling and editor settings
 .vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local tests, screenshots and scratch work
+tmp/
+TestResults/
+coverage/
+
+# Local diagnostics and profiler artifacts
+*.trace
+*.dump
+*.prof
+*.coverage
+*.coveragexml
+*.opendb
+*.sdf
+
+# Generated local work-record exports; canonical records under docs/work-records stay tracked
+docs/work-records/_local/

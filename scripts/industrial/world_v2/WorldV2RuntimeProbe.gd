@@ -48,12 +48,12 @@ func _run_command_probe() -> void:
     print("[WorldV2Probe] command probe started")
 
     # Add a deterministic one-requirement demand. Empty liquid means shape-only.
-    var demand_id: int = runtime.AddSingleRequirementDemand(
-        "圆罐",
-        "",
+    var demand_id: int = runtime.AddJarDemand(
         "A",
         "Passive",
-        0
+        0,
+        "probe.order.active-demand",
+        [{"shape": "圆罐", "liquid": ""}]
     )
     # The ID is opaque to the Godot layer; verify it by reading the snapshot instead.
 
@@ -126,7 +126,7 @@ func _run_clock_control_probe() -> void:
     # Pause must freeze both world and logical time, even though Godot keeps ticking.
     runtime.PauseWorld()
     var paused_before: Dictionary = runtime.GetWorldSnapshot()
-    await get_tree().create_timer(0.3).timeout
+    await get_tree().create_timer(0.3, true).timeout
     var paused_after: Dictionary = runtime.GetWorldSnapshot()
     assert(
         int(paused_after.get("worldTimeMilli", -1)) == int(paused_before.get("worldTimeMilli", -2)),
@@ -143,7 +143,7 @@ func _run_clock_control_probe() -> void:
     runtime.SetWorldSpeedRatio(2.0)
     var fast_before: Dictionary = runtime.GetWorldSnapshot()
     assert(int(fast_before.get("speedRatioMilli", -1)) == 2000, "2x ratio must be visible in snapshot")
-    await get_tree().create_timer(0.5).timeout
+    await get_tree().create_timer(0.5, true).timeout
     var fast_after: Dictionary = runtime.GetWorldSnapshot()
     var fast_world_delta := int(fast_after.get("worldTimeMilli", 0)) - int(fast_before.get("worldTimeMilli", 0))
     var fast_logical_delta := int(fast_after.get("logicalTimeMilli", 0)) - int(fast_before.get("logicalTimeMilli", 0))
@@ -173,6 +173,44 @@ func _run_clock_control_probe() -> void:
         " 0x_world_delta=", stopped_world_delta,
         " 0x_logical_delta=", stopped_logical_delta
     )
+
+    _run_ship_host_active_demand_probe()
+
+func _run_ship_host_active_demand_probe() -> void:
+    var host_script := load("res://scripts/industrial/world_v2/WorldV2ShipHost.cs") as Script
+    assert(host_script != null, "WorldV2ShipHost C# script resource must load")
+    var host := host_script.new() as Node
+    assert(host != null, "WorldV2ShipHost C# script must instantiate")
+    host.name = "ActiveDemandHostProbe"
+    add_child(host)
+    var initialized: bool = host.call("BeginShipWorld")
+    assert(initialized, "isolated ShipHost should initialize its sandbox world")
+
+    var selected_orders: Array = [{
+        "orderDefinitionKey": "probe.order.host-active",
+        "jarOrder": {
+            "type": "A",
+            "area": "Active",
+            "cooldownDurationLogicalMilli": 0,
+            "requirements": [{"shape": "圆罐", "liquid": ""}]
+        }
+    }]
+    var materialized: Dictionary = host.call("MaterializeSelectedOrders", selected_orders)
+    assert(bool(materialized.get("success", false)), "Host should materialize the probe Active order")
+    var demand_ids: Array = materialized.get("demandIds", [])
+    assert(demand_ids.size() == 1, "Host should return the exact materialized demand identity")
+
+    var start_result: Dictionary = host.call("StartActiveDemand", int(demand_ids[0]))
+    assert(start_result.has("success"), "Host active trigger must return a success field")
+    assert(start_result.has("reason"), "Host active trigger must return a Core reason field")
+    var snapshot: Dictionary = host.call("GetWorldSnapshot")
+    assert(snapshot.get("available", false), "Host snapshot must remain available after active trigger")
+    assert(not snapshot.get("runtimeFaulted", true), "normal active-demand rejection must not fault the Host")
+    print("[WorldV2Probe] Host active-demand boundary passed demand_id=", int(demand_ids[0]),
+        " success=", start_result.get("success", false), " reason=", start_result.get("reason", ""))
+
+    host.call("EndShipWorld")
+    host.queue_free()
 
 func _print_snapshot() -> void:
     var state: Dictionary = runtime.GetWorldSnapshot()

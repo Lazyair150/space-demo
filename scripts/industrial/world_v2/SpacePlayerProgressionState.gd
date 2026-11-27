@@ -1,0 +1,240 @@
+extends Resource
+class_name SpacePlayerProgressionState
+## Persistent player progression aggregate: unlocks and owned item instances.
+## It stores references to exact catalog versions, never copies catalog definitions as mutable state.
+
+const CURRENT_SCHEMA_VERSION := 3
+
+signal progression_changed(state_revision: int)
+
+@export var schema_version: int = CURRENT_SCHEMA_VERSION
+@export var player_id: StringName = &""
+@export var state_revision: int = 1
+@export var unlocked_definition_keys: PackedStringArray = PackedStringArray()
+@export var owned_instances: Array[SpaceOwnedProgressionInstance] = []
+## Stable receipt identities for one-time roguelike reward acquisitions. These are not XP receipts.
+@export var reward_acquisition_ids: PackedStringArray = PackedStringArray()
+## SHA-256 receipts keyed as settlement:<id> or event:<id>; prevents replay across saves.
+@export var progression_reward_receipts: Dictionary = {}
+
+func get_validation_errors() -> PackedStringArray:
+	var errors := PackedStringArray()
+	if schema_version != CURRENT_SCHEMA_VERSION:
+		errors.append("unsupported player progression schema version")
+	if player_id == &"" or state_revision <= 0:
+		errors.append("player progression identity/revision is invalid")
+	var unlocked := {}
+	for key in unlocked_definition_keys:
+		if key.strip_edges().is_empty() or unlocked.has(key):
+			errors.append("unlocked definition keys must be non-empty and unique")
+		unlocked[key] = true
+	var reward_ids := {}
+	for reward_id in reward_acquisition_ids:
+		if reward_id.strip_edges().is_empty() or reward_ids.has(reward_id):
+			errors.append("reward acquisition identities must be non-empty and unique")
+		reward_ids[reward_id] = true
+
+	for receipt_id in progression_reward_receipts:
+		var receipt_key := String(receipt_id)
+		var fingerprint: Variant = progression_reward_receipts[receipt_id]
+		if (not receipt_key.begins_with("settlement:") and not receipt_key.begins_with("event:")) or receipt_key.length() <= receipt_key.find(":") + 1:
+			errors.append("progression reward receipt identities must use settlement:<id> or event:<id>")
+		if typeof(fingerprint) != TYPE_STRING or not _is_sha256_fingerprint(String(fingerprint)):
+			errors.append("progression reward receipt fingerprints must be lowercase SHA-256 values")
+	var instances := {}
+	for instance in owned_instances:
+		if instance == null:
+			errors.append("owned instance collection cannot contain null")
+			continue
+		errors.append_array(instance.get_validation_errors())
+		var id := String(instance.instance_id)
+		if instances.has(id):
+			errors.append("owned instance IDs must be unique: " + id)
+		instances[id] = true
+		var definition_key := _definition_key(instance.item_kind, String(instance.definition_id), instance.definition_version)
+		if not unlocked.has(definition_key):
+			errors.append("owned instance definition must be unlocked: " + definition_key)
+	return errors
+
+func unlock_definition(item_kind: String, definition_id: String, definition_version: int) -> bool:
+	var key := _definition_key(item_kind, definition_id, definition_version)
+	if key.is_empty() or unlocked_definition_keys.has(key):
+		return false
+	unlocked_definition_keys.append(key)
+	state_revision += 1
+	progression_changed.emit(state_revision)
+	return true
+
+func acquire_instance(instance: SpaceOwnedProgressionInstance) -> bool:
+	if instance == null or not instance.get_validation_errors().is_empty():
+		return false
+	var key := _definition_key(instance.item_kind, String(instance.definition_id), instance.definition_version)
+	if not unlocked_definition_keys.has(key) or resolve_instance(String(instance.instance_id)) != null:
+		return false
+	owned_instances.append(instance.duplicate(true) as SpaceOwnedProgressionInstance)
+	state_revision += 1
+	progression_changed.emit(state_revision)
+	return true
+
+
+## Atomically unlock the exact definition if needed and acquire one owned copy.
+func unlock_and_acquire_instance(instance: SpaceOwnedProgressionInstance, reward_id: String = "") -> bool:
+	if instance == null or not get_validation_errors().is_empty() or not instance.get_validation_errors().is_empty():
+		return false
+	if not reward_id.is_empty() and (reward_id.strip_edges().is_empty() or reward_acquisition_ids.has(reward_id)):
+		return false
+	var definition_key := _definition_key(instance.item_kind, String(instance.definition_id), instance.definition_version)
+	if definition_key.is_empty() or resolve_instance(String(instance.instance_id)) != null:
+		return false
+	var unlocked := unlocked_definition_keys.has(definition_key)
+	if not unlocked:
+		unlocked_definition_keys.append(definition_key)
+	owned_instances.append(instance.duplicate(true) as SpaceOwnedProgressionInstance)
+	if not reward_id.is_empty():
+		reward_acquisition_ids.append(reward_id)
+	state_revision += 1
+	progression_changed.emit(state_revision)
+	return get_validation_errors().is_empty()
+
+func resolve_instance(instance_id: String) -> SpaceOwnedProgressionInstance:
+	if instance_id.strip_edges().is_empty():
+		return null
+	for instance in owned_instances:
+		if instance != null and String(instance.instance_id) == instance_id:
+			return instance.duplicate(true) as SpaceOwnedProgressionInstance
+	return null
+
+func build_owned_instance_snapshot(instance_id: String) -> Dictionary:
+	var instance := resolve_instance(instance_id)
+	return instance.build_frozen_snapshot() if instance != null else {}
+
+## Add a set of settlement/event receipts as one aggregate revision.
+## All entries are validated before the dictionary is changed.
+func record_progression_reward_receipts(receipts: Dictionary) -> bool:
+	if receipts.is_empty():
+		return false
+	var staged := {}
+	for raw_id in receipts:
+		var receipt_id := String(raw_id)
+		var fingerprint: Variant = receipts[raw_id]
+		if (not receipt_id.begins_with("settlement:") and not receipt_id.begins_with("event:")) or receipt_id.length() <= receipt_id.find(":") + 1:
+			return false
+		if typeof(fingerprint) != TYPE_STRING or not _is_sha256_fingerprint(String(fingerprint)):
+			return false
+		if progression_reward_receipts.has(receipt_id) or staged.has(receipt_id):
+			return false
+		staged[receipt_id] = String(fingerprint)
+	for receipt_id in staged:
+		progression_reward_receipts[receipt_id] = staged[receipt_id]
+	state_revision += 1
+	progression_changed.emit(state_revision)
+	return true
+
+func progression_reward_receipt_fingerprint(receipt_id: String) -> String:
+	return String(progression_reward_receipts.get(receipt_id, ""))
+
+func replace_instance_progression(updated: SpaceOwnedProgressionInstance) -> bool:
+	if updated == null or not updated.get_validation_errors().is_empty():
+		return false
+	for index in range(owned_instances.size()):
+		var current := owned_instances[index]
+		if current != null and current.instance_id == updated.instance_id:
+			if current.item_kind != updated.item_kind or current.definition_id != updated.definition_id or current.definition_version != updated.definition_version:
+				return false
+			if current.growth_curve_id != &"" and (updated.growth_curve_id != current.growth_curve_id or updated.growth_curve_version != current.growth_curve_version):
+				return false # Curve provenance is immutable after first calculation; migration needs a separate explicit transaction.
+			if current.acquisition_provenance != updated.acquisition_provenance:
+				return false # Reward/source provenance is immutable; changing it would rewrite acquisition history.
+			if updated.progression_revision != current.progression_revision + 1 or updated.level < current.level or updated.experience < current.experience:
+				return false
+			owned_instances[index] = updated.duplicate(true) as SpaceOwnedProgressionInstance
+			state_revision += 1
+			progression_changed.emit(state_revision)
+			return true
+	return false
+
+static func from_data(source: Dictionary) -> SpacePlayerProgressionState:
+	var source_schema := int(source.get("schemaVersion", 0))
+	if source_schema not in [1, 2, CURRENT_SCHEMA_VERSION]:
+		return null
+	var state := SpacePlayerProgressionState.new()
+	state.schema_version = CURRENT_SCHEMA_VERSION
+	state.player_id = StringName(source.get("playerId", ""))
+	state.state_revision = int(source.get("stateRevision", 0))
+	var raw_unlocks: Variant = source.get("unlockedDefinitionKeys", null)
+	var raw_instances: Variant = source.get("ownedInstances", null)
+	var raw_reward_ids: Variant = source.get("rewardAcquisitionIds", []) if source_schema >= 2 else []
+	var raw_progression_receipts: Variant = source.get("progressionRewardReceipts", {}) if source_schema >= 3 else {}
+	if not (raw_unlocks is Array) or not (raw_instances is Array) or not (raw_reward_ids is Array) or not (raw_progression_receipts is Dictionary):
+		return null
+	for raw_key in raw_unlocks:
+		if not (raw_key is String):
+			return null
+		state.unlocked_definition_keys.append(raw_key)
+	for raw_reward_id in raw_reward_ids:
+		if typeof(raw_reward_id) != TYPE_STRING:
+			return null
+		state.reward_acquisition_ids.append(String(raw_reward_id))
+	for raw_receipt_id in raw_progression_receipts:
+		if typeof(raw_receipt_id) != TYPE_STRING or typeof(raw_progression_receipts[raw_receipt_id]) != TYPE_STRING:
+			return null
+		state.progression_reward_receipts[String(raw_receipt_id)] = String(raw_progression_receipts[raw_receipt_id])
+	for raw_instance in raw_instances:
+		if not (raw_instance is Dictionary):
+			return null
+		var instance := SpaceOwnedProgressionInstance.new()
+		instance.instance_id = StringName(raw_instance.get("instanceId", ""))
+		instance.item_kind = String(raw_instance.get("itemKind", ""))
+		instance.definition_id = StringName(raw_instance.get("definitionId", ""))
+		instance.definition_version = int(raw_instance.get("definitionVersion", 0))
+		instance.level = int(raw_instance.get("level", 0))
+		instance.experience = int(raw_instance.get("experience", -1))
+		instance.progression_revision = int(raw_instance.get("progressionRevision", 0))
+		instance.growth_curve_id = StringName(raw_instance.get("growthCurveId", ""))
+		instance.growth_curve_version = int(raw_instance.get("growthCurveVersion", 0))
+		var growth: Variant = raw_instance.get("growthAttributes", null)
+		var provenance: Variant = raw_instance.get("acquisitionProvenance", {})
+		if not (growth is Dictionary) or not (provenance is Dictionary):
+			return null
+		instance.growth_attributes = growth.duplicate(true)
+		instance.acquisition_provenance = provenance.duplicate(true)
+		# Migrate the earlier roguelike reward payload out of growth attributes.
+		# Subsystem composers intentionally reject foreign growth keys.
+		if instance.growth_attributes.has("roguelike"):
+			var legacy_provenance: Variant = instance.growth_attributes.get("roguelike")
+			if not (legacy_provenance is Dictionary) or not instance.acquisition_provenance.is_empty():
+				return null
+			instance.acquisition_provenance = legacy_provenance.duplicate(true)
+			instance.growth_attributes.erase("roguelike")
+		state.owned_instances.append(instance)
+	if not state.get_validation_errors().is_empty():
+		return null
+	return state
+
+func to_data() -> Dictionary:
+	var instances: Array[Dictionary] = []
+	for instance in owned_instances:
+		if instance != null:
+			instances.append(instance.build_frozen_snapshot())
+	return {
+		"schemaVersion": schema_version,
+		"playerId": String(player_id),
+		"stateRevision": state_revision,
+		"unlockedDefinitionKeys": Array(unlocked_definition_keys),
+		"ownedInstances": instances,
+		"rewardAcquisitionIds": Array(reward_acquisition_ids),
+		"progressionRewardReceipts": progression_reward_receipts.duplicate(true)
+	}
+
+static func _definition_key(item_kind: String, definition_id: String, version: int) -> String:
+	if not SpaceOwnedProgressionInstance.ITEM_KINDS.has(item_kind) or definition_id.strip_edges().is_empty() or version <= 0:
+		return ""
+	return "%s:%s@%d" % [item_kind, definition_id, version]
+
+static func _is_sha256_fingerprint(value: String) -> bool:
+	if value.length() != 64:
+		return false
+	for character in value:
+		if not "0123456789abcdef".contains(character):
+			return false
+	return true

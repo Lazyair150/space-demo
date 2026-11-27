@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="SpaceStageCatalog" load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/stages/SpaceStageCatalog.gd" id="1"]
+[ext_resource type="Resource" path="res://data/stages/campaign_01/01_drift_perimeter.tres" id="2"]
+[ext_resource type="Resource" path="res://data/stages/campaign_01/02_signal_interference.tres" id="3"]
+[ext_resource type="Resource" path="res://data/stages/campaign_01/03_ore_convoy.tres" id="4"]
+[ext_resource type="Resource" path="res://data/stages/campaign_01/04_broken_relay.tres" id="5"]
+[ext_resource type="Resource" path="res://data/stages/campaign_01/05_warden_of_the_rift.tres" id="6"]
+[ext_resource type="Script" path="res://scripts/stages/SpaceStageDefinition.gd" id="7"]
+
+[resource]
+script = ExtResource("1")
+definitions = Array[ExtResource("7")]([ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6")])

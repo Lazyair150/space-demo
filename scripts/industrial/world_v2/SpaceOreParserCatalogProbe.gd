@@ -73,6 +73,7 @@ static func run() -> Dictionary:
 		"jarWorldOptions": {
 			"shapes": ["圆罐", "方罐"],
 			"liquids": ["酒", "蜜"],
+			"liquidPolarities": {"酒": "Cathode", "蜜": "Anode"},
 			"producers": [],
 			"workshops": [{
 				"name": "主台",
@@ -81,12 +82,20 @@ static func run() -> Dictionary:
 				"ban": [],
 				"maxJars": 10,
 				"maxLiquids": 10
+			}, {
+				"name": "从台",
+				"baseMarks": [],
+				"additionalMarks": [],
+				"ban": [],
+				"maxJars": 10,
+				"maxLiquids": 10
 			}],
-			"masterWorkshopName": "主台"
+			"masterWorkshopName": "主台",
+			"slaveWorkshopName": "从台"
 		},
 		"selectedOrderBindings": []
 	}
-	var frozen_loadout := SpaceBattleLoadoutSnapshot.create_with_ore_parser(
+	var frozen_loadout: SpaceBattleLoadoutSnapshot = SpaceBattleLoadoutSnapshot.create_with_ore_parser(
 		loadout_source, catalog, "probe-universal-parser", 3, "parser-slot"
 	)
 	if frozen_loadout == null:
@@ -104,7 +113,7 @@ static func run() -> Dictionary:
 	next_version.progress_per_jar_by_shape = {"圆罐": 4.0, "方罐": 2.5}
 	if not catalog.register_definition(next_version):
 		return _failure("catalog rejected a new immutable parser definition version")
-	var next_loadout := SpaceBattleLoadoutSnapshot.create_with_ore_parser(
+	var next_loadout: SpaceBattleLoadoutSnapshot = SpaceBattleLoadoutSnapshot.create_with_ore_parser(
 		loadout_source, catalog, "probe-universal-parser", 4, "parser-slot"
 	)
 	if next_loadout == null or next_loadout.loadout_fingerprint() == frozen_loadout.loadout_fingerprint():

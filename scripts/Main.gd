@@ -1,5 +1,5 @@
 extends Node
 
 func _ready() -> void:
-	get_tree().change_scene_to_file.call_deferred("res://scenes/menus/MainMenu.tscn")
+	GameFlow.call_deferred("request_scene_transition", GameFlow.Screen.MENU, "res://scenes/menus/MainMenu.tscn")
 	

@@ -2,17 +2,17 @@
 
 ## Why this phase starts here
 
-The Jar System's World V2 resource/execution lifecycle is now sufficiently specified to serve as an independent domain. The next task is not to wire its API into the old Space UI. It is to decide what the Jar world means inside the Space game, which system owns each state, and which events cross the boundary.
+The Jar System's World V2 resource/execution lifecycle is an independent domain hosted inside the player's Space ship. This document records the settled ownership boundary and the current integration contract; it is no longer a proposal to begin the integration. Open balance, content-authoring, and future UI questions remain explicitly separate from the implemented runtime boundary.
 
-This document is a design entry point, not an implementation claim. It deliberately leaves unresolved gameplay rules unresolved.
+Current playable entry path: Main Menu → Hangar → immutable owned-instance loadout → Battle. The Hangar/launcher path, World V2 host lifecycle, parser ingress, event/effect boundary, and snapshot isolation have been implemented. The current demo catalog is sufficient for a local prototype session; it is not final production content.
 
 ## Current repository facts
 
 - Space already contains an isolated World V2 RuntimeNode and a Godot Bridge consumer path for initialization, logical-time advancement, commands, snapshots, fault handling, and disposal.
-- The current main industrial scene and the IndustrialRuntime autoload still point to the legacy industrial implementation. The World V2 Runtime is not yet the production consumer of the actual industrial UI.
-- World V2 commands and snapshots have been exercised by isolated probes; those probes do not establish the final player-facing semantics.
-- The legacy industrial loop has old order completion, reward/material, wallet, save, and combat-upgrade relationships. These are historical behavior, not approved migration requirements.
-- The old Jar module may be removed as a whole after the new domain integration is defined. It must not be treated as the implementation target for World V2.
+- The legacy turn-based IndustrialMain scene, IndustrialRuntime autoload, legacy JarCoreBridge, old industrial UI, old industrial sandbox/tradeoff worlds, and their legacy tests have been removed from this branch. WorldV2ShipHost is the only supported Jar host.
+- World V2 commands, snapshots, parser ingress, Hangar board/assignment, owned-instance projection, runtime lifecycle, fault handling, disposed/faulted commands, and snapshot isolation passed the cross-repository integration run `45438436612` at Space `74a93ed` against Core `b342259`. This verifies the integration boundary, not final balance/content authoring or the complete production battle save/load coordinator.
+- The legacy industrial loop had old order completion, reward/material, wallet, save, and combat-upgrade relationships. These are historical behavior, not approved migration requirements; they must not be reintroduced merely to make the new prototype feel complete.
+- The old Jar client implementation is retired. Its reward/material/wallet/attack-upgrade semantics were not migrated; the old player wallet coupling has also been removed from the Space runtime.
 
 ## Stable Jar-side contract
 
@@ -135,7 +135,7 @@ No direct references from Jar Core to Godot nodes or Space scripts are allowed.
 6. A save/restore transaction design covering partial failure and active execution checkpoints.
 7. A migration plan that replaces the legacy industrial consumer without carrying forward unapproved legacy semantics.
 
-Only after these artifacts are approved should the production scene, autoload, and player-facing UI be migrated from legacy IndustrialRuntime to the new World V2 Runtime.
+The production entry and player-facing Hangar still need to be wired to the frozen World V2 loadout flow. No legacy IndustrialRuntime fallback is permitted.
 
 ## Explicit non-goals for the first integration pass
 
@@ -143,4 +143,4 @@ Only after these artifacts are approved should the production scene, autoload, a
 - No direct Jar-to-Player/Enemy/health/damage/score mutation. Space may apply effects triggered by successful Jar order-cycle events.
 - No automatic conversion of combat drops into liquid without an approved resource mapping.
 - No attempt to make the Jar world responsible for Space mission success/failure.
-- No deletion of the legacy implementation until the replacement flow and save compatibility policy are agreed.
+- Legacy industrial code and its save/reward path are retired. Existing old wallet files are ignored; no automatic migration of ore/material/attack-upgrade values is performed.

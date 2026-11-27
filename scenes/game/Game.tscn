@@ -1,13 +1,17 @@
 [gd_scene format=3 uid="uid://0pkv3cfo4k8l"]
 
 [ext_resource type="Script" uid="uid://b4q1bilsecymx" path="res://scripts/Game.gd" id="1_m44fu"]
+[ext_resource type="Script" path="res://scripts/industrial/ui/SpaceJarHudObserver.gd" id="18_jar_observer"]
 [ext_resource type="PackedScene" uid="uid://68ujyqxv1j63" path="res://scenes/actors/Asteroid.tscn" id="2_7qcb4"]
 [ext_resource type="Texture2D" uid="uid://1qn42mk3gp6f" path="res://assets/sprites/bg.svg" id="2_vrspl"]
 [ext_resource type="PackedScene" uid="uid://x8pdj8wbeybg" path="res://scenes/actors/Player.tscn" id="3_vrspl"]
 [ext_resource type="PackedScene" uid="uid://d33svcgjaffdv" path="res://scenes/actors/EnemyShooter.tscn" id="5_365ku"]
 [ext_resource type="PackedScene" uid="uid://b012awswm6uk7" path="res://scenes/actors/EnemyChaser.tscn" id="6_gg4pt"]
+[ext_resource type="PackedScene" path="res://scenes/actors/SpaceStageBoss.tscn" id="16_stage_boss"]
 [ext_resource type="PackedScene" uid="uid://bmar716cbuob6" path="res://scenes/ui/HUD.tscn" id="7_gg4pt"]
 [ext_resource type="Script" uid="uid://dnxrwdiunwvuh" path="res://scripts/Spawner.gd" id="8_wnrko"]
+[ext_resource type="Script" path="res://scripts/industrial/world_v2/SpaceBattlePauseController.gd" id="15_pause"]
+[ext_resource type="Resource" path="res://data/hangar/demo_energy_stone_drops.tres" id="17_demo_stones"]
 [ext_resource type="PackedScene" path="res://scenes/pickups/BuffPickup.tscn" id="9_pickup"]
 [ext_resource type="Resource" path="res://data/effects/haste.tres" id="10_haste"]
 [ext_resource type="Resource" path="res://data/effects/attack_boost.tres" id="11_boost"]
@@ -71,8 +75,24 @@ offset = Vector2(640, 360)
 script = ExtResource("8_wnrko")
 shooter_scene = ExtResource("5_365ku")
 chaser_scene = ExtResource("6_gg4pt")
+boss_scene = ExtResource("16_stage_boss")
 pickup_scene = ExtResource("9_pickup")
 pickup_chance = 0.3
 pickup_effects = [ExtResource("10_haste"), ExtResource("11_boost"), ExtResource("12_poison"), ExtResource("13_aim"), ExtResource("14_lifesteal")]
+energy_stone_drop_profile = ExtResource("17_demo_stones")
+
+[node name="PauseController" type="CanvasLayer" parent="."]
+process_mode = 3
+script = ExtResource("15_pause")
 
 [editable path="Arena/Player"]
+
+[node name="JarObserver" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("18_jar_observer")

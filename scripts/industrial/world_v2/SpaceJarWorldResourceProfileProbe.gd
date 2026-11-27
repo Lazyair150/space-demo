@@ -9,10 +9,13 @@ static func run() -> Dictionary:
 	profile.world_options = {
 		"shapes": ["round", "square"],
 		"liquids": ["water", "oil"],
-		"producers": [{"name": "legacy-producer", "rates": {"round": 0.0, "square": 0.0}}],
+		"liquidPolarities": {"water": "Cathode", "oil": "Anode"},
+		"producers": [{"name": "probe-producer", "producerInstanceId": "probe.producer.primary", "rates": {"round": 0.0, "square": 0.0}}],
 		"liquidProductionRates": {"water": 0.25, "oil": 0.0},
 		"initialLiquidStock": {"water": 3, "oil": 1},
 		"shipLiquidCapacity": 8,
+		"jarFlowRatePerLogicalTime": 1.0,
+		"liquidFlowRatePerLogicalTime": 1.0,
 		"workshops": [
 			{"name": "master", "baseMarks": ["round", "square"], "additionalMarks": [], "ban": [], "maxJars": 8, "maxLiquids": 8, "liquidStagingCapacity": 6},
 			{"name": "slave", "baseMarks": ["round", "square"], "additionalMarks": [], "ban": [], "maxJars": 8, "maxLiquids": 8, "liquidStagingCapacity": 6}
@@ -23,6 +26,13 @@ static func run() -> Dictionary:
 	}
 	if not profile.is_valid():
 		return {"passed": false, "reason": "; ".join(profile.get_validation_errors())}
+	var mapping: Dictionary = profile.world_options.liquidPolarities
+	if String(mapping.get("water", "")) != "Cathode" or String(mapping.get("oil", "")) != "Anode":
+		return {"passed": false, "reason": "World liquid polarity mapping was not preserved"}
+	var missing_mapping := profile.duplicate(true) as SpaceJarWorldResourceProfile
+	missing_mapping.world_options.erase("liquidPolarities")
+	if missing_mapping.get_validation_errors().is_empty():
+		return {"passed": false, "reason": "custom liquid identities were accepted without explicit polarity mapping"}
 	var forecast := profile.build_liquid_economy_resources()
 	if int(forecast.liquidInventoryCapacity) != 8 or int(forecast.initialLiquids.water) != 3:
 		return {"passed": false, "reason": "Jar liquid stock/capacity did not materialize"}
@@ -32,6 +42,19 @@ static func run() -> Dictionary:
 	invalid.world_options.initialLiquidStock = {"water": 8, "oil": 1}
 	if invalid.is_valid():
 		return {"passed": false, "reason": "shared liquid inventory capacity overflow was accepted"}
+
+	var missing_id := profile.duplicate(true) as SpaceJarWorldResourceProfile
+	missing_id.world_options.producers[0].erase("producerInstanceId")
+	if missing_id.is_valid():
+		return {"passed": false, "reason": "Core Producer without stable identity was accepted"}
+	var duplicate_id := profile.duplicate(true) as SpaceJarWorldResourceProfile
+	duplicate_id.world_options.producers.append({
+		"name": "other-producer",
+		"producerInstanceId": "probe.producer.primary",
+		"rates": {"round": 0.0}
+	})
+	if duplicate_id.is_valid():
+		return {"passed": false, "reason": "duplicate Core Producer identity was accepted"}
 	return {
 		"passed": true,
 		"profileId": String(profile.profile_id),

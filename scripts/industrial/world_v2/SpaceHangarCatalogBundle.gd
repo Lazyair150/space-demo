@@ -6,9 +6,12 @@ var ship_catalog: SpaceShipCatalog
 var production_device_catalog: SpaceProductionDeviceCatalog
 var ore_parser_catalog: SpaceOreParserCatalog
 var workshop_combination_catalog: SpaceWorkshopCombinationCatalog
+var workshop_catalog: SpaceWorkshopCatalog
 var skill_catalog: SpaceSkillCatalog
 var balance_profile: SpaceSkillBalanceProfile
 var effect_catalog: SpaceEffectCatalog
+var progression_reward_profile: SpaceProgressionRewardProfile
+var progression_curve_catalog: SpaceProgressionCurveCatalog
 
 static func create(
 	ships: SpaceShipCatalog,
@@ -17,16 +20,22 @@ static func create(
 	workshops: SpaceWorkshopCombinationCatalog,
 	skills: SpaceSkillCatalog,
 	balance: SpaceSkillBalanceProfile,
-	effects: SpaceEffectCatalog
+	effects: SpaceEffectCatalog,
+	global_workshops: SpaceWorkshopCatalog = null,
+	reward_profile: SpaceProgressionRewardProfile = null,
+	curve_catalog: SpaceProgressionCurveCatalog = null
 ) -> SpaceHangarCatalogBundle:
 	var bundle := SpaceHangarCatalogBundle.new()
 	bundle.ship_catalog = ships
 	bundle.production_device_catalog = devices
 	bundle.ore_parser_catalog = parsers
 	bundle.workshop_combination_catalog = workshops
+	bundle.workshop_catalog = global_workshops
 	bundle.skill_catalog = skills
 	bundle.balance_profile = balance
 	bundle.effect_catalog = effects
+	bundle.progression_reward_profile = reward_profile
+	bundle.progression_curve_catalog = curve_catalog
 	return bundle
 
 func validate_and_prepare() -> PackedStringArray:
@@ -37,9 +46,20 @@ func validate_and_prepare() -> PackedStringArray:
 	elif not production_device_catalog.rebuild_index(): errors.append("production device catalog index is invalid")
 	if ore_parser_catalog == null: errors.append("ore parser catalog is missing")
 	elif not ore_parser_catalog.rebuild_index(): errors.append("ore parser catalog index is invalid")
-	if workshop_combination_catalog == null: errors.append("workshop combination catalog is missing")
-	elif not workshop_combination_catalog.rebuild_index(): errors.append("workshop combination catalog index is invalid")
+	if workshop_combination_catalog == null: errors.append("World V2 rules profile catalog is missing")
+	elif not workshop_combination_catalog.rebuild_index(): errors.append("World V2 rules profile index is invalid")
+	if workshop_catalog == null: errors.append("global workshop component catalog is missing")
+	elif not workshop_catalog.is_valid(): errors.append("global workshop component catalog is invalid")
 	if skill_catalog == null: errors.append("skill catalog is missing")
+	elif skill_catalog.is_empty(): errors.append("skill catalog has no authored definitions")
 	if balance_profile == null or not balance_profile.is_valid(): errors.append("skill balance profile is missing or invalid")
 	if effect_catalog == null: errors.append("effect catalog is missing")
+	elif effect_catalog.is_empty(): errors.append("effect catalog has no authored definitions")
+	if (progression_reward_profile == null) != (progression_curve_catalog == null):
+		errors.append("progression reward recovery requires both policy and curve catalogs")
+	elif progression_reward_profile != null:
+		if not progression_reward_profile.is_valid():
+			errors.append("progression reward profile is invalid")
+		if not progression_curve_catalog.rebuild_index() or progression_curve_catalog.definition_count() == 0:
+			errors.append("progression curve catalog is invalid or empty")
 	return errors
