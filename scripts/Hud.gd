@@ -60,9 +60,11 @@ func _build_combat_feedback_ui() -> void:
 	_buff_label.add_theme_font_size_override("font_size", 18)
 	_buff_label.add_theme_color_override("font_color", Color(0.62, 0.86, 0.95))
 	_buff_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_buff_label.anchor_right = 0.48
 	_buff_label.offset_left = 20.0
 	_buff_label.offset_top = -62.0
-	_buff_label.offset_right = 640.0
+	_buff_label.offset_right = -24.0
+	_buff_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_buff_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(_buff_label)
 
