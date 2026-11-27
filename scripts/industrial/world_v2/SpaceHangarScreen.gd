@@ -274,6 +274,16 @@ func _build_stage_section(root: VBoxContainer) -> void:
 func _refresh_stage_picker() -> void:
 	if not is_instance_valid(_stage_picker):
 		return
+	# Progress notifications may rebuild the picker. Keep the same exact stage
+	# version selected when possible; on first entry choose the first unlocked
+	# campaign stage so the finite encounter director is exercised by default.
+	var preferred_stage_key := ""
+	if _selected_stage != null:
+		preferred_stage_key = "%s@%d" % [String(_selected_stage.stage_id), _selected_stage.definition_version]
+	elif _stage_picker.selected >= 0 and _stage_picker.selected < _stage_picker.item_count:
+		var previous_metadata: Variant = _stage_picker.get_item_metadata(_stage_picker.selected)
+		if previous_metadata is Dictionary and not previous_metadata.is_empty():
+			preferred_stage_key = "%s@%d" % [String(previous_metadata.get("stageId", "")), int(previous_metadata.get("version", 0))]
 	_stage_picker.allow_reselect = true
 	_stage_picker.clear()
 	_selected_stage = null
@@ -282,14 +292,12 @@ func _refresh_stage_picker() -> void:
 		_stage_picker.set_item_disabled(0, true)
 		_stage_info_label.text = "关卡数据不可用；请为 Hangar 配置版本化的 SpaceStageCatalog。"
 		return
-	_stage_picker.add_item("自由战斗 · 无关卡目标")
-	_stage_picker.set_item_metadata(0, {})
-	_stage_picker.select(0)
-	_stage_info_label.text = "自由战斗：保留无尽战斗循环，不启用有限关卡结算。"
 	var cleared: Array = []
 	if GameState.space_campaign_progress_state != null:
 		cleared = GameState.space_campaign_progress_state.cleared_stage_keys()
 	var stages := stage_catalog.stages_for_campaign(campaign_id)
+	var first_unlocked_index := -1
+	var preferred_index := -1
 	for stage in stages:
 		var unlocked := stage_catalog.is_unlocked(stage, cleared)
 		var prefix := "" if unlocked else "🔒 "
@@ -298,8 +306,19 @@ func _refresh_stage_picker() -> void:
 		_stage_picker.set_item_metadata(item_index, {"stageId": String(stage.stage_id), "version": stage.definition_version})
 		if not unlocked:
 			_stage_picker.set_item_disabled(item_index, true)
-	if stages.is_empty():
-		_stage_info_label.text += "\\n当前战役没有可挑战关卡。"
+			continue
+		if first_unlocked_index < 0:
+			first_unlocked_index = item_index
+		if ("%s@%d" % [String(stage.stage_id), stage.definition_version]) == preferred_stage_key:
+			preferred_index = item_index
+	var free_combat_index := _stage_picker.item_count
+	_stage_picker.add_item("自由战斗 · 无尽模式")
+	_stage_picker.set_item_metadata(free_combat_index, {})
+	var selected_index := preferred_index if preferred_index >= 0 else first_unlocked_index
+	if selected_index < 0:
+		selected_index = free_combat_index
+	_stage_picker.select(selected_index)
+	_on_stage_selected(selected_index)
 
 
 func _on_stage_selected(index: int) -> void:
