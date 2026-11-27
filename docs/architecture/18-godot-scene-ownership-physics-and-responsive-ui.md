@@ -153,3 +153,14 @@ A successful Headless import/build is not a substitute for desktop GUI acceptanc
 
 
 The player-death route also replaces current_scene with GameOver while Game remains a root child. The death transition now queues the same Game owner for deletion after GameFlow accepts the GameOver scene. This makes root-level battle disposal apply to both player-requested Menu return and terminal GameOver navigation.
+
+
+## 9. CI evidence and limits (2026-11-27)
+
+The active Space PR head d40da2af81a7de7633d1c5b421e8ee70907898cb passed cross-repository integration run 45937110830 against exact Core PR #63 head 116c0bb7e3589a2850bf1b85f6da4c48de8c0a28.
+
+The run built the Core World V2 Bridge and Space C# project, imported/parsing the Godot 4.7.1 project, and passed the Parser/Core, World V2, battle navigation and lifecycle probes. The battle navigation probe verified both rejected-transition rollback and a successful Main Menu transition while deleting a separate root-level battle-owner fixture.
+
+The energy-stone parser probe verifies pickup identity/receipt handling by calling the adapter callback with a synthetic player. It does not yet validate an actual physics overlap between the production player collision body and the Area2D. Similarly, the pause test uses a minimal root-level owner fixture to verify controller delegation; a production-Game-with-stub-Host lifecycle test remains a stronger next step.
+
+CI does not validate GPU rendering, window resizing, mouse hit-target clipping, desktop focus changes or visual overlap. These remain manual desktop checks at 1280×720, 1024×768, 1600×900 and 800×600. A CI pass must not be reported as GUI acceptance.
