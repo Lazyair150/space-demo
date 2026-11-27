@@ -126,6 +126,6 @@ World 的液体词汇不是只有 `liquids` 名称数组，而是不可拆分的
 - Reward Coordinator 已接入 Hangar 可选恢复入口；demo 资源包尚未配置正式 Reward Profile / Curve Catalog，因此不会在未定义 XP 平衡的情况下自动发放成长奖励。
 
 
-## 10. Sandbox entry is opt-in
+## 12. Sandbox entry is opt-in
 
 The production Game scene must not enter a Sandbox World when no frozen Owned Loadout was injected. `Game.allow_sandbox_world_for_development` therefore defaults to `false`. A developer-only fixture may explicitly opt in when it is intentionally testing Sandbox behavior; Hangar production launch must always supply the immutable Owned Loadout snapshot. Do not turn this flag on to work around a failed Core initialization or missing Hangar configuration.
