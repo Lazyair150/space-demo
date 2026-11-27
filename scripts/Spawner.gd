@@ -378,8 +378,18 @@ func _on_enemy_died(at:Vector2)->void:
 	var pickup := pickup_scene.instantiate()
 	pickup.set("buff_definition", pickup_effects[randi() % pickup_effects.size()])
 	pickup.set("tint", _pickup_tint(pickup.get("buff_definition")))
-	pickup.position = at
+	call_deferred("_attach_buff_pickup", pickup, arena, at)
+
+## Physics callbacks may run while PhysicsServer2D is flushing queries. Defer
+## SceneTree insertion so Area2D monitoring is registered in a safe idle phase.
+func _attach_buff_pickup(pickup: Node2D, arena: Node2D, world_position: Vector2) -> void:
+	if not is_instance_valid(pickup):
+		return
+	if not is_inside_tree() or not is_instance_valid(arena) or not arena.is_inside_tree():
+		pickup.free()
+		return
 	arena.add_child(pickup)
+	pickup.global_position = world_position
 
 ## Enemy death is a single event, but Buff capsules and energy stones are independent
 ## resource channels. Absence of one channel must never suppress the other.
