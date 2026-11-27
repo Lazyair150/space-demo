@@ -194,3 +194,49 @@ Schema-v3 SpaceBattleEffectStateStore snapshots are now validated as one cross-d
 - This preserves the intended outbox handoff: Space writes the effect state, next dispatcher state, and a Jar checkpoint that may still contain the event in its outbox as one replaceable snapshot; only after the durable write succeeds does the live dispatcher acknowledge the Jar event. If a crash occurs before acknowledgement, restore sees the already-processed event and acknowledges it without reapplying the effect.
 
 SpaceBattleEffectStateStoreProbe now covers mismatched event ledgers, wrong frozen-loadout identity, and non-canonical Jar event IDs in addition to incomplete runtime state. The probe is committed but has not been executed in Godot.
+
+
+## 12. 2026-11-27 root-level battle ownership correction
+
+The Hangar launcher intentionally attaches the configured Game instance to /root before hiding Hangar. Therefore, during combat:
+
+- SceneTree.current_scene remains the Hangar scene.
+- /root/Game is a separate root child and owns Arena, actors, HUD, PauseController, the battle parser and the battle's Space/Jar composition.
+- GameFlow.return_to_menu() replaces only current_scene; it cannot implicitly remove the separately attached Game root child.
+
+This distinction is now an explicit ownership contract. Game.end_battle_for_menu() performs the idempotent Host/battle shutdown, asks GameFlow to accept the Main Menu transition, then calls queue_free() on the root-level Game owner. Both normal pause-menu exit and fault-retry exit delegate to this method. A menu transition must never bypass Game and leave the combat composition root alive.
+
+Energy-stone pickups are children of Game and resolve ingest_energy_stone by walking their ancestor chain. They must not query SceneTree.current_scene for their resource owner, because current_scene is Hangar during this embedded-battle arrangement.
+
+## 13. Physics callback mutation boundary
+
+An enemy can die synchronously from PlayerBullet.body_entered. That callback chain may reach Spawner while PhysicsServer2D is flushing overlap queries. Creating an Area2D is allowed as a detached object; adding it to a live physics space and activating its monitoring state must happen after the current callback/physics flush.
+
+- BuffPickup insertion from Spawner._on_enemy_died is deferred.
+- Typed energy-stone insertion from Game.spawn_energy_stone_drop is deferred.
+- The deferred attachment helpers verify the battle/arena is still alive before inserting the pickup.
+- Drop identity, type, volume, and RNG decision remain allocated at the death event; only SceneTree attachment is deferred.
+
+Do not replace this with a blanket set_deferred("monitoring", false) workaround. The primary invariant is to defer the physical Area2D's insertion until the physics query phase has ended.
+
+## 14. Responsive combat HUD contract
+
+The project already uses canvas_items plus expand, which is a valid Godot 2D baseline. That setting does not make arbitrary fixed offsets responsive. HUD anchors and the relationship between neighboring docks must still be defined.
+
+The combat HUD now follows these rules:
+
+- Score/wave remains top-left; heart display is anchored top-right rather than pinned to the old 1280px coordinate.
+- The Jar resource strip reserves the passive-order rail and uses a horizontal ScrollContainer when the available width is insufficient.
+- Passive and active order docks remain attached to the viewport's right/bottom edges and size against the viewport width.
+- Buff/status feedback is confined to the left region, leaving the active-order dock its own region.
+- The expandable Jar detail panel is constrained by the current viewport size.
+
+The target acceptance sizes are 1280×720, 1024×768, 1600×900 and a narrow 800×600 window. A real desktop resize pass is still required; layout source changes are not visual acceptance evidence.
+
+## 15. Campaign director activation
+
+SpaceStageEncounterDirector is the finite authored encounter scheduler, not a cinematic/camera director. It is configured on Game before tree attachment and read by Spawner. The free-combat path has no finite stage director by design.
+
+The Hangar stage picker previously selected Free Combat at index 0 on every entry, so the documented first-unlocked campaign stage was silently bypassed unless the player manually changed the picker. The picker now chooses the first unlocked exact stage version on first entry, preserves an existing exact selection across campaign-progress refreshes, and keeps Free Combat as an explicit final option.
+
+A cinematic director (cutscene sequence, camera cues, authored dialogue/audio and skippable timeline) is not currently present. Do not overload the encounter scheduler with that responsibility. Reuse Godot AnimationPlayer/AnimationTree, Camera2D, Tween and audio nodes for authored presentation before considering a custom timeline runtime.
