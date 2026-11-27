@@ -916,7 +916,11 @@ func _on_player_died()->void:
 	_shutdown_battle(false, "player died")
 	GameState.report_game_over()
 	await get_tree().create_timer(1.0, false).timeout
-	GameFlow.request_scene_transition(GameFlow.Screen.GAME_OVER, "res://scenes/menus/GameOver.tscn")
+	if GameFlow.request_scene_transition(GameFlow.Screen.GAME_OVER, "res://scenes/menus/GameOver.tscn"):
+		# GameOver replaces Hangar/current_scene, not this root-level battle child.
+		queue_free()
+	else:
+		push_error("[Game] GameOver scene transition was rejected after battle shutdown")
 
 func _on_player_damaged()->void:
 	_shake_time=0.28
