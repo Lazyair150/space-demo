@@ -62,3 +62,39 @@ The earlier user report's uncommitted local `project.godot` change cannot be ins
 ## Validation still outstanding
 
 The cross-repo CI must run the strengthened StateStore probe and World V2 integration suite. This fixes a deterministic code-level validator mismatch but does not itself prove real Windows disk writes, crash recovery, Jar/Core restore and desktop resume. Desktop acceptance must exercise a real order effect, verify durable save success/no rejection line, exit/relaunch, restore, and confirm event idempotency.
+
+
+## Final CI result for the checkpoint/schema correction
+
+- Branch HEAD tested: `fc87d331fbb8361f20f66b0241a1735ba325dd9d`.
+- Cross-repository workflow Run `45942323918`: **completed / success**.
+- Exact Core PR #63 SHA: `116c0bb7e3589a2850bf1b85f6da4c48de8c0a28`.
+- Core Bridge and Space .NET builds succeeded; Godot 4.7.1 project import and GDScript parsing succeeded.
+- `SpaceDomainContractProbe`: `battle-effect-state-store=passed`, `battle-reward-fact-projection=passed`, `all-domain-contracts=passed`.
+- Final integration marker: `CROSS-REPO-WORLD-V2-OK`.
+- The StateStore log contains the deliberate negative-input rejection cases (empty Jar checkpoint, absent RNG state, wave/segment mismatch, missing runState); the probe itself reports success after asserting these invalid states were rejected and the last valid snapshot retained. They are not unhandled production errors.
+- Run link: https://github.com/Lazyair150/space-demo/actions/runs/45942323918
+
+## Repository UID sidecar audit
+
+The current remote tree contains 171 GDScript files and 155 tracked `.gd.uid` sidecars. The following 17 scripts do not yet have tracked sidecars in this branch:
+
+- `scripts/industrial/world_v2/SpaceBattleJarSupplyForecast.gd`
+- `scripts/industrial/world_v2/SpaceBattleJarSupplyForecastProbe.gd`
+- `scripts/industrial/world_v2/SpaceBattlePauseProbeOwner.gd`
+- `scripts/industrial/world_v2/SpaceBattleRewardFactProjection.gd`
+- `scripts/industrial/world_v2/SpaceBattleRewardFactProjectionProbe.gd`
+- `scripts/industrial/world_v2/SpaceBattleSupplyReconciliation.gd`
+- `scripts/industrial/world_v2/SpaceBattleSupplyReconciliationProbe.gd`
+- `scripts/industrial/world_v2/SpaceBattleSupplyScenarioProfile.gd`
+- `scripts/industrial/world_v2/SpaceDemoProgressionBootstrapProbe.gd`
+- `scripts/industrial/world_v2/SpaceDomainContractProbe.gd`
+- `scripts/industrial/world_v2/SpaceProgressionRewardCoordinator.gd`
+- `scripts/industrial/world_v2/SpaceProgressionRewardCoordinatorProbe.gd`
+- `scripts/industrial/world_v2/SpaceProgressionRewardProfile.gd`
+- `scripts/industrial/world_v2/SpaceProgressionRewardProfileProbe.gd`
+- `scripts/industrial/world_v2/SpaceProgressionRewardService.gd`
+- `scripts/industrial/world_v2/SpaceProgressionRewardServiceProbe.gd`
+- `tests/space_hangar_contracts.gd`
+
+These sidecar contents must come from the user's existing local Godot-generated files; they must not be fabricated or regenerated independently on GitHub. After syncing, compare the local untracked UID names to this list, stage the actual generated sidecars, inspect them, and commit them. Do not add `.uid` to `.gitignore`.
