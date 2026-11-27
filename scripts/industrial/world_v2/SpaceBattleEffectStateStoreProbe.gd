@@ -15,6 +15,33 @@ static func run() -> Dictionary:
         "loadoutVersion": 3,
         "loadoutFingerprint": "a".repeat(64)
     }
+    # Use the actual Parser Runtime to create its nested schema-5 checkpoint.
+    # A hand-written {"schemaVersion": 2} placeholder previously hid the mismatch
+    # between the Space envelope schema and the nested Parser runtime schema.
+    var parser_definition := SpaceOreParserDefinition.new()
+    parser_definition.parser_id = &"probe-checkpoint-parser"
+    parser_definition.definition_version = 1
+    parser_definition.production_percentage = 100
+    parser_definition.shape_processing_rate_per_second = {"圆罐": 1.0}
+    parser_definition.progress_per_jar_by_shape = {"圆罐": 2.0}
+    var parser_runtime := SpaceOreParserRuntime.new()
+    var parser_initialized := parser_runtime.initialize(parser_definition, "probe-checkpoint-parser-instance", ["圆罐"])
+    if not bool(parser_initialized.get("success", false)):
+        return _failure("real Parser Runtime fixture initialization failed: " + String(parser_initialized.get("reason", "")))
+    if not bool(parser_runtime.ingest_stone("probe-parser-stone", "圆罐", 2.5).get("success", false)):
+        return _failure("real Parser Runtime fixture rejected accepted stone volume")
+    if not bool(parser_runtime.advance(1000).get("success", false)):
+        return _failure("real Parser Runtime fixture could not advance")
+    var parser_runtime_state := parser_runtime.capture_state()
+    if int(parser_runtime_state.get("schemaVersion", 0)) != SpaceOreParserRuntime.STATE_SCHEMA_VERSION:
+        return _failure("Parser Runtime capture did not expose its current schema version")
+    var parser_runtime_restore := SpaceOreParserRuntime.new()
+    if not bool(parser_runtime_restore.initialize(parser_definition, "probe-checkpoint-parser-instance", ["圆罐"]).get("success", false)):
+        return _failure("Parser Runtime restore fixture initialization failed")
+    var parser_restore_result := parser_runtime_restore.restore_state(parser_runtime_state)
+    if not bool(parser_restore_result.get("success", false)):
+        return _failure("Parser Runtime could not restore the exact checkpoint emitted by capture_state: " + String(parser_restore_result.get("reason", "")))
+
     var runtime_checkpoint := {
         "schemaVersion": 2,
         "loadoutIdentity": identity.duplicate(true),
@@ -23,7 +50,7 @@ static func run() -> Dictionary:
         "runState": {"schemaVersion": 1, "score": 250, "wave": 3, "segment": "精英"},
         "oreParserState": {
             "schemaVersion": 2,
-            "parserRuntime": {"schemaVersion": 2},
+            "parserRuntime": parser_runtime_state,
             "nextPickupSequence": 7,
             "dropRngState": 8817264546339,
             "pendingPickups": [
@@ -31,6 +58,9 @@ static func run() -> Dictionary:
             ]
         }
     }
+    var runtime_validation_error := store._runtime_checkpoint_validation_error(runtime_checkpoint, identity)
+    if not runtime_validation_error.is_empty():
+        return _failure("store rejected a real current Parser Runtime checkpoint: " + runtime_validation_error)
     var event_id := "probe-jar-world:1:1"
     var effects := {"schemaVersion": 1, "instances": [], "processedOrderEventIds": [event_id]}
     var dispatcher := {
@@ -68,6 +98,27 @@ static func run() -> Dictionary:
     if not _matches_json_value(loaded.get("runtimeCheckpoint", {}), runtime_checkpoint):
         _cleanup(absolute_path)
         return _failure("Jar/Space runtime checkpoint was not preserved in the unified snapshot")
+
+    var unsupported_parser_runtime := runtime_checkpoint.duplicate(true)
+    unsupported_parser_runtime["oreParserState"]["parserRuntime"]["schemaVersion"] = SpaceOreParserRuntime.STATE_SCHEMA_VERSION + 1
+    var unsupported_reason := store._runtime_checkpoint_validation_error(unsupported_parser_runtime, identity)
+    if unsupported_reason.is_empty() or not unsupported_reason.contains("parserRuntime.schemaVersion"):
+        _cleanup(absolute_path)
+        return _failure("store did not report an explicit unsupported nested Parser Runtime schema")
+
+    # Legacy nested parser schemas remain supported by restore_state and must not
+    # be broken by the persistence layer's current-schema correction.
+    var legacy_parser_state := parser_runtime_state.duplicate(true)
+    legacy_parser_state["schemaVersion"] = 2
+    legacy_parser_state.erase("producedJarCountByShape")
+    legacy_parser_state.erase("coreImportReceipts")
+    legacy_parser_state.erase("coreImportReceiptHistoryComplete")
+    var legacy_runtime_checkpoint := runtime_checkpoint.duplicate(true)
+    legacy_runtime_checkpoint["oreParserState"]["parserRuntime"] = legacy_parser_state
+    var legacy_validation_error := store._runtime_checkpoint_validation_error(legacy_runtime_checkpoint, identity)
+    if not legacy_validation_error.is_empty():
+        _cleanup(absolute_path)
+        return _failure("store rejected a legacy Parser Runtime schema still supported by restore_state: " + legacy_validation_error)
 
     var invalid_runtime := runtime_checkpoint.duplicate(true)
     invalid_runtime["jarExecutionCheckpointJson"] = ""
@@ -143,7 +194,7 @@ static func run() -> Dictionary:
         return _failure("missing run-state rejection replaced the previous valid battle checkpoint")
 
     _cleanup(absolute_path)
-    return {"passed": true, "schemaVersion": 3, "domains": 6}
+    return {"passed": true, "schemaVersion": 3, "domains": 6, "parserRuntimeSchema": SpaceOreParserRuntime.STATE_SCHEMA_VERSION, "legacyParserSchemaAccepted": true}
 
 
 ## Compare values after the same JSON serialization boundary used by the durable store.

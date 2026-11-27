@@ -30,7 +30,7 @@ Every order-effect commit persists effect state and Dispatcher EventId atomicall
 
 The checkpoint contains the Jar execution checkpoint, shared clock remainder, parser runtime and pending pickups, run score/wave/segment, and optional finite-stage director/objective state. The checkpoint schema is 2 for free combat and 3 for finite stages.
 
-The state store validates all required fields before committing. A rejection must identify the exact field and expected type/range; a generic “incomplete checkpoint” message is not sufficient for debugging. Rejection leaves the Jar outbox event pending and must not acknowledge it or silently continue as if it were persisted. An empty checkpoint from an active finite-stage beat is an expected deferral, not a fault. Death is terminal: close the World instance and do not request a resumable checkpoint.
+The state store validates all required fields before committing. The outer Space Parser envelope is schema 2; its nested `parserRuntime` has an independent schema version. The store must accept only nested versions supported by `SpaceOreParserRuntime.restore_state` (currently 2/3/4/5), and must not confuse the outer envelope version with the nested runtime version. A rejection must identify the exact field and expected type/range; a generic “incomplete checkpoint” message is not sufficient for debugging. Rejection leaves the Jar outbox event pending and must not acknowledge it or silently continue as if it were persisted. An empty checkpoint from an active finite-stage beat is an expected deferral, not a fault. Death is terminal: close the World instance and do not request a resumable checkpoint.
 
 ## Verification gates
 

@@ -248,8 +248,14 @@ func _runtime_checkpoint_validation_error(runtime_checkpoint: Dictionary, loadou
     if int(parser.get("schemaVersion", 0)) != 2:
         return "oreParserState.schemaVersion must be 2"
     var parser_runtime: Variant = parser.get("parserRuntime", null)
-    if not (parser_runtime is Dictionary) or int(parser_runtime.get("schemaVersion", 0)) != 2:
-        return "oreParserState.parserRuntime must be schema 2"
+    if not (parser_runtime is Dictionary):
+        return "oreParserState.parserRuntime is missing or malformed"
+    var parser_runtime_schema := int(parser_runtime.get("schemaVersion", 0))
+    # SpaceOreParserRuntime.restore_state explicitly supports historical schemas
+    # 2/3/4 and the current capture schema. Keep the envelope schema (2) distinct
+    # from the nested parser-runtime schema (currently 5).
+    if parser_runtime_schema not in [2, 3, 4, SpaceOreParserRuntime.STATE_SCHEMA_VERSION]:
+        return "oreParserState.parserRuntime.schemaVersion=%d is unsupported (expected 2, 3, 4, or current %d)" % [parser_runtime_schema, SpaceOreParserRuntime.STATE_SCHEMA_VERSION]
     var next_pickup_sequence: Variant = parser.get("nextPickupSequence", null)
     if not _is_safe_positive_integer(next_pickup_sequence):
         return "oreParserState.nextPickupSequence must be a positive safe integer (actual type=%s value=%s)" % [type_string(typeof(next_pickup_sequence)), str(next_pickup_sequence)]

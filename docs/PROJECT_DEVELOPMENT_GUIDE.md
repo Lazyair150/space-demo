@@ -124,3 +124,8 @@ World 的液体词汇不是只有 `liquids` 名称数组，而是不可拆分的
 - 主场景 `main.tscn` → `Main.gd` → Main Menu → Hangar。演示目录资源位于 `data/hangar/demo_catalog_bundle.tres` 与 `demo_board.tres`；首次启动通过显式 DEMO bootstrap 建立原型 Owned Inventory，并由 Hangar draft 生成默认 owned-instance 配置。
 - 桌面验收仍需人工完成：主菜单启动、机库默认装配、进入战斗、订单/资源变化、暂停/继续、返回主菜单、再次进入战斗、GameOver 返回机库/主菜单、窗口关闭。
 - Reward Coordinator 已接入 Hangar 可选恢复入口；demo 资源包尚未配置正式 Reward Profile / Curve Catalog，因此不会在未定义 XP 平衡的情况下自动发放成长奖励。
+
+
+## 10. Sandbox entry is opt-in
+
+The production Game scene must not enter a Sandbox World when no frozen Owned Loadout was injected. `Game.allow_sandbox_world_for_development` therefore defaults to `false`. A developer-only fixture may explicitly opt in when it is intentionally testing Sandbox behavior; Hangar production launch must always supply the immutable Owned Loadout snapshot. Do not turn this flag on to work around a failed Core initialization or missing Hangar configuration.

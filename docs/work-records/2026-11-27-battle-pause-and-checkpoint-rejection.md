@@ -37,3 +37,28 @@ The validation remains strict. This change does not bypass persistence, acknowle
 - Exact Core/Space cross-repo CI and desktop GUI verification are pending.
 - The next desktop run must capture the new `[BattleStateStore] Runtime checkpoint rejected: ...` line. That exact reason determines whether the remaining checkpoint defect is a source-state capture bug or a schema-contract mismatch.
 - Do not close this issue until order effects persist successfully and a desktop player can pause, resume, and return to Main Menu.
+
+
+## Follow-up source audit: confirmed checkpoint schema defect
+
+The exact rejection is now known from code and is independent of the user's desktop GPU issue:
+
+- `Game.capture_ore_parser_state()` emits an outer Space envelope at schema 2.
+- `SpaceOreParserRuntime.capture_state()` emits an inner runtime checkpoint at schema 5 (`STATE_SCHEMA_VERSION = 5`).
+- `SpaceBattleEffectStateStore._runtime_checkpoint_validation_error()` incorrectly required the nested `parserRuntime.schemaVersion` to equal 2.
+- Therefore a valid live Parser checkpoint could never pass the state-store validator. The old store probe also used a hand-authored `{"schemaVersion": 2}` placeholder, so it did not resemble production capture output.
+
+Correction:
+- Distinguish the outer envelope schema from nested Parser Runtime schema.
+- Accept inner versions 2, 3, 4 and current 5, matching the exact versions supported by `SpaceOreParserRuntime.restore_state()`. Reject future/unknown versions with an explicit diagnostic.
+- Rewrite the state-store probe to instantiate a real `SpaceOreParserRuntime`, ingest a finite stone volume, advance it, capture schema 5 state, restore it through a second runtime and persist the real captured state. Assert schema 5 is accepted, a future schema is rejected explicitly, and legacy schema 2 remains accepted by the persistence validator because the runtime migration supports it.
+
+Sandbox boundary:
+- `Game.allow_sandbox_world_for_development` previously defaulted to true, which contradicted the development guide's rule that Sandbox initialization is opt-in for isolated development probes.
+- Its default is now false. Production launch remains Hangar-owned and must supply a frozen Owned Loadout.
+
+The earlier user report's uncommitted local `project.godot` change cannot be inspected from the GitHub checkout. The remote branch currently contains the explicit Windows Vulkan setting and preserves the Mobile rendering method. Do not overwrite a dirty local file until its diff is inspected; compare with `git diff -- project.godot` before deciding whether to discard or keep local edits.
+
+## Validation still outstanding
+
+The cross-repo CI must run the strengthened StateStore probe and World V2 integration suite. This fixes a deterministic code-level validator mismatch but does not itself prove real Windows disk writes, crash recovery, Jar/Core restore and desktop resume. Desktop acceptance must exercise a real order effect, verify durable save success/no rejection line, exit/relaunch, restore, and confirm event idempotency.

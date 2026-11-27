@@ -44,7 +44,8 @@ var _battle_shutdown_started: bool = false
 var _last_completed_world_time_milli: int = -1
 var _last_completed_logical_time_milli: int = -1
 
-@export var allow_sandbox_world_for_development: bool = true
+## Explicit opt-in for isolated development scenes only. Normal launches require Hangar's frozen Owned Loadout.
+@export var allow_sandbox_world_for_development: bool = false
 
 ## Hangar must call this before adding the combat scene to the SceneTree.
 func configure_battle_loadout(
