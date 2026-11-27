@@ -276,7 +276,13 @@ func _ready() -> void:
 func end_battle_for_menu() -> bool:
 	if not _battle_shutdown_started:
 		_shutdown_battle(false, "player returned to main menu")
-	return GameFlow.return_to_menu("res://scenes/menus/MainMenu.tscn")
+	if not GameFlow.return_to_menu("res://scenes/menus/MainMenu.tscn"):
+		return false
+	# Hangar attaches the configured battle as a root-level sibling, not as
+	# SceneTree.current_scene. Replacing the current scene therefore cannot
+	# remove this node; the lifecycle owner must release its own composition root.
+	queue_free()
+	return true
 
 ## Encounter completion is not objective completion or reward settlement.
 func _on_stage_encounters_completed(result: Dictionary) -> void:
@@ -631,8 +637,7 @@ func spawn_energy_stone_drop(
 		pickup.free()
 		return {"success": false, "reason": "rolled energy-stone data failed pickup validation"}
 
-	add_child(pickup)
-	pickup.global_position = world_position
+	call_deferred("_attach_energy_stone_pickup", pickup, world_position)
 	return {
 		"success": true,
 		"dropped": true,
@@ -642,6 +647,17 @@ func spawn_energy_stone_drop(
 		"profileId": String(roll.profileId),
 		"profileVersion": int(roll.profileVersion)
 	}
+
+## Deferred because enemy death can originate inside Area2D/body_entered while
+## PhysicsServer2D is flushing overlap queries. Never register a new Area2D there.
+func _attach_energy_stone_pickup(pickup: SpaceEnergyStonePickup, world_position: Vector2) -> void:
+	if not is_instance_valid(pickup):
+		return
+	if not is_inside_tree() or _battle_shutdown_started:
+		pickup.free()
+		return
+	add_child(pickup)
+	pickup.global_position = world_position
 
 ## Persist this beside the frozen loadout and Jar execution checkpoint.
 func capture_ore_parser_state() -> Dictionary:
