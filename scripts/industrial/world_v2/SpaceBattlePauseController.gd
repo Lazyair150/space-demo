@@ -63,30 +63,32 @@ func show_fault(reason: String) -> void:
 
 func _on_primary_action() -> void:
 	if _faulted:
-		_primary_button.disabled = true
-		_overlay.visible = false
-		if not GameFlow.return_to_menu("res://scenes/menus/MainMenu.tscn"):
-			_primary_button.disabled = false
-			_overlay.visible = true
+		_request_main_menu()
 	else:
 		set_paused(false)
 
 func _on_menu_action() -> void:
-	if _faulted:
-		_on_primary_action()
-		return
+	_request_main_menu()
+
+## Normal and faulted exits must use the Game composition root. GameFlow changes
+## current_scene (Hangar), but the battle is a separate /root child and must also
+## be disposed by its owner after the transition is accepted.
+func _request_main_menu() -> void:
 	var battle := get_parent()
 	if battle == null or not battle.has_method("end_battle_for_menu"):
 		push_error("[BattlePause] Main-menu exit has no battle lifecycle owner")
 		return
 	_menu_button.disabled = true
+	_primary_button.disabled = true
+	_overlay.visible = false
 	if not bool(battle.call("end_battle_for_menu")):
 		_faulted = true
+		_reason = "战斗已终止，但主菜单切换失败；可以重试"
 		_title_label.text = "战斗已结束  /  BATTLE ENDED"
 		_primary_button.text = "重试返回主菜单  /  Retry"
-		_menu_button.visible = false
-		_menu_button.disabled = false
 		_primary_button.disabled = false
+		_menu_button.disabled = false
+		_menu_button.visible = false
 		_overlay.visible = true
 
 func _on_pause_button_pressed() -> void:
