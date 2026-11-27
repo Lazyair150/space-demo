@@ -105,6 +105,10 @@ func _ready() -> void:
 		return
 	print("[SpaceBattlePauseControllerProbe] passed real-main-menu-transition=true")
 
+## Synthetic lifecycle owner used by the probe; production delegates to Game.gd.
+func end_battle_for_menu() -> bool:
+	return GameFlow.return_to_menu("res://scenes/menus/MainMenu.tscn")
+
 func _fail_probe(controller: SpaceBattlePauseController, reason: String) -> void:
 	get_tree().paused = false
 	GameFlow.end_battle()
