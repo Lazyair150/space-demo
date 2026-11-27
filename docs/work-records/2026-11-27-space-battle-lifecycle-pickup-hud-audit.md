@@ -73,3 +73,6 @@ The reusable-engine conclusion is to keep Space's product-specific GameFlow, enc
 3. Add an automated assertion that the separate root-level Game is queued for deletion on terminal exit.
 4. Add a visible stone collection receipt/toast with shape and volume, plus a failed-ingestion retry test.
 5. Design the first actual cinematic beat separately from finite encounter scheduling; only build a timeline abstraction once there are multiple authored sequences.
+
+- scripts/Game.gd: the player-death → GameOver route now also queues the root-level Game owner for deletion after the screen transition is accepted; the same leak was possible outside the pause-menu path.
+- Energy-stone glyph hover tooltip now explains its exact shape type, volume and automatic ship-contact collection behavior.
