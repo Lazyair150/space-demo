@@ -32,3 +32,4 @@
 
 - [2026-11-27 战斗成长奖励事实投影](2026-11-27-battle-progression-reward-fact-projection.md)
 - [2026-11-27 成长奖励协调器与机库恢复](2026-11-27-progression-reward-coordinator-recovery.md)
+- [2026-11-27 战斗检查点 JSON 整型边界](2026-11-27-battle-checkpoint-json-integer-boundary.md)

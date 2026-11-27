@@ -201,7 +201,12 @@ static func run() -> Dictionary:
 ## Godot may decode integral JSON numbers as floats, so raw in-memory Variant equality
 ## is not a valid assertion for persisted snapshots.
 static func _matches_json_value(actual: Variant, expected: Variant) -> bool:
-    var normalized_expected: Variant = JSON.parse_string(JSON.stringify(expected))
+    # The store returns the integer contract its validators enforce, so compare the expected
+    # value after taking it through the same JSON decode plus canonicalisation the load path
+    # applies. Comparing a raw JSON roundtrip against the loaded snapshot would only assert
+    # that Godot decodes numbers as floats.
+    var decoded_expected: Variant = JSON.parse_string(JSON.stringify(expected))
+    var normalized_expected: Variant = SpaceJsonNumberCanonicalizer.canonicalize(decoded_expected)
     return actual == normalized_expected
 
 ## Exercises real Buff instance reconstruction and processed-event idempotency.

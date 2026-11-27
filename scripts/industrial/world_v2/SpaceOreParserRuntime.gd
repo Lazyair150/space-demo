@@ -512,12 +512,21 @@ func capture_state() -> Dictionary:
 func restore_state(state: Dictionary) -> Dictionary:
 	if _definition == null:
 		return _failure("ore parser runtime is not initialized")
+	# A checkpoint may arrive straight from a JSON boundary (surviving a process restart), so
+	# canonicalise it here as well; the persistence boundary already does this, and the parser
+	# must not depend on which caller it came through.
+	var canonical_state: Variant = SpaceJsonNumberCanonicalizer.canonicalize(state)
+	if not (canonical_state is Dictionary):
+		return _failure("ore parser checkpoint must be a dictionary")
+	state = canonical_state
 	var state_schema := int(state.get("schemaVersion", 0))
 	if state_schema not in [2, 3, 4, STATE_SCHEMA_VERSION]:
 		return _failure("unsupported ore parser state schema")
 	if String(state.get("parserInstanceId", "")) != _parser_instance_id:
 		return _failure("ore parser instance identity does not match")
-	if state.get("parserProfile", {}) != _definition.build_runtime_profile():
+	# Canonicalise both sides so an int/float split cannot masquerade as a profile mismatch.
+	var expected_profile: Variant = SpaceJsonNumberCanonicalizer.canonicalize(_definition.build_runtime_profile())
+	if state.get("parserProfile", {}) != expected_profile:
 		return _failure("ore parser definition/profile does not match the checkpoint")
 
 	var queues: Variant = state.get("stoneQueuesByShape", null)

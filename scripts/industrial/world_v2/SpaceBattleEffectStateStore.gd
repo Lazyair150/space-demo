@@ -89,8 +89,15 @@ func load(expected_loadout_identity: Dictionary = {}) -> Dictionary:
             continue
         var parsed: Variant = JSON.parse_string(file.get_as_text())
         file.close()
-        if not (parsed is Dictionary) or not _valid_snapshot(parsed):
+        if not (parsed is Dictionary):
             continue
+        # JSON has no integer type, so every number arrives as a float. Canonicalise once here,
+        # at the only place the checkpoint is decoded, so the Jar parser, order dispatcher,
+        # stage director and run state all see the integer contract their validators enforce.
+        var normalized: Variant = SpaceJsonNumberCanonicalizer.canonicalize(parsed)
+        if not (normalized is Dictionary) or not _valid_snapshot(normalized):
+            continue
+        parsed = normalized
         if not expected_loadout_identity.is_empty():
             var stored_identity: Variant = parsed.get("loadoutIdentity", null)
             if not (stored_identity is Dictionary):

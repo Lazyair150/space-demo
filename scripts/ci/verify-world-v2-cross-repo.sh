@@ -122,4 +122,10 @@ if ! grep -Fq "[SpaceBattlePauseControllerProbe] expected-transition-rejection=p
   exit 1
 fi
 
+echo "[4b/4] Verify a committed checkpoint survives a real process restart"
+run_godot_checked "battle-checkpoint-restart-write" "[BattleCheckpointRestart] write=checkpoint-written" \
+  --headless --path "$SPACE_ROOT" --scene "res://tests/battle_checkpoint_restart.tscn" --quit-after 180 -- --mode=write
+run_godot_checked "battle-checkpoint-restart-restore" "[BattleCheckpointRestart] restore=checkpoint-restored-after-process-restart" \
+  --headless --path "$SPACE_ROOT" --scene "res://tests/battle_checkpoint_restart.tscn" --quit-after 180 -- --mode=restore
+
 echo "CROSS-REPO-WORLD-V2-OK core=$ACTUAL_CORE_SHA"
