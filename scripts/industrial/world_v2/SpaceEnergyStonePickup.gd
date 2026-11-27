@@ -44,6 +44,8 @@ func _ready() -> void:
 		_visual.color = ShapeVisuals.color_for(stone_type)
 	if _glyph != null:
 		_glyph.text = ShapeVisuals.glyph_for(stone_type)
+		_glyph.tooltip_text = "能量原石：%s\n体积：%.2f\n飞船接触时自动解析" % [stone_type, volume]
+		_glyph.mouse_filter = Control.MOUSE_FILTER_STOP
 	if not body_entered.is_connected(_on_body_entered):
 		body_entered.connect(_on_body_entered)
 
