@@ -1,6 +1,8 @@
 extends Node
 ## Synthetic check for the combat pause gate. Does not initialize a battle or Jar world.
 
+const PROBE_BATTLE_OWNER := preload("res://scripts/industrial/world_v2/SpaceBattlePauseProbeOwner.gd")
+
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	if not GameFlow.begin_battle_preparation() or not GameFlow.mark_battle_running():
@@ -11,8 +13,13 @@ func _ready() -> void:
 		GameFlow.end_battle()
 		GameFlow.enter_screen(GameFlow.Screen.MENU)
 		return
+	# Match production topology: current_scene is this probe, while the
+	# battle lifecycle owner is a separate root child, like /root/Game.
+	var battle_owner := PROBE_BATTLE_OWNER.new() as Node
+	battle_owner.name = "SpaceBattlePauseProbeOwner"
+	get_tree().root.add_child(battle_owner)
 	var controller := SpaceBattlePauseController.new()
-	add_child(controller)
+	battle_owner.add_child(controller)
 	if controller.process_mode != Node.PROCESS_MODE_ALWAYS:
 		_fail_probe(controller, "pause controller must process while paused")
 		return
@@ -96,6 +103,7 @@ func _ready() -> void:
 	var menu_snapshot := GameFlow.snapshot()
 	if (
 		scene_tree.paused
+		or not battle_owner.is_queued_for_deletion()
 		or String(menu_snapshot.get("screen", "")) != "MENU"
 		or String(menu_snapshot.get("battlePhase", "")) != "INACTIVE"
 	):
@@ -105,13 +113,12 @@ func _ready() -> void:
 		return
 	print("[SpaceBattlePauseControllerProbe] passed real-main-menu-transition=true")
 
-## Synthetic lifecycle owner used by the probe; production delegates to Game.gd.
-func end_battle_for_menu() -> bool:
-	return GameFlow.return_to_menu("res://scenes/menus/MainMenu.tscn")
-
 func _fail_probe(controller: SpaceBattlePauseController, reason: String) -> void:
 	get_tree().paused = false
 	GameFlow.end_battle()
 	GameFlow.enter_screen(GameFlow.Screen.MENU)
 	push_error("[SpaceBattlePauseControllerProbe] " + reason)
 	controller.queue_free()
+	var battle_owner := get_node_or_null("/root/SpaceBattlePauseProbeOwner")
+	if battle_owner != null:
+		battle_owner.queue_free()
