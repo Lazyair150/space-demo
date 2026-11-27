@@ -72,3 +72,33 @@ Do not treat every later "Attempted to free invalid ID: 0" as an independently p
 - Godot 4.7 internal rendering architecture and supported driver/method combinations: https://docs.godotengine.org/en/4.7/engine_details/architecture/internal_rendering_architecture.html
 - Godot 4.7 Windows driver setting and 4.6 default change: https://docs.godotengine.org/en/4.7/tutorials/migrating/upgrading_to_godot_4.6.html
 
+
+
+## Completed verification (2026-11-27)
+
+- Tested code head: 8643b31b1bff2f7d7d43811b6f3b1de725a0768a.
+- Cross-repository workflow: **45939562030 — success**.
+- Exact Core PR #63 dependency: 116c0bb7e3589a2850bf1b85f6da4c48de8c0a28.
+- Core Bridge and Space .NET builds succeeded.
+- Godot 4.7.1 project import/script parse succeeded.
+- SpaceDomainContractProbe reported battle-reward-fact-projection=passed and all-domain-contracts=passed. This executes the new owned Parser/world-scoped identity, legacy identity compatibility, foreign-world rejection and foreign-instance rejection cases.
+- Parser/Core ingestion, World V2 runtime/lifecycle/fault/disposal/snapshot, and battle navigation probes completed; final marker was CROSS-REPO-WORLD-V2-OK.
+- CI uses Linux headless and therefore does not validate Windows Vulkan device stability. It also does not simulate the user's real 35.883-second mission, physical overlap timing, GPU resets or window resizing.
+
+## Upstream D3D12 signature comparison
+
+Godot issue #124261 (reported in the 4.8 development line) contains the same family of messages: D3D12 `0x887A0005`, Buffer creation failures, invalid Buffer/Vertex Array RIDs, and `Attempted to free invalid ID: 0`. The report linked this to fullscreen-window movement between monitors; a Windows fix was merged to Godot master in PR #125769 on 2026-11-25 (milestone 4.8).
+
+This is a useful signature match, not proof that this Space 4.7.1 run had the same trigger. The desktop report mentions manual window resizing; it has not yet established whether the game was fullscreen, moved between monitors, or crossed monitors with different display scaling. The project therefore pins Vulkan on Windows as a controlled backend comparison and retains the Mobile renderer. If the issue reproduces while windowed on Vulkan, collect the first error plus Windows Reliability Monitor / Event Viewer details; do not assume the D3D12 upstream fullscreen regression explains it.
+
+Sources:
+- https://github.com/godotengine/godot/issues/124261
+- https://github.com/godotengine/godot/pull/125769
+
+## Desktop acceptance still required
+
+1. Pull this branch and verify startup reports Vulkan rather than Direct3D 12.
+2. Run a finite campaign stage through completion at/after the previous 35,883 ms failure point.
+3. Confirm the stage-clear record and reward receipts persist after returning to Hangar and restarting the application; repeat the same settlement path to verify idempotency.
+4. Exercise the game window in ordinary windowed mode first, then resize it. Only after that, test fullscreen and multi-monitor movement separately; do not combine all three variables in one run.
+5. If any device-loss error remains, record the first error, Godot version, NVIDIA driver version, GPU temperature/load, Windows display-driver reset event and whether the window was windowed/fullscreen/on which monitor.
